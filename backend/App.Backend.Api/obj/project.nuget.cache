@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "9/VEAhQRTc4=",
+  "success": true,
+  "projectFilePath": "/home/lufis/proj/heimdall/heimdall/backend/App.Backend.Api/App.Backend.Api.csproj",
+  "expectedPackageFiles": [
+    "/home/lufis/.nuget/packages/microsoft.aspnetcore.openapi/9.0.12/microsoft.aspnetcore.openapi.9.0.12.nupkg.sha512",
+    "/home/lufis/.nuget/packages/microsoft.openapi/1.6.17/microsoft.openapi.1.6.17.nupkg.sha512",
+    "/home/lufis/.nuget/packages/microsoft.aspnetcore.app.ref/9.0.12/microsoft.aspnetcore.app.ref.9.0.12.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "0Wsf1qrVTdA=",
+  "success": true,
+  "projectFilePath": "/home/lufis/proj/heimdall/heimdall/shared/App.Shared/App.Shared.csproj",
+  "expectedPackageFiles": [
+    "/home/lufis/.nuget/packages/microsoft.aspnetcore.app.ref/9.0.12/microsoft.aspnetcore.app.ref.9.0.12.nupkg.sha512"
+  ],
+  "logs": []
+}
