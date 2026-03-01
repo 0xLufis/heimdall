@@ -1,23 +1,22 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:17.4
+    image: postgres:17.9
     container_name: postgres_heimdall
     hostname: postgres
     environment:
       POSTGRES_USER_FILE: /run/secrets/pg_user
-      POSTGRES_DB: postgres
+      POSTGRES_DB: heimdall_dev_db
       POSTGRES_PASSWORD_FILE: /run/secrets/pg_pw
       TZ: Europe/Budapest
       PGTZ: Europe/Budapest
     secrets:
       - pg_user
       - pg_pw
-    volumes:
+    
       - ./data:/var/lib/postgresql/data
       - ./logs:/var/log/postgresql
       - ./certs:/var/lib/postgresql/certs
+      - ./init:/docker-entrypoint-initdb.d
     command: >
       postgres -c ssl=on
                -c ssl_cert_file=/var/lib/postgresql/certs/server.crt

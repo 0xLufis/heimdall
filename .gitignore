@@ -1,0 +1,53 @@
+# ==========================================
+# .NET / C# Compilation Results
+# ==========================================
+[Bb]in/
+[Oo]bj/
+# Ignore Visual Studio / Rider / Editor files
+.idea/
+.vscode/
+*.user
+*.suo
+*.sln.docstates
+# Ignore crash logs and test results
+# TestResults/
+*.log
+
+# ==========================================
+# Nuxt 4 / Node.js Frontend 
+# ==========================================
+node_modules/
+.nuxt/
+.output/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+
+# ==========================================
+# Infrastructure / Docker / PostgreSQL
+# ==========================================
+# NEVER commit database data or logs
+infra/database/data/
+infra/database/logs/
+
+infra/database/secrets/*.txt
+infra/database/certs/*.key
+infra/database/certs/*.crt
+
+# (Optional) If you want to commit dummy secrets for other devs, 
+# you can use an exclusion like this, but generally, ignore them all:
+# !infra/database/secrets/example_secret.txt
+
+# ==========================================
+# OS Generated Files
+# ==========================================
+## Doesnt really matter on arch tbh
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
