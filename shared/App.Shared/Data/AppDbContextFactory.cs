@@ -20,8 +20,10 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .Build();
 
         // 2. Get the connection string, with a fallback for local Docker dev
+        //var connectionString = configuration.GetConnectionString("DefaultConnection")
+        //    ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=admin;Password=admin";
         var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=admin;Password=admin";
+           ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=admin;Password=admin";
 
         // 3. Configure the DbContext Options
         var builder = new DbContextOptionsBuilder<AppDbContext>();

@@ -1,24 +1,26 @@
 services:
+  ##pgadmin
   pgadmin:
     image: dpage/pgadmin4:9.8
-    container_name: pgadmin_heimdall
     ports:
-      - "5050:80"
+      - 5050:80
     environment:
+      # Required by pgAdmin
       PGADMIN_DEFAULT_EMAIL: demo@example.com
       PGADMIN_DEFAULT_PASSWORD: secret
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-    networks:
-      - heimdall_net
-    restart: unless-stopped
 
+      # Don't require the user to login
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+
+      # Don't require a "master" password after logging in
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+  ##pgadmin end
+
+  ##pg
   postgres:
-    image: postgres:17.9  
+    image: postgres:17.9
     container_name: postgres_heimdall
     hostname: postgres
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_USER_FILE: /run/secrets/pg_user
       POSTGRES_DB: heimdall_dev_db
@@ -28,10 +30,10 @@ services:
     secrets:
       - pg_user
       - pg_pw
-    volumes:
+    
       - ./data:/var/lib/postgresql/data
       - ./logs:/var/log/postgresql
-      - ./certs:/var/lib/postgresql/certs:ro
+      - ./certs:/var/lib/postgresql/certs
       - ./init:/docker-entrypoint-initdb.d
     command: >
       postgres -c ssl=on
@@ -47,16 +49,15 @@ services:
                -c log_rotation_age=1d
                -c shared_preload_libraries=pg_stat_statements
                -c pg_stat_statements.track=all
-    networks:
-      - heimdall_net
     restart: unless-stopped
-
-networks:
-  heimdall_net:
-    driver: bridge
-
+    network_mode: "host"
+  ##pg end
 secrets:
   pg_user:
     file: ./secrets/pg_user.txt
   pg_pw:
     file: ./secrets/pg_pw.txt
+
+
+
+
