@@ -114,6 +114,18 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
+                    b.Property<DateTime?>("BanExpires")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ban_expires");
+
+                    b.Property<string>("BanReason")
+                        .HasColumnType("text")
+                        .HasColumnName("ban_reason");
+
+                    b.Property<bool?>("Banned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("banned");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -135,6 +147,10 @@ namespace App.Shared.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
+
+                    b.Property<string>("Role")
+                        .HasColumnType("text")
+                        .HasColumnName("role");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

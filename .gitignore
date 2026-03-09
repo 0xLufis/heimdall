@@ -51,3 +51,9 @@ infra/database/certs/*.crt
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+
+# ==========================================
+# AI bs
+# ==========================================
+GEMINI.md

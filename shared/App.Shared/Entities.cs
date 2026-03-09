@@ -98,6 +98,12 @@ public class AppUser
     public string? Image { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    // Admin plugin fields
+    public string? Role { get; set; }
+    public bool? Banned { get; set; }
+    public string? BanReason { get; set; }
+    public DateTime? BanExpires { get; set; }
 }
 
 [Table("session")]

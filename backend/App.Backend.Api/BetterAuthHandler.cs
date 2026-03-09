@@ -63,12 +63,17 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
         }
 
         // 5. Construct the Identity Claims for the authorized user
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, session.UserId),
             new Claim(ClaimTypes.Email, session.User.Email),
             new Claim(ClaimTypes.Name, session.User.Name)
         };
+
+        if (!string.IsNullOrEmpty(session.User.Role))
+        {
+            claims.Add(new Claim(ClaimTypes.Role, session.User.Role));
+        }
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);
