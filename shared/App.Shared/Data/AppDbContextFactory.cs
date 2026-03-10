@@ -23,7 +23,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         //var connectionString = configuration.GetConnectionString("DefaultConnection")
         //    ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=admin;Password=admin";
         var connectionString = configuration.GetConnectionString("DefaultConnection")
-           ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=admin;Password=admin";
+           ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=ef_admin;Password=migrate";
 
         // 3. Configure the DbContext Options
         var builder = new DbContextOptionsBuilder<AppDbContext>();
