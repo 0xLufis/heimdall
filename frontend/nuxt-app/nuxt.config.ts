@@ -2,11 +2,12 @@
 export default defineNuxtConfig({
    compatibilityDate: '2025-07-15',
    devtools: { enabled: true },
+   ssr: false,
    modules: ['@nuxtjs/tailwindcss', 'shadcn-nuxt'],
    nitro: {
-      // Ensure the pg module is externalized or bundled correctly for the server
+      // Ensure the pg module is externalized correctly for the server to avoid driver issues
       externals: {
-         inline: ['pg']
+         external: ['pg']
       }
    }
 })

@@ -16,6 +16,9 @@ public class AppDbContext : DbContext
     public DbSet<AppSession> Sessions { get; set; }
     public DbSet<AppAccount> Accounts { get; set; }
     public DbSet<AppVerification> Verifications { get; set; }
+    public DbSet<AppOrganization> Organizations { get; set; }
+    public DbSet<AppMember> Members { get; set; }
+    public DbSet<AppInvitation> Invitations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

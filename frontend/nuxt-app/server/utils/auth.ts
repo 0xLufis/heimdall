@@ -1,11 +1,9 @@
 import { betterAuth } from "better-auth";
-import { admin, createAccessControl } from "better-auth/plugins";
+import { admin, createAccessControl, username, organization, multiSession } from "better-auth/plugins";
 import pg from "pg";
 
-// Extract the Pool class from the pg package
-const { Pool } = pg;
-
-// Create a connection pool using your environment variable
+// We keep the pool for our manual seeder/queries
+const Pool = pg.Pool || (pg as any).default?.Pool;
 export const pool = new Pool({
    connectionString: process.env.DATABASE_URL,
    ssl: {
@@ -14,58 +12,79 @@ export const pool = new Pool({
 });
 
 const ac = createAccessControl({
-   user: ["create", "read", "update", "delete"],
-   statement: ["create", "read", "update", "delete"]
+   user: ["create", "read", "update", "delete", "list", "impersonate"],
+   role: ["create", "read", "update", "delete", "list"],
+   session: ["create", "read", "update", "delete", "list"],
+   invitation: ["create", "read", "update", "delete", "list"],
+   organization: ["create", "read", "update", "delete", "list"],
+   member: ["create", "read", "update", "delete", "list"],
+   statement: ["create", "read", "update", "delete", "list"]
 });
 
 const roles = {
    system_admin: ac.newRole({
-      user: ["create", "read", "update", "delete"],
-      statement: ["create", "read", "update", "delete"]
+      user: ["*"],
+      role: ["*"],
+      session: ["*"],
+      invitation: ["*"],
+      organization: ["*"],
+      member: ["*"],
+      statement: ["*"]
    }),
    admin: ac.newRole({
-      user: ["create", "read", "update", "delete"],
-      statement: ["create", "read", "update", "delete"]
+      user: ["*"],
+      role: ["*"],
+      session: ["*"],
+      invitation: ["*"],
+      organization: ["*"],
+      member: ["*"],
+      statement: ["*"]
    }),
    manager: ac.newRole({
-      user: ["read", "update"],
-      statement: ["read"]
-   }),
-   team_lead: ac.newRole({
-      user: ["read"],
-      statement: ["read"]
-   }),
-   engineer: ac.newRole({
-      user: ["read"],
-      statement: ["read"]
-   }),
-   technician: ac.newRole({
-      user: ["read"],
-      statement: ["read"]
-   }),
-   generic: ac.newRole({
-      user: ["read"],
+      user: ["read", "update", "list"],
+      session: ["read", "list"],
+      organization: ["read", "list"],
+      member: ["read", "list"],
       statement: ["read"]
    }),
    user: ac.newRole({
       user: ["read"],
+      session: ["read"],
       statement: ["read"]
    })
 };
 
 export const auth = betterAuth({
-   // Tell Better-Auth to use the raw Postgres pool
-   database: pool,
+   // Pass URL directly so Better Auth uses its own optimized adapter
+   database: {
+       url: process.env.DATABASE_URL!,
+       type: "postgres"
+   },
+   baseURL: process.env.BETTER_AUTH_URL,
+   secret: process.env.BETTER_AUTH_SECRET,
 
-   // Define which authentication methods are active
-   emailAndPassword: {
-      enabled: true,
+   user: {
+      additionalFields: {
+         role: { type: "string" },
+         username: { type: "string" }
+      }
+   },
+   
+   session: {
+      expiresIn: 60 * 60 * 24 * 7,
+      updateAge: 60 * 60 * 24,
+      cookieCache: {
+          enabled: true,
+          maxAge: 60 * 5
+      },
+      additionalFields: {
+          role: { type: "string" }
+      }
    },
 
-   // (Optional) Advanced configuration
-   session: {
-      expiresIn: 60 * 60 * 24 * 7, // 7 days
-      updateAge: 60 * 60 * 24, // 1 day (update expiration if active)
+   emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 4,
    },
 
    plugins: [
@@ -73,6 +92,12 @@ export const auth = betterAuth({
          ac,
          roles,
          adminRoles: ["system_admin", "admin"]
-      })
+      }),
+      username(),
+      organization({
+          ac,
+          creatorRole: "admin"
+      }),
+      multiSession()
    ]
 });

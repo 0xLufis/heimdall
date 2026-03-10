@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option csharp_namespace = "App.Shared.Protos";
+
+package system_info;
+
+import "google/protobuf/timestamp.proto";
+
+service SystemInfoCollector {
+  rpc ReportSystemInfo (SystemInfoRequest) returns (SystemInfoResponse);
+}
+
+message SystemInfoRequest {
+  string hostname = 1;
+  string machine_identifier = 2;
+  string mac_address = 3;
+  google.protobuf.Timestamp last_online = 4;
+  HardwareConfig hardware_config = 5;
+  SoftwareConfig software_config = 6;
+}
+
+message HardwareConfig {
+  string cpu = 1;
+  string ram = 2;
+  string storage = 3;
+}
+
+message SoftwareConfig {
+  string os_version = 1;
+  repeated string installed_packages = 2;
+}
+
+message SystemInfoResponse {
+  bool success = 1;
+  string message = 2;
+}
