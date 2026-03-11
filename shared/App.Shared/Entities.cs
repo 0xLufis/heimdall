@@ -35,6 +35,35 @@ public class ClientPc
 
     // Predecessors stored as a JSONB array of objects
     public List<PcPredecessor> Predecessors { get; set; } = new();
+
+    // Floor Plan Pinning
+    public Guid? FloorPlanId { get; set; }
+    public string? PinnedObjectHandle { get; set; } // Reference to a DXF handle (e.g., "1A2B")
+}
+
+public class FloorPlan
+{
+    public Guid Id { get; set; }
+
+    [Required]
+    [MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    public string SvgContent { get; set; } = string.Empty;
+
+    // List of extractable anchors from the DXF (Blocks, Named Objects)
+    public List<FloorPlanAnchor> Anchors { get; set; } = new();
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public class FloorPlanAnchor
+{
+    public string Handle { get; set; } = string.Empty; // Persistent DXF Handle
+    public string Name { get; set; } = string.Empty;   // Block Name or Attribute value
+    public double? X { get; set; }                     // Optional Centroid for UI centering
+    public double? Y { get; set; }
 }
 
 public class Component

@@ -9,7 +9,11 @@ export const useDb = () => {
       const config = useRuntimeConfig();
 
       // Initialize the postgres connection
-      connection = postgres(config.databaseUrl as string);
+      connection = postgres(config.databaseUrl as string, {
+         ssl: {
+            rejectUnauthorized: false
+         }
+      });
    }
 
    // Return the Drizzle instance bundled with your schema

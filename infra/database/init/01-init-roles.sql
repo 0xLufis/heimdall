@@ -13,15 +13,10 @@ nuxt_frontend,
 ef_admin,
 drizzle_admin;
 -- Apps need DML (Data Manipulation) access
-GRANT SELECT
-   ,
-   INSERT,
-   UPDATE ,
-   DELETE 
+GRANT SELECT, INSERT, UPDATE, DELETE 
 ON ALL TABLES IN SCHEMA public TO dotnet_backend,
    nuxt_frontend;
-GRANT USAGE SELECT
-   
+GRANT USAGE, SELECT 
 ON ALL SEQUENCES IN SCHEMA public TO dotnet_backend,
    nuxt_frontend;
 -- Admins need DDL (Data Definition) access
@@ -30,7 +25,7 @@ ON SCHEMA public TO ef_admin,
 drizzle_admin;
 -- 4. heimdall_dev_db Schema Permissions
 -- Only the admin roles get access here
-GRANT USAGE CREATE
+GRANT USAGE, CREATE
 ON SCHEMA heimdall_dev_db TO ef_admin,
 drizzle_admin;
 GRANT ALL PRIVILEGES
@@ -41,14 +36,9 @@ ON ALL SEQUENCES IN SCHEMA heimdall_dev_db TO ef_admin,
 drizzle_admin;
 -- 5. Set Default Privileges (Crucial for future tables)
 -- This ensures that when an admin creates a table, the app roles can actually see it automatically
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT
-   ,
-   INSERT,
-   UPDATE ,
-   DELETE 
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE 
 ON TABLES TO dotnet_backend,
    nuxt_frontend;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE SELECT
-   
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT 
 ON SEQUENCES TO dotnet_backend,
    nuxt_frontend;

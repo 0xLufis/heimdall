@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     // Domain Sets
     public DbSet<ClientPc> ClientPcs { get; set; }
     public DbSet<Component> Components { get; set; }
+    public DbSet<FloorPlan> FloorPlans { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +27,17 @@ public class AppDbContext : DbContext
             // Indexes for faster lookups
             entity.HasIndex(e => e.Hostname).IsUnique();
             entity.HasIndex(e => e.MacAddress).IsUnique();
+            
+            // Link to FloorPlan
+            entity.HasIndex(e => e.FloorPlanId);
+            entity.HasIndex(e => e.PinnedObjectHandle);
+        });
+
+        // Configure FloorPlan
+        modelBuilder.Entity<FloorPlan>(entity =>
+        {
+            entity.Property(e => e.Anchors).HasColumnType("jsonb");
+            entity.HasIndex(e => e.Name);
         });
 
         // Configure JSONB column for Components
