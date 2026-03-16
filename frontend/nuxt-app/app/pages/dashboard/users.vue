@@ -1,80 +1,7 @@
-<template>
-  <div class="space-y-6">
-    <!-- Header with Actions -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div>
-        <h3 class="text-2xl font-bold text-gray-900 tracking-tight font-sans">User Management</h3>
-        <p class="text-sm text-gray-500 mt-1 font-sans">Manage user roles, permissions, and account status.</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <button @click="fetchUsers" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        </button>
-        <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 rounded-lg text-sm font-semibold text-white hover:bg-indigo-700 transition-all shadow-md">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Invite User
-        </button>
-      </div>
-    </div>
-
-    <!-- Filters & Search -->
-    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
-       <div class="relative flex-grow w-full md:w-auto">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Search by name, email, or username..." 
-            class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all" 
-          />
-       </div>
-       <div class="flex items-center gap-2 w-full md:w-auto">
-          <select v-model="roleFilter" class="block w-full md:w-40 py-2 pl-3 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all">
-            <option value="">All Roles</option>
-            <option v-for="role in availableRoles" :key="role" :value="role">{{ role }}</option>
-          </select>
-          <select v-model="statusFilter" class="block w-full md:w-40 py-2 pl-3 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all">
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="banned">Banned</option>
-          </select>
-       </div>
-    </div>
-
-    <!-- Error State -->
-    <div v-if="error" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 shadow-sm">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <div>
-        <p class="text-sm font-bold text-red-800">Authorization Error</p>
-        <p class="text-xs text-red-700 mt-1">{{ error }}</p>
-      </div>
-    </div>
-
-    <!-- User Table Component -->
-    <DashboardUserTable 
-      :users="filteredUsers" 
-      :roles="availableRoles" 
-      :loading="loading"
-      @update-role="handleRoleChange"
-      @ban-user="handleBanUser"
-      @unban-user="handleUnbanUser"
-    />
-  </div>
-</template>
-
 <script setup lang="ts">
 import { authClient } from "~/utils/auth-client"
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 
 definePageMeta({
   layout: 'dashboard'
@@ -197,3 +124,80 @@ onMounted(() => {
   fetchUsers()
 })
 </script>
+
+<template>
+  <div class="space-y-6">
+    <!-- Header with Actions -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h3 class="text-2xl font-bold text-gray-900 tracking-tight font-sans">User Management</h3>
+        <p class="text-sm text-gray-500 mt-1 font-sans">Manage user roles, permissions, and account status.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <Button variant="outline" @click="fetchUsers" class="gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </Button>
+        <Button class="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Invite User
+        </Button>
+      </div>
+    </div>
+
+    <!-- Filters & Search -->
+    <Card class="border-gray-100 shadow-sm">
+       <CardContent class="p-4 flex flex-col md:flex-row gap-4 items-center">
+          <div class="relative flex-grow w-full md:w-auto">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input 
+                v-model="searchQuery" 
+                type="text" 
+                placeholder="Search by name, email, or username..." 
+                class="block w-full pl-10 pr-3 py-2 border border-gray-100 rounded-lg bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm transition-all" 
+              />
+          </div>
+          <div class="flex items-center gap-2 w-full md:w-auto">
+              <select v-model="roleFilter" class="block w-full md:w-40 py-2 pl-3 pr-10 border border-gray-100 rounded-lg bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm transition-all">
+                <option value="">All Roles</option>
+                <option v-for="role in availableRoles" :key="role" :value="role">{{ role }}</option>
+              </select>
+              <select v-model="statusFilter" class="block w-full md:w-40 py-2 pl-3 pr-10 border border-gray-100 rounded-lg bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm transition-all">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="banned">Banned</option>
+              </select>
+          </div>
+       </CardContent>
+    </Card>
+
+    <!-- Error State -->
+    <div v-if="error" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 shadow-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div>
+        <p class="text-sm font-bold text-red-800">Authorization Error</p>
+        <p class="text-xs text-red-700 mt-1">{{ error }}</p>
+      </div>
+    </div>
+
+    <!-- User Table Component -->
+    <DashboardUserTable 
+      :users="filteredUsers" 
+      :roles="availableRoles" 
+      :loading="loading"
+      @update-role="handleRoleChange"
+      @ban-user="handleBanUser"
+      @unban-user="handleUnbanUser"
+    />
+  </div>
+</template>

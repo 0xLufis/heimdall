@@ -31,6 +31,38 @@ public class ClientPcRepository
         return await _context.ClientPcs.FindAsync(id);
     }
 
+    public async Task<List<ClientPc>> GetAllAsync()
+    {
+        return await _context.ClientPcs.ToListAsync();
+    }
+
+    public async Task<ClientPc> UpsertByMacAddressAsync(ClientPc pc)
+    {
+        var existingPc = await _context.ClientPcs
+            .FirstOrDefaultAsync(x => x.MacAddress == pc.MacAddress);
+
+        if (existingPc == null)
+        {
+            _context.ClientPcs.Add(pc);
+            await _context.SaveChangesAsync();
+            return pc;
+        }
+
+        // Update existing record
+        existingPc.Hostname = pc.Hostname;
+        existingPc.MachineIdentifier = pc.MachineIdentifier;
+        existingPc.LastOnline = pc.LastOnline;
+        existingPc.HardwareConfig = pc.HardwareConfig;
+        existingPc.SoftwareConfig = pc.SoftwareConfig;
+        
+        // Optionally update other fields if provided
+        if (pc.CustomDataPoints != null)
+            existingPc.CustomDataPoints = pc.CustomDataPoints;
+
+        await _context.SaveChangesAsync();
+        return existingPc;
+    }
+
     // --- 2. Querying Strongly-Typed JSONB (HardwareConfig) ---
     public async Task<List<ClientPc>> GetPcsByCpuAsync(string cpuModel)
     {

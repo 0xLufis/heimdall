@@ -16,7 +16,7 @@ public class SystemInfoReporter
     {
         _logger = logger;
         // TODO: Move gRPC channel management to a centralized location and add TLS/Auth
-        var backendUrl = configuration["BACKEND_URL"] ?? configuration["Backend:Url"] ?? "http://localhost:5000";
+        var backendUrl = configuration["BACKEND_URL"] ?? configuration["Backend:Url"] ?? "http://localhost:5001";
         var channel = GrpcChannel.ForAddress(backendUrl);
         _client = new SystemInfoCollector.SystemInfoCollectorClient(channel);
     }

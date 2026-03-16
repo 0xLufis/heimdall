@@ -17,7 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "agent", "agent", "{EB4B5C6C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Agent.Daemon", "agent\App.Agent.Daemon\App.Agent.Daemon.csproj", "{7AD1C2A4-B317-4ACB-9475-CD74FC1AC397}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Backend.Tests", "backend\App.Backend.Tests\App.Backend.Tests.csproj", "{41A091C2-E46C-4461-B6B4-909E852E36A9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Backend.Tests", "tests\backend\App.Backend.Tests\App.Backend.Tests.csproj", "{41A091C2-E46C-4461-B6B4-909E852E36A9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -54,6 +54,5 @@ Global
 		{30E59D26-A325-453C-A585-F0F50C8BAFE6} = {8B295A96-BA15-4FE3-B192-3E0878D9AC6C}
 		{669AF5F8-D66F-4919-B7BA-0C9066385BDB} = {8B295A96-BA15-4FE3-B192-3E0878D9AC6C}
 		{7AD1C2A4-B317-4ACB-9475-CD74FC1AC397} = {EB4B5C6C-D949-4B30-A515-7EB18A01AFE1}
-		{41A091C2-E46C-4461-B6B4-909E852E36A9} = {8B295A96-BA15-4FE3-B192-3E0878D9AC6C}
 	EndGlobalSection
 EndGlobal

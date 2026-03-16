@@ -10,16 +10,40 @@ Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel for HTTP/2
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    // HTTP/1.1 and HTTP/2 (for TLS) on the main ports
+    serverOptions.ListenAnyIP(5099, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+    });
+    serverOptions.ListenAnyIP(7158, listenOptions =>
+    {
+        listenOptions.UseHttps();
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+    });
+    // Dedicated port for cleartext gRPC (HTTP/2 only)
+    serverOptions.ListenAnyIP(5001, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+    });
+});
+
 // Ensure Environment Variables are included in configuration
 builder.Configuration.AddEnvironmentVariables();
 
 // --- 1. Database ---
+var connectionString = builder.Configuration["DATABASE_URL"] 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.EnableDynamicJson();
+var dataSource = dataSourceBuilder.Build();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var connectionString = builder.Configuration["DATABASE_URL"] 
-        ?? builder.Configuration.GetConnectionString("DefaultConnection");
-    
-    options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention();
+    options.UseNpgsql(dataSource).UseSnakeCaseNamingConvention();
 });
 
 // --- 2. Repositories ---
@@ -32,13 +56,26 @@ builder.Services.AddAuthentication("BetterAuth")
 
 builder.Services.AddAuthorization();
 
-// --- 4. Controllers & gRPC ---
+// --- 4. Controllers & gRPC & Swagger ---
 builder.Services.AddControllers();
 builder.Services.AddGrpc();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+// Enable middleware to serve generated Swagger as a JSON endpoint.
+app.UseSwagger();
+
+// Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.),
+// specifying the Swagger JSON endpoint.
+app.UseSwaggerUI(c => 
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Heimdall API V1");
+    c.RoutePrefix = "api-docs";
+});
+
+// app.UseHttpsRedirection(); // Commented out for development to allow cleartext gRPC
 
 // These two must be in this exact order, right before MapControllers!
 app.UseAuthentication();

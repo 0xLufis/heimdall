@@ -8,6 +8,129 @@ namespace App.Shared.Entities;
 
 // --- DOMAIN ENTITIES ---
 
+public class Manufacturer
+{
+    public Guid Id { get; set; }
+    [Required, MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    public string? Website { get; set; }
+    public string? SupportContact { get; set; }
+}
+
+public class Supplier
+{
+    public Guid Id { get; set; }
+    [Required, MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    public string? Website { get; set; }
+    public string? ContactPerson { get; set; }
+    public string? Email { get; set; }
+}
+
+public class Machine
+{
+    public Guid Id { get; set; }
+    
+    [Required]
+    [MaxLength(255)]
+    public string CustomIdentifier { get; set; } = string.Empty;
+
+    // JSONB Columns
+    public JsonDocument? HwComponents { get; set; }
+    public JsonDocument? SwComponents { get; set; }
+
+    public string? PinnedObjectHandle { get; set; } // Reference to a DXF handle
+
+    // Relationship: Many-to-many with Client PCs
+    public List<ClientPc> ClientPcs { get; set; } = new();
+}
+
+public class SoftwareComponent
+{
+    public Guid Id { get; set; }
+    
+    public Guid? ManufacturerId { get; set; }
+    public Manufacturer? Manufacturer { get; set; }
+    
+    [Required]
+    [MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    
+    public string? Version { get; set; }
+    public string? Description { get; set; }
+    public DateTimeOffset? PurchaseDate { get; set; }
+    public string? SerialNumber { get; set; }
+    
+    public Guid? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+    
+    public decimal? CostInHUF { get; set; }
+}
+
+public class HardwareComponent
+{
+    public Guid Id { get; set; }
+    
+    public Guid? ManufacturerId { get; set; }
+    public Manufacturer? Manufacturer { get; set; }
+    
+    [Required]
+    [MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    
+    public string? ModelNumber { get; set; }
+    public string? Revision { get; set; }
+    public string? Description { get; set; }
+    public DateTimeOffset? PurchaseDate { get; set; }
+    public string? SerialNumber { get; set; }
+    
+    public Guid? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+    
+    public decimal? CostInHUF { get; set; }
+
+    // Technical Specifications (JSONB)
+    public ComponentTechnicalSpecs? TechnicalSpecs { get; set; }
+}
+
+public class ComponentTechnicalSpecs
+{
+    public string? Category { get; set; } // Sensor, Screwdriver, Controller, etc.
+    
+    // Vision Sensors (Keyence etc)
+    public string? Resolution { get; set; }
+    public string? FrameRate { get; set; }
+    public string? InterfaceType { get; set; } // Ethernet/IP, Profinet
+    
+    // Proximity Sensors
+    public string? SensingDistance { get; set; }
+    public string? OutputType { get; set; } // PNP/NPN, NO/NC
+    public string? ConnectionType { get; set; } // M8, M12
+    
+    // Screwdrivers (Deprag etc)
+    public double? TorqueMin { get; set; }
+    public double? TorqueMax { get; set; }
+    public int? MaxSpeed { get; set; }
+    
+    // Controllers (AST etc)
+    public string? FirmwareVersion { get; set; }
+    public List<string>? SupportedProfiles { get; set; }
+    
+    // Generic
+    public Dictionary<string, object>? ExtraAttributes { get; set; }
+}
+
+public class UserRole
+{
+    public Guid Id { get; set; }
+    
+    [Required]
+    [MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    
+    public List<string> Privileges { get; set; } = new();
+}
+
 public class ClientPc
 {
     public Guid Id { get; set; }
@@ -25,6 +148,9 @@ public class ClientPc
     public string MacAddress { get; set; } = string.Empty;
 
     public DateTimeOffset? LastOnline { get; set; }
+
+    // Relationships
+    public List<Machine> Machines { get; set; } = new();
 
     // JSONB Columns
     public HardwareConfig HardwareConfig { get; set; } = new();

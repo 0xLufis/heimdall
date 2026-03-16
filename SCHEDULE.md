@@ -1,7 +1,7 @@
 # Project Schedule
 - 2026-03-01: Database Design, Docker Setup, gRPC base, project layouts
 - 2026-03-08: Web landing page skeleton, agent basics (WMI and FS functionality)
-- 2026-03-15: API endpoints, UAC, Auth, 
+- 2026-03-15: API endpoints, UAC, Auth (Done: Created BetterAuthHandler, Controllers, and updated Data Model)
 - 2026-03-22: Frontend Admin panels, Search box
 - 2026-03-29: Data management
 - 2026-04-05: DXF to SVG + Front-end
