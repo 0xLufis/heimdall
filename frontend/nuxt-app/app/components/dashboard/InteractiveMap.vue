@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import DxfParser from 'dxf-parser'
+import { Card, CardContent } from '~/components/ui/card'
 
 const props = defineProps<{
   dxfUrl: string
@@ -131,75 +132,77 @@ const isHighlighted = (handle: string) => {
 </script>
 
 <template>
-    <div class="w-full h-full relative overflow-hidden bg-slate-900 border border-slate-800 shadow-inner group">
-        <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-900">
-            <p class="text-gray-400 font-bold uppercase tracking-widest animate-pulse">Loading Map...</p>
-        </div>
-        
-        <div v-else-if="error" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-900 p-6 text-red-400">
-            {{ error }}
-        </div>
+    <Card class="w-full h-full relative overflow-hidden bg-card border-border shadow-inner group p-0">
+        <CardContent class="p-0 w-full h-full">
+            <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-card">
+                <p class="text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Loading Map...</p>
+            </div>
+            
+            <div v-else-if="error" class="absolute inset-0 z-20 flex items-center justify-center bg-card p-6 text-destructive">
+                {{ error }}
+            </div>
 
-        <svg 
-            v-else
-            ref="svgContainer"
-            class="w-full h-full cursor-grab active:cursor-grabbing outline-none"
-            :viewBox="`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`"
-            @wheel="handleWheel"
-            @mousedown="handleMouseDown"
-            @mousemove="handleMouseMove"
-            @mouseleave="handleMouseUp"
-            xmlns="http://www.w3.org/2000/svg"
-        >
-            <g transform="scale(1, -1)">
-                <!-- Global standalone entities -->
-                <template v-for="(entity, idx) in entities" :key="`g-${idx}`">
-                    <line v-if="entity.type === 'LINE'" 
-                          :x1="entity.vertices[0].x" :y1="entity.vertices[0].y" 
-                          :x2="entity.vertices[1].x" :y2="entity.vertices[1].y" 
-                          stroke="#475569" stroke-width="0.5" stroke-linecap="round" />
-                          
-                    <!-- Render Block Inserts -->
-                    <g v-if="entity.type === 'INSERT'" 
-                       :transform="`translate(${entity.position.x}, ${entity.position.y}) rotate(${entity.rotation || 0})`"
-                       @click.stop="emit('object-clicked', entity.handle, entity.name)"
-                       class="cursor-pointer transition-all duration-300 hover:opacity-80 group/insert"
-                    >
-                        <!-- Invisible bounding box for easier clicking - slightly larger -->
-                        <rect x="-20" y="-20" width="40" height="40" fill="transparent" class="group-hover/insert:fill-white/5 transition-colors" />
-                        
-                        <template v-if="blocks[entity.name]">
-                            <template v-for="(bEnt, bIdx) in blocks[entity.name].entities" :key="`b-${bIdx}`">
-                                <line v-if="bEnt.type === 'LINE'" 
-                                      :x1="bEnt.vertices[0].x" :y1="bEnt.vertices[0].y" 
-                                      :x2="bEnt.vertices[1].x" :y2="bEnt.vertices[1].y" 
-                                      :stroke="isHighlighted(entity.handle) ? '#818cf8' : '#cbd5e1'" 
-                                      :stroke-width="isHighlighted(entity.handle) ? 1.5 : 1" 
-                                      stroke-linecap="round" />
-                                      
-                                <circle v-if="bEnt.type === 'CIRCLE'" 
-                                        :cx="bEnt.center.x" :cy="bEnt.center.y" :r="bEnt.radius" 
-                                        fill="none" 
-                                        :stroke="isHighlighted(entity.handle) ? '#818cf8' : '#94a3b8'" 
-                                        :stroke-width="isHighlighted(entity.handle) ? 1.5 : 1" />
-                                        
-                                <text v-if="bEnt.type === 'TEXT'"
-                                      :x="bEnt.startPoint.x" :y="-bEnt.startPoint.y"
-                                      :fill="isHighlighted(entity.handle) ? '#818cf8' : '#f8fafc'"
-                                      font-size="3"
-                                      font-family="monospace"
-                                      text-anchor="middle"
-                                      dominant-baseline="central"
-                                      transform="scale(1, -1)">
-                                      {{ bEnt.text }}
-                                </text>
+            <svg 
+                v-else
+                ref="svgContainer"
+                class="w-full h-full cursor-grab active:cursor-grabbing outline-none"
+                :viewBox="`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`"
+                @wheel="handleWheel"
+                @mousedown="handleMouseDown"
+                @mousemove="handleMouseMove"
+                @mouseleave="handleMouseUp"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                <g transform="scale(1, -1)">
+                    <!-- Global standalone entities -->
+                    <template v-for="(entity, idx) in entities" :key="`g-${idx}`">
+                        <line v-if="entity.type === 'LINE'" 
+                              :x1="entity.vertices[0].x" :y1="entity.vertices[0].y" 
+                              :x2="entity.vertices[1].x" :y2="entity.vertices[1].y" 
+                              stroke="currentColor" class="text-muted/30" stroke-width="0.5" stroke-linecap="round" />
+                              
+                        <!-- Render Block Inserts -->
+                        <g v-if="entity.type === 'INSERT'" 
+                           :transform="`translate(${entity.position.x}, ${entity.position.y}) rotate(${entity.rotation || 0})`"
+                           @click.stop="emit('object-clicked', entity.handle, entity.name)"
+                           class="cursor-pointer transition-all duration-300 hover:opacity-80 group/insert"
+                        >
+                            <!-- Invisible bounding box for easier clicking - slightly larger -->
+                            <rect x="-20" y="-20" width="40" height="40" fill="transparent" class="group-hover/insert:fill-accent/10 transition-colors" />
+                            
+                            <template v-if="blocks[entity.name]">
+                                <template v-for="(bEnt, bIdx) in blocks[entity.name].entities" :key="`b-${bIdx}`">
+                                    <line v-if="bEnt.type === 'LINE'" 
+                                          :x1="bEnt.vertices[0].x" :y1="bEnt.vertices[0].y" 
+                                          :x2="bEnt.vertices[1].x" :y2="bEnt.vertices[1].y" 
+                                          :stroke="isHighlighted(entity.handle) ? 'var(--primary)' : 'var(--muted-foreground)'" 
+                                          :stroke-width="isHighlighted(entity.handle) ? 1.5 : 1" 
+                                          stroke-linecap="round" />
+                                          
+                                    <circle v-if="bEnt.type === 'CIRCLE'" 
+                                            :cx="bEnt.center.x" :cy="bEnt.center.y" :r="bEnt.radius" 
+                                            fill="none" 
+                                            :stroke="isHighlighted(entity.handle) ? 'var(--primary)' : 'var(--muted-foreground)'" 
+                                            :stroke-width="isHighlighted(entity.handle) ? 1.5 : 1" />
+                                            
+                                    <text v-if="bEnt.type === 'TEXT'"
+                                          :x="bEnt.startPoint.x" :y="-bEnt.startPoint.y"
+                                          :fill="isHighlighted(entity.handle) ? 'var(--primary)' : 'var(--foreground)'"
+                                          font-size="3"
+                                          font-family="monospace"
+                                          text-anchor="middle"
+                                          dominant-baseline="central"
+                                          transform="scale(1, -1)">
+                                          {{ bEnt.text }}
+                                    </text>
+                                </template>
                             </template>
-                        </template>
-                    </g>
-                </template>
-            </g>
-        </svg>
-    </div>
+                        </g>
+                    </template>
+                </g>
+            </svg>
+        </CardContent>
+    </Card>
 </template>
 
 <style scoped>

@@ -1,9 +1,36 @@
+import tailwindcss from '@tailwindcss/vite'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
    compatibilityDate: '2025-07-15',
    devtools: { enabled: true },
    ssr: false,
-   modules: ['@nuxtjs/tailwindcss', 'shadcn-nuxt'],
+   css: ['~/assets/css/tailwind.css'],
+   vite: {
+      plugins: [
+         tailwindcss(),
+      ],
+   },
+   modules: [
+      'shadcn-nuxt',
+      '@nuxt/icon',
+      '@vueuse/nuxt',
+      '@nuxtjs/color-mode'
+   ],
+   colorMode: {
+      classSuffix: '',
+      preference: 'dark',
+      fallback: 'dark'
+   },
+   shadcn: {
+      prefix: '',
+      componentDir: './app/components/ui'
+   },
+   imports: {
+      dirs: [
+         './app/lib'
+      ]
+   },
    runtimeConfig: {
       databaseUrl: process.env.DATABASE_URL,
       public: {

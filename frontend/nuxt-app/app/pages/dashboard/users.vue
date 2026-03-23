@@ -2,9 +2,12 @@
 import { authClient } from "~/utils/auth-client"
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { RefreshCcwIcon, UserPlusIcon, SearchIcon, ShieldAlertIcon } from 'lucide-vue-next'
 
 definePageMeta({
-  layout: 'dashboard'
+  layout: 'shadcn-dashboard'
 })
 
 const loading = ref(false)
@@ -130,63 +133,65 @@ onMounted(() => {
     <!-- Header with Actions -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h3 class="text-2xl font-bold text-gray-900 tracking-tight font-sans">User Management</h3>
-        <p class="text-sm text-gray-500 mt-1 font-sans">Manage user roles, permissions, and account status.</p>
+        <h3 class="text-3xl font-black text-slate-100 tracking-tight uppercase">User Management</h3>
+        <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">System Access Control & Audit</p>
       </div>
       <div class="flex items-center gap-3">
-        <Button variant="outline" @click="fetchUsers" class="gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
+        <Button variant="outline" @click="fetchUsers" class="gap-2 border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-100 rounded-xl h-11">
+          <RefreshCcwIcon class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          <span class="text-[10px] font-black uppercase tracking-widest">Refresh</span>
         </Button>
-        <Button class="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-md">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Invite User
+        <Button class="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-lg shadow-indigo-500/20 rounded-xl h-11 px-6">
+          <UserPlusIcon class="h-4 w-4" />
+          <span class="text-[10px] font-black uppercase tracking-widest">Invite User</span>
         </Button>
       </div>
     </div>
 
     <!-- Filters & Search -->
-    <Card class="border-gray-100 shadow-sm">
-       <CardContent class="p-4 flex flex-col md:flex-row gap-4 items-center">
-          <div class="relative flex-grow w-full md:w-auto">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input 
+    <Card class="border-slate-800 bg-slate-900/50 shadow-sm overflow-hidden">
+       <CardContent class="p-6 flex flex-col md:flex-row gap-4 items-center">
+          <div class="relative flex-grow w-full md:w-auto group">
+              <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors z-10" />
+              <Input 
                 v-model="searchQuery" 
-                type="text" 
-                placeholder="Search by name, email, or username..." 
-                class="block w-full pl-10 pr-3 py-2 border border-gray-100 rounded-lg bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm transition-all" 
+                placeholder="Search by name, email, or identifier..." 
+                class="w-full pl-10 pr-3 h-12 bg-slate-950 border-slate-800 rounded-xl focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-xs text-slate-200" 
               />
           </div>
           <div class="flex items-center gap-2 w-full md:w-auto">
-              <select v-model="roleFilter" class="block w-full md:w-40 py-2 pl-3 pr-10 border border-gray-100 rounded-lg bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm transition-all">
-                <option value="">All Roles</option>
-                <option v-for="role in availableRoles" :key="role" :value="role">{{ role }}</option>
-              </select>
-              <select v-model="statusFilter" class="block w-full md:w-40 py-2 pl-3 pr-10 border border-gray-100 rounded-lg bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 text-sm transition-all">
-                <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="banned">Banned</option>
-              </select>
+              <Select v-model="roleFilter">
+                <SelectTrigger class="w-full md:w-40 h-12 bg-slate-950 border-slate-800 rounded-xl font-bold text-xs uppercase tracking-widest text-slate-400">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
+                  <SelectItem value="">All Roles</SelectItem>
+                  <SelectItem v-for="role in availableRoles" :key="role" :value="role" class="text-[10px] uppercase font-black tracking-widest">
+                    {{ role }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select v-model="statusFilter">
+                <SelectTrigger class="w-full md:w-40 h-12 bg-slate-950 border-slate-800 rounded-xl font-bold text-xs uppercase tracking-widest text-slate-400">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
+                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="banned">Banned</SelectItem>
+                </SelectContent>
+              </Select>
           </div>
        </CardContent>
     </Card>
 
     <!-- Error State -->
-    <div v-if="error" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 shadow-sm">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
+    <div v-if="error" class="bg-rose-500/10 border border-rose-500/50 p-4 rounded-xl flex items-start gap-3 shadow-lg">
+      <ShieldAlertIcon class="h-5 w-5 text-rose-500 mt-0.5" />
       <div>
-        <p class="text-sm font-bold text-red-800">Authorization Error</p>
-        <p class="text-xs text-red-700 mt-1">{{ error }}</p>
+        <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none">Authorization Error</p>
+        <p class="text-xs text-rose-200 mt-1 font-medium opacity-80">{{ error }}</p>
       </div>
     </div>
 

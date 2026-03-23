@@ -132,7 +132,7 @@
 import { authClient } from "~/utils/auth-client"
 
 definePageMeta({
-  layout: 'dashboard'
+  layout: 'shadcn-dashboard'
 })
 
 const route = useRoute()

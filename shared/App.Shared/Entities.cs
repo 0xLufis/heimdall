@@ -215,6 +215,44 @@ public enum ComponentType
     Software = 1
 }
 
+// --- AUTH ENTITIES (Better-Auth) ---
+
+[Table("user", Schema = "heimdall_dev_db")]
+public class AuthUser
+{
+    [Key]
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public bool EmailVerified { get; set; }
+    public string? Image { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public string? Role { get; set; }
+    public string? Username { get; set; }
+    public bool? Banned { get; set; }
+    public string? BanReason { get; set; }
+    public DateTimeOffset? BanExpiresAt { get; set; }
+
+    public List<AuthSession> Sessions { get; set; } = new();
+}
+
+[Table("session", Schema = "heimdall_dev_db")]
+public class AuthSession
+{
+    [Key]
+    public string Id { get; set; } = string.Empty;
+    public DateTimeOffset ExpiresAt { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public string UserId { get; set; } = string.Empty;
+    public AuthUser User { get; set; } = null!;
+    public string? ActiveOrganizationId { get; set; }
+}
+
 // --- JSONB POCOs ---
 
 public class HardwareConfig

@@ -5,7 +5,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import InteractiveMap from '~/components/dashboard/InteractiveMap.vue'
 
 definePageMeta({
-  layout: 'dashboard'
+  layout: 'shadcn-dashboard'
 })
 
 const loading = ref(false)

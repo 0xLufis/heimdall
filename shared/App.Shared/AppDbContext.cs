@@ -17,10 +17,14 @@ public class AppDbContext : DbContext
     public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<Manufacturer> Manufacturers { get; set; }
     public DbSet<Supplier> Suppliers { get; set; }
+    public DbSet<AuthUser> AuthUsers { get; set; }
+    public DbSet<AuthSession> AuthSessions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        bool isInMemory = Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
 
         // Configure Manufacturer
         modelBuilder.Entity<Manufacturer>(entity =>
@@ -37,7 +41,14 @@ public class AppDbContext : DbContext
         // Configure HardwareComponent
         modelBuilder.Entity<HardwareComponent>(entity =>
         {
-            entity.Property(e => e.TechnicalSpecs).HasColumnType("jsonb");
+            if (!isInMemory)
+            {
+                entity.Property(e => e.TechnicalSpecs).HasColumnType("jsonb");
+            }
+            else
+            {
+                entity.Ignore(e => e.TechnicalSpecs);
+            }
             
             entity.HasOne(e => e.Manufacturer)
                   .WithMany()
@@ -67,25 +78,48 @@ public class AppDbContext : DbContext
         // Configure Machine
         modelBuilder.Entity<Machine>(entity =>
         {
-            entity.Property(e => e.HwComponents).HasColumnType("jsonb");
-            entity.Property(e => e.SwComponents).HasColumnType("jsonb");
+            if (!isInMemory)
+            {
+                entity.Property(e => e.HwComponents).HasColumnType("jsonb");
+                entity.Property(e => e.SwComponents).HasColumnType("jsonb");
+            }
+            else
+            {
+                entity.Ignore(e => e.HwComponents);
+                entity.Ignore(e => e.SwComponents);
+            }
             entity.HasIndex(e => e.CustomIdentifier).IsUnique();
         });
 
         // Configure UserRole
         modelBuilder.Entity<UserRole>(entity =>
         {
-            entity.Property(e => e.Privileges).HasColumnType("jsonb");
+            if (!isInMemory)
+            {
+                entity.Property(e => e.Privileges).HasColumnType("jsonb");
+            }
             entity.HasIndex(e => e.Name).IsUnique();
         });
 
         // Configure JSONB columns for ClientPc
         modelBuilder.Entity<ClientPc>(entity =>
         {
-            entity.Property(e => e.HardwareConfig).HasColumnType("jsonb");
-            entity.Property(e => e.SoftwareConfig).HasColumnType("jsonb");
-            entity.Property(e => e.CustomDataPoints).HasColumnType("jsonb");
-            entity.Property(e => e.Predecessors).HasColumnType("jsonb");
+            if (!isInMemory)
+            {
+                entity.Property(e => e.HardwareConfig).HasColumnType("jsonb");
+                entity.Property(e => e.SoftwareConfig).HasColumnType("jsonb");
+                entity.Property(e => e.CustomDataPoints).HasColumnType("jsonb");
+                entity.Property(e => e.Predecessors).HasColumnType("jsonb");
+            }
+            else
+            {
+                entity.Ignore(e => e.CustomDataPoints);
+                entity.Ignore(e => e.Predecessors);
+                // When in-memory, we must explicitly tell EF they are owned types 
+                // because they don't have PKs and aren't automatically mapped as JSONB
+                entity.OwnsOne(e => e.HardwareConfig);
+                entity.OwnsOne(e => e.SoftwareConfig);
+            }
 
             // Relationships
             entity.HasMany(e => e.Machines)
@@ -104,14 +138,38 @@ public class AppDbContext : DbContext
         // Configure FloorPlan
         modelBuilder.Entity<FloorPlan>(entity =>
         {
-            entity.Property(e => e.Anchors).HasColumnType("jsonb");
+            if (!isInMemory)
+            {
+                entity.Property(e => e.Anchors).HasColumnType("jsonb");
+            }
+            else
+            {
+                entity.Ignore(e => e.Anchors);
+            }
             entity.HasIndex(e => e.Name);
+        });
+
+        modelBuilder.Entity<FloorPlanAnchor>(entity =>
+        {
+            entity.HasNoKey();
+        });
+
+        modelBuilder.Entity<PcPredecessor>(entity =>
+        {
+            entity.HasNoKey();
         });
 
         // Configure JSONB column for Components
         modelBuilder.Entity<Component>(entity =>
         {
-            entity.Property(e => e.AdminManagedFields).HasColumnType("jsonb");
+            if (!isInMemory)
+            {
+                entity.Property(e => e.AdminManagedFields).HasColumnType("jsonb");
+            }
+            else
+            {
+                entity.Ignore(e => e.AdminManagedFields);
+            }
         });
     }
 }

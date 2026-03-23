@@ -35,6 +35,6 @@ const { data: session } = authClient.useSession()
 const { stats, recentClients, securityEvents } = useDashboard()
 
 definePageMeta({
-  layout: 'dashboard'
+  layout: 'shadcn-dashboard'
 })
 </script>

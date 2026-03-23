@@ -75,7 +75,7 @@
 import { authClient } from "~/utils/auth-client"
 
 definePageMeta({
-  layout: 'dashboard'
+  layout: 'shadcn-dashboard'
 })
 
 const loading = ref(true)

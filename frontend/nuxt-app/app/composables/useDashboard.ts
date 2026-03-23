@@ -8,10 +8,10 @@ import {
 
 export const useDashboard = () => {
   const stats = ref([
-    { title: "Total Users", value: "1,284", bgColor: "bg-indigo-600", trend: "+12%", icon: UsersIcon },
-    { title: "Active Clients", value: "842", bgColor: "bg-emerald-600", trend: "+5%", icon: MonitorIcon },
-    { title: "Pending Alerts", value: "12", bgColor: "bg-rose-600", trend: "-2%", icon: AlertTriangleIcon },
-    { title: "Avg. Uptime", value: "99.9%", bgColor: "bg-amber-600", trend: "Stable", icon: ZapIcon },
+    { title: "Total Users", value: "1,284", bgColor: "bg-slate-700", trend: "+12%", icon: UsersIcon },
+    { title: "Active Clients", value: "842", bgColor: "bg-zinc-700", trend: "+5%", icon: MonitorIcon },
+    { title: "Pending Alerts", value: "12", bgColor: "bg-slate-800", trend: "-2%", icon: AlertTriangleIcon },
+    { title: "Avg. Uptime", value: "99.9%", bgColor: "bg-zinc-800", trend: "Stable", icon: ZapIcon },
   ])
 
   const recentClients = ref([

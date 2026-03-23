@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { MonitorIcon, MapPinIcon } from 'lucide-vue-next'
 
 definePageMeta({
-  layout: 'dashboard'
+  layout: 'shadcn-dashboard'
 })
 
 const activePin = ref<string | null>(null)
@@ -91,24 +91,24 @@ const pinnedAssets = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-8 h-full">
+  <div class="space-y-8 h-full bg-slate-950 text-slate-100">
     <!-- Header -->
     <div class="flex items-end justify-between">
       <div>
-        <h3 class="text-3xl font-black text-gray-900 tracking-tight uppercase">Plant Layout</h3>
-        <p class="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest leading-none">Mapping Digital Assets to Physical Space</p>
+        <h3 class="text-3xl font-black text-slate-100 tracking-tight uppercase">Plant Layout</h3>
+        <p class="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-widest leading-none">Mapping Digital Assets to Physical Space</p>
       </div>
       <div class="flex gap-2">
-        <div class="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+        <div class="flex items-center gap-2 px-4 py-2 bg-emerald-950/20 border border-emerald-900/30 rounded-xl">
            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-           <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Live Sync Active</span>
+           <span class="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live Sync Active</span>
         </div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 h-[calc(100vh-220px)]">
       <!-- Map Area -->
-      <div class="lg:col-span-3 h-full rounded-3xl overflow-hidden border border-gray-100 shadow-2xl relative">
+      <div class="lg:col-span-3 h-full rounded-3xl overflow-hidden border border-slate-800 shadow-2xl relative bg-slate-900">
         <InteractiveMap 
           dxfUrl="/sample/assembly_line.dxf" 
           :active-pin="activePin"
@@ -116,51 +116,51 @@ const pinnedAssets = computed(() => {
         />
         
         <!-- Map Controls Legend Overlay -->
-        <div class="absolute bottom-6 left-6 p-4 bg-white/90 backdrop-blur-md rounded-2xl border border-gray-100 shadow-xl flex gap-6 z-10 pointer-events-none">
+        <div class="absolute bottom-6 left-6 p-4 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800 shadow-xl flex gap-6 z-10 pointer-events-none">
            <div class="flex items-center gap-2">
-              <div class="w-3 h-3 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></div>
-              <span class="text-[9px] font-black uppercase tracking-widest text-gray-500">Interactive Object</span>
+              <div class="w-3 h-3 rounded-full bg-slate-500 shadow-[0_0_8px_rgba(100,116,139,0.5)]"></div>
+              <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Interactive Object</span>
            </div>
-           <div class="flex items-center gap-2 border-l border-gray-100 pl-6">
-              <span class="text-[9px] font-black uppercase tracking-widest text-gray-400">Scroll to Zoom</span>
-              <span class="text-[9px] font-black uppercase tracking-widest text-gray-400 ml-2">Drag to Pan</span>
+           <div class="flex items-center gap-2 border-l border-slate-800 pl-6">
+              <span class="text-[9px] font-black uppercase tracking-widest text-slate-600">Scroll to Zoom</span>
+              <span class="text-[9px] font-black uppercase tracking-widest text-slate-600 ml-2">Drag to Pan</span>
            </div>
         </div>
       </div>
 
       <!-- Inventory Sidebar -->
       <div class="h-full flex flex-col gap-6 overflow-hidden">
-        <Card class="border-none shadow-sm flex-1 flex flex-col bg-gray-50/50">
-          <CardHeader class="pb-4 border-b border-gray-100 bg-white">
-            <CardTitle class="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+        <Card class="border-none shadow-sm flex-1 flex flex-col bg-slate-900/50">
+          <CardHeader class="pb-4 border-b border-slate-800 bg-slate-900">
+            <CardTitle class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                <MapPinIcon class="h-3 w-3" />
                Spatial Mapping
             </CardTitle>
           </CardHeader>
-          <CardContent class="p-0 overflow-y-auto flex-1">
-            <div v-if="loading" class="p-12 text-center text-[10px] font-black uppercase tracking-widest text-gray-400 animate-pulse">
+          <CardContent class="p-0 overflow-y-auto flex-1 bg-slate-950/20">
+            <div v-if="loading" class="p-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-600 animate-pulse">
                Syncing Coordinates...
             </div>
             <div v-else-if="pinnedAssets.length === 0" class="p-12 text-center">
-               <div class="w-12 h-12 bg-gray-100 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-                  <MapPinIcon class="h-6 w-6 text-gray-300" />
+               <div class="w-12 h-12 bg-slate-900 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                  <MapPinIcon class="h-6 w-6 text-slate-700" />
                </div>
-               <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">No pins assigned yet</p>
-               <p class="text-[9px] text-gray-400 mt-2">Click an object on the map to start pinning</p>
+               <p class="text-[10px] font-black text-slate-600 uppercase tracking-widest">No pins assigned yet</p>
+               <p class="text-[9px] text-slate-700 mt-2">Click an object on the map to start pinning</p>
             </div>
-            <div v-else class="divide-y divide-gray-100">
+            <div v-else class="divide-y divide-slate-800">
                <div v-for="asset in pinnedAssets" :key="asset.id" 
                     @click="activePin = asset.handle"
-                    :class="activePin === asset.handle ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : 'hover:bg-white'"
+                    :class="activePin === asset.handle ? 'bg-slate-800 border-l-4 border-l-slate-400' : 'hover:bg-slate-900/50'"
                     class="p-5 transition-all cursor-pointer group"
                >
                   <div class="flex justify-between items-start mb-1">
-                     <p class="text-sm font-black text-gray-900 group-hover:text-indigo-600 transition-colors">{{ asset.name }}</p>
-                     <span class="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{{ asset.type }}</span>
+                     <p class="text-sm font-black text-slate-200 group-hover:text-white transition-colors">{{ asset.name }}</p>
+                     <span class="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-slate-800 text-slate-500 rounded">{{ asset.type }}</span>
                   </div>
                   <div class="flex items-center justify-between">
-                     <span class="text-[10px] font-mono text-gray-400 group-hover:text-gray-500 transition-colors">Ref: {{ asset.handle }}</span>
-                     <MonitorIcon v-if="asset.type === 'Client PC'" class="h-3 w-3 text-indigo-400" />
+                     <span class="text-[10px] font-mono text-slate-500 group-hover:text-slate-400 transition-colors">Ref: {{ asset.handle }}</span>
+                     <MonitorIcon v-if="asset.type === 'Client PC'" class="h-3 w-3 text-slate-600" />
                   </div>
                </div>
             </div>

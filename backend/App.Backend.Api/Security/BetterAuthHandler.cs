@@ -41,19 +41,15 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
         try
         {
             // 2. Query the session table in PostgreSQL
-            // Since we haven't mapped the session table in AppDbContext yet,
-            // we'll use a raw SQL query or add it to the DbContext.
-            // For now, let's use raw SQL to verify existence and expiration.
-            
-            // Note: Better-auth tables are in "heimdall_dev_db" schema based on Nuxt config.
-            
-            var session = await _dbContext.Database
-                .SqlQueryRaw<SessionInfo>(
-                    @"SELECT s.id, s.user_id as UserId, u.email as Email, u.name as Name, u.role as Role
-                      FROM heimdall_dev_db.session s
-                      JOIN heimdall_dev_db.user u ON s.user_id = u.id
-                      WHERE s.token = {0} AND s.expires_at > NOW()", 
-                    token)
+            var session = await _dbContext.AuthSessions
+                .Include(s => s.User)
+                .Where(s => s.Token == token && s.ExpiresAt > DateTimeOffset.UtcNow)
+                .Select(s => new {
+                    UserId = s.UserId,
+                    Email = s.User.Email,
+                    Name = s.User.Name,
+                    Role = s.User.Role
+                })
                 .FirstOrDefaultAsync();
 
             if (session == null)
@@ -81,14 +77,5 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
             Logger.LogError(ex, "Error validating session token");
             return AuthenticateResult.Fail("Error validating session token");
         }
-    }
-
-    private class SessionInfo
-    {
-        public string Id { get; set; } = string.Empty;
-        public string UserId { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Role { get; set; } = string.Empty;
     }
 }

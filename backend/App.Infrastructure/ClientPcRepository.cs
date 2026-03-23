@@ -38,29 +38,45 @@ public class ClientPcRepository
 
     public async Task<ClientPc> UpsertByMacAddressAsync(ClientPc pc)
     {
-        var existingPc = await _context.ClientPcs
+        // 1. Check if we already have this specific PC by MAC
+        var existingByMac = await _context.ClientPcs
             .FirstOrDefaultAsync(x => x.MacAddress == pc.MacAddress);
 
-        if (existingPc == null)
+        // 2. Check if the hostname is taken by ANOTHER PC
+        var existingByHostname = await _context.ClientPcs
+            .FirstOrDefaultAsync(x => x.Hostname == pc.Hostname && x.MacAddress != pc.MacAddress);
+
+        // 3. Resolve hostname conflict if it exists
+        if (existingByHostname != null)
+        {
+            // The hostname is taken by a different MAC address. 
+            // This happens when a PC is replaced but keeps the same name, or when an agent is re-imaged with a new MAC.
+            // We'll rename the old record to free up the hostname for the new one.
+            existingByHostname.Hostname = $"{existingByHostname.Hostname}-OLD-{DateTime.UtcNow:yyyyMMddHHmmss}";
+            // We don't save yet, let the next SaveChanges handle it in one transaction if possible,
+            // or save now to ensure the unique index is freed.
+            await _context.SaveChangesAsync();
+        }
+
+        if (existingByMac == null)
         {
             _context.ClientPcs.Add(pc);
             await _context.SaveChangesAsync();
             return pc;
         }
 
-        // Update existing record
-        existingPc.Hostname = pc.Hostname;
-        existingPc.MachineIdentifier = pc.MachineIdentifier;
-        existingPc.LastOnline = pc.LastOnline;
-        existingPc.HardwareConfig = pc.HardwareConfig;
-        existingPc.SoftwareConfig = pc.SoftwareConfig;
+        // 4. Update existing record by MAC
+        existingByMac.Hostname = pc.Hostname;
+        existingByMac.MachineIdentifier = pc.MachineIdentifier;
+        existingByMac.LastOnline = pc.LastOnline;
+        existingByMac.HardwareConfig = pc.HardwareConfig;
+        existingByMac.SoftwareConfig = pc.SoftwareConfig;
         
-        // Optionally update other fields if provided
         if (pc.CustomDataPoints != null)
-            existingPc.CustomDataPoints = pc.CustomDataPoints;
+            existingByMac.CustomDataPoints = pc.CustomDataPoints;
 
         await _context.SaveChangesAsync();
-        return existingPc;
+        return existingByMac;
     }
 
     // --- 2. Querying Strongly-Typed JSONB (HardwareConfig) ---
