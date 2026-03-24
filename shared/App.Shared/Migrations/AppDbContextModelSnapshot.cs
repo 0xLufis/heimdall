@@ -25,6 +25,119 @@ namespace App.Shared.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("App.Shared.Entities.AuthSession", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActiveOrganizationId")
+                        .HasColumnType("text")
+                        .HasColumnName("active_organization_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("text")
+                        .HasColumnName("ip_address");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("token");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("text")
+                        .HasColumnName("user_agent");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_session");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_session_user_id");
+
+                    b.ToTable("session", "heimdall_dev_db", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.AuthUser", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("BanExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ban_expires_at");
+
+                    b.Property<string>("BanReason")
+                        .HasColumnType("text")
+                        .HasColumnName("ban_reason");
+
+                    b.Property<bool?>("Banned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("banned");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_verified");
+
+                    b.Property<string>("Image")
+                        .HasColumnType("text")
+                        .HasColumnName("image");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Role")
+                        .HasColumnType("text")
+                        .HasColumnName("role");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Username")
+                        .HasColumnType("text")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user");
+
+                    b.ToTable("user", "heimdall_dev_db", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
             modelBuilder.Entity("App.Shared.Entities.ClientPc", b =>
                 {
                     b.Property<Guid>("Id")
@@ -168,6 +281,29 @@ namespace App.Shared.Migrations
                     b.ToTable("floor_plans", (string)null);
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.FloorPlanAnchor", b =>
+                {
+                    b.Property<string>("Handle")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("handle");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<double?>("X")
+                        .HasColumnType("double precision")
+                        .HasColumnName("x");
+
+                    b.Property<double?>("Y")
+                        .HasColumnType("double precision")
+                        .HasColumnName("y");
+
+                    b.ToTable("floor_plan_anchor", (string)null);
+                });
+
             modelBuilder.Entity("App.Shared.Entities.HardwareComponent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -197,6 +333,10 @@ namespace App.Shared.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
                     b.Property<DateTimeOffset?>("PurchaseDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("purchase_date");
@@ -222,6 +362,9 @@ namespace App.Shared.Migrations
 
                     b.HasIndex("ManufacturerId")
                         .HasDatabaseName("ix_hardware_components_manufacturer_id");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("ix_hardware_components_parent_id");
 
                     b.HasIndex("SupplierId")
                         .HasDatabaseName("ix_hardware_components_supplier_id");
@@ -295,6 +438,21 @@ namespace App.Shared.Migrations
                     b.ToTable("manufacturers", (string)null);
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.PcPredecessor", b =>
+                {
+                    b.Property<string>("Hostname")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hostname");
+
+                    b.Property<string>("SerialNumber")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("serial_number");
+
+                    b.ToTable("pc_predecessor", (string)null);
+                });
+
             modelBuilder.Entity("App.Shared.Entities.SoftwareComponent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -320,6 +478,10 @@ namespace App.Shared.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
                     b.Property<DateTimeOffset?>("PurchaseDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("purchase_date");
@@ -341,6 +503,9 @@ namespace App.Shared.Migrations
 
                     b.HasIndex("ManufacturerId")
                         .HasDatabaseName("ix_software_components_manufacturer_id");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("ix_software_components_parent_id");
 
                     b.HasIndex("SupplierId")
                         .HasDatabaseName("ix_software_components_supplier_id");
@@ -430,6 +595,18 @@ namespace App.Shared.Migrations
                     b.ToTable("ClientPcMachine", (string)null);
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.AuthSession", b =>
+                {
+                    b.HasOne("App.Shared.Entities.AuthUser", "User")
+                        .WithMany("Sessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_session_user_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("App.Shared.Entities.HardwareComponent", b =>
                 {
                     b.HasOne("App.Shared.Entities.Manufacturer", "Manufacturer")
@@ -438,6 +615,11 @@ namespace App.Shared.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_hardware_components_manufacturers_manufacturer_id");
 
+                    b.HasOne("App.Shared.Entities.HardwareComponent", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .HasConstraintName("fk_hardware_components_hardware_components_parent_id");
+
                     b.HasOne("App.Shared.Entities.Supplier", "Supplier")
                         .WithMany()
                         .HasForeignKey("SupplierId")
@@ -445,6 +627,8 @@ namespace App.Shared.Migrations
                         .HasConstraintName("fk_hardware_components_suppliers_supplier_id");
 
                     b.Navigation("Manufacturer");
+
+                    b.Navigation("Parent");
 
                     b.Navigation("Supplier");
                 });
@@ -457,6 +641,11 @@ namespace App.Shared.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_software_components_manufacturers_manufacturer_id");
 
+                    b.HasOne("App.Shared.Entities.SoftwareComponent", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .HasConstraintName("fk_software_components_software_components_parent_id");
+
                     b.HasOne("App.Shared.Entities.Supplier", "Supplier")
                         .WithMany()
                         .HasForeignKey("SupplierId")
@@ -464,6 +653,8 @@ namespace App.Shared.Migrations
                         .HasConstraintName("fk_software_components_suppliers_supplier_id");
 
                     b.Navigation("Manufacturer");
+
+                    b.Navigation("Parent");
 
                     b.Navigation("Supplier");
                 });
@@ -483,6 +674,21 @@ namespace App.Shared.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_client_pc_machine_machines_machines_id");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.AuthUser", b =>
+                {
+                    b.Navigation("Sessions");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.HardwareComponent", b =>
+                {
+                    b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.SoftwareComponent", b =>
+                {
+                    b.Navigation("Children");
                 });
 #pragma warning restore 612, 618
         }

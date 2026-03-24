@@ -1,40 +1,53 @@
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 export const useInventory = () => {
   const activeTab = ref<'hardware' | 'software'>('hardware')
   const loading = ref(false)
   const items = ref<any[]>([])
-  
-  const searchQuery = ref('')
-  const filterCategory = ref('all')
-  const filterMinTorque = ref<number | null>(null)
-  const filterInterface = ref('all')
+
+  // --- Column Visibility State ---
+  const columns = ref({
+    manufacturer: true,
+    modelNumber: false,
+    purchaseDate: false,
+    cost: true,
+    specs: true,
+    tags: true,
+  })
+
+  // --- Search State & Logic ---
+  const searchQuery = ref({
+    logic: 'and',
+    conditions: [],
+  })
+
+  const buildQueryString = (query: any): string => {
+    // This is a simplified serializer. A real implementation would handle
+    // nested groups, different operators, and value types more robustly.
+    const params = new URLSearchParams()
+    
+    if (query.conditions && query.conditions.length > 0) {
+      // For simplicity, we'll AND all top-level conditions.
+      // We'll primarily use a single 'query' for full-text and specific fields for filters.
+      const generalSearch = query.conditions.find(c => c.field === 'general_query');
+      if (generalSearch?.value) {
+        params.append('query', generalSearch.value);
+      }
+      
+      const categorySearch = query.conditions.find(c => c.field === 'categories');
+      if (categorySearch?.value) {
+        params.append('category', categorySearch.value);
+      }
+    }
+    return params.toString()
+  }
 
   const fetchData = async () => {
     loading.value = true
     try {
-      let url = `/api/proxy/Inventory/${activeTab.value}`
+      const queryString = buildQueryString(searchQuery.value)
+      const url = `/api/proxy/Inventory/${activeTab.value}/search?${queryString}`
       
-      const hasHardwareFilters = activeTab.value === 'hardware' && (
-        (filterCategory.value && filterCategory.value !== 'all') || 
-        filterMinTorque.value || 
-        (filterInterface.value && filterInterface.value !== 'all')
-      )
-      const hasSearchQuery = searchQuery.value.trim() !== ''
-
-      if (hasHardwareFilters || hasSearchQuery) {
-        url = `/api/proxy/Inventory/${activeTab.value}/search?`
-        const params = new URLSearchParams()
-        if (hasSearchQuery) params.append('query', searchQuery.value)
-        
-        if (activeTab.value === 'hardware') {
-          if (filterCategory.value && filterCategory.value !== 'all') params.append('category', filterCategory.value)
-          if (filterMinTorque.value) params.append('minTorque', filterMinTorque.value.toString())
-          if (filterInterface.value && filterInterface.value !== 'all') params.append('interfaceType', filterInterface.value)
-        }
-        url += params.toString()
-      }
-
       const data = await $fetch(url)
       if (data) {
         items.value = data as any[]
@@ -46,11 +59,12 @@ export const useInventory = () => {
     }
   }
 
+  // --- Component Management ---
   const addComponent = async (type: 'hardware' | 'software', formData: any) => {
     try {
       await $fetch(`/api/proxy/Inventory/${type}`, {
         method: 'POST',
-        body: formData
+        body: formData,
       })
       await fetchData()
       return { success: true }
@@ -60,8 +74,10 @@ export const useInventory = () => {
     }
   }
 
-  // Auto-fetch on tab change
+  // --- Watchers ---
   watch(activeTab, () => {
+    // Reset search when switching tabs and fetch data
+    searchQuery.value = { logic: 'and', conditions: [] };
     fetchData()
   })
 
@@ -69,11 +85,9 @@ export const useInventory = () => {
     activeTab,
     loading,
     items,
+    columns,
     searchQuery,
-    filterCategory,
-    filterMinTorque,
-    filterInterface,
     fetchData,
-    addComponent
+    addComponent,
   }
 }

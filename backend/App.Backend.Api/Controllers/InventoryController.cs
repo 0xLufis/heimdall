@@ -30,6 +30,7 @@ public class InventoryController : ControllerBase
 
     /// <summary>
     /// Retrieves a list of all Hardware Components, including their manufacturer and supplier.
+    /// By default, this will recursively include all child components.
     /// Can be accessed anonymously for testing purposes.
     /// </summary>
     /// <returns>A list of <see cref="HardwareComponent"/> objects.</returns>
@@ -40,6 +41,8 @@ public class InventoryController : ControllerBase
         return await _context.HardwareComponents
             .Include(h => h.Manufacturer)
             .Include(h => h.Supplier)
+            .Include(h => h.Children) // Eagerly load children
+            .Where(h => h.ParentId == null) // Fetch only top-level components
             .ToListAsync();
     }
 
@@ -78,7 +81,14 @@ public class InventoryController : ControllerBase
         }
 
         if (!string.IsNullOrEmpty(category))
-            dbQuery = dbQuery.Where(h => h.TechnicalSpecs != null && h.TechnicalSpecs.Category == category);
+        {
+            // Support comma-separated categories for searching
+            var categories = category.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (categories.Length > 0)
+            {
+                dbQuery = dbQuery.Where(h => h.TechnicalSpecs != null && h.TechnicalSpecs.Categories.Any(c => categories.Contains(c)));
+            }
+        }
 
         if (!string.IsNullOrEmpty(manufacturer))
             dbQuery = dbQuery.Where(h => h.Manufacturer != null && h.Manufacturer.Name.ToLower().Contains(manufacturer.ToLower()));
@@ -168,6 +178,7 @@ public class InventoryController : ControllerBase
 
     /// <summary>
     /// Retrieves a list of all Software Components, including their manufacturer and supplier.
+    /// By default, this will recursively include all child components.
     /// Can be accessed anonymously for testing purposes.
     /// </summary>
     /// <returns>A list of <see cref="SoftwareComponent"/> objects.</returns>
@@ -178,6 +189,8 @@ public class InventoryController : ControllerBase
         return await _context.SoftwareComponents
             .Include(s => s.Manufacturer)
             .Include(s => s.Supplier)
+            .Include(s => s.Children) // Eagerly load children
+            .Where(s => s.ParentId == null) // Fetch only top-level components
             .ToListAsync();
     }
 

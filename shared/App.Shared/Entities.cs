@@ -153,6 +153,20 @@ public class SoftwareComponent
     /// Gets or sets the cost of the software in Hungarian Forints (HUF).
     /// </summary>
     public decimal? CostInHUF { get; set; }
+
+    // --- Recursive Relationship ---
+    /// <summary>
+    /// Gets or sets the foreign key to the parent software component.
+    /// </summary>
+    public Guid? ParentId { get; set; }
+    /// <summary>
+    /// Gets or sets the parent software component.
+    /// </summary>
+    public SoftwareComponent? Parent { get; set; }
+    /// <summary>
+    /// Gets or sets the list of child software components.
+    /// </summary>
+    public List<SoftwareComponent> Children { get; set; } = new();
 }
 
 /// <summary>
@@ -220,6 +234,20 @@ public class HardwareComponent
     /// Gets or sets the technical specifications of the hardware component as a strongly-typed JSONB object.
     /// </summary>
     public ComponentTechnicalSpecs? TechnicalSpecs { get; set; }
+
+    // --- Recursive Relationship ---
+    /// <summary>
+    /// Gets or sets the foreign key to the parent hardware component.
+    /// </summary>
+    public Guid? ParentId { get; set; }
+    /// <summary>
+    /// Gets or sets the parent hardware component.
+    /// </summary>
+    public HardwareComponent? Parent { get; set; }
+    /// <summary>
+    /// Gets or sets the list of child hardware components.
+    /// </summary>
+    public List<HardwareComponent> Children { get; set; } = new();
 }
 
 /// <summary>
@@ -228,9 +256,9 @@ public class HardwareComponent
 public class ComponentTechnicalSpecs
 {
     /// <summary>
-    /// Gets or sets the category of the component (e.g., "Sensor", "Screwdriver", "Controller").
+    /// Gets or sets the categories of the component (e.g., "Sensor", "Screwdriver", "Controller").
     /// </summary>
-    public string? Category { get; set; } // Sensor, Screwdriver, Controller, etc.
+    public List<string> Categories { get; set; } = new();
     
     // Vision Sensors (Keyence etc)
     /// <summary>
@@ -664,4 +692,3 @@ public class PcPredecessor
     /// </summary>
     public string SerialNumber { get; set; } = string.Empty;
 }
-

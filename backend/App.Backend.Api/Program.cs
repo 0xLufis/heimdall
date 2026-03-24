@@ -46,21 +46,17 @@ if (!string.IsNullOrEmpty(connectionString))
     var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
     dataSourceBuilder.EnableDynamicJson();
     dataSource = dataSourceBuilder.Build();
-}
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    // In test environments, we want to allow the test fixture to override the DbContext configuration
-    if (builder.Environment.IsEnvironment("Test") || string.IsNullOrEmpty(connectionString))
-    {
-        // No default Npgsql configuration here if in test or connection string is missing
-        // This allows WebApplicationFactory to provide its own InMemoryDb
-    }
-    else
+    
+    // Register the DbContextFactory
+    builder.Services.AddDbContextFactory<AppDbContext>(options =>
     {
         options.UseNpgsql(dataSource!).UseSnakeCaseNamingConvention();
-    }
-});
+    });
+}
+else if (builder.Environment.IsEnvironment("Test"))
+{
+    // Configure for testing if needed
+}
 
 // --- 2. Repositories ---
 builder.Services.AddScoped<ClientPcRepository>();

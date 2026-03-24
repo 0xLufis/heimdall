@@ -30,10 +30,10 @@ cd ../../
 sleep 3
 
 # 3. Start Nuxt Frontend
-# echo "[3/4] Starting Nuxt Frontend (Port 3000)..."
-# cd frontend/nuxt-app
-# bun run dev &
-# cd ../../
+echo "[3/4] Starting Nuxt Frontend (Port 3000)..."
+cd frontend/nuxt-app
+bun run dev &
+cd ../../
 
 # 4. Start the local Agent Daemon
 echo "[4/5] Starting Local Agent Daemon..."

@@ -9,16 +9,16 @@ namespace App.Backend.Api.Security;
 
 public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
 
     public BetterAuthHandler(
         IOptionsMonitor<BetterAuthOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
-        AppDbContext dbContext)
+        IDbContextFactory<AppDbContext> dbContextFactory)
         : base(options, logger, encoder)
     {
-        _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
     }
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -40,8 +40,9 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
 
         try
         {
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             // 2. Query the session table in PostgreSQL
-            var session = await _dbContext.AuthSessions
+            var session = await dbContext.AuthSessions
                 .Include(s => s.User)
                 .Where(s => s.Token == token && s.ExpiresAt > DateTimeOffset.UtcNow)
                 .Select(s => new {
@@ -59,22 +60,22 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
             }
 
             // 3. Create claims
-            var claims = new List<Claim>
+            var claims = new List<System.Security.Claims.Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, session.UserId),
-                new Claim(ClaimTypes.Email, session.Email),
-                new Claim(ClaimTypes.Name, session.Name),
-                new Claim(ClaimTypes.Role, session.Role ?? "user")
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, session.UserId),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, session.Email),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, session.Name),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, session.Role ?? "user")
             };
 
             if (!string.IsNullOrEmpty(session.OrgId))
             {
-                claims.Add(new Claim("OrgId", session.OrgId));
+                claims.Add(new System.Security.Claims.Claim("OrgId", session.OrgId));
             }
 
-            var identity = new ClaimsIdentity(claims, Scheme.Name);
-            var principal = new ClaimsPrincipal(identity);
-            var ticket = new AuthenticationTicket(principal, Scheme.Name);
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, Scheme.Name);
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            var ticket = new Microsoft.AspNetCore.Authentication.AuthenticationTicket(principal, Scheme.Name);
 
             return AuthenticateResult.Success(ticket);
         }

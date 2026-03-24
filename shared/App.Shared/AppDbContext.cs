@@ -52,12 +52,14 @@ public class AppDbContext : DbContext
     /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Supplier"/> entities.
     /// </summary>
     public DbSet<Supplier> Suppliers { get; set; }
+    
+    // Auth Sets (Managed by Better-Auth, excluded from migrations)
     /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthUser"/> entities (from Better-Auth).
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthUser"/> entities.
     /// </summary>
     public DbSet<AuthUser> AuthUsers { get; set; }
     /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthSession"/> entities (from Better-Auth).
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthSession"/> entities.
     /// </summary>
     public DbSet<AuthSession> AuthSessions { get; set; }
 
@@ -71,6 +73,14 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         bool isInMemory = Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+
+        // Configure Auth entities (Better-Auth) - Exclude from migrations as they are managed externally
+        modelBuilder.Entity<AuthUser>(entity => {
+            entity.ToTable("user", "heimdall_dev_db", t => t.ExcludeFromMigrations());
+        });
+        modelBuilder.Entity<AuthSession>(entity => {
+            entity.ToTable("session", "heimdall_dev_db", t => t.ExcludeFromMigrations());
+        });
 
         // Configure Manufacturer
         modelBuilder.Entity<Manufacturer>(entity =>
@@ -105,6 +115,11 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.SupplierId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            // Recursive relationship
+            entity.HasOne(e => e.Parent)
+                  .WithMany(e => e.Children)
+                  .HasForeignKey(e => e.ParentId);
         });
 
         // Configure SoftwareComponent
@@ -119,6 +134,11 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.SupplierId)
                   .OnDelete(DeleteBehavior.Restrict);
+            
+            // Recursive relationship
+            entity.HasOne(e => e.Parent)
+                  .WithMany(e => e.Children)
+                  .HasForeignKey(e => e.ParentId);
         });
 
         // Configure Machine
