@@ -1,5 +1,5 @@
 > [!WARNING]  
-> This project is VERY early in development, a good portion is AI assisted or generated, havin said that I check the code AI writes, which for now is only intended to  work for a POC.
+> This project is VERY early in development, a good portion is AI assisted or generated, having said that I check the code AI writes, which for now is only intended to work for a POC and requires heavy refactoring.
 
 # Heimdall
 
