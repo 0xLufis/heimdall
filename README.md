@@ -1,3 +1,6 @@
+> [!WARNING]  
+> This project is VERY early in development, a good portion is AI assisted or generated, havin said that I check the code AI writes, which for now is only intended to  work for a POC.
+
 # Heimdall
 
 This repository contains the source code for a Bachelor of Science (BSc) Thesis project developed for the University of Pécs, Faculty of Engineering and Information Technology (PTE MIK).
