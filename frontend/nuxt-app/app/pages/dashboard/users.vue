@@ -14,8 +14,8 @@ const loading = ref(false)
 const error = ref('')
 const users = ref<any[]>([])
 const searchQuery = ref('')
-const roleFilter = ref('')
-const statusFilter = ref('')
+const roleFilter = ref('all')
+const statusFilter = ref('all')
 
 const availableRoles = [
   "system_admin",
@@ -40,11 +40,11 @@ const filteredUsers = computed(() => {
     )
   }
   
-  if (roleFilter.value) {
+  if (roleFilter.value && roleFilter.value !== 'all') {
     result = result.filter(u => u.role === roleFilter.value)
   }
   
-  if (statusFilter.value) {
+  if (statusFilter.value && statusFilter.value !== 'all') {
     result = result.filter(u => statusFilter.value === 'banned' ? u.banned : !u.banned)
   }
   
@@ -165,7 +165,7 @@ onMounted(() => {
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
                 <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
-                  <SelectItem value="">All Roles</SelectItem>
+                  <SelectItem value="all" class="text-[10px] uppercase font-black tracking-widest">All Roles</SelectItem>
                   <SelectItem v-for="role in availableRoles" :key="role" :value="role" class="text-[10px] uppercase font-black tracking-widest">
                     {{ role }}
                   </SelectItem>
@@ -177,9 +177,9 @@ onMounted(() => {
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
-                  <SelectItem value="">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="banned">Banned</SelectItem>
+                  <SelectItem value="all" class="text-[10px] uppercase font-black tracking-widest">All Statuses</SelectItem>
+                  <SelectItem value="active" class="text-[10px] uppercase font-black tracking-widest">Active</SelectItem>
+                  <SelectItem value="banned" class="text-[10px] uppercase font-black tracking-widest">Banned</SelectItem>
                 </SelectContent>
               </Select>
           </div>

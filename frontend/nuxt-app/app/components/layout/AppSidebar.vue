@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import type { NavGroup, NavLink, NavSectionTitle } from '~/types/nav'
 import { navMenu, navMenuBottom } from '~/constants/menus'
+import { authClient } from "~/utils/auth-client"
+import { useAppSettings } from '~/composables/useAppSettings'
 
+/**
+ * Resolves the appropriate component for a given navigation item.
+ * @param {NavLink | NavGroup | NavSectionTitle} item - The navigation item to resolve.
+ * @returns {any} The resolved component.
+ */
 function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): any {
   if ('children' in item)
     return resolveComponent('LayoutSidebarNavGroup')
@@ -9,13 +16,27 @@ function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): an
   return resolveComponent('LayoutSidebarNavLink')
 }
 
-import { authClient } from "~/utils/auth-client"
-
 const session = authClient.useSession()
+
+/**
+ * Computed property for the user's email. Defaults to '...' if not available.
+ * @type {ComputedRef<string>}
+ */
 const userEmail = computed(() => session.data?.value?.user?.email ?? '...')
+/**
+ * Computed property for the user's name. Defaults to 'User' if not available.
+ * @type {ComputedRef<string>}
+ */
 const userName = computed(() => session.data?.value?.user?.name ?? 'User')
+/**
+ * Computed property for the user's avatar image URL. Defaults to a placeholder if not available.
+ * @type {ComputedRef<string>}
+ */
 const userAvatar = computed(() => session.data?.value?.user?.image ?? '/avatars/avatartion.png')
 
+/**
+ * Static array of teams or organizations to display in the sidebar header.
+ */
 const teams: {
   name: string
   logo: string
@@ -28,6 +49,10 @@ const teams: {
   }
 ]
 
+/**
+ * Computed property representing the current authenticated user's details.
+ * @type {ComputedRef<{ name: string; email: string; avatar: string }>}
+ */
 const user = computed(() => ({
   name: userName.value,
   email: userEmail.value,

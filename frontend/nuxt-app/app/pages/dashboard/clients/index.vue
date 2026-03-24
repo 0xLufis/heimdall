@@ -1,56 +1,102 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Search, RefreshCw } from 'lucide-vue-next'
 import InteractiveMap from '~/components/dashboard/InteractiveMap.vue'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
 
+/**
+ * Reactive state indicating whether data is currently being loaded.
+ * @type {Ref<boolean>}
+ */
 const loading = ref(false)
+
+/**
+ * Reactive state for the search query input by the user.
+ * @type {Ref<string>}
+ */
 const searchQuery = ref('')
+
+/**
+ * Reactive state holding the list of client PCs.
+ * @type {Ref<any[]>}
+ */
 const clients = ref<any[]>([])
+
+/**
+ * Reactive state holding the list of machines.
+ * @type {Ref<any[]>}
+ */
 const machines = ref<any[]>([])
+
+/**
+ * Reactive state for handles of objects currently highlighted on the map.
+ * @type {Ref<string[]>}
+ */
 const highlightedHandles = ref<string[]>([])
 
+/**
+ * Computed property that filters the list of clients based on the `searchQuery`.
+ * Filters by hostname, MAC address, machine identifier, and custom machine identifiers.
+ * @type {ComputedRef<any[]>}
+ */
 const filteredClients = computed(() => {
     if (!searchQuery.value) return clients.value
     const q = searchQuery.value.toLowerCase()
     return clients.value.filter(c => 
-        c.hostname.toLowerCase().includes(q) || 
-        c.macAddress.toLowerCase().includes(q) || 
+        (c.hostname && c.hostname.toLowerCase().includes(q)) || 
+        (c.macAddress && c.macAddress.toLowerCase().includes(q)) || 
         (c.machineIdentifier && c.machineIdentifier.toLowerCase().includes(q)) ||
-        (c.machines && c.machines.some((m: any) => m.customIdentifier.toLowerCase().includes(q)))
+        (c.machines && c.machines.some((m: any) => m.customIdentifier && m.customIdentifier.toLowerCase().includes(q)))
     )
 })
 
-const isOnline = (lastOnline: string | null) => {
+/**
+ * Determines if a client is considered online based on its last seen timestamp.
+ * A client is online if `lastOnline` is within the last 5 minutes.
+ * @param {string | null} lastOnline - The timestamp of the client's last online activity.
+ * @returns {boolean} True if the client is online, false otherwise.
+ */
+const isOnline = (lastOnline: string | null): boolean => {
     if (!lastOnline) return false
     const date = new Date(lastOnline)
     const now = new Date()
     return (now.getTime() - date.getTime()) < (5 * 60 * 1000) // Online if seen in last 5 minutes
 }
 
-const formatLastOnline = (lastOnline: string | null) => {
+/**
+ * Formats a `lastOnline` timestamp into a locale-specific string.
+ * @param {string | null} lastOnline - The timestamp of the client's last online activity.
+ * @returns {string} The formatted date string, or 'Never' if `lastOnline` is null.
+ */
+const formatLastOnline = (lastOnline: string | null): string => {
     if (!lastOnline) return 'Never'
     const date = new Date(lastOnline)
     return date.toLocaleString()
 }
 
+/**
+ * Fetches client PC and machine data from the API.
+ * Sets `loading` state during the fetch operation.
+ */
 const fetchData = async () => {
     loading.value = true
     try {
-        const [clientsRes, machinesRes] = await Promise.all([
-            useFetch('/api/proxy/ClientPc'),
-            useFetch('/api/proxy/Machine')
+        const [clientsData, machinesData] = await Promise.all([
+            $fetch('/api/proxy/ClientPc'),
+            $fetch('/api/proxy/Machine')
         ])
         
-        if (clientsRes.data.value) {
-            clients.value = clientsRes.data.value as any[]
+        if (clientsData) {
+            clients.value = clientsData as any[]
         }
-        if (machinesRes.data.value) {
-            machines.value = machinesRes.data.value as any[]
+        if (machinesData) {
+            machines.value = machinesData as any[]
         }
     } catch (e) {
         console.error('Error fetching data:', e)
@@ -63,6 +109,12 @@ onMounted(() => {
     fetchData()
 })
 
+/**
+ * Sets the `highlightedHandles` to a specific client's pinned object handle,
+ * or clears it if no handle is found or provided.
+ * If a client has multiple machines, it highlights the first machine's handle.
+ * @param {any} client - The client object whose pinned object handle should be highlighted.
+ */
 const setHighlight = (client: any) => {
     let handle = client?.pinnedObjectHandle
     if (!handle && client?.machines && client.machines.length > 0) {
@@ -79,151 +131,101 @@ const setHighlight = (client: any) => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div class="flex flex-col h-[calc(100vh-theme(spacing.16))] gap-6">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 px-8 pt-8">
       <div>
-        <h3 class="text-2xl font-bold text-gray-900 tracking-tight font-sans">Client PC Management</h3>
-        <p class="text-sm text-gray-500 mt-1 font-sans">Monitor and manage connected client devices.</p>
+        <h3 class="text-3xl font-black text-slate-100 tracking-tight uppercase">Client Terminals</h3>
+        <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">Real-time edge device monitoring</p>
       </div>
-      <div class="flex items-center gap-3">
-        <Button variant="outline" @click="fetchData" class="gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
+      
+      <div class="flex items-center gap-4">
+        <div class="relative w-64 group">
+          <Search class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-indigo-500 transition-colors z-10" />
+          <Input 
+            v-model="searchQuery" 
+            placeholder="Search by host or MAC..." 
+            class="w-full pl-12 pr-4 h-12 bg-slate-900 border-slate-800 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-xs shadow-sm text-slate-200" 
+          />
+        </div>
+        <Button @click="fetchData" variant="outline" class="bg-slate-900 border-slate-800 text-slate-300 rounded-2xl px-6 h-12 hover:bg-slate-800 transition-all">
+          <RefreshCw :class="{'animate-spin': loading}" class="h-4 w-4 mr-2" />
+          <span class="text-xs font-black uppercase tracking-widest">Sync</span>
         </Button>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Main Content Column -->
-        <div class="lg:col-span-2 space-y-6">
-            <!-- Search & Filters -->
-            <Card class="border-gray-100 shadow-sm">
-               <CardContent class="p-4">
-                  <div class="relative flex-grow w-full">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    <input 
-                      v-model="searchQuery"
-                      type="text" 
-                      placeholder="Search by hostname, MAC, or station ID..." 
-                      class="block w-full pl-12 pr-4 py-3 border border-gray-100 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all" 
-                    />
-                  </div>
-               </CardContent>
-            </Card>
+    <div class="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 px-8 pb-8 overflow-hidden">
+      <!-- Sidebar List -->
+      <Card class="lg:col-span-1 bg-slate-900 border-slate-800 flex flex-col overflow-hidden rounded-3xl">
+        <CardHeader class="border-b border-slate-800 p-6 flex flex-row items-center justify-between">
+          <CardTitle class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Connected Endpoints</CardTitle>
+          <span class="px-3 py-1 bg-indigo-600/20 text-indigo-400 text-[10px] font-black rounded-full border border-indigo-600/30 uppercase tracking-widest">{{ filteredClients.length }} Active</span>
+        </CardHeader>
+        <CardContent class="p-0 flex-grow overflow-y-auto">
+          <!-- Loading state -->
+          <template v-if="loading && clients.length === 0">
+            <div class="p-12 flex flex-col items-center justify-center gap-4 text-slate-600">
+              <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              <p class="text-[10px] font-black uppercase tracking-widest">Acquiring signal...</p>
+            </div>
+          </template>
 
-            <!-- Clients Table -->
-            <Card class="border-gray-100 shadow-sm overflow-hidden">
-                <CardContent class="p-0">
-                    <Table>
-                        <TableHeader class="bg-gray-50/50 border-b border-gray-100">
-                            <TableRow>
-                                <TableHead class="px-8 py-5 uppercase tracking-widest font-black text-[10px]">Hostname & Station ID</TableHead>
-                                <TableHead class="px-8 py-5 uppercase tracking-widest font-black text-[10px]">Network Info</TableHead>
-                                <TableHead class="px-8 py-5 uppercase tracking-widest font-black text-[10px]">Configuration</TableHead>
-                                <TableHead class="px-8 py-5 uppercase tracking-widest font-black text-[10px]">Last Online</TableHead>
-                                <TableHead class="px-8 py-5 text-right uppercase tracking-widest font-black text-[10px]">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody class="divide-y divide-gray-50">
-                            <TableRow v-if="loading" v-for="i in 3" :key="i">
-                                <TableCell colspan="5" class="px-8 py-10 text-center text-gray-400 animate-pulse uppercase font-bold text-xs tracking-widest">Loading clients...</TableCell>
-                            </TableRow>
-                            <TableRow v-else-if="filteredClients.length === 0">
-                                <TableCell colspan="5" class="px-8 py-20 text-center">
-                                    <div class="flex flex-col items-center gap-2">
-                                        <div class="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                            </svg>
-                                        </div>
-                                        <p class="text-sm font-bold text-gray-400 uppercase tracking-widest">No clients found</p>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                            <TableRow 
-                                v-for="client in filteredClients" 
-                                :key="client.id" 
-                                class="hover:bg-indigo-50/10 transition-colors group cursor-pointer"
-                                @mouseenter="setHighlight(client)"
-                                @mouseleave="setHighlight(null)"
-                            >
-                                <TableCell class="px-8 py-5">
-                                    <div class="flex flex-col items-start gap-1">
-                                        <span class="font-black text-gray-900 tracking-tight">{{ client.hostname }}</span>
-                                        <div v-if="client.machines && client.machines.length > 0" class="flex flex-wrap gap-1">
-                                            <span v-for="m in client.machines" :key="m.id" class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px] font-black uppercase tracking-widest">{{ m.customIdentifier }}</span>
-                                        </div>
-                                        <span v-else class="text-[10px] font-mono text-gray-400">{{ client.machineIdentifier }}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell class="px-8 py-5">
-                                    <div class="flex flex-col gap-1 text-[11px]">
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">MAC:</span>
-                                            <span class="font-mono text-gray-600">{{ client.macAddress }}</span>
-                                        </div>
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">ID:</span>
-                                            <span class="font-mono text-gray-400">{{ client.id.substring(0, 8) }}...</span>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell class="px-8 py-5">
-                                    <div class="flex flex-col gap-1">
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="px-1.5 py-0.5 rounded bg-gray-100 text-[9px] font-black text-gray-500 uppercase">{{ client.hardwareConfig?.cpu || 'N/A' }}</span>
-                                            <span class="px-1.5 py-0.5 rounded bg-gray-100 text-[9px] font-black text-gray-500 uppercase">{{ client.hardwareConfig?.ram || 'N/A' }}</span>
-                                        </div>
-                                        <span class="text-[10px] text-gray-400 font-medium">{{ client.softwareConfig?.osVersion || 'Unknown OS' }}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell class="px-8 py-5">
-                                     <div class="flex items-center gap-2">
-                                        <div :class="isOnline(client.lastOnline) ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'" class="w-2 h-2 rounded-full"></div>
-                                        <span class="text-xs font-bold text-gray-600">{{ formatLastOnline(client.lastOnline) }}</span>
-                                     </div>
-                                </TableCell>
-                                <TableCell class="px-8 py-5 text-right">
-                                     <Button variant="ghost" size="icon" class="text-gray-400 hover:text-indigo-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                     </Button>
-                                </TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+          <!-- Empty state -->
+          <template v-else-if="filteredClients.length === 0">
+            <div class="p-12 text-center">
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">No clients found matching query</p>
+            </div>
+          </template>
+
+          <!-- List state -->
+          <template v-else>
+            <div class="divide-y divide-slate-800/50">
+              <div 
+                v-for="client in filteredClients" 
+                :key="client.id"
+                @mouseenter="setHighlight(client)"
+                class="p-6 hover:bg-slate-800/50 transition-all cursor-pointer group relative"
+                :class="{'bg-slate-800/80': highlightedHandles.includes(client.pinnedObjectHandle || (client.machines?.[0]?.pinnedObjectHandle))}"
+              >
+                <div class="flex items-start justify-between mb-2">
+                  <div>
+                    <h4 class="font-black text-slate-200 group-hover:text-white transition-colors flex items-center gap-2">
+                      {{ client.hostname || 'Unknown Host' }}
+                      <span v-if="isOnline(client.lastSeen)" class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                    </h4>
+                    <p class="text-[10px] font-mono text-slate-500 mt-0.5">{{ client.macAddress || 'No MAC' }}</p>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{{ formatLastOnline(client.lastSeen) }}</div>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-2 mt-3">
+                  <span v-for="machine in client.machines" :key="machine.id" class="px-2 py-1 bg-slate-950 text-slate-400 text-[9px] font-black rounded-md border border-slate-800 uppercase tracking-widest">
+                    {{ machine.customIdentifier }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </CardContent>
+      </Card>
+
+      <!-- Map View -->
+      <Card class="lg:col-span-2 bg-slate-950 border-slate-800 flex flex-col overflow-hidden rounded-3xl relative">
+        <div class="absolute top-6 left-6 z-10 flex flex-col gap-2">
+           <div class="px-4 py-2 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl flex items-center gap-3 shadow-2xl">
+              <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+              <span class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Live Plant Topography</span>
+           </div>
         </div>
         
-        <!-- Live Map Preview Column -->
-        <div class="lg:col-span-1 flex flex-col h-[500px] lg:h-auto lg:min-h-[600px] sticky top-6">
-            <Card class="h-full flex flex-col border-gray-100 shadow-sm overflow-hidden">
-                <CardHeader class="pb-4 border-b border-gray-50 bg-white z-10 shrink-0">
-                    <CardTitle class="text-sm font-black uppercase tracking-widest text-gray-400">Location Preview</CardTitle>
-                </CardHeader>
-                <CardContent class="p-0 flex-grow relative bg-slate-900">
-                    <!-- Modular map component -->
-                    <InteractiveMap 
-                        dxfUrl="/sample/assembly_line.dxf" 
-                        :highlightedHandles="highlightedHandles"
-                        class="absolute inset-0"
-                    />
-                    
-                    <div v-if="highlightedHandles.length === 0" class="absolute bottom-4 left-4 right-4 bg-slate-800/80 backdrop-blur text-xs text-slate-300 p-3 rounded-xl border border-slate-700/50 shadow-lg text-center pointer-events-none">
-                        Hover over a client PC to reveal its physical location.
-                    </div>
-                </CardContent>
-            </Card>
+        <div class="w-full h-full">
+          <InteractiveMap 
+            dxf-url="/sample/assembly_line.dxf" 
+            :highlighted-handles="highlightedHandles"
+          />
         </div>
+      </Card>
     </div>
   </div>
 </template>

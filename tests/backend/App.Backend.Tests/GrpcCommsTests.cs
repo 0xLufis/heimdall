@@ -1,4 +1,4 @@
-using App.Shared.Protos;
+using App.Backend.Api.Services; // Use the service from the API project
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -6,29 +6,20 @@ using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.DependencyInjection;
 using App.Shared.Data;
 using Microsoft.EntityFrameworkCore;
+using App.Backend.Api; // Reference the Program class from App.Backend.Api
+using App.Shared.Protos; // Add this using directive
+using Npgsql; // Added for NpgsqlDataSourceBuilder
+using Microsoft.AspNetCore.Hosting; // Added for IWebHostBuilder
 
 namespace App.Backend.Tests;
 
-public class GrpcCommsTests : IClassFixture<WebApplicationFactory<Program>>
+public class GrpcCommsTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly CustomWebApplicationFactory _factory;
 
-    public GrpcCommsTests(WebApplicationFactory<Program> factory)
+    public GrpcCommsTests(CustomWebApplicationFactory factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                // Replace real DB with In-Memory for testing
-                var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-                if (descriptor != null) services.Remove(descriptor);
-
-                services.AddDbContext<AppDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase("TestDb");
-                });
-            });
-        });
+        _factory = factory;
     }
 
     [Fact]
@@ -40,7 +31,8 @@ public class GrpcCommsTests : IClassFixture<WebApplicationFactory<Program>>
         {
             HttpClient = client
         });
-        var grpcClient = new SystemInfoCollector.SystemInfoCollectorClient(channel);
+        // Use SystemInfoCollectorClient from App.Backend.Api.Services
+        var grpcClient = new App.Shared.Protos.SystemInfoCollector.SystemInfoCollectorClient(channel);
 
         // Prepare request
         var request = new SystemInfoRequest
@@ -66,5 +58,38 @@ public class GrpcCommsTests : IClassFixture<WebApplicationFactory<Program>>
         // Assert
         Assert.True(response.Success);
         Assert.Contains("TestHost", response.Message);
+    }
+}
+
+// Custom WebApplicationFactory to override services for testing
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        // Set the environment to "Test" to prevent Program.cs from configuring NpgsqlDataSource
+        builder.UseEnvironment("Test");
+
+        builder.ConfigureServices(services =>
+        {
+            // Remove any existing DbContext registration
+            var dbContextOptionsDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+            if (dbContextOptionsDescriptor != null) services.Remove(dbContextOptionsDescriptor);
+
+            var dbContextDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(AppDbContext));
+            if (dbContextDescriptor != null) services.Remove(dbContextDescriptor);
+
+            // Remove NpgsqlDataSource if it was added
+            var npgsqlDataSourceDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(NpgsqlDataSource));
+            if (npgsqlDataSourceDescriptor != null) services.Remove(npgsqlDataSourceDescriptor);
+
+            // Add in-memory database for testing
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid().ToString()); // Use unique name for each test run
+            }, ServiceLifetime.Singleton); // Use Singleton to ensure it's the same instance across test services
+        });
     }
 }

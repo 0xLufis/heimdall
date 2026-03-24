@@ -3,23 +3,69 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Shared.Data;
 
+/// <summary>
+/// Represents the database context for the Heimdall application, providing access to all entities.
+/// Configures entity mappings, relationships, and PostgreSQL-specific JSONB column types.
+/// </summary>
 public class AppDbContext : DbContext
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AppDbContext"/> class.
+    /// </summary>
+    /// <param name="options">The options to be used by this context.</param>
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     // Domain Sets
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="ClientPc"/> entities.
+    /// </summary>
     public DbSet<ClientPc> ClientPcs { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Component"/> entities.
+    /// </summary>
     public DbSet<Component> Components { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="FloorPlan"/> entities.
+    /// </summary>
     public DbSet<FloorPlan> FloorPlans { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Machine"/> entities.
+    /// </summary>
     public DbSet<Machine> Machines { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="SoftwareComponent"/> entities.
+    /// </summary>
     public DbSet<SoftwareComponent> SoftwareComponents { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="HardwareComponent"/> entities.
+    /// </summary>
     public DbSet<HardwareComponent> HardwareComponents { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="UserRole"/> entities.
+    /// </summary>
     public DbSet<UserRole> UserRoles { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Manufacturer"/> entities.
+    /// </summary>
     public DbSet<Manufacturer> Manufacturers { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Supplier"/> entities.
+    /// </summary>
     public DbSet<Supplier> Suppliers { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthUser"/> entities (from Better-Auth).
+    /// </summary>
     public DbSet<AuthUser> AuthUsers { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthSession"/> entities (from Better-Auth).
+    /// </summary>
     public DbSet<AuthSession> AuthSessions { get; set; }
 
+    /// <summary>
+    /// Configures the schema needed for the model.
+    /// This method is called for each context created.
+    /// </summary>
+    /// <param name="modelBuilder">The builder being used to construct the model for this context.</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

@@ -93,7 +93,7 @@ onMounted(() => {
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="Sensor">Sensors</SelectItem>
                 <SelectItem value="Vision Sensor">Vision Sensors</SelectItem>
                 <SelectItem value="Screwdriver">Screwdrivers</SelectItem>
@@ -121,7 +121,7 @@ onMounted(() => {
                 <SelectValue placeholder="Protocol" />
               </SelectTrigger>
               <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
-                <SelectItem value="">Standard (Any)</SelectItem>
+                <SelectItem value="all">Standard (Any)</SelectItem>
                 <SelectItem value="Ethernet/IP">Ethernet/IP</SelectItem>
                 <SelectItem value="Profinet">Profinet</SelectItem>
                 <SelectItem value="USB">USB</SelectItem>

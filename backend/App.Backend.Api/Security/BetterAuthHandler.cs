@@ -48,7 +48,8 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
                     UserId = s.UserId,
                     Email = s.User.Email,
                     Name = s.User.Name,
-                    Role = s.User.Role
+                    Role = s.User.Role,
+                    OrgId = s.ActiveOrganizationId
                 })
                 .FirstOrDefaultAsync();
 
@@ -58,13 +59,18 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
             }
 
             // 3. Create claims
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, session.UserId),
                 new Claim(ClaimTypes.Email, session.Email),
                 new Claim(ClaimTypes.Name, session.Name),
                 new Claim(ClaimTypes.Role, session.Role ?? "user")
             };
+
+            if (!string.IsNullOrEmpty(session.OrgId))
+            {
+                claims.Add(new Claim("OrgId", session.OrgId));
+            }
 
             var identity = new ClaimsIdentity(claims, Scheme.Name);
             var principal = new ClaimsPrincipal(identity);

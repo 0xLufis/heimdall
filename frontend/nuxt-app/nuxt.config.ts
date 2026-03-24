@@ -10,6 +10,11 @@ export default defineNuxtConfig({
       plugins: [
          tailwindcss(),
       ],
+      server: {
+         allowedHosts: [
+            'noncategorical-ludivina-tinglingly.ngrok-free.dev'
+         ]
+      }
    },
    modules: [
       'shadcn-nuxt',

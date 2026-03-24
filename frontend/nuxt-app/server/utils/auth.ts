@@ -1,12 +1,16 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, username, organization, multiSession } from "better-auth/plugins";
+import { dash } from "@better-auth/infra";
 import { useDb } from "./db"; // your drizzle instance
 import * as hbSchema from "../database/drizzle/schema"
 
 export const auth = betterAuth({
    secret: process.env.BETTER_AUTH_SECRET,
    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+   security: {
+      allowedOrigins: ["https://noncategorical-ludivina-tinglingly.ngrok-free.dev"]
+   },
    onRequest: (context) => {
       console.log("Better Auth request:", context.request.url);
    },
@@ -23,7 +27,8 @@ export const auth = betterAuth({
       admin(),
       username(),
       organization(),
-      multiSession()
+      multiSession(),
+      dash()
    ],
    emailAndPassword: {
       enabled: true,

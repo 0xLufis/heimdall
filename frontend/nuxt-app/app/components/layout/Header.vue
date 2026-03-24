@@ -1,6 +1,11 @@
 <script setup lang="ts">
 const route = useRoute()
 
+/**
+ * Dynamically generates breadcrumb links based on the current route.
+ * Converts URL segments into human-readable titles and constructs their corresponding HREFs.
+ * @returns {Array<object>} An array of link objects, each with a `title` and `href`.
+ */
 function setLinks() {
   if (route.fullPath === '/') {
     return [{ title: 'Home', href: '/' }]
@@ -24,6 +29,10 @@ function setLinks() {
   return [{ title: 'Home', href: '/' }, ...breadcrumbs]
 }
 
+/**
+ * Reactive reference to the breadcrumb links, updated whenever the route changes.
+ * @type {Ref<Array<{ title: string; href: string }>>}
+ */
 const links = ref<{
   title: string
   href: string

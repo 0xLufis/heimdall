@@ -27,12 +27,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\App.Backend.Api\App.Backend.Api.csproj" />
-    <ProjectReference Include="..\..\shared\App.Shared\App.Shared.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Protobuf Include="..\..\shared\App.Shared\Protos\system_info.proto" GrpcServices="Client" />
+    <ProjectReference Include="..\..\..\backend\App.Backend.Api\App.Backend.Api.csproj" />
+    <ProjectReference Include="..\..\..\shared\App.Shared\App.Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,26 +6,38 @@ export const useInventory = () => {
   const items = ref<any[]>([])
   
   const searchQuery = ref('')
-  const filterCategory = ref('')
+  const filterCategory = ref('all')
   const filterMinTorque = ref<number | null>(null)
-  const filterInterface = ref('')
+  const filterInterface = ref('all')
 
   const fetchData = async () => {
     loading.value = true
     try {
       let url = `/api/proxy/Inventory/${activeTab.value}`
-      if (activeTab.value === 'hardware' && (filterCategory.value || filterMinTorque.value || filterInterface.value)) {
-        url = `/api/proxy/Inventory/hardware/search?`
+      
+      const hasHardwareFilters = activeTab.value === 'hardware' && (
+        (filterCategory.value && filterCategory.value !== 'all') || 
+        filterMinTorque.value || 
+        (filterInterface.value && filterInterface.value !== 'all')
+      )
+      const hasSearchQuery = searchQuery.value.trim() !== ''
+
+      if (hasHardwareFilters || hasSearchQuery) {
+        url = `/api/proxy/Inventory/${activeTab.value}/search?`
         const params = new URLSearchParams()
-        if (filterCategory.value) params.append('category', filterCategory.value)
-        if (filterMinTorque.value) params.append('minTorque', filterMinTorque.value.toString())
-        if (filterInterface.value) params.append('interfaceType', filterInterface.value)
+        if (hasSearchQuery) params.append('query', searchQuery.value)
+        
+        if (activeTab.value === 'hardware') {
+          if (filterCategory.value && filterCategory.value !== 'all') params.append('category', filterCategory.value)
+          if (filterMinTorque.value) params.append('minTorque', filterMinTorque.value.toString())
+          if (filterInterface.value && filterInterface.value !== 'all') params.append('interfaceType', filterInterface.value)
+        }
         url += params.toString()
       }
 
-      const { data } = await useFetch(url)
-      if (data.value) {
-        items.value = data.value as any[]
+      const data = await $fetch(url)
+      if (data) {
+        items.value = data as any[]
       }
     } catch (e) {
       console.error('Error fetching inventory:', e)
@@ -36,16 +48,13 @@ export const useInventory = () => {
 
   const addComponent = async (type: 'hardware' | 'software', formData: any) => {
     try {
-      const { error } = await useFetch(`/api/proxy/Inventory/${type}`, {
+      await $fetch(`/api/proxy/Inventory/${type}`, {
         method: 'POST',
         body: formData
       })
-      if (!error.value) {
-        await fetchData()
-        return { success: true }
-      }
-      return { success: false, error: error.value }
-    } catch (e) {
+      await fetchData()
+      return { success: true }
+    } catch (e: any) {
       console.error('Error adding component:', e)
       return { success: false, error: e }
     }

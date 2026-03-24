@@ -4,11 +4,17 @@ using App.Infrastructure.Repositories;
 using App.Shared.Data;
 using Microsoft.EntityFrameworkCore;
 using DotNetEnv;
+using Npgsql;
 
 // Load .env file
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- Connection String and DataSource declaration ---
+var connectionString = builder.Configuration["DATABASE_URL"] 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+NpgsqlDataSource? dataSource = null;
 
 // Configure Kestrel for HTTP/2
 builder.WebHost.ConfigureKestrel(serverOptions =>
@@ -34,16 +40,26 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 builder.Configuration.AddEnvironmentVariables();
 
 // --- 1. Database ---
-var connectionString = builder.Configuration["DATABASE_URL"] 
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
-
-var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
-dataSourceBuilder.EnableDynamicJson();
-var dataSource = dataSourceBuilder.Build();
+// Conditionally build NpgsqlDataSource only if a connection string is provided
+if (!string.IsNullOrEmpty(connectionString))
+{
+    var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+    dataSourceBuilder.EnableDynamicJson();
+    dataSource = dataSourceBuilder.Build();
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseNpgsql(dataSource).UseSnakeCaseNamingConvention();
+    // In test environments, we want to allow the test fixture to override the DbContext configuration
+    if (builder.Environment.IsEnvironment("Test") || string.IsNullOrEmpty(connectionString))
+    {
+        // No default Npgsql configuration here if in test or connection string is missing
+        // This allows WebApplicationFactory to provide its own InMemoryDb
+    }
+    else
+    {
+        options.UseNpgsql(dataSource!).UseSnakeCaseNamingConvention();
+    }
 });
 
 // --- 2. Repositories ---

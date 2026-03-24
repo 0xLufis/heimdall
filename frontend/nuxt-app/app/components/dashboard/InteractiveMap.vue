@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import DxfParser from 'dxf-parser'
 import { Card, CardContent } from '~/components/ui/card'
 
@@ -114,6 +114,10 @@ const handleMouseUp = () => {
 onMounted(() => {
   if (props.dxfUrl) loadDxf()
   window.addEventListener('mouseup', handleMouseUp)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('mouseup', handleMouseUp)
 })
 
 watch(() => props.dxfUrl, () => {

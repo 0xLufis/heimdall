@@ -14,10 +14,20 @@
   </PackageReference>
   
   <PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
+  <PackageReference Include="Google.Protobuf" Version="3.29.3" />
+  <PackageReference Include="Grpc.Tools" Version="2.69.0">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
+  <PackageReference Include="Grpc.Core" Version="2.46.6" />
 
   <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
   <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
   <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.0" />
 </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\system_info.proto" GrpcServices="Both" />
+  </ItemGroup>
 
 </Project>

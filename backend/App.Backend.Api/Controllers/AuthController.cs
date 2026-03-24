@@ -4,10 +4,21 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace App.Backend.Api.Controllers;
 
+/// <summary>
+/// Controller for handling authentication-related API requests.
+/// Provides endpoints for user authentication and authorization information.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    /// <summary>
+    /// Retrieves information about the currently authenticated user.
+    /// Requires authentication.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing user authentication status, name, roles, and claims.
+    /// </returns>
     [HttpGet("me")]
     [Authorize]
     public IActionResult GetMe()

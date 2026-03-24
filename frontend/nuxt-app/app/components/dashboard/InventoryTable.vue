@@ -32,6 +32,7 @@ defineProps<{
           </TableRow>
         </TableHeader>
         <TableBody>
+          <!-- Loading State -->
           <template v-if="loading">
             <TableRow v-for="i in 3" :key="'loading-'+i" class="border-b border-slate-800 last:border-0">
               <TableCell colspan="5" class="px-8 py-8 text-center">
@@ -43,17 +44,21 @@ defineProps<{
             </TableRow>
           </template>
           
-          <TableRow v-else-if="items.length === 0" class="border-0">
-            <TableCell colspan="5" class="px-8 py-16 text-center">
-               <div class="flex flex-col items-center gap-3 opacity-30">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                  </svg>
-                  <p class="text-[10px] font-black text-slate-600 uppercase tracking-widest">No components found matching criteria.</p>
-               </div>
-            </TableCell>
-          </TableRow>
+          <!-- Empty State -->
+          <template v-else-if="items.length === 0">
+            <TableRow class="border-0">
+              <TableCell colspan="5" class="px-8 py-16 text-center">
+                 <div class="flex flex-col items-center gap-3 opacity-30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                    <p class="text-[10px] font-black text-slate-600 uppercase tracking-widest">No components found matching criteria.</p>
+                 </div>
+              </TableCell>
+            </TableRow>
+          </template>
           
+          <!-- Data State -->
           <template v-else>
             <TableRow v-for="item in items" :key="item.id" class="hover:bg-slate-800/30 transition-colors group border-b border-slate-800 last:border-0">
               <TableCell class="px-8 py-5">

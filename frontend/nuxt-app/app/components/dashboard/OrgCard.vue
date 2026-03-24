@@ -2,12 +2,13 @@
 import { Card, CardContent, CardFooter, CardHeader } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Avatar, AvatarFallback } from '~/components/ui/avatar'
+import { Edit2Icon, UsersIcon, ShieldCheckIcon } from 'lucide-vue-next'
 
 defineProps<{
   org: any
 }>()
 
-defineEmits(['manage-members'])
+defineEmits(['manage-members', 'edit'])
 </script>
 
 <template>
@@ -20,38 +21,49 @@ defineEmits(['manage-members'])
           </AvatarFallback>
         </Avatar>
         <div class="flex gap-1">
-          <Button variant="ghost" size="icon" class="h-8 w-8 text-slate-500 hover:text-indigo-400">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            class="h-8 w-8 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors"
+            @click="$emit('edit', org)"
+          >
+            <Edit2Icon class="h-4 w-4" />
           </Button>
         </div>
       </div>
-      <h5 class="text-lg font-black text-slate-100 group-hover:text-indigo-400 transition-colors truncate">{{ org.name }}</h5>
-      <p class="text-xs text-slate-500 font-mono mt-1">ID: {{ org.id }}</p>
+      <h5 class="text-lg font-black text-slate-100 group-hover:text-indigo-400 transition-colors truncate tracking-tight">{{ org.name }}</h5>
+      <div class="flex items-center gap-2 mt-1">
+        <div class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono truncate max-w-[150px] border border-slate-700/50">
+          {{ org.slug }}
+        </div>
+      </div>
     </CardHeader>
     
     <CardContent class="px-6 pb-6">
-      <div class="mt-2 flex items-center gap-4 border-t border-slate-800 pt-4">
-        <div class="flex -space-x-2">
-          <Avatar v-for="i in 3" :key="i" class="w-6 h-6 border-2 border-slate-900">
-            <AvatarFallback class="bg-slate-800 text-[8px] font-bold text-slate-500">U</AvatarFallback>
-          </Avatar>
+      <div class="mt-2 flex items-center justify-between border-t border-slate-800/50 pt-4">
+        <div class="flex items-center gap-2">
+            <UsersIcon class="h-3 w-3 text-slate-500" />
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Team Unit</span>
         </div>
-        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Members</span>
+        <div class="flex items-center gap-1 text-emerald-500/80">
+            <ShieldCheckIcon class="h-3 w-3" />
+            <span class="text-[9px] font-black uppercase tracking-tighter">Active System</span>
+        </div>
       </div>
     </CardContent>
 
-    <CardFooter class="px-6 py-4 bg-slate-950/50 flex items-center justify-between border-t border-slate-800">
+    <CardFooter class="px-6 py-4 bg-slate-950/30 flex items-center justify-between border-t border-slate-800">
       <Button 
         variant="link" 
-        class="h-auto p-0 text-xs font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 no-underline"
-        @click="$emit('manage-members', org.id)"
+        class="h-auto p-0 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] hover:text-indigo-300 no-underline transition-colors"
+        @click="$emit('manage-members', org)"
       >
-        Manage Members
+        Manage Personnel
       </Button>
-      <div class="text-[10px] bg-indigo-950 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded font-black truncate max-w-[100px]">
-        {{ org.slug }}
+      <div class="flex -space-x-2">
+          <div v-for="i in 3" :key="i" class="w-6 h-6 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-[8px] font-black text-slate-500 uppercase">
+            {{ String.fromCharCode(64 + i) }}
+          </div>
       </div>
     </CardFooter>
   </Card>
