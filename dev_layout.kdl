@@ -1,0 +1,29 @@
+layout {
+    pane size=1 borderless=true {
+        plugin location="zellij:tab-bar"
+    }
+    pane split_direction="vertical" {
+        pane split_direction="horizontal" {
+            pane name="Backend API" command="dotnet" {
+                args "run" "--project" "backend/App.Backend.Api"
+            }
+            pane name="Local Agent" command="dotnet" {
+                args "run" "--project" "agent/App.Agent.Daemon"
+            }
+        }
+        pane split_direction="horizontal" {
+            pane name="Nuxt Frontend" command="bun" {
+                args "--cwd=frontend/nuxt-app" "run" "dev"
+            }
+            pane name="PC Simulator" command="bash" {
+                args "-c" "source venv/bin/activate && python simulate_pcs.py"
+            }
+            pane name="ngrok" command="bash" {
+                args "-c" "if command -v ngrok >/dev/null 2>&1; then ngrok http 3000; else echo 'ngrok not found, skipping...'; sleep 10; fi"
+            }
+        }
+    }
+    pane size=2 borderless=true {
+        plugin location="zellij:status-bar"
+    }
+}

@@ -87,10 +87,21 @@ Manages the hardware and software components. Requires `admin` role for modifica
     *   **Parameters**: `id` (GUID) - The unique identifier of the Software Component to delete.
     *   **Returns**: `204 No Content` if successful, or `404 Not Found`.
 
-### 4. Authentication (`/api/Auth`)
+### 4. Organizations (`/api/Organization`)
+Exposes organization and tenancy data pulled from the `auth` schema.
+
+*   `GET /api/Organization/my-organizations`
+    *   **Description**: Retrieves a list of organizations the current authenticated user belongs to.
+    *   **Returns**: `200 OK` with an array of <c>AuthOrganization</c> objects.
+*   `GET /api/Organization/{id}`
+    *   **Description**: Retrieves full details (including members) for a specific organization.
+    *   **Parameters**: `id` (string) - The unique identifier of the organization.
+    *   **Returns**: `200 OK` with an <c>AuthOrganization</c> object, or `404 Not Found`.
+
+### 5. Authentication (`/api/Auth`)
 Provides endpoints for verifying user sessions.
 
 *   `GET /api/Auth/me`
-    *   **Description**: Validates the `better-auth.session_token` cookie and returns the user's claims (Roles, Email, Name) decoded by the PostgreSQL database.
+    *   **Description**: Validates the `better-auth.session_token` cookie and returns user details and the `OrgId` claim if an organization is active.
     *   **Authorization**: Requires an active Better-Auth session cookie.
-    *   **Returns**: `200 OK` with user details (IsAuthenticated, User, Roles, Claims), or `401 Unauthorized`.
+    *   **Returns**: `200 OK` with user details, or `401 Unauthorized`.

@@ -133,17 +133,51 @@ const isHighlighted = (handle: string) => {
     return false
 }
 
+// "Real-like" assets mapping - using high-quality SVG paths for industrial components
+const blockAssets = {
+  'CNC_MACHINE': {
+    color: 'emerald',
+    path: 'M -8 -6 h 16 v 12 h -16 z M -6 -4 h 12 v 5 h -12 z M -6 2 h 2 v 2 h -2 z M -2 2 h 2 v 2 h -2 z M 2 2 h 2 v 2 h -2 z',
+    detail: 'M -4 -2 h 8 M -4 0 h 8'
+  },
+  'ROBOT_CELL': {
+    color: 'blue',
+    path: 'M -10 -10 h 20 v 20 h -20 z M -3 -3 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0 M 0 0 l 6 6 l 2 -2',
+    detail: 'M -10 -10 l 20 20 M -10 10 l 20 -20'
+  },
+  'ASSEMBLY_STATION': {
+    color: 'orange',
+    path: 'M -7 -5 h 14 v 10 h -14 z M -5 -3 h 10 v 6 h -10 z',
+    detail: 'M -2 -1 l 4 0 M 0 -3 l 0 6'
+  },
+  'PACKAGING_STATION': {
+    color: 'purple',
+    path: 'M -8 -8 h 16 v 16 h -16 z M -4 -4 h 8 v 8 h -8 z',
+    detail: 'M -8 0 h 16 M 0 -8 v 16'
+  }
+}
+
+const getBlockAsset = (name: string) => {
+  return (blockAssets as any)[name] || null
+}
+
 </script>
 
 <template>
-    <Card class="w-full h-full relative overflow-hidden bg-card border-border shadow-inner group p-0">
+    <Card class="w-full h-full relative overflow-hidden bg-slate-950 border-slate-800 shadow-2xl group p-0">
         <CardContent class="p-0 w-full h-full">
-            <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-card">
-                <p class="text-muted-foreground font-bold uppercase tracking-widest animate-pulse">Loading Map...</p>
+            <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+                <div class="flex flex-col items-center gap-4">
+                    <div class="w-12 h-12 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest animate-pulse">Synchronizing Plant Layout...</p>
+                </div>
             </div>
             
-            <div v-else-if="error" class="absolute inset-0 z-20 flex items-center justify-center bg-card p-6 text-destructive">
-                {{ error }}
+            <div v-else-if="error" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-950 p-6 text-red-400">
+                <div class="text-center">
+                    <p class="text-xs font-black uppercase tracking-widest mb-2">Protocol Error</p>
+                    <p class="text-[10px] opacity-70">{{ error }}</p>
+                </div>
             </div>
 
             <svg 
@@ -157,48 +191,102 @@ const isHighlighted = (handle: string) => {
                 @mouseleave="handleMouseUp"
                 xmlns="http://www.w3.org/2000/svg"
             >
+                <!-- Background Grid -->
+                <defs>
+                    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="0.5"/>
+                    </pattern>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <rect :x="viewBox.x" :y="viewBox.y" :width="viewBox.width" :height="viewBox.height" fill="url(#grid)" />
+
                 <g transform="scale(1, -1)">
                     <!-- Global standalone entities -->
                     <template v-for="(entity, idx) in entities" :key="`g-${idx}`">
                         <line v-if="entity.type === 'LINE'" 
                               :x1="entity.vertices[0].x" :y1="entity.vertices[0].y" 
                               :x2="entity.vertices[1].x" :y2="entity.vertices[1].y" 
-                              stroke="currentColor" class="text-muted/30" stroke-width="0.5" stroke-linecap="round" />
+                              stroke="rgba(100, 116, 139, 0.4)" stroke-width="0.8" stroke-linecap="round" />
+                        
+                        <text v-if="entity.type === 'TEXT'"
+                              :x="entity.startPoint.x" :y="-entity.startPoint.y"
+                              fill="rgba(148, 163, 184, 0.6)"
+                              font-size="4"
+                              font-weight="900"
+                              font-family="system-ui"
+                              text-anchor="middle"
+                              dominant-baseline="central"
+                              transform="scale(1, -1)"
+                              class="uppercase tracking-tighter pointer-events-none">
+                              {{ entity.text }}
+                        </text>
                               
                         <!-- Render Block Inserts -->
                         <g v-if="entity.type === 'INSERT'" 
                            :transform="`translate(${entity.position.x}, ${entity.position.y}) rotate(${entity.rotation || 0})`"
                            @click.stop="emit('object-clicked', entity.handle, entity.name)"
-                           class="cursor-pointer transition-all duration-300 hover:opacity-80 group/insert"
+                           class="cursor-pointer transition-all duration-300 group/insert"
                         >
-                            <!-- Invisible bounding box for easier clicking - slightly larger -->
-                            <rect x="-20" y="-20" width="40" height="40" fill="transparent" class="group-hover/insert:fill-accent/10 transition-colors" />
+                            <!-- Selection Glow -->
+                            <rect v-if="isHighlighted(entity.handle)" 
+                                  x="-15" y="-15" width="30" height="30" 
+                                  fill="rgba(16, 185, 129, 0.1)" 
+                                  stroke="rgba(16, 185, 129, 0.5)" 
+                                  stroke-width="1"
+                                  stroke-dasharray="2,2"
+                                  class="animate-[pulse_2s_infinite]" />
+
+                            <!-- Invisible bounding box for easier clicking -->
+                            <rect x="-20" y="-20" width="40" height="40" fill="transparent" />
                             
-                            <template v-if="blocks[entity.name]">
+                            <!-- Real-like Asset Rendering -->
+                            <template v-if="getBlockAsset(entity.name)">
+                                <path :d="getBlockAsset(entity.name).path" 
+                                      :fill="isHighlighted(entity.handle) ? 'rgba(16, 185, 129, 0.2)' : 'rgba(30, 41, 59, 0.7)'"
+                                      :stroke="isHighlighted(entity.handle) ? '#10b981' : '#64748b'"
+                                      stroke-width="1.5"
+                                      stroke-linejoin="round"
+                                      class="transition-colors duration-300 group-hover/insert:stroke-slate-300"
+                                />
+                                <path :d="getBlockAsset(entity.name).detail" 
+                                      fill="none"
+                                      :stroke="isHighlighted(entity.handle) ? '#34d399' : '#475569'"
+                                      stroke-width="0.8"
+                                      class="opacity-60"
+                                />
+                                <!-- Identifier Label -->
+                                <text :y="14" 
+                                      fill="white" 
+                                      font-size="3" 
+                                      font-weight="bold" 
+                                      text-anchor="middle" 
+                                      transform="scale(1, -1)"
+                                      class="opacity-0 group-hover/insert:opacity-100 transition-opacity uppercase tracking-widest font-mono">
+                                      {{ entity.name.replace('_', ' ') }}
+                                </text>
+                            </template>
+
+                            <!-- Fallback DXF Rendering -->
+                            <template v-else-if="blocks[entity.name]">
                                 <template v-for="(bEnt, bIdx) in blocks[entity.name].entities" :key="`b-${bIdx}`">
                                     <line v-if="bEnt.type === 'LINE'" 
                                           :x1="bEnt.vertices[0].x" :y1="bEnt.vertices[0].y" 
                                           :x2="bEnt.vertices[1].x" :y2="bEnt.vertices[1].y" 
-                                          :stroke="isHighlighted(entity.handle) ? 'var(--primary)' : 'var(--muted-foreground)'" 
+                                          :stroke="isHighlighted(entity.handle) ? '#10b981' : '#475569'" 
                                           :stroke-width="isHighlighted(entity.handle) ? 1.5 : 1" 
                                           stroke-linecap="round" />
                                           
                                     <circle v-if="bEnt.type === 'CIRCLE'" 
                                             :cx="bEnt.center.x" :cy="bEnt.center.y" :r="bEnt.radius" 
                                             fill="none" 
-                                            :stroke="isHighlighted(entity.handle) ? 'var(--primary)' : 'var(--muted-foreground)'" 
+                                            :stroke="isHighlighted(entity.handle) ? '#10b981' : '#475569'" 
                                             :stroke-width="isHighlighted(entity.handle) ? 1.5 : 1" />
-                                            
-                                    <text v-if="bEnt.type === 'TEXT'"
-                                          :x="bEnt.startPoint.x" :y="-bEnt.startPoint.y"
-                                          :fill="isHighlighted(entity.handle) ? 'var(--primary)' : 'var(--foreground)'"
-                                          font-size="3"
-                                          font-family="monospace"
-                                          text-anchor="middle"
-                                          dominant-baseline="central"
-                                          transform="scale(1, -1)">
-                                          {{ bEnt.text }}
-                                    </text>
                                 </template>
                             </template>
                         </g>

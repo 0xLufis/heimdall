@@ -29,6 +29,20 @@
       "when": 1773229111053,
       "tag": "0003_cool_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774396753752,
+      "tag": "0004_early_starfox",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774468549418,
+      "tag": "0005_shiny_salo",
+      "breakpoints": true
     }
   ]
 }

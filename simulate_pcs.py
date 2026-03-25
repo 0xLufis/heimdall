@@ -49,12 +49,11 @@ def simulate_single_client(client_hostname: str):
     client = CLIENTS[client_hostname]
     print(f"Simulating agent for '{client['hostname']}'. Connecting to Heimdall Backend at {GRPC_HOST}...")
 
-    while True:
-        try:
-            with grpc.insecure_channel(GRPC_HOST) as channel:
-                stub = system_info_pb2_grpc.SystemInfoCollectorStub(channel)
-                
-                now = datetime.datetime.utcnow()
+    with grpc.insecure_channel(GRPC_HOST) as channel:
+        stub = system_info_pb2_grpc.SystemInfoCollectorStub(channel)
+        while True:
+            try:
+                now = datetime.datetime.now(datetime.timezone.utc)
                 ts = Timestamp()
                 ts.FromDatetime(now)
                 
@@ -77,27 +76,27 @@ def simulate_single_client(client_hostname: str):
                 resp = stub.ReportSystemInfo(req)
                 print(f"[{now.strftime('%H:%M:%S')}] Sent data for {client['hostname']} -> Success: {resp.success}")
 
-        except Exception as e:
-            print(f"Failed to send data for {client['hostname']}: {e}")
-        
-        # Wait for a random interval before the next report to make it more realistic
-        wait_time = random.randint(10, 30)
-        print(f"--- Waiting {wait_time} seconds before next report... ---")
-        time.sleep(wait_time)
+            except Exception as e:
+                print(f"Failed to send data for {client['hostname']}: {e}")
+            
+            # Wait for a random interval before the next report to make it more realistic
+            wait_time = random.randint(10, 30)
+            print(f"--- Waiting {wait_time} seconds before next report... ---")
+            time.sleep(wait_time)
 
 
 def simulate_all_clients():
     """Original simulation logic: cycles through all clients in a single process."""
     print(f"Connecting to Heimdall Backend at {GRPC_HOST}...")
     
-    while True:
-        for client_hostname in CLIENTS:
-            try:
-                with grpc.insecure_channel(GRPC_HOST) as channel:
-                    stub = system_info_pb2_grpc.SystemInfoCollectorStub(channel)
+    with grpc.insecure_channel(GRPC_HOST) as channel:
+        stub = system_info_pb2_grpc.SystemInfoCollectorStub(channel)
+        while True:
+            for client_hostname in CLIENTS:
+                try:
                     client = CLIENTS[client_hostname]
                     
-                    now = datetime.datetime.utcnow()
+                    now = datetime.datetime.now(datetime.timezone.utc)
                     ts = Timestamp()
                     ts.FromDatetime(now)
                     
@@ -119,15 +118,15 @@ def simulate_all_clients():
                     
                     resp = stub.ReportSystemInfo(req)
                     print(f"[{now.strftime('%H:%M:%S')}] Sent data for {client['hostname']} -> Success: {resp.success}")
-            except Exception as e:
-                print(f"Failed to send data for {client['hostname']}: {e}")
-            
-            # Small delay between each client report
-            time.sleep(1)
-            
-        # Wait a bit before next full cycle
-        print("--- Cycle complete. Waiting 10 seconds... ---")
-        time.sleep(10)
+                except Exception as e:
+                    print(f"Failed to send data for {client['hostname']}: {e}")
+                
+                # Small delay between each client report
+                time.sleep(1)
+                
+            # Wait a bit before next full cycle
+            print("--- Cycle complete. Waiting 10 seconds... ---")
+            time.sleep(10)
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -14,206 +15,18 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace App.Shared.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324210652_AddRecursiveComponents")]
+    partial class AddRecursiveComponents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("backend")
-                .HasAnnotation("ProductVersion", "9.0.2")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("App.Shared.Entities.AuthMember", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("OrganizationId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("organization_id");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("role");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_member");
-
-                    b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_member_organization_id");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_member_user_id");
-
-                    b.ToTable("member", "auth", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthOrganization", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Logo")
-                        .HasColumnType("text")
-                        .HasColumnName("logo");
-
-                    b.Property<string>("Metadata")
-                        .HasColumnType("text")
-                        .HasColumnName("metadata");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Slug")
-                        .HasColumnType("text")
-                        .HasColumnName("slug");
-
-                    b.HasKey("Id")
-                        .HasName("pk_organization");
-
-                    b.ToTable("organization", "auth", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthSession", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ActiveOrganizationId")
-                        .HasColumnType("text")
-                        .HasColumnName("active_organization_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("text")
-                        .HasColumnName("ip_address");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("token");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UserAgent")
-                        .HasColumnType("text")
-                        .HasColumnName("user_agent");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_session");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_session_user_id");
-
-                    b.ToTable("session", "auth", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthUser", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset?>("BanExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("ban_expires_at");
-
-                    b.Property<string>("BanReason")
-                        .HasColumnType("text")
-                        .HasColumnName("ban_reason");
-
-                    b.Property<bool?>("Banned")
-                        .HasColumnType("boolean")
-                        .HasColumnName("banned");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("email");
-
-                    b.Property<bool>("EmailVerified")
-                        .HasColumnType("boolean")
-                        .HasColumnName("email_verified");
-
-                    b.Property<string>("Image")
-                        .HasColumnType("text")
-                        .HasColumnName("image");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Role")
-                        .HasColumnType("text")
-                        .HasColumnName("role");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("Username")
-                        .HasColumnType("text")
-                        .HasColumnName("username");
-
-                    b.HasKey("Id")
-                        .HasName("pk_user");
-
-                    b.ToTable("user", "auth", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
 
             modelBuilder.Entity("App.Shared.Entities.ClientPc", b =>
                 {
@@ -257,10 +70,6 @@ namespace App.Shared.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("machine_identifier");
 
-                    b.Property<string>("OrganizationId")
-                        .HasColumnType("text")
-                        .HasColumnName("organization_id");
-
                     b.Property<string>("PinnedObjectHandle")
                         .HasColumnType("text")
                         .HasColumnName("pinned_object_handle");
@@ -292,7 +101,7 @@ namespace App.Shared.Migrations
                     b.HasIndex("PinnedObjectHandle")
                         .HasDatabaseName("ix_client_pcs_pinned_object_handle");
 
-                    b.ToTable("client_pcs", "backend");
+                    b.ToTable("client_pcs", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.Component", b =>
@@ -323,7 +132,7 @@ namespace App.Shared.Migrations
                     b.HasKey("Id")
                         .HasName("pk_components");
 
-                    b.ToTable("components", "backend");
+                    b.ToTable("components", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.FloorPlan", b =>
@@ -359,7 +168,7 @@ namespace App.Shared.Migrations
                     b.HasIndex("Name")
                         .HasDatabaseName("ix_floor_plans_name");
 
-                    b.ToTable("floor_plans", "backend");
+                    b.ToTable("floor_plans", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.FloorPlanAnchor", b =>
@@ -382,7 +191,7 @@ namespace App.Shared.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("y");
 
-                    b.ToTable("floor_plan_anchor", "backend");
+                    b.ToTable("floor_plan_anchor", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.HardwareComponent", b =>
@@ -450,7 +259,7 @@ namespace App.Shared.Migrations
                     b.HasIndex("SupplierId")
                         .HasDatabaseName("ix_hardware_components_supplier_id");
 
-                    b.ToTable("hardware_components", "backend");
+                    b.ToTable("hardware_components", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.Machine", b =>
@@ -470,10 +279,6 @@ namespace App.Shared.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("hw_components");
 
-                    b.Property<string>("OrganizationId")
-                        .HasColumnType("text")
-                        .HasColumnName("organization_id");
-
                     b.Property<string>("PinnedObjectHandle")
                         .HasColumnType("text")
                         .HasColumnName("pinned_object_handle");
@@ -489,7 +294,7 @@ namespace App.Shared.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_machines_custom_identifier");
 
-                    b.ToTable("machines", "backend");
+                    b.ToTable("machines", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.Manufacturer", b =>
@@ -520,7 +325,7 @@ namespace App.Shared.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_manufacturers_name");
 
-                    b.ToTable("manufacturers", "backend");
+                    b.ToTable("manufacturers", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.PcPredecessor", b =>
@@ -535,7 +340,7 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("serial_number");
 
-                    b.ToTable("pc_predecessor", "backend");
+                    b.ToTable("pc_predecessor", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.SoftwareComponent", b =>
@@ -595,7 +400,7 @@ namespace App.Shared.Migrations
                     b.HasIndex("SupplierId")
                         .HasDatabaseName("ix_software_components_supplier_id");
 
-                    b.ToTable("software_components", "backend");
+                    b.ToTable("software_components", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.Supplier", b =>
@@ -630,7 +435,7 @@ namespace App.Shared.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_suppliers_name");
 
-                    b.ToTable("suppliers", "backend");
+                    b.ToTable("suppliers", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.UserRole", b =>
@@ -658,7 +463,7 @@ namespace App.Shared.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_user_roles_name");
 
-                    b.ToTable("user_roles", "backend");
+                    b.ToTable("user_roles", (string)null);
                 });
 
             modelBuilder.Entity("ClientPcMachine", b =>
@@ -677,40 +482,7 @@ namespace App.Shared.Migrations
                     b.HasIndex("MachinesId")
                         .HasDatabaseName("ix_client_pc_machine_machines_id");
 
-                    b.ToTable("ClientPcMachine", "backend");
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthMember", b =>
-                {
-                    b.HasOne("App.Shared.Entities.AuthOrganization", "Organization")
-                        .WithMany("Members")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_member_organization_organization_id");
-
-                    b.HasOne("App.Shared.Entities.AuthUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_member_user_user_id");
-
-                    b.Navigation("Organization");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthSession", b =>
-                {
-                    b.HasOne("App.Shared.Entities.AuthUser", "User")
-                        .WithMany("Sessions")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_session_user_user_id");
-
-                    b.Navigation("User");
+                    b.ToTable("ClientPcMachine", (string)null);
                 });
 
             modelBuilder.Entity("App.Shared.Entities.HardwareComponent", b =>
@@ -780,16 +552,6 @@ namespace App.Shared.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_client_pc_machine_machines_machines_id");
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthOrganization", b =>
-                {
-                    b.Navigation("Members");
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthUser", b =>
-                {
-                    b.Navigation("Sessions");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.HardwareComponent", b =>

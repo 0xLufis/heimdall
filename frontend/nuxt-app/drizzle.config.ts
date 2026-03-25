@@ -9,7 +9,7 @@ export default defineConfig({
    },
 
    migrations: {
-      schema: 'heimdall_dev_db',
+      schema: 'auth',
       table: '__drizzle_migrations',
    }
 });

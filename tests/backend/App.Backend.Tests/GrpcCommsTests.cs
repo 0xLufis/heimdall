@@ -86,10 +86,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             if (npgsqlDataSourceDescriptor != null) services.Remove(npgsqlDataSourceDescriptor);
 
             // Add in-memory database for testing
-            services.AddDbContext<AppDbContext>(options =>
+            services.AddDbContextFactory<AppDbContext>(options =>
             {
                 options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid().ToString()); // Use unique name for each test run
-            }, ServiceLifetime.Singleton); // Use Singleton to ensure it's the same instance across test services
+            });
         });
     }
 }

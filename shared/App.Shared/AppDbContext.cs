@@ -62,6 +62,14 @@ public class AppDbContext : DbContext
     /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthSession"/> entities.
     /// </summary>
     public DbSet<AuthSession> AuthSessions { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthOrganization"/> entities.
+    /// </summary>
+    public DbSet<AuthOrganization> AuthOrganizations { get; set; }
+    /// <summary>
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthMember"/> entities.
+    /// </summary>
+    public DbSet<AuthMember> AuthMembers { get; set; }
 
     /// <summary>
     /// Configures the schema needed for the model.
@@ -72,14 +80,23 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Set default schema for backend entities
+        modelBuilder.HasDefaultSchema("backend");
+
         bool isInMemory = Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
 
         // Configure Auth entities (Better-Auth) - Exclude from migrations as they are managed externally
         modelBuilder.Entity<AuthUser>(entity => {
-            entity.ToTable("user", "heimdall_dev_db", t => t.ExcludeFromMigrations());
+            entity.ToTable("user", "auth", t => t.ExcludeFromMigrations());
         });
         modelBuilder.Entity<AuthSession>(entity => {
-            entity.ToTable("session", "heimdall_dev_db", t => t.ExcludeFromMigrations());
+            entity.ToTable("session", "auth", t => t.ExcludeFromMigrations());
+        });
+        modelBuilder.Entity<AuthOrganization>(entity => {
+            entity.ToTable("organization", "auth", t => t.ExcludeFromMigrations());
+        });
+        modelBuilder.Entity<AuthMember>(entity => {
+            entity.ToTable("member", "auth", t => t.ExcludeFromMigrations());
         });
 
         // Configure Manufacturer

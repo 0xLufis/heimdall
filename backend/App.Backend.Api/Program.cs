@@ -71,6 +71,7 @@ builder.Services.AddAuthorization();
 // --- 4. Controllers & gRPC & Swagger ---
 builder.Services.AddControllers();
 builder.Services.AddGrpc();
+builder.Services.AddGrpcReflection();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -95,6 +96,11 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapGrpcService<SystemInfoCollectorService>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapGrpcReflectionService();
+}
 
 app.Run();
 

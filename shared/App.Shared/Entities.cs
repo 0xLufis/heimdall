@@ -69,11 +69,15 @@ public class Machine
     /// Gets or sets the unique identifier for the machine.
     /// </summary>
     public Guid Id { get; set; }
-    
+
+    /// <summary>
+    /// Gets or sets the ID of the organization that owns this machine.
+    /// </summary>
+    public string? OrganizationId { get; set; }
+
     /// <summary>
     /// Gets or sets a custom identifier for the machine, e.g., "Assembly Line 1". This field is required and has a maximum length of 255 characters.
-    /// </summary>
-    [Required]
+    /// </summary>    [Required]
     [MaxLength(255)]
     public string CustomIdentifier { get; set; } = string.Empty;
 
@@ -353,9 +357,13 @@ public class ClientPc
     public Guid Id { get; set; }
 
     /// <summary>
-    /// Gets or sets the hostname of the client PC. This field is required and has a maximum length of 255 characters.
+    /// Gets or sets the ID of the organization that owns this client PC.
     /// </summary>
-    [Required]
+    public string? OrganizationId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the hostname of the client PC. This field is required and has a maximum length of 255 characters.
+    /// </summary>    [Required]
     [MaxLength(255)]
     public string Hostname { get; set; } = string.Empty;
 
@@ -528,9 +536,9 @@ public enum ComponentType
 
 /// <summary>
 /// Represents a user entity managed by the Better-Auth system.
-/// Mapped to the "user" table in the "heimdall_dev_db" schema.
+/// Mapped to the "user" table in the "auth" schema.
 /// </summary>
-[Table("user", Schema = "heimdall_dev_db")]
+[Table("user", Schema = "auth")]
 public class AuthUser
 {
     /// <summary>
@@ -591,17 +599,16 @@ public class AuthUser
 
 /// <summary>
 /// Represents an authentication session for a user, managed by the Better-Auth system.
-/// Mapped to the "session" table in the "heimdall_dev_db" schema.
+/// Mapped to the "session" table in the "auth" schema.
 /// </summary>
-[Table("session", Schema = "heimdall_dev_db")]
+[Table("session", Schema = "auth")]
 public class AuthSession
 {
     /// <summary>
     /// Gets or sets the unique identifier for the session.
     /// </summary>
     [Key]
-    public string Id { get; set; } = string.Empty;
-    /// <summary>
+    public string Id { get; set; } = string.Empty;    /// <summary>
     /// Gets or sets the timestamp when the session expires.
     /// </summary>
     public DateTimeOffset ExpiresAt { get; set; }
@@ -639,7 +646,84 @@ public class AuthSession
     public string? ActiveOrganizationId { get; set; }
 }
 
-// --- JSONB POCOs ---
+    /// <summary>
+    /// Represents an organization managed by the Better-Auth system.
+    /// Mapped to the "organization" table in the "auth" schema.
+    /// </summary>
+    [Table("organization", Schema = "auth")]
+    public class AuthOrganization
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier for the organization.
+        /// </summary>
+        [Key]
+        public string Id { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the name of the organization.
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the slug of the organization.
+        /// </summary>
+        public string? Slug { get; set; }
+        /// <summary>
+        /// Gets or sets the logo URL of the organization.
+        /// </summary>
+        public string? Logo { get; set; }
+        /// <summary>
+        /// Gets or sets the timestamp when the organization was created.
+        /// </summary>
+        public DateTimeOffset CreatedAt { get; set; }
+        /// <summary>
+        /// Gets or sets metadata associated with the organization.
+        /// </summary>
+        public string? Metadata { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of members in this organization.
+        /// </summary>
+        public List<AuthMember> Members { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Represents a member of an organization managed by the Better-Auth system.
+    /// Mapped to the "member" table in the "auth" schema.
+    /// </summary>
+    [Table("member", Schema = "auth")]
+    public class AuthMember
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier for the membership.
+        /// </summary>
+        [Key]
+        public string Id { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the foreign key to the <see cref="AuthOrganization"/> associated with this membership.
+        /// </summary>
+        public string OrganizationId { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the <see cref="AuthOrganization"/> associated with this membership.
+        /// </summary>
+        public AuthOrganization Organization { get; set; } = null!;
+        /// <summary>
+        /// Gets or sets the foreign key to the <see cref="AuthUser"/> associated with this membership.
+        /// </summary>
+        public string UserId { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the <see cref="AuthUser"/> associated with this membership.
+        /// </summary>
+        public AuthUser User { get; set; } = null!;
+        /// <summary>
+        /// Gets or sets the role of the user within the organization.
+        /// </summary>
+        public string Role { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets the timestamp when the membership was created.
+        /// </summary>
+        public DateTimeOffset CreatedAt { get; set; }
+    }
+
+    // --- JSONB POCOs ---
 
 /// <summary>
 /// Represents the hardware configuration of a Client PC, stored as a JSONB object.

@@ -1,8 +1,16 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, index, pgSchema } from "drizzle-orm/pg-core";
 
-export const hbSchema = pgSchema("heimdall_dev_db");
+/**
+ * Defines the 'auth' schema used by Better-Auth for user and session management.
+ * This schema is shared with the .NET backend for cross-service authorization.
+ */
+export const hbSchema = pgSchema("auth");
 
+/**
+ * Represents a user in the Better-Auth system.
+ * This table is queried by the .NET backend to resolve user identity.
+ */
 export const user = hbSchema.table("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -21,6 +29,10 @@ export const user = hbSchema.table("user", {
   banExpiresAt: timestamp("ban_expires_at"),
 });
 
+/**
+ * Represents an active authentication session.
+ * Includes the activeOrganizationId which is used for multi-tenant data filtering.
+ */
 export const session = hbSchema.table(
   "session",
   {
@@ -41,6 +53,9 @@ export const session = hbSchema.table(
   (table) => [index("session_userId_idx").on(table.userId)],
 );
 
+/**
+ * Represents a linked external account (OAuth) or local credential.
+ */
 export const account = hbSchema.table(
   "account",
   {

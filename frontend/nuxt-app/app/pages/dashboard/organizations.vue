@@ -155,15 +155,16 @@ const newOrgSlug = ref('')
 async function fetchOrgs() {
     loading.value = true
     try {
-        // Better Auth list() returns an array directly if successful, 
-        // or we check data property based on actual return shape in v1
+        console.log("Fetching organizations from authClient...");
         const res = await authClient.organization.list()
-        // In v1, it's { data, error }
-        if (res.data) {
+        console.log("Organizations response:", res);
+        
+        if (res && res.data) {
             orgs.value = res.data
         } else if (Array.isArray(res)) {
             orgs.value = res
         }
+        console.log("Rendered organizations count:", orgs.value.length);
     } catch (e) {
         console.error("Error fetching organizations:", e)
     } finally {

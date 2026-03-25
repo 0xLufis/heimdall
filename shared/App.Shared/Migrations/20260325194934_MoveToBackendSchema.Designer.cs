@@ -6,6 +6,7 @@ using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -14,9 +15,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace App.Shared.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260325194934_MoveToBackendSchema")]
+    partial class MoveToBackendSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -25,82 +28,6 @@ namespace App.Shared.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("App.Shared.Entities.AuthMember", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("OrganizationId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("organization_id");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("role");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_member");
-
-                    b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_member_organization_id");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_member_user_id");
-
-                    b.ToTable("member", "auth", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthOrganization", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Logo")
-                        .HasColumnType("text")
-                        .HasColumnName("logo");
-
-                    b.Property<string>("Metadata")
-                        .HasColumnType("text")
-                        .HasColumnName("metadata");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Slug")
-                        .HasColumnType("text")
-                        .HasColumnName("slug");
-
-                    b.HasKey("Id")
-                        .HasName("pk_organization");
-
-                    b.ToTable("organization", "auth", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
 
             modelBuilder.Entity("App.Shared.Entities.AuthSession", b =>
                 {
@@ -256,10 +183,6 @@ namespace App.Shared.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("machine_identifier");
-
-                    b.Property<string>("OrganizationId")
-                        .HasColumnType("text")
-                        .HasColumnName("organization_id");
 
                     b.Property<string>("PinnedObjectHandle")
                         .HasColumnType("text")
@@ -470,10 +393,6 @@ namespace App.Shared.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("hw_components");
 
-                    b.Property<string>("OrganizationId")
-                        .HasColumnType("text")
-                        .HasColumnName("organization_id");
-
                     b.Property<string>("PinnedObjectHandle")
                         .HasColumnType("text")
                         .HasColumnName("pinned_object_handle");
@@ -680,27 +599,6 @@ namespace App.Shared.Migrations
                     b.ToTable("ClientPcMachine", "backend");
                 });
 
-            modelBuilder.Entity("App.Shared.Entities.AuthMember", b =>
-                {
-                    b.HasOne("App.Shared.Entities.AuthOrganization", "Organization")
-                        .WithMany("Members")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_member_organization_organization_id");
-
-                    b.HasOne("App.Shared.Entities.AuthUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_member_user_user_id");
-
-                    b.Navigation("Organization");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("App.Shared.Entities.AuthSession", b =>
                 {
                     b.HasOne("App.Shared.Entities.AuthUser", "User")
@@ -780,11 +678,6 @@ namespace App.Shared.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_client_pc_machine_machines_machines_id");
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.AuthOrganization", b =>
-                {
-                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.AuthUser", b =>

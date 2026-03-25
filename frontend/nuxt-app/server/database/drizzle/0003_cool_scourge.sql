@@ -1,4 +1,4 @@
-CREATE SCHEMA "heimdall_dev_db";
+CREATE SCHEMA IF NOT EXISTS "heimdall_dev_db";
 --> statement-breakpoint
 ALTER TABLE "public"."account" SET SCHEMA "heimdall_dev_db";
 --> statement-breakpoint
