@@ -1,0 +1,82 @@
+{
+  "manufacturers": [
+    { "name": "Beckhoff", "website": "https://www.beckhoff.com", "support_contact": "support@beckhoff.com" },
+    { "name": "Siemens", "website": "https://www.siemens.com", "support_contact": "support@siemens.com" },
+    { "name": "Fanuc", "website": "https://www.fanuc.com", "support_contact": "support@fanuc.com" },
+    { "name": "Keyence", "website": "https://www.keyence.com", "support_contact": "support@keyence.com" }
+  ],
+  "suppliers": [
+    { "name": "Industrial Components Ltd", "contactPerson": "John Doe", "email": "sales@ind-comp.com" },
+    { "name": "Direct Automation Distribution", "contactPerson": "Jane Smith", "email": "info@dad-dist.com" }
+  ],
+  "hardware": [
+    {
+      "name": "CX2030 Embedded PC",
+      "manufacturer": "Beckhoff",
+      "supplier": "Direct Automation Distribution",
+      "description": "Embedded PC with Intel® Core™ i7-3517UE, 1.7 GHz, 2 cores",
+      "serialNumber": "SN-B-CX2030-9912",
+      "purchaseDate": "2025-01-15T00:00:00Z",
+      "costInHUF": 450000,
+      "technicalSpecs": {
+        "Categories": ["Controller", "IPC"],
+        "ExtraAttributes": {
+          "Processor": "Intel Core i7",
+          "Memory": "4 GB DDR3 RAM"
+        }
+      }
+    },
+    {
+      "name": "S7-1500 Controller",
+      "manufacturer": "Siemens",
+      "supplier": "Industrial Components Ltd",
+      "description": "Modular, high-performance PLC for discrete automation",
+      "serialNumber": "SN-S-S71500-1122",
+      "purchaseDate": "2024-11-20T00:00:00Z",
+      "costInHUF": 320000,
+      "technicalSpecs": {
+        "Categories": ["PLC", "Controller"],
+        "InterfaceType": "Profinet",
+        "FirmwareVersion": "V3.1"
+      }
+    },
+    {
+      "name": "CRX-10iA Cobot",
+      "manufacturer": "Fanuc",
+      "supplier": "Direct Automation Distribution",
+      "description": "Collaborative robot with 10kg payload and 1249mm reach",
+      "serialNumber": "SN-F-CRX10-0088",
+      "purchaseDate": "2025-02-10T00:00:00Z",
+      "costInHUF": 8500000,
+      "technicalSpecs": {
+        "Categories": ["Robot", "Cobot"],
+        "ExtraAttributes": {
+          "Payload": "10 kg",
+          "Reach": "1249 mm"
+        }
+      }
+    }
+  ],
+  "software": [
+    {
+      "name": "TwinCAT 3.1 XAE",
+      "manufacturer": "Beckhoff",
+      "supplier": "Direct Automation Distribution",
+      "description": "The TwinCAT 3 eXtended Automation Engineering (XAE) environment",
+      "serialNumber": "LIC-TC3-99-88-77",
+      "purchaseDate": "2025-01-20T00:00:00Z",
+      "costInHUF": 150000,
+      "version": "3.1.4024"
+    },
+    {
+      "name": "TIA Portal V19 Step 7 Professional",
+      "manufacturer": "Siemens",
+      "supplier": "Industrial Components Ltd",
+      "description": "The Totally Integrated Automation Portal (TIA Portal) provides access to the complete range of digitalized automation services",
+      "serialNumber": "LIC-TIA19-S7-PRO",
+      "purchaseDate": "2024-12-05T00:00:00Z",
+      "costInHUF": 480000,
+      "version": "V19.0"
+    }
+  ]
+}

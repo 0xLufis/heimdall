@@ -1,0 +1,16 @@
+{
+  "clientPcs": [
+    {
+      "hostname": "PLC-01-BECKHOFF",
+      "macAddress": "00:01:05:3D:6F:11",
+      "machineIdentifier": "Assembly-Line-1",
+      "organization": "global-ops"
+    },
+    {
+      "hostname": "HMI-02-SIEMENS",
+      "macAddress": "00:01:05:3D:6F:22",
+      "machineIdentifier": "Packing-Unit-A",
+      "organization": "eu-mfg"
+    }
+  ]
+}

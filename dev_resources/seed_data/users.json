@@ -1,0 +1,20 @@
+{
+  "organizations": [
+    { "name": "Global Operations", "slug": "global-ops" },
+    { "name": "European Manufacturing", "slug": "eu-mfg" }
+  ],
+  "users": [
+    {
+      "name": "Liam Smith",
+      "email": "liam.smith@heimdall.dev",
+      "role": "admin",
+      "organizations": ["global-ops", "eu-mfg"]
+    },
+    {
+      "name": "Olivia Brown",
+      "email": "olivia.brown@heimdall.dev",
+      "role": "manager",
+      "organizations": ["eu-mfg"]
+    }
+  ]
+}
