@@ -1,0 +1,14 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+COPY requirements.simulator.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the proto file and generated python files, as well as the simulator script
+COPY shared/App.Shared/Protos/system_info.proto .
+COPY system_info_pb2.py .
+COPY system_info_pb2_grpc.py .
+COPY simulate_pcs.py .
+
+ENTRYPOINT ["python", "-u", "simulate_pcs.py"]

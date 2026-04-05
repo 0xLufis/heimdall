@@ -4,14 +4,15 @@ import random
 import datetime
 import argparse
 import sys
+import json
+import os
 from google.protobuf.timestamp_pb2 import Timestamp
 
 import system_info_pb2
 import system_info_pb2_grpc
 
 # Configuration
-GRPC_HOST = 'localhost:5001'
-
+GRPC_HOST = os.environ.get('GRPC_HOST', 'localhost:5001')
 # Sample data for simulation
 CLIENTS = {
     f"ROBOT-CELL-{i:02d}": {
