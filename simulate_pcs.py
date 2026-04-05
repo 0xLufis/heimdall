@@ -70,6 +70,11 @@ def simulate_single_client(client_hostname: str):
                     software_config=system_info_pb2.SoftwareConfig(
                         os_version=client["os"],
                         installed_packages=client["packages"]
+                    ),
+                    disk_info=system_info_pb2.DiskInfo(
+                        total_free_gb=120.5,
+                        os_drive_free_gb=45.2,
+                        drives={"C:": 45.2, "D:": 75.3} if "Windows" in client["os"] else {"/": 45.2, "/var": 75.3}
                     )
                 )
                 
@@ -113,6 +118,11 @@ def simulate_all_clients():
                         software_config=system_info_pb2.SoftwareConfig(
                             os_version=client["os"],
                             installed_packages=client["packages"]
+                        ),
+                        disk_info=system_info_pb2.DiskInfo(
+                            total_free_gb=120.5,
+                            os_drive_free_gb=45.2,
+                            drives={"C:": 45.2, "D:": 75.3} if "Windows" in client["os"] else {"/": 45.2, "/var": 75.3}
                         )
                     )
                     

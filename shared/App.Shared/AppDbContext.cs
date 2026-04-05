@@ -21,9 +21,9 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<ClientPc> ClientPcs { get; set; }
     /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Component"/> entities.
+    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="InventoryComponent"/> entities.
     /// </summary>
-    public DbSet<Component> Components { get; set; }
+    public DbSet<InventoryComponent> InventoryComponents { get; set; }
     /// <summary>
     /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="FloorPlan"/> entities.
     /// </summary>
@@ -32,14 +32,6 @@ public class AppDbContext : DbContext
     /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Machine"/> entities.
     /// </summary>
     public DbSet<Machine> Machines { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="SoftwareComponent"/> entities.
-    /// </summary>
-    public DbSet<SoftwareComponent> SoftwareComponents { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="HardwareComponent"/> entities.
-    /// </summary>
-    public DbSet<HardwareComponent> HardwareComponents { get; set; }
     /// <summary>
     /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="UserRole"/> entities.
     /// </summary>
@@ -111,16 +103,18 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Name).IsUnique();
         });
 
-        // Configure HardwareComponent
-        modelBuilder.Entity<HardwareComponent>(entity =>
+        // Configure InventoryComponent
+        modelBuilder.Entity<InventoryComponent>(entity =>
         {
             if (!isInMemory)
             {
-                entity.Property(e => e.TechnicalSpecs).HasColumnType("jsonb");
+                entity.Property(e => e.TopLevelFlags).HasColumnType("jsonb");
+                entity.Property(e => e.Data).HasColumnType("jsonb");
             }
             else
             {
-                entity.Ignore(e => e.TechnicalSpecs);
+                entity.Ignore(e => e.TopLevelFlags);
+                entity.Ignore(e => e.Data);
             }
             
             entity.HasOne(e => e.Manufacturer)
@@ -133,44 +127,33 @@ public class AppDbContext : DbContext
                   .HasForeignKey(e => e.SupplierId)
                   .OnDelete(DeleteBehavior.Restrict);
 
-            // Recursive relationship
+            // Recursive relationship (Tree)
             entity.HasOne(e => e.Parent)
                   .WithMany(e => e.Children)
-                  .HasForeignKey(e => e.ParentId);
-        });
+                  .HasForeignKey(e => e.ParentId)
+                  .OnDelete(DeleteBehavior.Cascade);
 
-        // Configure SoftwareComponent
-        modelBuilder.Entity<SoftwareComponent>(entity =>
-        {
-            entity.HasOne(e => e.Manufacturer)
+            // Lateral Link
+            entity.HasOne(e => e.LateralLink)
                   .WithMany()
-                  .HasForeignKey(e => e.ManufacturerId)
-                  .OnDelete(DeleteBehavior.Restrict);
+                  .HasForeignKey(e => e.LateralLinkId)
+                  .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasOne(e => e.Supplier)
-                  .WithMany()
-                  .HasForeignKey(e => e.SupplierId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Recursive relationship
-            entity.HasOne(e => e.Parent)
-                  .WithMany(e => e.Children)
-                  .HasForeignKey(e => e.ParentId);
+            // Associations
+            entity.HasOne(e => e.Machine)
+                  .WithMany(m => m.Components)
+                  .HasForeignKey(e => e.MachineId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ClientPc)
+                  .WithMany(c => c.Components)
+                  .HasForeignKey(e => e.ClientPcId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Configure Machine
         modelBuilder.Entity<Machine>(entity =>
         {
-            if (!isInMemory)
-            {
-                entity.Property(e => e.HwComponents).HasColumnType("jsonb");
-                entity.Property(e => e.SwComponents).HasColumnType("jsonb");
-            }
-            else
-            {
-                entity.Ignore(e => e.HwComponents);
-                entity.Ignore(e => e.SwComponents);
-            }
             entity.HasIndex(e => e.CustomIdentifier).IsUnique();
         });
 
@@ -189,19 +172,21 @@ public class AppDbContext : DbContext
         {
             if (!isInMemory)
             {
-                entity.Property(e => e.HardwareConfig).HasColumnType("jsonb");
-                entity.Property(e => e.SoftwareConfig).HasColumnType("jsonb");
                 entity.Property(e => e.CustomDataPoints).HasColumnType("jsonb");
                 entity.Property(e => e.Predecessors).HasColumnType("jsonb");
+                entity.Property(e => e.FreeDiskSpace).HasColumnType("jsonb");
+                entity.Property(e => e.MonitoringConfig).HasColumnType("jsonb");
+                entity.Property(e => e.ResourceAverages).HasColumnType("jsonb");
+                entity.Property(e => e.AlertingLimits).HasColumnType("jsonb");
             }
             else
             {
                 entity.Ignore(e => e.CustomDataPoints);
                 entity.Ignore(e => e.Predecessors);
-                // When in-memory, we must explicitly tell EF they are owned types 
-                // because they don't have PKs and aren't automatically mapped as JSONB
-                entity.OwnsOne(e => e.HardwareConfig);
-                entity.OwnsOne(e => e.SoftwareConfig);
+                entity.Ignore(e => e.FreeDiskSpace);
+                entity.Ignore(e => e.MonitoringConfig);
+                entity.Ignore(e => e.ResourceAverages);
+                entity.Ignore(e => e.AlertingLimits);
             }
 
             // Relationships
@@ -242,17 +227,25 @@ public class AppDbContext : DbContext
             entity.HasNoKey();
         });
 
-        // Configure JSONB column for Components
-        modelBuilder.Entity<Component>(entity =>
+        modelBuilder.Entity<DiskSpaceInfo>(entity =>
         {
-            if (!isInMemory)
-            {
-                entity.Property(e => e.AdminManagedFields).HasColumnType("jsonb");
-            }
-            else
-            {
-                entity.Ignore(e => e.AdminManagedFields);
-            }
+            entity.HasNoKey();
         });
+
+        modelBuilder.Entity<ResourceMonitoringConfig>(entity =>
+        {
+            entity.HasNoKey();
+        });
+
+        modelBuilder.Entity<ResourceAverages>(entity =>
+        {
+            entity.HasNoKey();
+        });
+
+        modelBuilder.Entity<AlertingLimits>(entity =>
+        {
+            entity.HasNoKey();
+        });
+
     }
 }

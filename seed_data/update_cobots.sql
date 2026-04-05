@@ -1,7 +1,7 @@
-UPDATE hardware_components 
+UPDATE backend.inventory_components 
 SET name = REPLACE(name, 'Cobot', 'Industrial Robot')
 WHERE name LIKE '%Cobot%';
 
-UPDATE hardware_components
-SET technical_specs = jsonb_set(technical_specs, '{Category}', '"Industrial Robot"')
-WHERE technical_specs->>'Category' = 'Cobot';
+UPDATE backend.inventory_components
+SET top_level_flags = jsonb_set(top_level_flags, '{type}', '"robot"')
+WHERE top_level_flags->>'type' = 'cobot';

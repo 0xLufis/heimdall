@@ -5,23 +5,82 @@ using System.Linq;
 using System.Management;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
-using App.Shared.Entities;
 
 namespace App.Agent.Daemon;
 
+public class SystemInfoData
+{
+    public string Hostname { get; set; } = string.Empty;
+    public string MachineIdentifier { get; set; } = string.Empty;
+    public string MacAddress { get; set; } = string.Empty;
+    public DateTimeOffset LastOnline { get; set; }
+    public HardwareInfo Hardware { get; set; } = new();
+    public SoftwareInfo Software { get; set; } = new();
+    public DiskData Disk { get; set; } = new();
+}
+
+public class DiskData
+{
+    public double TotalFreeGB { get; set; }
+    public double OsDriveFreeGB { get; set; }
+    public Dictionary<string, double> Drives { get; set; } = new();
+}
+
+public class HardwareInfo
+{
+    public string Cpu { get; set; } = string.Empty;
+    public string Ram { get; set; } = string.Empty;
+    public string Storage { get; set; } = string.Empty;
+}
+
+public class SoftwareInfo
+{
+    public string OsVersion { get; set; } = string.Empty;
+    public List<string> InstalledPackages { get; set; } = new();
+}
+
 public class SystemInfoService
 {
-    public ClientPc GetSystemInfo()
+    public SystemInfoData GetSystemInfo()
     {
-        return new ClientPc
+        return new SystemInfoData
         {
             Hostname = Environment.MachineName,
             MachineIdentifier = GetMachineIdentifier(),
             MacAddress = GetMacAddress(),
             LastOnline = DateTimeOffset.UtcNow,
-            HardwareConfig = GetHardwareConfig(),
-            SoftwareConfig = GetSoftwareConfig()
+            Hardware = GetHardwareConfig(),
+            Software = GetSoftwareConfig(),
+            Disk = GetDiskConfig()
         };
+    }
+
+    private DiskData GetDiskConfig()
+    {
+        var data = new DiskData();
+        try
+        {
+            var drives = DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed);
+            foreach (var drive in drives)
+            {
+                double freeGB = Math.Round(drive.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0), 2);
+                data.Drives[drive.Name] = freeGB;
+                data.TotalFreeGB += freeGB;
+
+                // Identify OS drive
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && drive.Name.StartsWith("C:", StringComparison.OrdinalIgnoreCase))
+                {
+                    data.OsDriveFreeGB = freeGB;
+                }
+                else if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && (drive.Name == "/" || drive.Name == "root"))
+                {
+                    data.OsDriveFreeGB = freeGB;
+                }
+            }
+            data.TotalFreeGB = Math.Round(data.TotalFreeGB, 2);
+        }
+        catch { }
+        return data;
     }
 
     private string GetMachineIdentifier()
@@ -57,9 +116,9 @@ public class SystemInfoService
         return "00:00:00:00:00:00";
     }
 
-    private HardwareConfig GetHardwareConfig()
+    private HardwareInfo GetHardwareConfig()
     {
-        var config = new HardwareConfig();
+        var config = new HardwareInfo();
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -105,9 +164,9 @@ public class SystemInfoService
         return config;
     }
 
-    private SoftwareConfig GetSoftwareConfig()
+    private SoftwareInfo GetSoftwareConfig()
     {
-        return new SoftwareConfig
+        return new SoftwareInfo
         {
             OsVersion = RuntimeInformation.OSDescription,
             InstalledPackages = GetInstalledPackages()
@@ -116,10 +175,8 @@ public class SystemInfoService
 
     private List<string> GetInstalledPackages()
     {
-        // TODO: Implement real package scanning (e.g. Registry on Windows, dpkg/rpm on Linux)
         var packages = new List<string>();
         
-        // This is a placeholder for real FS logic
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
@@ -130,7 +187,6 @@ public class SystemInfoService
         }
         else
         {
-            // On Linux, maybe check /usr/bin or something
             if (Directory.Exists("/usr/bin"))
             {
                  packages.AddRange(Directory.GetFiles("/usr/bin").Select(Path.GetFileName).Take(10)!);

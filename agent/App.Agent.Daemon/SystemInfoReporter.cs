@@ -21,31 +21,44 @@ public class SystemInfoReporter
         _client = new SystemInfoCollector.SystemInfoCollectorClient(channel);
     }
 
-    public async Task ReportInfoAsync(ClientPc pc)
+    public async Task ReportInfoAsync(SystemInfoData data)
     {
         try
         {
             var request = new SystemInfoRequest
             {
-                Hostname = pc.Hostname,
-                MachineIdentifier = pc.MachineIdentifier,
-                MacAddress = pc.MacAddress,
-                LastOnline = Timestamp.FromDateTimeOffset(pc.LastOnline ?? DateTimeOffset.UtcNow),
+                Hostname = data.Hostname,
+                MachineIdentifier = data.MachineIdentifier,
+                MacAddress = data.MacAddress,
+                LastOnline = Timestamp.FromDateTimeOffset(data.LastOnline),
                 HardwareConfig = new App.Shared.Protos.HardwareConfig
                 {
-                    Cpu = pc.HardwareConfig.Cpu,
-                    Ram = pc.HardwareConfig.Ram,
-                    Storage = pc.HardwareConfig.Storage
+                    Cpu = data.Hardware.Cpu,
+                    Ram = data.Hardware.Ram,
+                    Storage = data.Hardware.Storage
                 },
                 SoftwareConfig = new App.Shared.Protos.SoftwareConfig
                 {
-                    OsVersion = pc.SoftwareConfig.OsVersion
+                    OsVersion = data.Software.OsVersion
+                },
+                DiskInfo = new DiskInfo
+                {
+                    TotalFreeGb = data.Disk.TotalFreeGB,
+                    OsDriveFreeGb = data.Disk.OsDriveFreeGB
                 }
             };
 
-            if (pc.SoftwareConfig.InstalledPackages != null)
+            if (data.Disk.Drives != null)
             {
-                foreach (var pkg in pc.SoftwareConfig.InstalledPackages)
+                foreach (var drive in data.Disk.Drives)
+                {
+                    request.DiskInfo.Drives.Add(drive.Key, drive.Value);
+                }
+            }
+
+            if (data.Software.InstalledPackages != null)
+            {
+                foreach (var pkg in data.Software.InstalledPackages)
                 {
                     request.SoftwareConfig.InstalledPackages.Add(pkg);
                 }

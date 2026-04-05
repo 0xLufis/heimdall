@@ -46,16 +46,44 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
                 MachineIdentifier = request.MachineIdentifier,
                 MacAddress = request.MacAddress,
                 LastOnline = request.LastOnline.ToDateTimeOffset(),
-                HardwareConfig = new App.Shared.Entities.HardwareConfig
+                FreeDiskSpace = request.DiskInfo != null ? new DiskSpaceInfo
                 {
-                    Cpu = request.HardwareConfig.Cpu,
-                    Ram = request.HardwareConfig.Ram,
-                    Storage = request.HardwareConfig.Storage
-                },
-                SoftwareConfig = new App.Shared.Entities.SoftwareConfig
+                    TotalFreeGB = request.DiskInfo.TotalFreeGb,
+                    OsDriveFreeGB = request.DiskInfo.OsDriveFreeGb,
+                    Drives = request.DiskInfo.Drives.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
+                } : null,
+                Components = new List<InventoryComponent>
                 {
-                    OsVersion = request.SoftwareConfig.OsVersion,
-                    InstalledPackages = request.SoftwareConfig.InstalledPackages.ToList()
+                    new InventoryComponent 
+                    { 
+                        Name = "Hardware", 
+                        Technology = "Agent",
+                        TopLevelFlags = new ComponentTopLevelFlags { Type = "hardware" },
+                        Data = System.Text.Json.JsonSerializer.SerializeToDocument(new 
+                        {
+                            Cpu = request.HardwareConfig.Cpu,
+                            Ram = request.HardwareConfig.Ram,
+                            Storage = request.HardwareConfig.Storage
+                        })
+                    },
+                    new InventoryComponent 
+                    { 
+                        Name = "Software", 
+                        Technology = "Agent",
+                        TopLevelFlags = new ComponentTopLevelFlags { Type = "software" },
+                        Data = System.Text.Json.JsonSerializer.SerializeToDocument(new 
+                        {
+                            OsVersion = request.SoftwareConfig.OsVersion,
+                            InstalledPackages = request.SoftwareConfig.InstalledPackages.ToList()
+                        })
+                    },
+                    new InventoryComponent 
+                    { 
+                        Name = "Peripherals", 
+                        Technology = "Agent",
+                        TopLevelFlags = new ComponentTopLevelFlags { Type = "peripherals" },
+                        Data = System.Text.Json.JsonSerializer.SerializeToDocument(new { })
+                    }
                 }
             };
 

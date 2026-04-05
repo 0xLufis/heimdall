@@ -21,7 +21,7 @@ public class Worker : BackgroundService
             {
                 var systemInfo = _systemInfoService.GetSystemInfo();
                 _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-                _logger.LogInformation("System Info: {Hostname}, OS: {OsVersion}", systemInfo.Hostname, systemInfo.SoftwareConfig.OsVersion);
+                _logger.LogInformation("System Info: {Hostname}, OS: {OsVersion}", systemInfo.Hostname, systemInfo.Software.OsVersion);
 
                 // Report via gRPC
                 await _systemInfoReporter.ReportInfoAsync(systemInfo);

@@ -44,6 +44,8 @@ public class ClientPcController : ControllerBase
     {
         var pcs = await dbContext.ClientPcs
             .Include(c => c.Machines)
+            .Include(c => c.Components)
+                .ThenInclude(comp => comp.Children)
             .ToListAsync();
         return Ok(pcs);
     }

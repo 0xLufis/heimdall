@@ -61,7 +61,7 @@ public class Supplier
 }
 
 /// <summary>
-/// Represents a physical machine that can be associated with Client PCs.
+/// Represents a physical production machine.
 /// </summary>
 public class Machine
 {
@@ -76,353 +76,291 @@ public class Machine
     public string? OrganizationId { get; set; }
 
     /// <summary>
-    /// Gets or sets a custom identifier for the machine, e.g., "Assembly Line 1". This field is required and has a maximum length of 255 characters.
-    /// </summary>    [Required]
-    [MaxLength(255)]
+    /// Gets or sets a custom identifier for the machine, e.g., "Assembly Line 1".
+    /// </summary>
+    [Required, MaxLength(255)]
     public string CustomIdentifier { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the hardware components of the machine as a JSONB document.
+    /// Gets or sets a handle to an object on a floor plan (e.g., DXF handle).
     /// </summary>
-    public JsonDocument? HwComponents { get; set; }
-    /// <summary>
-    /// Gets or sets the software components of the machine as a JSONB document.
-    /// </summary>
-    public JsonDocument? SwComponents { get; set; }
+    public string? PinnedObjectHandle { get; set; }
 
     /// <summary>
-    /// Gets or sets a handle to an object on a floor plan (e.g., DXF handle) to pinpoint the machine's location.
-    /// </summary>
-    public string? PinnedObjectHandle { get; set; } // Reference to a DXF handle
-
-    /// <summary>
-    /// Gets or sets the list of <see cref="ClientPc"/> entities associated with this machine (many-to-many relationship).
+    /// Gets or sets the list of <see cref="ClientPc"/> entities that control this machine.
     /// </summary>
     public List<ClientPc> ClientPcs { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the list of top-level hardware components associated with this machine.
+    /// </summary>
+    public List<InventoryComponent> Components { get; set; } = new();
 }
 
 /// <summary>
-/// Represents a software component in the inventory.
+/// Represents flags for top-level inventory components, stored as JSONB.
 /// </summary>
-public class SoftwareComponent
+public class ComponentTopLevelFlags
 {
     /// <summary>
-    /// Gets or sets the unique identifier for the software component.
+    /// Gets or sets the type of the component (e.g., "controlling", "sensor", "vision").
     /// </summary>
-    public Guid Id { get; set; }
+    public string? Type { get; set; } // controlling, sensor, vision, screwing, coating, dispensing
     
     /// <summary>
-    /// Gets or sets the foreign key to the <see cref="Manufacturer"/> of the software.
+    /// Gets or sets the owner of the component (e.g., "in-house", "outsourced", "mixed").
     /// </summary>
-    public Guid? ManufacturerId { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="Manufacturer"/> of the software.
-    /// </summary>
-    public Manufacturer? Manufacturer { get; set; }
+    public string? Owner { get; set; } // in-house, outsourced, mixed
     
     /// <summary>
-    /// Gets or sets the name of the software component. This field is required and has a maximum length of 255 characters.
+    /// Gets or sets a dictionary for any additional custom flags.
     /// </summary>
-    [Required]
-    [MaxLength(255)]
-    public string Name { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets the version of the software.
-    /// </summary>
-    public string? Version { get; set; }
-    /// <summary>
-    /// Gets or sets a description of the software component.
-    /// </summary>
-    public string? Description { get; set; }
-    /// <summary>
-    /// Gets or sets the date the software was purchased.
-    /// </summary>
-    public DateTimeOffset? PurchaseDate { get; set; }
-    /// <summary>
-    /// Gets or sets the serial number of the software license.
-    /// </summary>
-    public string? SerialNumber { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the foreign key to the <see cref="Supplier"/> of the software.
-    /// </summary>
-    public Guid? SupplierId { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="Supplier"/> of the software.
-    /// </summary>
-    public Supplier? Supplier { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the cost of the software in Hungarian Forints (HUF).
-    /// </summary>
-    public decimal? CostInHUF { get; set; }
-
-    // --- Recursive Relationship ---
-    /// <summary>
-    /// Gets or sets the foreign key to the parent software component.
-    /// </summary>
-    public Guid? ParentId { get; set; }
-    /// <summary>
-    /// Gets or sets the parent software component.
-    /// </summary>
-    public SoftwareComponent? Parent { get; set; }
-    /// <summary>
-    /// Gets or sets the list of child software components.
-    /// </summary>
-    public List<SoftwareComponent> Children { get; set; } = new();
+    public Dictionary<string, object>? CustomFlags { get; set; }
 }
 
 /// <summary>
-/// Represents a hardware component in the inventory.
+/// Represents a unified inventory component (Hardware, Software, or Peripheral).
+/// Components form a recursive tree structure and can be linked laterally.
 /// </summary>
-public class HardwareComponent
+public class InventoryComponent
 {
     /// <summary>
-    /// Gets or sets the unique identifier for the hardware component.
+    /// Gets or sets the unique identifier for the inventory component.
     /// </summary>
     public Guid Id { get; set; }
-    
+
     /// <summary>
-    /// Gets or sets the foreign key to the <see cref="Manufacturer"/> of the hardware.
+    /// Gets or sets the full searchable name of the component.
+    /// </summary>
+    [Required, MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the user-friendly display name.
+    /// </summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the quantity of this component.
+    /// </summary>
+    public decimal Quantity { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the identifier of the entity that created this record.
+    /// </summary>
+    public string? EntityCreator { get; set; }
+
+    /// <summary>
+    /// Gets or sets the identifier of the entity that last updated this record.
+    /// </summary>
+    public string? EntityUpdater { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost center associated with this component.
+    /// </summary>
+    public string? CostCenter { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Organizational Unit (OU) for the cost center (e.g., logistics, engineering).
+    /// </summary>
+    public string? CostCenterOU { get; set; }
+
+    /// <summary>
+    /// Gets or sets the team responsible for this component.
+    /// </summary>
+    public string? Technology { get; set; }
+
+    /// <summary>
+    /// Gets or sets top-level flags for searching and categorization, stored as JSONB.
+    /// </summary>
+    public ComponentTopLevelFlags? TopLevelFlags { get; set; }
+
+    /// <summary>
+    /// Gets or sets a generic JSONB object for flexible component data.
+    /// </summary>
+    public JsonDocument? Data { get; set; }
+
+    /// <summary>
+    /// Gets or sets the manufacturer of the component.
     /// </summary>
     public Guid? ManufacturerId { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="Manufacturer"/> of the hardware.
-    /// </summary>
     public Manufacturer? Manufacturer { get; set; }
-    
+
     /// <summary>
-    /// Gets or sets the name of the hardware component. This field is required and has a maximum length of 255 characters.
-    /// </summary>
-    [Required]
-    [MaxLength(255)]
-    public string Name { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets the model number of the hardware.
-    /// </summary>
-    public string? ModelNumber { get; set; }
-    /// <summary>
-    /// Gets or sets the revision of the hardware.
-    /// </summary>
-    public string? Revision { get; set; }
-    /// <summary>
-    /// Gets or sets a description of the hardware component.
-    /// </summary>
-    public string? Description { get; set; }
-    /// <summary>
-    /// Gets or sets the date the hardware was purchased.
-    /// </summary>
-    public DateTimeOffset? PurchaseDate { get; set; }
-    /// <summary>
-    /// Gets or sets the serial number of the hardware.
-    /// </summary>
-    public string? SerialNumber { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the foreign key to the <see cref="Supplier"/> of the hardware.
+    /// Gets or sets the supplier of the component.
     /// </summary>
     public Guid? SupplierId { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="Supplier"/> of the hardware.
-    /// </summary>
     public Supplier? Supplier { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the cost of the hardware in Hungarian Forints (HUF).
-    /// </summary>
-    public decimal? CostInHUF { get; set; }
 
+    // --- Tree Structure ---
     /// <summary>
-    /// Gets or sets the technical specifications of the hardware component as a strongly-typed JSONB object.
-    /// </summary>
-    public ComponentTechnicalSpecs? TechnicalSpecs { get; set; }
-
-    // --- Recursive Relationship ---
-    /// <summary>
-    /// Gets or sets the foreign key to the parent hardware component.
+    /// Gets or sets the parent component ID.
     /// </summary>
     public Guid? ParentId { get; set; }
+    public InventoryComponent? Parent { get; set; }
+    public List<InventoryComponent> Children { get; set; } = new();
+
+    // --- Lateral Links ---
     /// <summary>
-    /// Gets or sets the parent hardware component.
+    /// Gets or sets an optional link to another component at the same or different level.
     /// </summary>
-    public HardwareComponent? Parent { get; set; }
+    public Guid? LateralLinkId { get; set; }
+    public InventoryComponent? LateralLink { get; set; }
+
+    // --- Associations ---
     /// <summary>
-    /// Gets or sets the list of child hardware components.
+    /// Gets or sets the ID of the Machine this component belongs to (optional).
     /// </summary>
-    public List<HardwareComponent> Children { get; set; } = new();
+    public Guid? MachineId { get; set; }
+    public Machine? Machine { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ID of the ClientPc this component belongs to (optional).
+    /// </summary>
+    public Guid? ClientPcId { get; set; }
+    public ClientPc? ClientPc { get; set; }
 }
 
-/// <summary>
-/// Represents technical specifications for a component, stored as a JSONB object.
-/// </summary>
+// --- LEGACY ENTITIES (Satisfy Migrations) ---
+
 public class ComponentTechnicalSpecs
 {
-    /// <summary>
-    /// Gets or sets the categories of the component (e.g., "Sensor", "Screwdriver", "Controller").
-    /// </summary>
     public List<string> Categories { get; set; } = new();
-    
-    // Vision Sensors (Keyence etc)
-    /// <summary>
-    /// Gets or sets the resolution for vision sensors.
-    /// </summary>
     public string? Resolution { get; set; }
-    /// <summary>
-    /// Gets or sets the frame rate for vision sensors.
-    /// </summary>
     public string? FrameRate { get; set; }
-    /// <summary>
-    /// Gets or sets the interface type for vision sensors (e.g., "Ethernet/IP", "Profinet").
-    /// </summary>
-    public string? InterfaceType { get; set; } // Ethernet/IP, Profinet
-    
-    // Proximity Sensors
-    /// <summary>
-    /// Gets or sets the sensing distance for proximity sensors.
-    /// </summary>
+    public string? InterfaceType { get; set; }
     public string? SensingDistance { get; set; }
-    /// <summary>
-    /// Gets or sets the output type for proximity sensors (e.g., "PNP/NPN", "NO/NC").
-    /// </summary>
-    public string? OutputType { get; set; } // PNP/NPN, NO/NC
-    /// <summary>
-    /// Gets or sets the connection type for proximity sensors (e.g., "M8", "M12").
-    /// </summary>
-    public string? ConnectionType { get; set; } // M8, M12
-    
-    // Screwdrivers (Deprag etc)
-    /// <summary>
-    /// Gets or sets the minimum torque for screwdrivers.
-    /// </summary>
+    public string? OutputType { get; set; }
+    public string? ConnectionType { get; set; }
     public double? TorqueMin { get; set; }
-    /// <summary>
-    /// Gets or sets the maximum torque for screwdrivers.
-    /// </summary>
     public double? TorqueMax { get; set; }
-    /// <summary>
-    /// Gets or sets the maximum speed for screwdrivers.
-    /// </summary>
     public int? MaxSpeed { get; set; }
-    
-    // Controllers (AST etc)
-    /// <summary>
-    /// Gets or sets the firmware version for controllers.
-    /// </summary>
     public string? FirmwareVersion { get; set; }
-    /// <summary>
-    /// Gets or sets a list of supported profiles for controllers.
-    /// </summary>
     public List<string>? SupportedProfiles { get; set; }
-    
-    // Generic
-    /// <summary>
-    /// Gets or sets a dictionary of extra, generic attributes for any component type.
-    /// </summary>
     public Dictionary<string, object>? ExtraAttributes { get; set; }
 }
 
-/// <summary>
-/// Represents a user role with a name and associated privileges.
-/// </summary>
-public class UserRole
+public class HardwareComponent
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for the user role.
-    /// </summary>
     public Guid Id { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the name of the role (e.g., "admin", "engineer"). This field is required and has a maximum length of 255 characters.
-    /// </summary>
-    [Required]
-    [MaxLength(255)]
+    public Guid? ManufacturerId { get; set; }
+    public Manufacturer? Manufacturer { get; set; }
     public string Name { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets a list of privileges associated with this role.
-    /// </summary>
-    public List<string> Privileges { get; set; } = new();
+    public string? ModelNumber { get; set; }
+    public string? Revision { get; set; }
+    public string? Description { get; set; }
+    public DateTimeOffset? PurchaseDate { get; set; }
+    public string? SerialNumber { get; set; }
+    public Guid? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+    public decimal? CostInHUF { get; set; }
+    public ComponentTechnicalSpecs? TechnicalSpecs { get; set; }
+    public Guid? ParentId { get; set; }
+    public HardwareComponent? Parent { get; set; }
+    public List<HardwareComponent> Children { get; set; } = new();
+}
+
+public class SoftwareComponent
+{
+    public Guid Id { get; set; }
+    public Guid? ManufacturerId { get; set; }
+    public Manufacturer? Manufacturer { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Version { get; set; }
+    public string? Description { get; set; }
+    public DateTimeOffset? PurchaseDate { get; set; }
+    public string? SerialNumber { get; set; }
+    public Guid? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+    public decimal? CostInHUF { get; set; }
+    public Guid? ParentId { get; set; }
+    public SoftwareComponent? Parent { get; set; }
+    public List<SoftwareComponent> Children { get; set; } = new();
+}
+
+public class HardwareConfig
+{
+    public string Cpu { get; set; } = string.Empty;
+    public string Ram { get; set; } = string.Empty;
+    public string Storage { get; set; } = string.Empty;
+}
+
+public class SoftwareConfig
+{
+    public string OsVersion { get; set; } = string.Empty;
+    public List<string> InstalledPackages { get; set; } = new();
+}
+
+public class Component
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public ComponentType Type { get; set; }
+    public string? Description { get; set; }
+    public JsonDocument? AdminManagedFields { get; set; }
+}
+
+public enum ComponentType
+{
+    Hardware = 0,
+    Software = 1
 }
 
 /// <summary>
-/// Represents a Client PC, collecting system information and linking to physical machines.
+/// Represents a Client PC that reports system data and controls production machines.
 /// </summary>
 public class ClientPc
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for the client PC.
-    /// </summary>
     public Guid Id { get; set; }
-
-    /// <summary>
-    /// Gets or sets the ID of the organization that owns this client PC.
-    /// </summary>
     public string? OrganizationId { get; set; }
 
-    /// <summary>
-    /// Gets or sets the hostname of the client PC. This field is required and has a maximum length of 255 characters.
-    /// </summary>    [Required]
-    [MaxLength(255)]
+    [Required, MaxLength(255)]
     public string Hostname { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Gets or sets a unique identifier for the machine that the client PC reports itself as.
-    /// This is typically a UUID generated by the agent. This field is required and has a maximum length of 255 characters.
-    /// </summary>
-    [Required]
-    [MaxLength(255)]
+    [Required, MaxLength(255)]
     public string MachineIdentifier { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Gets or sets the MAC address of the client PC's primary network interface. This field is required and has a maximum length of 17 characters.
-    /// </summary>
-    [Required]
-    [MaxLength(17)]
+    [Required, MaxLength(17)]
     public string MacAddress { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Gets or sets the timestamp of the last time the client PC reported its status.
-    /// </summary>
     public DateTimeOffset? LastOnline { get; set; }
 
-    // Relationships
     /// <summary>
-    /// Gets or sets the list of <see cref="Machine"/> entities this Client PC is associated with (many-to-many relationship).
+    /// Gets or sets the list of machines controlled by this Client PC.
     /// </summary>
     public List<Machine> Machines { get; set; } = new();
 
-    // JSONB Columns
     /// <summary>
-    /// Gets or sets the hardware configuration of the client PC as a strongly-typed JSONB object.
+    /// Gets or sets top-level inventory components (Hardware, Software, Peripherals).
     /// </summary>
-    public HardwareConfig HardwareConfig { get; set; } = new();
-    /// <summary>
-    /// Gets or sets the software configuration of the client PC as a strongly-typed JSONB object.
-    /// </summary>
-    public SoftwareConfig SoftwareConfig { get; set; } = new();
+    public List<InventoryComponent> Components { get; set; } = new();
 
-    /// <summary>
-    /// Gets or sets dynamic user-defined data points for the client PC, stored as a JSONB document.
-    /// This can include flags, WMIC data, filesystem data, etc.
-    /// </summary>
     public JsonDocument? CustomDataPoints { get; set; }
 
     /// <summary>
-    /// Gets or sets a list of predecessor PCs, stored as a JSONB array of <see cref="PcPredecessor"/> objects.
+    /// Gets or sets the free disk space information.
     /// </summary>
+    public DiskSpaceInfo? FreeDiskSpace { get; set; }
+
+    /// <summary>
+    /// Gets or sets the resource monitoring configuration (sampling, retention).
+    /// </summary>
+    public ResourceMonitoringConfig? MonitoringConfig { get; set; }
+
+    /// <summary>
+    /// Gets or sets the calculated running averages for resources.
+    /// </summary>
+    public ResourceAverages? ResourceAverages { get; set; }
+
+    /// <summary>
+    /// Gets or sets custom alerting limits for the PC.
+    /// </summary>
+    public AlertingLimits? AlertingLimits { get; set; }
+
     public List<PcPredecessor> Predecessors { get; set; } = new();
 
-    // Floor Plan Pinning
-    /// <summary>
-    /// Gets or sets the foreign key to the <see cref="FloorPlan"/> this Client PC is pinned to.
-    /// </summary>
     public Guid? FloorPlanId { get; set; }
-    /// <summary>
-    /// Gets or sets a handle to an object on a floor plan (e.g., DXF handle) to pinpoint the Client PC's location.
-    /// </summary>
-    public string? PinnedObjectHandle { get; set; } // Reference to a DXF handle (e.g., "1A2B")
+    public string? PinnedObjectHandle { get; set; }
 }
 
 /// <summary>
@@ -483,53 +421,26 @@ public class FloorPlanAnchor
 }
 
 /// <summary>
-/// Represents a generic component with a name and type.
+/// Represents a user role with a name and associated privileges.
 /// </summary>
-public class Component
+public class UserRole
 {
     /// <summary>
-    /// Gets or sets the unique identifier for the component.
+    /// Gets or sets the unique identifier for the user role.
     /// </summary>
     public Guid Id { get; set; }
-
+    
     /// <summary>
-    /// Gets or sets the name of the component. This field is required and has a maximum length of 255 characters.
+    /// Gets or sets the name of the role (e.g., "admin", "engineer"). This field is required and has a maximum length of 255 characters.
     /// </summary>
     [Required]
     [MaxLength(255)]
     public string Name { get; set; } = string.Empty;
-
+    
     /// <summary>
-    /// Gets or sets the type of the component (Hardware or Software).
+    /// Gets or sets a list of privileges associated with this role.
     /// </summary>
-    [Required]
-    public ComponentType Type { get; set; }
-
-    /// <summary>
-    /// Gets or sets a description of the component.
-    /// </summary>
-    public string? Description { get; set; }
-
-    /// <summary>
-    /// Gets or sets consistent fields managed by administrators, stored as a JSONB document
-    /// to allow flexible schema evolution.
-    /// </summary>
-    public JsonDocument? AdminManagedFields { get; set; }
-}
-
-/// <summary>
-/// Defines the type of a component.
-/// </summary>
-public enum ComponentType
-{
-    /// <summary>
-    /// Indicates a hardware component.
-    /// </summary>
-    Hardware = 0,
-    /// <summary>
-    /// Indicates a software component.
-    /// </summary>
-    Software = 1
+    public List<string> Privileges { get; set; } = new();
 }
 
 // --- AUTH ENTITIES (Better-Auth) ---
@@ -728,43 +639,6 @@ public class AuthSession
 /// <summary>
 /// Represents the hardware configuration of a Client PC, stored as a JSONB object.
 /// </summary>
-public class HardwareConfig
-{
-    /// <summary>
-    /// Gets or sets the CPU model of the client PC.
-    /// </summary>
-    public string Cpu { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the RAM size of the client PC.
-    /// </summary>
-    public string Ram { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the storage capacity of the client PC.
-    /// </summary>
-    public string Storage { get; set; } = string.Empty;
-    // Add other predictable HW properties here
-}
-
-/// <summary>
-/// Represents the software configuration of a Client PC, stored as a JSONB object.
-/// </summary>
-public class SoftwareConfig
-{
-    /// <summary>
-    /// Gets or sets the operating system version of the client PC.
-    /// </summary>
-    public string OsVersion { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets a list of installed software packages on the client PC.
-    /// </summary>
-    public List<string> InstalledPackages { get; set; } = new();
-    // Add other predictable SW properties here
-}
-
-/// <summary>
-/// Represents a predecessor Client PC, used for tracking changes or replacements.
-/// Stored as an item in a JSONB array within <see cref="ClientPc.Predecessors"/>.
-/// </summary>
 public class PcPredecessor
 {
     /// <summary>
@@ -775,4 +649,32 @@ public class PcPredecessor
     /// Gets or sets the serial number of the predecessor PC.
     /// </summary>
     public string SerialNumber { get; set; } = string.Empty;
+}
+
+public class DiskSpaceInfo
+{
+    public double TotalFreeGB { get; set; }
+    public double OsDriveFreeGB { get; set; }
+    public Dictionary<string, double> Drives { get; set; } = new();
+}
+
+public class ResourceMonitoringConfig
+{
+    public int SamplingIntervalSeconds { get; set; } = 60;
+    public int RetentionDays { get; set; } = 30;
+}
+
+public class ResourceAverages
+{
+    public double CpuUsageAverage { get; set; }
+    public double RamUsageAverage { get; set; }
+    public double DiskIoAverage { get; set; }
+    public DateTimeOffset LastCalculated { get; set; }
+}
+
+public class AlertingLimits
+{
+    public double CpuThreshold { get; set; } = 90.0;
+    public double RamThreshold { get; set; } = 90.0;
+    public double DiskFreeSpaceMinGB { get; set; } = 10.0;
 }

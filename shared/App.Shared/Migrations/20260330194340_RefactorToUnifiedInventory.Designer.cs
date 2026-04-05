@@ -6,6 +6,7 @@ using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -14,9 +15,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace App.Shared.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260330194340_RefactorToUnifiedInventory")]
+    partial class RefactorToUnifiedInventory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -25,23 +28,6 @@ namespace App.Shared.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("App.Shared.Entities.AlertingLimits", b =>
-                {
-                    b.Property<double>("CpuThreshold")
-                        .HasColumnType("double precision")
-                        .HasColumnName("cpu_threshold");
-
-                    b.Property<double>("DiskFreeSpaceMinGB")
-                        .HasColumnType("double precision")
-                        .HasColumnName("disk_free_space_min_gb");
-
-                    b.Property<double>("RamThreshold")
-                        .HasColumnType("double precision")
-                        .HasColumnName("ram_threshold");
-
-                    b.ToTable("alerting_limits", "backend");
-                });
 
             modelBuilder.Entity("App.Shared.Entities.AuthMember", b =>
                 {
@@ -239,10 +225,6 @@ namespace App.Shared.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<AlertingLimits>("AlertingLimits")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("alerting_limits");
-
                     b.Property<JsonDocument>("CustomDataPoints")
                         .HasColumnType("jsonb")
                         .HasColumnName("custom_data_points");
@@ -250,10 +232,6 @@ namespace App.Shared.Migrations
                     b.Property<Guid?>("FloorPlanId")
                         .HasColumnType("uuid")
                         .HasColumnName("floor_plan_id");
-
-                    b.Property<DiskSpaceInfo>("FreeDiskSpace")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("free_disk_space");
 
                     b.Property<string>("Hostname")
                         .IsRequired()
@@ -277,10 +255,6 @@ namespace App.Shared.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("machine_identifier");
 
-                    b.Property<ResourceMonitoringConfig>("MonitoringConfig")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("monitoring_config");
-
                     b.Property<string>("OrganizationId")
                         .HasColumnType("text")
                         .HasColumnName("organization_id");
@@ -293,10 +267,6 @@ namespace App.Shared.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("predecessors");
-
-                    b.Property<ResourceAverages>("ResourceAverages")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("resource_averages");
 
                     b.HasKey("Id")
                         .HasName("pk_client_pcs");
@@ -316,19 +286,6 @@ namespace App.Shared.Migrations
                         .HasDatabaseName("ix_client_pcs_pinned_object_handle");
 
                     b.ToTable("client_pcs", "backend");
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.DiskSpaceInfo", b =>
-                {
-                    b.Property<double>("OsDriveFreeGB")
-                        .HasColumnType("double precision")
-                        .HasColumnName("os_drive_free_gb");
-
-                    b.Property<double>("TotalFreeGB")
-                        .HasColumnType("double precision")
-                        .HasColumnName("total_free_gb");
-
-                    b.ToTable("disk_space_info", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.FloorPlan", b =>
@@ -401,29 +358,9 @@ namespace App.Shared.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("client_pc_id");
 
-                    b.Property<string>("CostCenter")
-                        .HasColumnType("text")
-                        .HasColumnName("cost_center");
-
-                    b.Property<string>("CostCenterOU")
-                        .HasColumnType("text")
-                        .HasColumnName("cost_center_ou");
-
                     b.Property<JsonDocument>("Data")
                         .HasColumnType("jsonb")
                         .HasColumnName("data");
-
-                    b.Property<string>("DisplayName")
-                        .HasColumnType("text")
-                        .HasColumnName("display_name");
-
-                    b.Property<string>("EntityCreator")
-                        .HasColumnType("text")
-                        .HasColumnName("entity_creator");
-
-                    b.Property<string>("EntityUpdater")
-                        .HasColumnType("text")
-                        .HasColumnName("entity_updater");
 
                     b.Property<Guid?>("LateralLinkId")
                         .HasColumnType("uuid")
@@ -446,10 +383,6 @@ namespace App.Shared.Migrations
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid")
                         .HasColumnName("parent_id");
-
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("numeric")
-                        .HasColumnName("quantity");
 
                     b.Property<Guid?>("SupplierId")
                         .HasColumnType("uuid")
@@ -562,40 +495,6 @@ namespace App.Shared.Migrations
                         .HasColumnName("serial_number");
 
                     b.ToTable("pc_predecessor", "backend");
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.ResourceAverages", b =>
-                {
-                    b.Property<double>("CpuUsageAverage")
-                        .HasColumnType("double precision")
-                        .HasColumnName("cpu_usage_average");
-
-                    b.Property<double>("DiskIoAverage")
-                        .HasColumnType("double precision")
-                        .HasColumnName("disk_io_average");
-
-                    b.Property<DateTimeOffset>("LastCalculated")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_calculated");
-
-                    b.Property<double>("RamUsageAverage")
-                        .HasColumnType("double precision")
-                        .HasColumnName("ram_usage_average");
-
-                    b.ToTable("resource_averages", "backend");
-                });
-
-            modelBuilder.Entity("App.Shared.Entities.ResourceMonitoringConfig", b =>
-                {
-                    b.Property<int>("RetentionDays")
-                        .HasColumnType("integer")
-                        .HasColumnName("retention_days");
-
-                    b.Property<int>("SamplingIntervalSeconds")
-                        .HasColumnType("integer")
-                        .HasColumnName("sampling_interval_seconds");
-
-                    b.ToTable("resource_monitoring_config", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.Supplier", b =>
