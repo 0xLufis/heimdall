@@ -1,0 +1,9 @@
+ezdxf==1.4.3
+fonttools==4.62.1
+grpcio==1.78.0
+grpcio-tools==1.78.0
+numpy==2.4.3
+protobuf==6.33.5
+pyparsing==3.3.2
+setuptools==82.0.1
+typing_extensions==4.15.0
