@@ -15,26 +15,21 @@ message SystemInfoRequest {
   string machine_identifier = 2;
   string mac_address = 3;
   google.protobuf.Timestamp last_online = 4;
-  HardwareConfig hardware_config = 5;
-  SoftwareConfig software_config = 6;
-  DiskInfo disk_info = 7;
+  DiskInfo disk_info = 5;
+  repeated InventoryComponent components = 6;
+}
+
+message InventoryComponent {
+  string name = 1;
+  string technology = 2;
+  string type = 3;
+  string data_json = 4;
 }
 
 message DiskInfo {
   double total_free_gb = 1;
   double os_drive_free_gb = 2;
   map<string, double> drives = 3;
-}
-
-message HardwareConfig {
-  string cpu = 1;
-  string ram = 2;
-  string storage = 3;
-}
-
-message SoftwareConfig {
-  string os_version = 1;
-  repeated string installed_packages = 2;
 }
 
 message SystemInfoResponse {

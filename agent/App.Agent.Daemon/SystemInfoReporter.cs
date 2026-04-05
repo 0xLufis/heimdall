@@ -31,16 +31,6 @@ public class SystemInfoReporter
                 MachineIdentifier = data.MachineIdentifier,
                 MacAddress = data.MacAddress,
                 LastOnline = Timestamp.FromDateTimeOffset(data.LastOnline),
-                HardwareConfig = new App.Shared.Protos.HardwareConfig
-                {
-                    Cpu = data.Hardware.Cpu,
-                    Ram = data.Hardware.Ram,
-                    Storage = data.Hardware.Storage
-                },
-                SoftwareConfig = new App.Shared.Protos.SoftwareConfig
-                {
-                    OsVersion = data.Software.OsVersion
-                },
                 DiskInfo = new DiskInfo
                 {
                     TotalFreeGb = data.Disk.TotalFreeGB,
@@ -56,13 +46,21 @@ public class SystemInfoReporter
                 }
             }
 
-            if (data.Software.InstalledPackages != null)
+            request.Components.Add(new App.Shared.Protos.InventoryComponent
             {
-                foreach (var pkg in data.Software.InstalledPackages)
-                {
-                    request.SoftwareConfig.InstalledPackages.Add(pkg);
-                }
-            }
+                Name = "Hardware",
+                Technology = "Agent",
+                Type = "hardware",
+                DataJson = System.Text.Json.JsonSerializer.Serialize(data.Hardware)
+            });
+
+            request.Components.Add(new App.Shared.Protos.InventoryComponent
+            {
+                Name = "Software",
+                Technology = "Agent",
+                Type = "software",
+                DataJson = System.Text.Json.JsonSerializer.Serialize(data.Software)
+            });
 
             var response = await _client.ReportSystemInfoAsync(request);
 

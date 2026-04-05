@@ -28,7 +28,10 @@ public class DatabaseTests
             Hostname = "TestHost",
             MachineIdentifier = "Test-ID",
             MacAddress = "00:11:22:33:44:55",
-            HardwareConfig = new HardwareConfig { Cpu = "Test CPU" }
+            Components = new List<InventoryComponent>
+            {
+                new InventoryComponent { Name = "Hardware", Technology = "Agent" }
+            }
         };
 
         // Act
@@ -38,24 +41,5 @@ public class DatabaseTests
         var savedPc = await context.ClientPcs.FindAsync(pc.Id);
         Assert.NotNull(savedPc);
         Assert.Equal("TestHost", savedPc.Hostname);
-    }
-
-    [Fact]
-    public async Task GetPcsByCpuAsync_FiltersCorrectly()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var repository = new ClientPcRepository(context);
-        
-        context.ClientPcs.Add(new ClientPc { Id = Guid.NewGuid(), Hostname = "IntelPc", HardwareConfig = new HardwareConfig { Cpu = "Intel Core i7" } });
-        context.ClientPcs.Add(new ClientPc { Id = Guid.NewGuid(), Hostname = "AmdPc", HardwareConfig = new HardwareConfig { Cpu = "AMD Ryzen 9" } });
-        await context.SaveChangesAsync();
-
-        // Act
-        var intelPcs = await repository.GetPcsByCpuAsync("Intel");
-
-        // Assert
-        Assert.Single(intelPcs);
-        Assert.Equal("IntelPc", intelPcs[0].Hostname);
     }
 }

@@ -40,17 +40,22 @@ public class GrpcCommsTests : IClassFixture<CustomWebApplicationFactory>
             Hostname = "TestHost",
             MachineIdentifier = "Test-ID",
             MacAddress = "00:11:22:33:44:55",
-            LastOnline = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow),
-            HardwareConfig = new App.Shared.Protos.HardwareConfig
-            {
-                Cpu = "Test CPU",
-                Ram = "16 GB"
-            },
-            SoftwareConfig = new App.Shared.Protos.SoftwareConfig
-            {
-                OsVersion = "Test OS"
-            }
+            LastOnline = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow)
         };
+        request.Components.Add(new App.Shared.Protos.InventoryComponent
+        {
+            Name = "Hardware",
+            Technology = "Agent",
+            Type = "hardware",
+            DataJson = "{}"
+        });
+        request.Components.Add(new App.Shared.Protos.InventoryComponent
+        {
+            Name = "Software",
+            Technology = "Agent",
+            Type = "software",
+            DataJson = "{}"
+        });
 
         // Act
         var response = await grpcClient.ReportSystemInfoAsync(request);

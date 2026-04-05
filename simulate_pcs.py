@@ -4,6 +4,7 @@ import random
 import datetime
 import argparse
 import sys
+import json
 from google.protobuf.timestamp_pb2 import Timestamp
 
 import system_info_pb2
@@ -62,15 +63,27 @@ def simulate_single_client(client_hostname: str):
                     machine_identifier=client["machine_identifier"],
                     mac_address=client["mac_address"],
                     last_online=ts,
-                    hardware_config=system_info_pb2.HardwareConfig(
-                        cpu=client["cpu"],
-                        ram=client["ram"],
-                        storage=client["storage"]
-                    ),
-                    software_config=system_info_pb2.SoftwareConfig(
-                        os_version=client["os"],
-                        installed_packages=client["packages"]
-                    ),
+                    components=[
+                        system_info_pb2.InventoryComponent(
+                            name="Hardware",
+                            technology="Agent",
+                            type="hardware",
+                            data_json=json.dumps({
+                                "Cpu": client["cpu"],
+                                "Ram": client["ram"],
+                                "Storage": client["storage"]
+                            })
+                        ),
+                        system_info_pb2.InventoryComponent(
+                            name="Software",
+                            technology="Agent",
+                            type="software",
+                            data_json=json.dumps({
+                                "OsVersion": client["os"],
+                                "InstalledPackages": client["packages"]
+                            })
+                        )
+                    ],
                     disk_info=system_info_pb2.DiskInfo(
                         total_free_gb=120.5,
                         os_drive_free_gb=45.2,
@@ -110,15 +123,27 @@ def simulate_all_clients():
                         machine_identifier=client["machine_identifier"],
                         mac_address=client["mac_address"],
                         last_online=ts,
-                        hardware_config=system_info_pb2.HardwareConfig(
-                            cpu=client["cpu"],
-                            ram=client["ram"],
-                            storage=client["storage"]
-                        ),
-                        software_config=system_info_pb2.SoftwareConfig(
-                            os_version=client["os"],
-                            installed_packages=client["packages"]
-                        ),
+                        components=[
+                            system_info_pb2.InventoryComponent(
+                                name="Hardware",
+                                technology="Agent",
+                                type="hardware",
+                                data_json=json.dumps({
+                                    "Cpu": client["cpu"],
+                                    "Ram": client["ram"],
+                                    "Storage": client["storage"]
+                                })
+                            ),
+                            system_info_pb2.InventoryComponent(
+                                name="Software",
+                                technology="Agent",
+                                type="software",
+                                data_json=json.dumps({
+                                    "OsVersion": client["os"],
+                                    "InstalledPackages": client["packages"]
+                                })
+                            )
+                        ],
                         disk_info=system_info_pb2.DiskInfo(
                             total_free_gb=120.5,
                             os_drive_free_gb=45.2,

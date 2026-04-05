@@ -52,40 +52,26 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
                     OsDriveFreeGB = request.DiskInfo.OsDriveFreeGb,
                     Drives = request.DiskInfo.Drives.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
                 } : null,
-                Components = new List<InventoryComponent>
+                Components = request.Components.Select(c => new App.Shared.Entities.InventoryComponent
                 {
-                    new InventoryComponent 
-                    { 
-                        Name = "Hardware", 
-                        Technology = "Agent",
-                        TopLevelFlags = new ComponentTopLevelFlags { Type = "hardware" },
-                        Data = System.Text.Json.JsonSerializer.SerializeToDocument(new 
-                        {
-                            Cpu = request.HardwareConfig.Cpu,
-                            Ram = request.HardwareConfig.Ram,
-                            Storage = request.HardwareConfig.Storage
-                        })
-                    },
-                    new InventoryComponent 
-                    { 
-                        Name = "Software", 
-                        Technology = "Agent",
-                        TopLevelFlags = new ComponentTopLevelFlags { Type = "software" },
-                        Data = System.Text.Json.JsonSerializer.SerializeToDocument(new 
-                        {
-                            OsVersion = request.SoftwareConfig.OsVersion,
-                            InstalledPackages = request.SoftwareConfig.InstalledPackages.ToList()
-                        })
-                    },
-                    new InventoryComponent 
-                    { 
-                        Name = "Peripherals", 
-                        Technology = "Agent",
-                        TopLevelFlags = new ComponentTopLevelFlags { Type = "peripherals" },
-                        Data = System.Text.Json.JsonSerializer.SerializeToDocument(new { })
-                    }
-                }
+                    Name = c.Name,
+                    Technology = c.Technology,
+                    TopLevelFlags = new ComponentTopLevelFlags { Type = c.Type },
+                    Data = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonDocument>(c.DataJson) ?? System.Text.Json.JsonSerializer.SerializeToDocument(new { })
+                }).ToList()
             };
+
+            // Ensure "Peripherals" component always exists to match previous behavior
+            if (!clientPc.Components.Any(c => c.Name == "Peripherals"))
+            {
+                clientPc.Components.Add(new App.Shared.Entities.InventoryComponent 
+                { 
+                    Name = "Peripherals", 
+                    Technology = "Agent",
+                    TopLevelFlags = new ComponentTopLevelFlags { Type = "peripherals" },
+                    Data = System.Text.Json.JsonSerializer.SerializeToDocument(new { })
+                });
+            }
 
             await _repository.UpsertByMacAddressAsync(clientPc);
 
