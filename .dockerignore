@@ -1,0 +1,11 @@
+infra/
+backend/
+agent/
+shared/bin/
+shared/obj/
+frontend/
+node_modules/
+venv/
+.git/
+*.db
+*.log
