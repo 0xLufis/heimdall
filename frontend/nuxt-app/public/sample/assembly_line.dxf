@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461115.9668055554
+2461160.8857523147
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461115.9668055554
+2461160.8857523147
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-79
+65
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{0EFF8AD0-AD4C-4448-A79F-7B76DAC38A7B}
+{F232A070-9AC7-4D9F-92B0-A10145919EC1}
   9
 $VERSIONGUID
   2
-{E08AEC56-839C-4BDF-A4B9-E073E5C7E904}
+{CC1D8E11-FFBE-402C-8A5F-1B398EB593B0}
   9
 $EXTNAMES
 290
@@ -1323,9 +1323,9 @@ ISM
   0
 CLASS
   1
-LAYOUT
+ACDBPLACEHOLDER
   2
-AcDbLayout
+AcDbPlaceHolder
   3
 ObjectDBX Classes
  90
@@ -1339,9 +1339,9 @@ ObjectDBX Classes
   0
 CLASS
   1
-ACDBPLACEHOLDER
+LAYOUT
   2
-AcDbPlaceHolder
+AcDbLayout
   3
 ObjectDBX Classes
  90
@@ -1821,7 +1821,7 @@ ACAD
   0
 APPID
   5
-76
+62
 330
 3
 100
@@ -1835,7 +1835,7 @@ HATCHBACKGROUNDCOLOR
   0
 APPID
   5
-77
+63
 330
 3
 100
@@ -2789,17 +2789,17 @@ AcDbPolyline
  20
 0.0
  10
-200.0
+250.0
  20
 0.0
  10
-200.0
+250.0
  20
-150.0
+180.0
  10
 0.0
  20
-150.0
+180.0
  10
 0.0
  20
@@ -2821,17 +2821,17 @@ AcDbPolyline
  70
 0
  10
-60.0
+80.0
  20
 0.0
  10
+80.0
+ 20
 60.0
- 20
-50.0
  10
-200.0
+250.0
  20
-50.0
+60.0
   0
 LWPOLYLINE
   5
@@ -2849,13 +2849,13 @@ AcDbPolyline
  70
 0
  10
-140.0
+160.0
  20
-50.0
+60.0
  10
-140.0
+160.0
  20
-150.0
+180.0
   0
 TEXT
   5
@@ -2869,21 +2869,21 @@ TEXT
 100
 AcDbText
  10
-30.0
+40.0
  20
-25.0
+30.0
  30
 0.0
  40
 2.5
   1
-CNC MACHINING
+ASSEMBLY HALL
  72
 1
  11
-30.0
+40.0
  21
-25.0
+30.0
  31
 0.0
 100
@@ -2903,21 +2903,21 @@ TEXT
 100
 AcDbText
  10
-100.0
+165.0
  20
-25.0
+30.0
  30
 0.0
  40
 2.5
   1
-ASSEMBLY LINE A
+LOGISTICS & PACKAGING
  72
 1
  11
-100.0
+165.0
  21
-25.0
+30.0
  31
 0.0
 100
@@ -2937,21 +2937,21 @@ TEXT
 100
 AcDbText
  10
-70.0
+80.0
  20
-100.0
+120.0
  30
 0.0
  40
 2.5
   1
-ASSEMBLY LINE B
+QUALITY & SPECIALTY
  72
 1
  11
-70.0
+80.0
  21
-100.0
+120.0
  31
 0.0
 100
@@ -2971,21 +2971,21 @@ TEXT
 100
 AcDbText
  10
-170.0
+205.0
  20
-100.0
+120.0
  30
 0.0
  40
 2.5
   1
-PACKAGING & QA
+CNC MACHINING
  72
 1
  11
-170.0
+205.0
  21
-100.0
+120.0
  31
 0.0
 100
@@ -2995,7 +2995,7 @@ AcDbText
   0
 INSERT
   5
-54
+H-AL1
 330
 17
 100
@@ -3005,105 +3005,37 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-CNC_MACHINE
+ROBOT_CELL
  10
+40.0
+ 20
+45.0
+ 30
+0.0
+  0
+INSERT
+  5
+H-WS5
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+ASSEMBLY_STATION
+ 10
+20.0
+ 20
 15.0
- 20
-40.0
  30
 0.0
   0
 INSERT
   5
-56
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-CNC_MACHINE
- 10
-35.0
- 20
-40.0
- 30
-0.0
-  0
-INSERT
-  5
-58
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-CNC_MACHINE
- 10
-55.0
- 20
-40.0
- 30
-0.0
-  0
-LWPOLYLINE
-  5
-5A
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbPolyline
- 90
-2
- 70
-0
- 10
-65.0
- 20
-20.0
- 10
-195.0
- 20
-20.0
-  0
-LWPOLYLINE
-  5
-5B
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbPolyline
- 90
-2
- 70
-0
- 10
-65.0
- 20
-22.0
- 10
-195.0
- 20
-22.0
-  0
-INSERT
-  5
-5C
+L-SORT-A
 330
 17
 100
@@ -3115,15 +3047,35 @@ AcDbBlockReference
   2
 ROBOT_CELL
  10
-80.0
+130.0
  20
-35.0
+30.0
  30
 0.0
   0
 INSERT
   5
-5E
+P-LINE-B
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+PACKAGING_STATION
+ 10
+200.0
+ 20
+30.0
+ 30
+0.0
+  0
+INSERT
+  5
+Q-CELL-01
 330
 17
 100
@@ -3135,183 +3087,69 @@ AcDbBlockReference
   2
 ASSEMBLY_STATION
  10
-110.0
+40.0
  20
-30.0
- 30
-0.0
-  0
-INSERT
-  5
-60
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-ROBOT_CELL
- 10
 140.0
- 20
-35.0
  30
 0.0
   0
-INSERT
+CIRCLE
   5
-62
+C-TANK-4
 330
 17
 100
 AcDbEntity
   8
-0
+STATIONS
 100
-AcDbBlockReference
-  2
-ASSEMBLY_STATION
- 10
-170.0
- 20
-30.0
- 30
-0.0
-  0
-LWPOLYLINE
-  5
-64
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbPolyline
- 90
-2
- 70
-0
- 10
-10.0
- 20
-60.0
- 10
-130.0
- 20
-60.0
-  0
-LWPOLYLINE
-  5
-65
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbPolyline
- 90
-2
- 70
-0
- 10
-10.0
- 20
-62.0
- 10
-130.0
- 20
-62.0
-  0
-INSERT
-  5
-66
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-ASSEMBLY_STATION
- 10
-30.0
- 20
-70.0
- 30
-0.0
-  0
-INSERT
-  5
-68
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-ASSEMBLY_STATION
- 10
-60.0
- 20
-70.0
- 30
-0.0
-  0
-INSERT
-  5
-6A
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-ROBOT_CELL
- 10
-90.0
- 20
-75.0
- 30
-0.0
-  0
-INSERT
-  5
-6C
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-ASSEMBLY_STATION
+AcDbCircle
  10
 120.0
  20
-70.0
+140.0
  30
 0.0
+ 40
+10.0
+  0
+TEXT
+  5
+5F
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbText
+ 10
+120.0
+ 20
+140.0
+ 30
+0.0
+ 40
+2.0
+  1
+TANK 4
+ 72
+1
+ 11
+120.0
+ 21
+140.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-6E
+CNC-MC-12
 330
 17
 100
@@ -3321,71 +3159,11 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-PACKAGING_STATION
+CNC_MACHINE
  10
-160.0
+210.0
  20
-70.0
- 30
-0.0
-  0
-INSERT
-  5
-70
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-PACKAGING_STATION
- 10
-185.0
- 20
-70.0
- 30
-0.0
-  0
-INSERT
-  5
-72
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-PACKAGING_STATION
- 10
-160.0
- 20
-110.0
- 30
-0.0
-  0
-INSERT
-  5
-74
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-PACKAGING_STATION
- 10
-185.0
- 20
-110.0
+140.0
  30
 0.0
   0
@@ -4379,7 +4157,7 @@ CREATED_BY_EZDXF
   3
 WRITTEN_BY_EZDXF
 350
-78
+64
   0
 DICTIONARYVAR
   5
@@ -4391,11 +4169,11 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-15T22:12:12.295104+00:00
+1.4.3 @ 2026-04-29T19:15:29.168211+00:00
   0
 DICTIONARYVAR
   5
-78
+64
 330
 2D
 100
@@ -4403,7 +4181,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-03-15T22:12:12.297321+00:00
+1.4.3 @ 2026-04-29T19:15:29.170952+00:00
   0
 ENDSEC
   0

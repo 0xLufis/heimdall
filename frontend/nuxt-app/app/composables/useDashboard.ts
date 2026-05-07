@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { 
   UsersIcon, 
   MonitorIcon, 
@@ -6,36 +6,84 @@ import {
   ZapIcon 
 } from "lucide-vue-next"
 
+/**
+ * Composable for managing the live dashboard state and telemetry data.
+ * Handles fetching statistics, recent client activity, and security events from the backend.
+ * 
+ * @returns {Object} Reactive state and methods for the dashboard.
+ * @property {Ref<Array>} stats - High-level metrics for the Stats Grid.
+ * @property {Ref<Array>} recentClients - List of the most recently active edge nodes.
+ * @property {Ref<Array>} securityEvents - Activity feed of recent system/security events.
+ * @property {Function} refreshDashboard - Method to manually trigger a data synchronization.
+ * @property {Ref<boolean>} loading - Indicator for active background fetch operations.
+ */
 export const useDashboard = () => {
+  /**
+   * Reactive state for the Stats Grid, initialized with placeholders.
+   */
   const stats = ref([
-    { title: "Total Users", value: "1,284", bgColor: "bg-slate-700", trend: "+12%", icon: UsersIcon },
-    { title: "Active Clients", value: "842", bgColor: "bg-zinc-700", trend: "+5%", icon: MonitorIcon },
-    { title: "Pending Alerts", value: "12", bgColor: "bg-slate-800", trend: "-2%", icon: AlertTriangleIcon },
-    { title: "Avg. Uptime", value: "99.9%", bgColor: "bg-zinc-800", trend: "Stable", icon: ZapIcon },
+    { title: "Total Users", value: "0", bgColor: "bg-slate-700", trend: "...", icon: UsersIcon },
+    { title: "Active Clients", value: "0", bgColor: "bg-zinc-700", trend: "...", icon: MonitorIcon },
+    { title: "Pending Alerts", value: "0", bgColor: "bg-slate-800", trend: "...", icon: AlertTriangleIcon },
+    { title: "Avg. Uptime", value: "0%", bgColor: "bg-zinc-800", trend: "...", icon: ZapIcon },
   ])
 
-  const recentClients = ref([
-    { id: 'PC-10293', hostname: 'LINE-A-OP1', os: 'Windows 10 Pro', lastSeen: '2 mins' },
-    { id: 'PC-10294', hostname: 'LINE-A-OP2', os: 'Windows 10 Pro', lastSeen: '5 mins' },
-    { id: 'PC-10295', hostname: 'LINE-B-CTRL', os: 'Ubuntu 22.04 LTS', lastSeen: '12 mins' },
-  ])
+  /** Recent client nodes. @type {Ref<any[]>} */
+  const recentClients = ref<any[]>([])
+  
+  /** Security and system activity events. @type {Ref<any[]>} */
+  const securityEvents = ref<any[]>([])
+  
+  /** Loading state indicator. @type {Ref<boolean>} */
+  const loading = ref(false)
 
-  const securityEvents = ref([
-    { title: 'New login detected', description: 'Admin logged in from a new Windows device in Budapest, HU.', time: '24 mins ago', severity: 'low' },
-    { title: 'Unauthorized access attempt', description: 'Failed SSH login attempt from unknown IP: 192.168.1.45', time: '1 hour ago', severity: 'high' },
-    { title: 'System update applied', description: 'Critical security patches applied to 42 client nodes.', time: '4 hours ago', severity: 'medium' },
-    { title: 'New client registered', description: 'Node LINE-C-PACK-4 was successfully provisioned.', time: '1 day ago', severity: 'low' },
-  ])
+  /**
+   * Internal function to fetch live dashboard telemetry from the proxy API.
+   * Maps backend data to local reactive state.
+   */
+  const fetchDashboardData = async () => {
+    loading.value = true
+    try {
+      const data = await $fetch<any>('/api/proxy/Dashboard')
+      if (data) {
+        // Update stats
+        stats.value[0].value = data.stats.totalUsers
+        stats.value[1].value = data.stats.activeClients
+        stats.value[2].value = data.stats.pendingAlerts
+        stats.value[3].value = data.stats.avgUptime
+        
+        // Trends are not implemented in backend yet, so we keep them as is or set to static
+        stats.value[0].trend = "Live"
+        stats.value[1].trend = "Live"
+        stats.value[2].trend = "24h"
+        stats.value[3].trend = "Live"
 
-  const refreshDashboard = async () => {
-    // In a real app, this would fetch from multiple API endpoints
-    console.log('Refreshing dashboard data...')
+        recentClients.value = data.recentClients
+        securityEvents.value = data.securityEvents
+      }
+    } catch (e) {
+      console.error('Failed to fetch dashboard data:', e)
+    } finally {
+      loading.value = false
+    }
   }
+
+  /**
+   * Triggers a manual refresh of the dashboard data.
+   */
+  const refreshDashboard = async () => {
+    await fetchDashboardData()
+  }
+
+  onMounted(() => {
+    fetchDashboardData()
+  })
 
   return {
     stats,
     recentClients,
     securityEvents,
-    refreshDashboard
+    refreshDashboard,
+    loading
   }
 }

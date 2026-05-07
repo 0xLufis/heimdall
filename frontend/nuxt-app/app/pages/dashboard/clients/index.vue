@@ -5,10 +5,22 @@ import { Input } from '@/components/ui/input'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Search, RefreshCw } from 'lucide-vue-next'
 import InteractiveMap from '~/components/dashboard/InteractiveMap.vue'
+import ClientDetailsModal from '~/components/dashboard/ClientDetailsModal.vue'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
+
+/**
+ * Reactive state for the currently selected client for details view.
+ */
+const selectedClient = ref<any>(null)
+const isModalOpen = ref(false)
+
+const openClientDetails = (client: any) => {
+  selectedClient.value = client
+  isModalOpen.value = true
+}
 
 /**
  * Reactive state indicating whether data is currently being loaded.
@@ -33,6 +45,8 @@ const clients = ref<any[]>([])
  * @type {Ref<any[]>}
  */
 const machines = ref<any[]>([])
+
+const activeTab = ref<'map' | 'hierarchy'>('map')
 
 /**
  * Reactive state for handles of objects currently highlighted on the map.
@@ -139,24 +153,44 @@ const setHighlight = (client: any) => {
       </div>
       
       <div class="flex items-center gap-4">
-        <div class="relative w-64 group">
+        <div class="bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-sm flex gap-1">
+          <Button 
+            variant="ghost"
+            @click="activeTab = 'map'" 
+            :class="activeTab === 'map' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
+            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto"
+          >
+            Map View
+          </Button>
+          <Button 
+            variant="ghost"
+            @click="activeTab = 'hierarchy'" 
+            :class="activeTab === 'hierarchy' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
+            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto"
+          >
+            Hierarchy
+          </Button>
+        </div>
+
+        <div v-if="activeTab === 'map'" class="relative w-64 group">
           <Search class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-indigo-500 transition-colors z-10" />
           <Input 
             v-model="searchQuery" 
-            placeholder="Search by host or MAC..." 
+            placeholder="Search by hostname..." 
             class="w-full pl-12 pr-4 h-12 bg-slate-900 border-slate-800 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-xs shadow-sm text-slate-200" 
           />
         </div>
-        <Button @click="fetchData" variant="outline" class="bg-slate-900 border-slate-800 text-slate-300 rounded-2xl px-6 h-12 hover:bg-slate-800 transition-all">
+        <Button v-if="activeTab === 'map'" @click="fetchData" variant="outline" class="bg-slate-900 border-slate-800 text-slate-300 rounded-2xl px-6 h-12 hover:bg-slate-800 transition-all">
           <RefreshCw :class="{'animate-spin': loading}" class="h-4 w-4 mr-2" />
           <span class="text-xs font-black uppercase tracking-widest">Sync</span>
         </Button>
       </div>
     </div>
 
-    <div class="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 px-8 pb-8 overflow-hidden">
-      <!-- Sidebar List -->
-      <Card class="lg:col-span-1 bg-slate-900 border-slate-800 flex flex-col overflow-hidden rounded-3xl">
+    <template v-if="activeTab === 'map'">
+      <div class="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 px-8 pb-8 overflow-hidden animate-in fade-in duration-300">
+        <!-- Sidebar List -->
+        <Card class="lg:col-span-1 bg-slate-900 border-slate-800 flex flex-col overflow-hidden rounded-3xl">
         <CardHeader class="border-b border-slate-800 p-6 flex flex-row items-center justify-between">
           <CardTitle class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Connected Endpoints</CardTitle>
           <span class="px-3 py-1 bg-indigo-600/20 text-indigo-400 text-[10px] font-black rounded-full border border-indigo-600/30 uppercase tracking-widest">{{ filteredClients.length }} Active</span>
@@ -184,6 +218,7 @@ const setHighlight = (client: any) => {
                 v-for="client in filteredClients" 
                 :key="client.id"
                 @mouseenter="setHighlight(client)"
+                @click="openClientDetails(client)"
                 class="p-6 hover:bg-slate-800/50 transition-all cursor-pointer group relative"
                 :class="{'bg-slate-800/80': highlightedHandles.includes(client.pinnedObjectHandle || (client.machines?.[0]?.pinnedObjectHandle))}"
               >
@@ -225,7 +260,21 @@ const setHighlight = (client: any) => {
             :highlighted-handles="highlightedHandles"
           />
         </div>
-      </Card>
-    </div>
-  </div>
-</template>
+        </Card>
+        </div>
+        </template>
+
+        <template v-else>
+        <div class="px-8 pb-8 flex-grow overflow-y-auto animate-in fade-in duration-300">
+         <DashboardInventoryTreeTable primary-key="client" />
+        </div>
+        </template>
+
+        <ClientDetailsModal 
+          v-if="selectedClient"
+          :client="selectedClient" 
+          :is-open="isModalOpen" 
+          @close="isModalOpen = false" 
+        />
+        </div>
+        </template>

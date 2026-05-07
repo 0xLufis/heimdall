@@ -1,27 +1,99 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { PlusIcon, ViewIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { useInventory } from '@/composables/useInventory'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
 
-const {
-  activeTab,
-  loading,
-  items,
-  columns,
-  searchQuery,
-  fetchData,
-  addComponent
-} = useInventory()
+const activeTab = ref<'hardware' | 'software' | 'hierarchy'>('hardware')
+const hierarchyKey = ref<'machine' | 'client'>('machine')
+const loading = ref(false)
+const items = ref<any[]>([])
+const columns = ref<Record<string, boolean>>({
+  manufacturer: true,
+  modelNumber: false,
+  purchaseDate: true,
+  cost: true,
+  specs: true,
+  tags: true,
+})
+
+const getColumnDescription = (key: string) => {
+  const descs: Record<string, string> = {
+    manufacturer: 'Display the brand or OEM of the asset',
+    modelNumber: 'Show specific model or part numbers',
+    purchaseDate: 'Lifecycle tracking and warranty start dates',
+    cost: 'Financial investment in HUF currency',
+    specs: 'Technical parameters like torque or resolution',
+    tags: 'Custom attributes and JSONB data points'
+  }
+  return descs[key] || 'Generic data field'
+}
+
+const resetColumns = () => {
+  columns.value = {
+    manufacturer: true,
+    modelNumber: false,
+    purchaseDate: true,
+    cost: true,
+    specs: true,
+    tags: true,
+  }
+}
+
+const onSearch = (q: string) => {
+  // If we're on a specific tab and no type filter is specified, add it internally for the fetch
+  let effectiveQuery = q
+  if (activeTab.value === 'hardware' && !effectiveQuery.includes('type:')) {
+    effectiveQuery = `${effectiveQuery} type:hardware`.trim()
+  } else if (activeTab.value === 'software' && !effectiveQuery.includes('type:')) {
+    effectiveQuery = `${effectiveQuery} type:software`.trim()
+  }
+  
+  fetchData(effectiveQuery)
+}
+
+const fetchData = async (q: string = '') => {
+  if (activeTab.value === 'hierarchy') return
+  loading.value = true
+  try {
+    const url = `/api/proxy/inventory/search?query=${encodeURIComponent(q)}`
+    const data = await $fetch<any[]>(url)
+    if (data) items.value = data
+  } catch (e) {
+    console.error('Error fetching inventory:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+const addComponent = async (type: string, formData: any) => {
+  try {
+    await $fetch('/api/proxy/inventory', {
+      method: 'POST',
+      body: formData,
+    })
+    // Re-trigger search after add
+    onSearch('')
+  } catch (e) {
+    console.error('Error adding component:', e)
+  }
+}
+
+watch(activeTab, () => {
+  if (activeTab.value !== 'hierarchy') {
+    onSearch('')
+  }
+})
 
 const showAddModal = ref(false)
 
-onMounted(fetchData)
+onMounted(() => {
+  onSearch('')
+})
 </script>
 
 <template>
@@ -39,7 +111,7 @@ onMounted(fetchData)
             variant="ghost"
             @click="activeTab = 'hardware'" 
             :class="activeTab === 'hardware' ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 hover:text-white' : 'text-slate-500 hover:text-slate-300'"
-            class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto"
+            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto"
           >
             Hardware
           </Button>
@@ -47,50 +119,148 @@ onMounted(fetchData)
             variant="ghost"
             @click="activeTab = 'software'" 
             :class="activeTab === 'software' ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 hover:text-white' : 'text-slate-500 hover:text-slate-300'"
-            class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto"
+            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto"
           >
             Software
           </Button>
+          <Button 
+            variant="ghost"
+            @click="activeTab = 'hierarchy'" 
+            :class="activeTab === 'hierarchy' ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 hover:text-white' : 'text-slate-500 hover:text-slate-300'"
+            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto"
+          >
+            Hierarchy
+          </Button>
         </div>
 
-        <Button @click="showAddModal = true" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 py-6 h-auto shadow-xl transition-all group border-0">
+        <Button v-if="activeTab !== 'hierarchy'" @click="showAddModal = true" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-6 py-6 h-auto shadow-xl transition-all group border-0">
           <PlusIcon class="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform" />
           <span class="text-xs font-black uppercase tracking-widest">Provision Asset</span>
         </Button>
       </div>
     </div>
 
-    <!-- Modular Search -->
-    <DashboardInventorySearchCard v-model="searchQuery" :key="activeTab" />
-    
-    <div class="flex justify-between items-center">
-      <!-- Column Toggler -->
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <Button variant="outline" class="border-slate-700 hover:bg-slate-800">
-            <ViewIcon class="h-4 w-4 mr-2" />
-            Toggle Columns
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent class="w-56">
-          <DropdownMenuCheckboxItem v-for="(visible, key) in columns" :key="key" v-model:checked="columns[key]">
-            {{ key }}
-          </DropdownMenuCheckboxItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <Button @click="fetchData" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-8 h-14 transition-all border border-transparent shadow-lg">
-        <span class="text-xs font-black uppercase tracking-widest">Execute Query</span>
-      </Button>
+    <!-- Hierarchy Sub-Selection -->
+    <!-- Search Area -->
+    <div class="max-w-4xl mx-auto w-full">
+      <Search 
+        placeholder="Search by name, technology, or attributes (e.g. manufacturer:dell)..." 
+        :immediate="true"
+        @search="onSearch"
+      />
     </div>
 
-    <!-- Asset Repository Table -->
-    <DashboardInventoryTable 
-      :items="items" 
-      :type="activeTab" 
-      :loading="loading"
-      :columns="columns"
-    />
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-3">
+         <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">View Mode:</span>
+         <div class="flex p-1 bg-slate-900 rounded-xl border border-slate-800 gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              @click="activeTab = 'hardware'"
+              :class="activeTab === 'hardware' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
+              class="rounded-lg text-[9px] font-black uppercase px-3"
+            >Hardware</Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              @click="activeTab = 'software'"
+              :class="activeTab === 'software' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
+              class="rounded-lg text-[9px] font-black uppercase px-3"
+            >Software</Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              @click="activeTab = 'hierarchy'"
+              :class="activeTab === 'hierarchy' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
+              class="rounded-lg text-[9px] font-black uppercase px-3"
+            >Hierarchy</Button>
+         </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Column Toggler (Card-based Popover) -->
+        <Popover>
+            <PopoverTrigger as-child>
+            <Button variant="outline" class="border-slate-800 bg-slate-900 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest h-10">
+                <ViewIcon class="h-4 w-4 mr-2" />
+                Columns
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent class="w-80 p-0 bg-slate-950 border-slate-800 shadow-2xl overflow-hidden" align="end">
+              <div class="p-4 border-b border-slate-900 bg-slate-900/50">
+                 <h4 class="text-[10px] font-black text-slate-200 uppercase tracking-widest">Display Configuration</h4>
+                 <p class="text-[9px] text-slate-500 uppercase mt-1">Toggle visible data fields</p>
+              </div>
+              <div class="p-2 max-h-[400px] overflow-y-auto">
+                 <div v-for="(visible, key) in columns" :key="key" 
+                    @click="columns[key] = !columns[key]"
+                    class="flex items-start gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-900 transition-colors border border-transparent hover:border-slate-800 mb-1"
+                    :class="{'bg-indigo-500/5 border-indigo-500/10': columns[key]}"
+                 >
+                    <div class="mt-0.5">
+                       <div class="size-4 rounded border flex items-center justify-center transition-colors" 
+                          :class="columns[key] ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700 bg-slate-900'">
+                          <Icon v-if="columns[key]" name="i-lucide-check" class="size-3 text-white" />
+                       </div>
+                    </div>
+                    <div class="flex flex-col">
+                       <span class="text-xs font-black text-slate-200 uppercase tracking-tight">{{ key }}</span>
+                       <span class="text-[9px] text-slate-500 leading-relaxed mt-0.5">
+                          {{ getColumnDescription(key) }}
+                       </span>
+                    </div>
+                 </div>
+              </div>
+              <div class="p-3 bg-slate-900/30 border-t border-slate-900 flex justify-end">
+                 <Button variant="ghost" size="sm" @click="resetColumns" class="h-7 text-[9px] font-black uppercase text-slate-500 hover:text-slate-300">
+                    Reset Defaults
+                 </Button>
+              </div>
+            </PopoverContent>
+        </Popover>
+
+        <Button v-if="activeTab !== 'hierarchy'" @click="showAddModal = true" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 h-10 shadow-lg transition-all group border-0">
+          <PlusIcon class="h-4 w-4 mr-2 group-hover:rotate-90 transition-transform" />
+          <span class="text-[10px] font-black uppercase tracking-widest">Add Asset</span>
+        </Button>
+      </div>
+    </div>
+
+    <!-- Hierarchy Sub-Selection -->
+    <div v-if="activeTab === 'hierarchy'" class="flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+       <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Structure By:</span>
+       <div class="flex p-1 bg-slate-900 rounded-xl border border-slate-800 gap-1">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            @click="hierarchyKey = 'machine'"
+            :class="hierarchyKey === 'machine' ? 'bg-slate-800 text-indigo-400' : 'text-slate-600'"
+            class="rounded-lg text-[9px] font-black uppercase"
+          >Station</Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            @click="hierarchyKey = 'client'"
+            :class="hierarchyKey === 'client' ? 'bg-slate-800 text-indigo-400' : 'text-slate-600'"
+            class="rounded-lg text-[9px] font-black uppercase"
+          >PC</Button>
+       </div>
+    </div>
+
+    <template v-if="activeTab !== 'hierarchy'">
+        <!-- Asset Repository Table -->
+        <DashboardInventoryTable 
+        :items="items" 
+        :type="activeTab" 
+        :loading="loading"
+        :columns="columns"
+        />
+    </template>
+
+    <template v-else>
+       <DashboardInventoryTreeTable :primary-key="hierarchyKey" />
+    </template>
 
     <!-- Add Asset Modal Overlay -->
     <DashboardInventoryAddModal 

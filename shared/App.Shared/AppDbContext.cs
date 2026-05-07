@@ -16,34 +16,20 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     // Domain Sets
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="ClientPc"/> entities.
-    /// </summary>
+    public DbSet<BaseInventoryItem> InventoryItems { get; set; }
     public DbSet<ClientPc> ClientPcs { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="InventoryComponent"/> entities.
-    /// </summary>
-    public DbSet<InventoryComponent> InventoryComponents { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="FloorPlan"/> entities.
-    /// </summary>
-    public DbSet<FloorPlan> FloorPlans { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Machine"/> entities.
-    /// </summary>
     public DbSet<Machine> Machines { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="UserRole"/> entities.
-    /// </summary>
+    public DbSet<HardwareComponent> HardwareComponents { get; set; }
+    public DbSet<SoftwareComponent> SoftwareComponents { get; set; }
+    public DbSet<PcHardware> PcHardwares { get; set; }
+    public DbSet<ResponsibleTeam> ResponsibleTeams { get; set; }
+    
+    public DbSet<FloorPlan> FloorPlans { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Manufacturer"/> entities.
-    /// </summary>
     public DbSet<Manufacturer> Manufacturers { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="Supplier"/> entities.
-    /// </summary>
     public DbSet<Supplier> Suppliers { get; set; }
+    public DbSet<QueuedAgentCommand> QueuedAgentCommands { get; set; }
+    public DbSet<AgentEvent> AgentEvents { get; set; }
     
     // Auth Sets (Managed by Better-Auth, excluded from migrations)
     /// <summary>
@@ -77,6 +63,44 @@ public class AppDbContext : DbContext
 
         bool isInMemory = Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
 
+        if (isInMemory)
+        {
+            // In-memory doesn't support JsonDocument or JSONB POCOs as native types
+            // Use a value converter to store it as a string
+            var jsonConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<System.Text.Json.JsonDocument?, string?>(
+                v => v == null ? null : v.RootElement.GetRawText(),
+                v => v == null ? null : System.Text.Json.JsonDocument.Parse(v, default));
+
+            modelBuilder.Entity<BaseInventoryItem>()
+                .Property(e => e.Metadata)
+                .HasConversion(jsonConverter);
+
+            modelBuilder.Entity<UserRole>()
+                .Property(e => e.Privileges)
+                .HasConversion(jsonConverter);
+
+            // Converters for ClientPc POCOs
+            modelBuilder.Entity<ClientPc>().Property(e => e.FreeDiskSpace)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<DiskSpaceInfo>(v, (System.Text.Json.JsonSerializerOptions?)null));
+
+            modelBuilder.Entity<ClientPc>().Property(e => e.MonitoringConfig)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<ResourceMonitoringConfig>(v, (System.Text.Json.JsonSerializerOptions?)null));
+
+            modelBuilder.Entity<ClientPc>().Property(e => e.ResourceAverages)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<ResourceAverages>(v, (System.Text.Json.JsonSerializerOptions?)null));
+
+            modelBuilder.Entity<ClientPc>().Property(e => e.AlertingLimits)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<AlertingLimits>(v, (System.Text.Json.JsonSerializerOptions?)null));
+        }
+
         // Configure Auth entities (Better-Auth) - Exclude from migrations as they are managed externally
         modelBuilder.Entity<AuthUser>(entity => {
             entity.ToTable("user", "auth", t => t.ExcludeFromMigrations());
@@ -103,18 +127,14 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Name).IsUnique();
         });
 
-        // Configure InventoryComponent
-        modelBuilder.Entity<InventoryComponent>(entity =>
+        // Configure BaseInventoryItem (Root of TPT)
+        modelBuilder.Entity<BaseInventoryItem>(entity =>
         {
+            entity.ToTable("inventory_items");
+            
             if (!isInMemory)
             {
-                entity.Property(e => e.TopLevelFlags).HasColumnType("jsonb");
-                entity.Property(e => e.Data).HasColumnType("jsonb");
-            }
-            else
-            {
-                entity.Ignore(e => e.TopLevelFlags);
-                entity.Ignore(e => e.Data);
+                entity.Property(e => e.Metadata).HasColumnType("jsonb");
             }
             
             entity.HasOne(e => e.Manufacturer)
@@ -133,74 +153,97 @@ public class AppDbContext : DbContext
                   .HasForeignKey(e => e.ParentId)
                   .OnDelete(DeleteBehavior.Cascade);
 
-            // Lateral Link
-            entity.HasOne(e => e.LateralLink)
-                  .WithMany()
-                  .HasForeignKey(e => e.LateralLinkId)
+            // Link to ClientPc
+            entity.HasOne(e => e.ClientPc)
+                  .WithMany(p => p.InventoryItems)
+                  .HasForeignKey(e => e.ClientPcId)
                   .OnDelete(DeleteBehavior.SetNull);
 
-            // Associations
-            entity.HasOne(e => e.Machine)
-                  .WithMany(m => m.Components)
-                  .HasForeignKey(e => e.MachineId)
-                  .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.ClientPc)
-                  .WithMany(c => c.Components)
-                  .HasForeignKey(e => e.ClientPcId)
-                  .OnDelete(DeleteBehavior.Cascade);
+            // Many-to-Many with ResponsibleTeam
+            entity.HasMany(e => e.ResponsibleTeams)
+                  .WithMany(t => t.ManagedItems)
+                  .UsingEntity(j => j.ToTable("ItemResponsibilities"));
         });
 
-        // Configure Machine
+        // Configure Machine (Station)
         modelBuilder.Entity<Machine>(entity =>
         {
-            entity.HasIndex(e => e.CustomIdentifier).IsUnique();
+            entity.ToTable("stations"); // TPT
         });
 
-        // Configure UserRole
-        modelBuilder.Entity<UserRole>(entity =>
-        {
-            if (!isInMemory)
-            {
-                entity.Property(e => e.Privileges).HasColumnType("jsonb");
-            }
-            entity.HasIndex(e => e.Name).IsUnique();
-        });
-
-        // Configure JSONB columns for ClientPc
+        // Configure ClientPc (Standalone)
         modelBuilder.Entity<ClientPc>(entity =>
         {
+            entity.ToTable("client_pcs");
+            entity.HasKey(e => e.Id);
+            
             if (!isInMemory)
             {
-                entity.Property(e => e.CustomDataPoints).HasColumnType("jsonb");
-                entity.Property(e => e.Predecessors).HasColumnType("jsonb");
                 entity.Property(e => e.FreeDiskSpace).HasColumnType("jsonb");
                 entity.Property(e => e.MonitoringConfig).HasColumnType("jsonb");
                 entity.Property(e => e.ResourceAverages).HasColumnType("jsonb");
                 entity.Property(e => e.AlertingLimits).HasColumnType("jsonb");
             }
-            else
-            {
-                entity.Ignore(e => e.CustomDataPoints);
-                entity.Ignore(e => e.Predecessors);
-                entity.Ignore(e => e.FreeDiskSpace);
-                entity.Ignore(e => e.MonitoringConfig);
-                entity.Ignore(e => e.ResourceAverages);
-                entity.Ignore(e => e.AlertingLimits);
-            }
 
-            // Relationships
-            entity.HasMany(e => e.Machines)
-                  .WithMany(m => m.ClientPcs)
-                  .UsingEntity(j => j.ToTable("ClientPcMachine"));
+            entity.HasMany(e => e.ControlledMachines)
+                  .WithMany(m => m.Controllers)
+                  .UsingEntity(j => j.ToTable("StationControllers"));
 
-            // Indexes for faster lookups
-            entity.HasIndex(e => e.Hostname).IsUnique();
             entity.HasIndex(e => e.MacAddress).IsUnique();
+            entity.HasIndex(e => e.Hostname);
+
+            entity.HasMany(e => e.PendingCommands)
+                  .WithOne()
+                  .HasForeignKey(c => c.ClientPcId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Events)
+                  .WithOne()
+                  .HasForeignKey(e => e.ClientPcId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.ResponsibleTeams)
+                  .WithMany() // Or if we want back-ref on ResponsibleTeam, we'd add it there
+                  .UsingEntity(j => j.ToTable("PcResponsibilities"));
+        });
+
+        // Configure QueuedAgentCommand
+        modelBuilder.Entity<QueuedAgentCommand>(entity =>
+        {
+            entity.ToTable("queued_agent_commands");
+        });
+
+        modelBuilder.Entity<AgentEvent>(entity =>
+        {
+            entity.ToTable("agent_events");
+        });
+
+        // Configure HardwareComponent
+        modelBuilder.Entity<HardwareComponent>(entity =>
+        {
+            entity.ToTable("hardware_assets"); // TPT
             
-            // Link to FloorPlan
-            entity.HasIndex(e => e.FloorPlanId);
-            entity.HasIndex(e => e.PinnedObjectHandle);
+            entity.HasMany(e => e.Firmware)
+                  .WithOne() // Relationship is now purely hierarchical via ParentId
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure SoftwareComponent
+        modelBuilder.Entity<SoftwareComponent>(entity =>
+        {
+            entity.ToTable("software_assets"); // TPT
+        });
+
+        // Configure PcHardware
+        modelBuilder.Entity<PcHardware>(entity =>
+        {
+            entity.ToTable("pc_hardware"); // TPT
+        });
+
+        // Configure ResponsibleTeam
+        modelBuilder.Entity<ResponsibleTeam>(entity =>
+        {
+            entity.HasIndex(e => e.Name).IsUnique();
         });
 
         // Configure FloorPlan
@@ -218,31 +261,6 @@ public class AppDbContext : DbContext
         });
 
         modelBuilder.Entity<FloorPlanAnchor>(entity =>
-        {
-            entity.HasNoKey();
-        });
-
-        modelBuilder.Entity<PcPredecessor>(entity =>
-        {
-            entity.HasNoKey();
-        });
-
-        modelBuilder.Entity<DiskSpaceInfo>(entity =>
-        {
-            entity.HasNoKey();
-        });
-
-        modelBuilder.Entity<ResourceMonitoringConfig>(entity =>
-        {
-            entity.HasNoKey();
-        });
-
-        modelBuilder.Entity<ResourceAverages>(entity =>
-        {
-            entity.HasNoKey();
-        });
-
-        modelBuilder.Entity<AlertingLimits>(entity =>
         {
             entity.HasNoKey();
         });

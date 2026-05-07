@@ -41,36 +41,101 @@ onMounted(() => {
 const handleObjectClick = (handle: string, blockName: string) => {
     activePin.value = handle
     activeBlockName.value = blockName
+}
+
+const handleObjectDblClick = (handle: string, blockName: string) => {
+    activePin.value = handle
+    activeBlockName.value = blockName
     isPinningDialogOpen.value = true
 }
 
-const handlePinUpdate = async (type: 'machine' | 'client', targetId: string) => {
+const handleMapClick = () => {
+    activePin.value = null
+    activeBlockName.value = null
+}
+
+const handlePinUpdate = async (type: 'machine' | 'client' | 'lateral', targetId: string, associatedIds: string[]) => {
     if (!activePin.value) return
     
     try {
         if (type === 'machine') {
             const machine = machines.value.find(m => m.id === targetId)
             if (machine) {
-                machine.pinnedObjectHandle = activePin.value
+                // Use the new MachineUpdateDto structure
+                const updatePayload = {
+                    id: machine.id,
+                    name: machine.name,
+                    customIdentifier: machine.customIdentifier,
+                    pinnedObjectHandle: activePin.value,
+                    organizationId: machine.organizationId,
+                    controllerIds: associatedIds // Sending flat list of IDs
+                }
+                
                 await $fetch(`/api/proxy/Machine/${machine.id}`, {
                     method: 'PUT',
-                    body: machine
+                    body: updatePayload
                 })
             }
-        } else {
+        } else if (type === 'client') {
             const client = clients.value.find(c => c.id === targetId)
             if (client) {
-                client.pinnedObjectHandle = activePin.value
+                // Use the new ClientPcUpdateDto structure
+                const updatePayload = {
+                    id: client.id,
+                    name: client.name,
+                    macAddress: client.macAddress,
+                    hostname: client.hostname,
+                    pinnedObjectHandle: activePin.value,
+                    controlledMachineIds: associatedIds // Sending flat list of IDs
+                }
+                
                 await $fetch(`/api/proxy/ClientPc/${client.id}`, {
                     method: 'PUT',
-                    body: client
+                    body: updatePayload
                 })
+            }
+        } else if (type === 'lateral') {
+            // Find source entity (the one currently at this handle)
+            const sourceAsset = pinnedAssets.value.find(a => a.handle === activePin.value)
+            const targetAsset = pinnedAssets.value.find(a => a.id === targetId)
+            
+            if (!sourceAsset || !targetAsset) {
+                alert('Source or Target asset not found for lateral link.')
+                return
+            }
+
+            // We'll link their first components as a logical "lateral link" between these physical points
+            const [sourceEntity, targetEntity] = await Promise.all([
+                $fetch(`/api/proxy/${sourceAsset.type === 'Machine' ? 'Machine' : 'ClientPc'}/${sourceAsset.id}`),
+                $fetch(`/api/proxy/${targetAsset.type === 'Machine' ? 'Machine' : 'ClientPc'}/${targetAsset.id}`)
+            ])
+
+            // Helper to get first component
+            const getFirstCompId = (entity: any) => {
+                if (entity.components && entity.components.length > 0) return entity.components[0].id
+                return null
+            }
+
+            const sourceCompId = getFirstCompId(sourceEntity)
+            const targetCompId = getFirstCompId(targetEntity)
+
+            if (sourceCompId && targetCompId) {
+                // Update source component with lateral link to target
+                const sourceComp = await $fetch(`/api/inventory/${sourceCompId}`)
+                sourceComp.lateralLinkId = targetCompId
+                await $fetch(`/api/inventory/${sourceCompId}`, {
+                    method: 'PUT',
+                    body: sourceComp
+                })
+                alert('Lateral link established between primary components.')
+            } else {
+                alert('Could not establish lateral link: One or both entities lack inventory components.')
             }
         }
         await fetchData()
     } catch (e) {
-        console.error('Failed to update pin', e)
-        alert('Failed to update pin assignment.')
+        console.error('Failed to update mapping', e)
+        alert('Failed to update mapping.')
     }
 }
 
@@ -87,6 +152,35 @@ const pinnedAssets = computed(() => {
         }
     })
     return list
+})
+
+const activePinAssociations = computed(() => {
+    if (!activePin.value) return []
+    const asset = pinnedAssets.value.find(a => a.handle === activePin.value)
+    if (!asset) return []
+    
+    const entity = asset.type === 'Machine' 
+        ? machines.value.find(m => m.id === asset.id)
+        : clients.value.find(c => c.id === asset.id)
+        
+    if (!entity) return []
+    
+    if (asset.type === 'Machine') {
+        return entity.clientPcs?.map((c: any) => c.id) || []
+    } else {
+        return entity.machines?.map((m: any) => m.id) || []
+    }
+})
+
+const activePinEntityId = computed(() => {
+    return pinnedAssets.value.find(a => a.handle === activePin.value)?.id || ''
+})
+
+const activePinType = computed(() => {
+    const type = pinnedAssets.value.find(a => a.handle === activePin.value)?.type
+    if (type === 'Machine') return 'machine'
+    if (type === 'Client PC') return 'client'
+    return 'machine'
 })
 </script>
 
@@ -113,6 +207,8 @@ const pinnedAssets = computed(() => {
           dxfUrl="/sample/assembly_line.dxf" 
           :active-pin="activePin"
           @object-clicked="handleObjectClick"
+          @object-dblclicked="handleObjectDblClick"
+          @map-clicked="handleMapClick"
         />
         
         <!-- Map Controls Legend Overlay -->
@@ -176,6 +272,9 @@ const pinnedAssets = computed(() => {
       :object-name="activeBlockName || ''"
       :machines="machines"
       :clients="clients"
+      :initial-type="activePinType"
+      :initial-id="activePinEntityId"
+      :initial-associations="activePinAssociations"
       @pin="handlePinUpdate"
     />
   </div>

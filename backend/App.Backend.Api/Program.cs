@@ -45,6 +45,13 @@ if (!string.IsNullOrEmpty(connectionString))
 {
     var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
     dataSourceBuilder.EnableDynamicJson();
+    
+    // Increase pool size for high concurrency
+    if (!connectionString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
+    {
+        dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 250;
+    }
+
     dataSource = dataSourceBuilder.Build();
     
     // Register the DbContextFactory
@@ -69,7 +76,12 @@ builder.Services.AddAuthentication("BetterAuth")
 builder.Services.AddAuthorization();
 
 // --- 4. Controllers & gRPC & Swagger ---
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 builder.Services.AddGrpc();
 builder.Services.AddGrpcReflection();
 builder.Services.AddEndpointsApiExplorer();

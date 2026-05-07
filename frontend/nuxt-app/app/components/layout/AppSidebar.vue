@@ -16,23 +16,23 @@ function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): an
   return resolveComponent('LayoutSidebarNavLink')
 }
 
-const session = authClient.useSession()
+const authSession = authClient.useSession()
 
 /**
  * Computed property for the user's email. Defaults to '...' if not available.
  * @type {ComputedRef<string>}
  */
-const userEmail = computed(() => session.data?.value?.user?.email ?? '...')
+const userEmail = computed(() => authSession?.data?.value?.user?.email ?? '...')
 /**
  * Computed property for the user's name. Defaults to 'User' if not available.
  * @type {ComputedRef<string>}
  */
-const userName = computed(() => session.data?.value?.user?.name ?? 'User')
+const userName = computed(() => authSession?.data?.value?.user?.name ?? 'User')
 /**
  * Computed property for the user's avatar image URL. Defaults to a placeholder if not available.
  * @type {ComputedRef<string>}
  */
-const userAvatar = computed(() => session.data?.value?.user?.image ?? '/avatars/avatartion.png')
+const userAvatar = computed(() => authSession?.data?.value?.user?.image ?? '/avatars/avatartion.png')
 
 /**
  * Static array of teams or organizations to display in the sidebar header.

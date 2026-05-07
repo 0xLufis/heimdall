@@ -1,0 +1,41 @@
+Type,Name,DisplayName,ResponsibleTeam,Manufacturer,Supplier,SerialNumber,ParentName,StationIdentifier,ClientPcHostname,Metadata,PinnedObjectHandle,OrganizationId
+Machine,OP10-Load,Station 10 - Loading,Controls;Maintenance,Siemens,Insight,SN-STA-10,,OP10-Load,,"{""Zone"": ""A"", ""CycleTime"": ""45s"", ""SafetyLevel"": ""SIL3""}",H-AL1,Production Floor A
+Machine,OP20-Vision,Station 20 - Quality,Vision;Controls,Keyence,Industrial Automata Direct,SN-STA-20,,OP20-Vision,,"{""Zone"": ""A"", ""InspectionRate"": ""99.8%"", ""Resolution"": ""4K""}",H-WS5,Production Floor A
+Machine,OP30-Drill,Station 30 - Drilling,Maintenance,Beckhoff,Industrial Automata Direct,SN-STA-30,,OP30-Drill,,"{""Zone"": ""B"", ""RPM"": ""12000"", ""ToolType"": ""Carbide""}",L-SORT-A,Production Floor A
+Machine,OP40-Weld,Station 40 - Welding,Robotics Dept;Safety,Fanuc,Industrial Automata Direct,SN-STA-40,,OP40-Weld,,"{""Zone"": ""B"", ""Amperage"": ""400A"", ""ShieldGas"": ""Argon""}",P-LINE-B,Production Floor A
+Machine,OP50-Sort,Station 50 - Sorting,Controls,Omron,Farnell,SN-STA-50,,OP50-Sort,,"{""Zone"": ""C"", ""Bins"": ""8"", ""Algorithm"": ""NeuralNet""}",Q-CELL-01,Production Floor B
+Machine,OP60-Pack,Station 60 - Packaging,Maintenance,Festo,RS Components,SN-STA-60,,OP60-Pack,,"{""Zone"": ""C"", ""BoxType"": ""Eco-Cardboard"", ""Throughput"": ""500/hr""}",C-TANK-4,Production Floor B
+Machine,OP70-Store,Station 70 - Storage,IT Infrastructure,Cisco,Insight,SN-STA-70,,OP70-Store,,"{""Zone"": ""D"", ""StorageType"": ""Automated Rack"", ""Temperature"": ""22C""}",CNC-MC-12,Production Floor B
+ClientPc,CPC-01,Controller PC 01,IT Infrastructure,Dell,Insight,SN-PC-001,,OP10-Load,,"{""IP"": ""10.0.1.10"", ""OS"": ""Windows 10 IoT"", ""SecurityLevel"": ""High""}",H-AL1,Production Floor A
+ClientPc,CPC-02,Controller PC 02,IT Infrastructure,Siemens,Insight,SN-PC-002,,OP20-Vision,,"{""IP"": ""10.0.1.20"", ""OS"": ""Windows 11 Pro"", ""SecurityLevel"": ""Standard""}",H-WS5,Production Floor A
+ClientPc,CPC-03,Controller PC 03,IT Infrastructure,Beckhoff,Industrial Automata Direct,SN-PC-003,,OP30-Drill,,"{""IP"": ""10.0.1.30"", ""OS"": ""Debian 12"", ""SecurityLevel"": ""Critical""}",L-SORT-A,Production Floor A
+ClientPc,CPC-04,Controller PC 04,IT Infrastructure,Cisco,Farnell,SN-PC-004,,OP50-Sort,,"{""IP"": ""10.0.1.40"", ""OS"": ""Windows 10 IoT"", ""SecurityLevel"": ""Standard""}",Q-CELL-01,Production Floor B
+ClientPc,CPC-05,Controller PC 05,IT Infrastructure,HP,Insight,SN-PC-005,,OP70-Store,,"{""IP"": ""10.0.1.50"", ""OS"": ""Ubuntu 22.04 LTS"", ""SecurityLevel"": ""High""}",CNC-MC-12,Production Floor B
+PcHardware,CPU-01,Intel Core i7-12700K,IT Infrastructure,Intel,Insight,,,CPC-01,CPC-01,"{""Cores"": 12, ""BaseClock"": ""3.6GHz"", ""TDP"": ""125W""}",,Production Floor A
+PcHardware,RAM-01,32GB DDR4 3200MHz,IT Infrastructure,Kingston,Insight,,,CPC-01,CPC-01,"{""Type"": ""DDR4"", ""ECC"": ""Non-ECC""}",,Production Floor A
+PcHardware,SSD-01,1TB NVMe Gen4,IT Infrastructure,Samsung,Insight,,,CPC-01,CPC-01,"{""ReadSpeed"": ""7000MB/s"", ""WriteSpeed"": ""5100MB/s""}",,Production Floor A
+PcHardware,CPU-02,AMD Ryzen 9 5950X,IT Infrastructure,AMD,Insight,,,CPC-02,CPC-02,"{""Cores"": 16, ""BaseClock"": ""3.4GHz""}",,Production Floor A
+PcHardware,RAM-02,64GB DDR4 3600MHz,IT Infrastructure,Corsair,Insight,,,CPC-02,CPC-02,"{""Type"": ""DDR4"", ""CL"": 16}",,Production Floor A
+PcHardware,CPU-03,Intel Xeon E-2336,IT Infrastructure,Intel,Farnell,,,CPC-03,CPC-03,"{""Cores"": 6, ""TurboClock"": ""4.8GHz""}",,Production Floor A
+HardwareComponent,PLC-01,Siemens S7-1500,Controls Engineering,Siemens,Industrial Automata Direct,SN-PLC-1500,,OP10-Load,CPC-01,"{""Model"": ""1516-3 PN/DP"", ""Memory"": ""1MB Code"", ""Rack"": 1, ""Slot"": 2}",,Production Floor A
+HardwareComponent,SCN-01,Keyence SR-2000,Vision Systems,Keyence,Industrial Automata Direct,SN-BCR-2000,,OP10-Load,CPC-01,"{""Type"": ""Barcode Reader"", ""Interface"": ""Ethernet/IP"", ""Resolution"": ""2MP""}",,Production Floor A
+HardwareComponent,CAM-01,Cognex In-Sight 9000,Vision Systems,Cognex,Industrial Automata Direct,SN-CAM-9000,,OP20-Vision,CPC-02,"{""Resolution"": ""12MP"", ""Lens"": ""16mm"", ""Lighting"": ""Red Ring""}",,Production Floor A
+HardwareComponent,DRV-01,Beckhoff AX5000,Controls Engineering,Beckhoff,Industrial Automata Direct,SN-DRV-5000,,OP30-Drill,CPC-03,"{""Current"": ""12A"", ""Feedback"": ""EnDat 2.2""}",,Production Floor A
+HardwareComponent,ROB-01,Fanuc M-20iB,Robotics Dept,Fanuc,Industrial Automata Direct,SN-ROB-FANUC,,OP40-Weld,CPC-03,"{""Payload"": ""20kg"", ""Reach"": ""1811mm"", ""DegreesOfFreedom"": 6}",,Production Floor A
+HardwareComponent,PLC-02,Omron NJ501,Controls Engineering,Omron,Farnell,SN-PLC-NJ501,,OP50-Sort,CPC-04,"{""Model"": ""NJ501-1300"", ""Axes"": 16, ""Network"": ""EtherCAT""}",,Production Floor B
+SoftwareComponent,SW-01,Siemens TIA Portal V18,Controls Engineering,Siemens,Insight,,,OP10-Load,CPC-01,"{""License"": ""Floating"", ""Expiry"": ""2025-12-31""}",,Production Floor A
+SoftwareComponent,SW-02,Cognex VisionPro,Vision Systems,Cognex,Industrial Automata Direct,,,OP20-Vision,CPC-02,"{""Version"": ""9.8"", ""License"": ""Dongle-Locked""}",,Production Floor A
+SoftwareComponent,SW-03,Beckhoff TwinCAT 3,Controls Engineering,Beckhoff,Industrial Automata Direct,,,OP30-Drill,CPC-03,"{""RuntimeVersion"": ""4024.50"", ""Platform"": ""x64""}",,Production Floor A
+SoftwareComponent,FW-01,S7-1500 Firmware v2.9,Controls Engineering,Siemens,Industrial Automata Direct,,PLC-01,OP10-Load,,,"{""SecurityUpdate"": ""KB202305""}",,Production Floor A
+HardwareComponent,SEN-01,Festo SDAT,Maintenance Team,Festo,RS Components,SN-SEN-SDAT,,OP60-Pack,CPC-05,"{""Type"": ""Position Transmitter"", ""Range"": ""160mm""}",,Production Floor B
+HardwareComponent,VAL-01,Festo VTUG,Maintenance Team,Festo,RS Components,SN-VAL-VTUG,,OP60-Pack,CPC-05,"{""Type"": ""Valve Terminal"", ""Valves"": 12, ""Bus"": ""Profinet""}",,Production Floor B
+HardwareComponent,SWI-01,Cisco Catalyst IE3300,IT Infrastructure,Cisco,Insight,SN-SWI-IE3300,,OP70-Store,CPC-05,"{""Ports"": 10, ""Speed"": ""1Gbps"", ""PoE"": true}",,Production Floor B
+SoftwareComponent,OS-01,Windows 10 IoT Enterprise,IT Infrastructure,Microsoft,Insight,,,CPC-01,CPC-01,"{""Build"": ""19044"", ""UpdateStatus"": ""Current""}",,Production Floor A
+SoftwareComponent,AV-01,SentinelOne Agent,IT Infrastructure,SentinelOne,Insight,,,CPC-01,CPC-01,"{""Version"": ""23.1.4"", ""Policy"": ""Production-Enforced""}",,Production Floor A
+PcHardware,NIC-01,Intel I350-T2,IT Infrastructure,Intel,Insight,,,CPC-01,CPC-01,"{""Ports"": 2, ""Chipset"": ""I350""}",,Production Floor A
+HardwareComponent,SEN-02,Keyence GT2,Vision Systems,Keyence,Industrial Automata Direct,SN-SEN-GT2,,OP20-Vision,CPC-02,"{""Type"": ""Digital Contact Sensor"", ""Accuracy"": ""1um""}",,Production Floor A
+HardwareComponent,PLC-03,Phoenix Contact PLCnext,Controls Engineering,Phoenix Contact,Farnell,SN-PLC-AXC,,OP70-Store,CPC-05,"{""Model"": ""AXC F 2152"", ""Environment"": ""Linux""}",,Production Floor B
+SoftwareComponent,HMI-01,Ignition Edge,Controls Engineering,Inductive Automation,Insight,,,OP50-Sort,CPC-04,"{""Version"": ""8.1.25"", ""Project"": ""Sorter-UI-v2""}",,Production Floor B
+HardwareComponent,SEN-03,Cognex DataMan 280,Vision Systems,Cognex,Industrial Automata Direct,SN-DM-280,,OP40-Weld,CPC-03,"{""Type"": ""Liquid Lens BCR"", ""Illumination"": ""Multicolor LED""}",,Production Floor A
+SoftwareComponent,FW-02,AX5000 Firmware v4.2,Maintenance Team,Beckhoff,Industrial Automata Direct,,DRV-01,OP30-Drill,,,"{""Compatibility"": ""TC3-v4024""}",,Production Floor A
+PcHardware,GPU-01,NVIDIA RTX A2000,Vision Systems,NVIDIA,Insight,,,CPC-02,CPC-02,"{""VRAM"": ""6GB"", ""Type"": ""Workstation""}",,Production Floor A

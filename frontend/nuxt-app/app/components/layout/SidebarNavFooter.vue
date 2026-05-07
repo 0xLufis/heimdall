@@ -92,7 +92,9 @@ const showModalTheme = ref(false)
           Customize & Preview in Real Time
         </DialogDescription>
       </DialogHeader>
-      <ThemeCustomize />
+      <div class="p-4 text-center text-xs text-muted-foreground">
+        Theme customization is currently under development.
+      </div>
     </DialogContent>
   </Dialog>
 </template>

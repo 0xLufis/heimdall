@@ -28,9 +28,9 @@ public class DatabaseTests
             Hostname = "TestHost",
             MachineIdentifier = "Test-ID",
             MacAddress = "00:11:22:33:44:55",
-            Components = new List<InventoryComponent>
+            InventoryItems = new List<BaseInventoryItem>
             {
-                new InventoryComponent { Name = "Hardware", Technology = "Agent" }
+                new PcHardware { Name = "Hardware" }
             }
         };
 

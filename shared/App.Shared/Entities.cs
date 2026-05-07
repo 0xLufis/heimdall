@@ -1,680 +1,455 @@
-//using System;
-//using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 
 namespace App.Shared.Entities;
 
-// --- DOMAIN ENTITIES ---
+// --- SHARED RESPONSIBILITY ---
 
 /// <summary>
-/// Represents a manufacturer of hardware or software components.
+/// Represents an engineering team responsible for certain assets.
 /// </summary>
-public class Manufacturer
+public partial class ResponsibleTeam
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for the manufacturer.
-    /// </summary>
     public Guid Id { get; set; }
-    /// <summary>
-    /// Gets or sets the name of the manufacturer. This field is required and has a maximum length of 255 characters.
-    /// </summary>
+    [Required, MaxLength(255)]
+    public string Name { get; set; } = string.Empty; // Mechanical, Controls, Vision, Dispensing
+    public string? Description { get; set; }
+    
+    public List<BaseInventoryItem> ManagedItems { get; set; } = new();
+}
+
+// --- CORE ABSTRACTION (The "Abstract Class") ---
+
+/// <summary>
+/// The base class for all inventory items, following an Object-Oriented Programming (OOP) approach.
+/// Provides common attributes such as identity, financial data, and hierarchical relationships.
+/// </summary>
+public abstract partial class BaseInventoryItem
+{
+    /// <summary>Unique identifier for the inventory item.</summary>
+    public Guid Id { get; set; }
+
+    /// <summary>The name of the asset.</summary>
     [Required, MaxLength(255)]
     public string Name { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the official website URL of the manufacturer.
-    /// </summary>
+
+    /// <summary>Optional user-friendly display name.</summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>Identifier for the organization unit that owns this asset.</summary>
+    public string? OrganizationId { get; set; }
+    
+    /// <summary>The financial cost of the asset in Hungarian Forint (HUF).</summary>
+    public decimal? CostInHUF { get; set; }
+
+    /// <summary>The date when the asset was purchased.</summary>
+    public DateTimeOffset? PurchaseDate { get; set; }
+
+    /// <summary>The hardware or license serial number.</summary>
+    public string? SerialNumber { get; set; }
+
+    /// <summary>The ID of the manufacturer of the asset.</summary>
+    public Guid? ManufacturerId { get; set; }
+    /// <summary>Navigation property for the manufacturer.</summary>
+    public Manufacturer? Manufacturer { get; set; }
+
+    /// <summary>The ID of the supplier of the asset.</summary>
+    public Guid? SupplierId { get; set; }
+    /// <summary>Navigation property for the supplier.</summary>
+    public Supplier? Supplier { get; set; }
+
+    /// <summary>The ID of the Client PC this asset is associated with (e.g., if it's a component of a PC).</summary>
+    public Guid? ClientPcId { get; set; }
+    /// <summary>Navigation property for the associated Client PC.</summary>
+    public ClientPc? ClientPc { get; set; }
+
+    /// <summary>List of engineering teams responsible for this specific asset.</summary>
+    public List<ResponsibleTeam> ResponsibleTeams { get; set; } = new();
+
+    /// <summary>The ID of the parent inventory item (for hierarchical tree structures).</summary>
+    public Guid? ParentId { get; set; }
+    /// <summary>Navigation property for the parent item.</summary>
+    public BaseInventoryItem? Parent { get; set; }
+    /// <summary>List of child items nested under this asset.</summary>
+    public List<BaseInventoryItem> Children { get; set; } = new();
+
+    /// <summary>Flexible JSONB metadata for storing domain-specific attributes (e.g., CPU, RAM, Version).</summary>
+    public JsonDocument? Metadata { get; set; }
+
+    /// <summary>Helper property for identifying the concrete class name in UI layers.</summary>
+    [NotMapped]
+    public virtual string ItemType => this.GetType().Name;
+}
+
+// --- CONCRETE IMPLEMENTATIONS (The "Different Models") ---
+
+/// <summary>
+/// Represents a Production Station or Process Node on the factory floor.
+/// </summary>
+[Table("stations")]
+public partial class Machine : BaseInventoryItem
+{
+    /// <summary>A custom, user-defined identifier for the station (e.g., "LINE-A-OP10").</summary>
+    [Required, MaxLength(255)]
+    public string CustomIdentifier { get; set; } = string.Empty;
+
+    /// <summary>The CAD/DXF object handle for mapping this station to a spatial layout.</summary>
+    public string? PinnedObjectHandle { get; set; }
+    
+    /// <summary>List of Client PCs that control or monitor this station.</summary>
+    public List<ClientPc> Controllers { get; set; } = new();
+}
+
+/// <summary>
+/// Represents a physical PC/Terminal on the factory floor.
+/// Acts as a standalone entity that can control machines and contain inventory items.
+/// </summary>
+[Table("client_pcs")]
+public partial class ClientPc
+{
+    /// <summary>Unique identifier for the Client PC.</summary>
+    public Guid Id { get; set; }
+    
+    /// <summary>The name given to the Client PC.</summary>
+    [Required, MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The physical MAC address of the network interface.</summary>
+    [Required, MaxLength(17)]
+    public string MacAddress { get; set; } = string.Empty;
+
+    /// <summary>The last reported IP address.</summary>
+    public string? IpAddress { get; set; }
+
+    /// <summary>A unique hardware-based machine identifier.</summary>
+    public string? MachineIdentifier { get; set; }
+
+    /// <summary>The network hostname of the device.</summary>
+    public string? Hostname { get; set; } 
+
+    /// <summary>Timestamp of the last successful heartbeat communication.</summary>
+    public DateTimeOffset? LastOnline { get; set; }
+
+    /// <summary>The CAD/DXF object handle for mapping this PC to a spatial layout.</summary>
+    public string? PinnedObjectHandle { get; set; }
+
+    /// <summary>List of production stations controlled by this PC.</summary>
+    public List<Machine> ControlledMachines { get; set; } = new();
+
+    /// <summary>List of internal hardware and software components assigned to this PC.</summary>
+    public List<BaseInventoryItem> InventoryItems { get; set; } = new();
+
+    /// <summary>List of engineering teams responsible for the maintenance of this PC.</summary>
+    public List<ResponsibleTeam> ResponsibleTeams { get; set; } = new();
+
+    /// <summary>Commands queued to be processed by the Agent on this PC.</summary>
+    public List<QueuedAgentCommand> PendingCommands { get; set; } = new();
+
+    /// <summary>Audit events reported by the Agent running on this PC.</summary>
+    public List<AgentEvent> Events { get; set; } = new();
+
+    /// <summary>Real-time disk space telemetry (JSONB).</summary>
+    public DiskSpaceInfo? FreeDiskSpace { get; set; }
+
+    /// <summary>Abstract system metadata (OS, IP, Security Level) that are properties of the node, not physical assets.</summary>
+    public JsonDocument? SystemMetadata { get; set; }
+
+    /// <summary>Configuration settings for resource monitoring on this node (JSONB).</summary>
+    public ResourceMonitoringConfig? MonitoringConfig { get; set; }
+
+    /// <summary>Aggregated CPU and RAM usage averages (JSONB).</summary>
+    public ResourceAverages? ResourceAverages { get; set; }
+
+    /// <summary>Thresholds for system health alerting (JSONB).</summary>
+    public AlertingLimits? AlertingLimits { get; set; }
+}
+
+/// <summary>
+/// Represents a security or system event reported by an Agent.
+/// </summary>
+[Table("agent_events")]
+public class AgentEvent
+{
+    /// <summary>Unique identifier for the event.</summary>
+    public Guid Id { get; set; }
+    /// <summary>The ID of the Client PC that reported the event.</summary>
+    public Guid ClientPcId { get; set; }
+    /// <summary>The source of the event (e.g., "System", "Agent", "Security").</summary>
+    public string Source { get; set; } = string.Empty;
+    /// <summary>The detailed event message.</summary>
+    public string Message { get; set; } = string.Empty;
+    /// <summary>The severity level (Information, Warning, Error, Critical).</summary>
+    public string Level { get; set; } = string.Empty;
+    /// <summary>The UTC timestamp when the event occurred.</summary>
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Represents a command queued to be sent to a specific Agent.
+/// </summary>
+[Table("queued_agent_commands")]
+public class QueuedAgentCommand
+{
+    /// <summary>Unique identifier for the command.</summary>
+    public Guid Id { get; set; }
+    /// <summary>The target Client PC for the command.</summary>
+    public Guid ClientPcId { get; set; }
+    /// <summary>The type of command (e.g., "UPDATE_CONFIG", "RESTART").</summary>
+    public string Type { get; set; } = string.Empty;
+    /// <summary>The command payload (usually a JSON string).</summary>
+    public string Payload { get; set; } = string.Empty;
+    /// <summary>Optional cryptographic signature for command validation.</summary>
+    public string? Signature { get; set; }
+    /// <summary>Timestamp when the command was created.</summary>
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    /// <summary>Whether the command has been retrieved and processed by the Agent.</summary>
+    public bool IsProcessed { get; set; }
+}
+
+/// <summary>
+/// Represents station-level physical equipment (e.g., Valves, Sensors, Motors).
+/// </summary>
+[Table("hardware_assets")]
+public partial class HardwareComponent : BaseInventoryItem
+{
+    /// <summary>The hardware revision version.</summary>
+    public string? Revision { get; set; }
+    /// <summary>The specific manufacturer model number.</summary>
+    public string? ModelNumber { get; set; }
+
+    /// <summary>List of software/firmware components associated with this hardware.</summary>
+    public List<SoftwareComponent> Firmware { get; set; } = new();
+}
+
+/// <summary>
+/// Represents logical assets such as PLC Programs, Software Licenses, or Firmware.
+/// </summary>
+[Table("software_assets")]
+public partial class SoftwareComponent : BaseInventoryItem
+{
+    /// <summary>The software version string.</summary>
+    public string? Version { get; set; }
+    /// <summary>The license key or activation code.</summary>
+    public string? LicenseKey { get; set; }
+}
+
+/// <summary>
+/// Represents internal components of a Client PC (e.g., RAM sticks, CPUs, Storage Drives).
+/// </summary>
+[Table("pc_hardware")]
+public partial class PcHardware : BaseInventoryItem
+{
+    /// <summary>The capacity of the component (e.g., "16GB", "1TB").</summary>
+    public string? Capacity { get; set; }
+    /// <summary>The specific type/standard (e.g., "DDR4", "NVMe").</summary>
+    public string? Type { get; set; }
+}
+
+// --- REFERENCE ENTITIES ---
+
+/// <summary>
+/// Represents an Original Equipment Manufacturer (OEM).
+/// </summary>
+public partial class Manufacturer
+{
+    /// <summary>Unique identifier for the manufacturer.</summary>
+    public Guid Id { get; set; }
+    /// <summary>The name of the company.</summary>
+    [Required, MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    /// <summary>Official website URL.</summary>
     public string? Website { get; set; }
-    /// <summary>
-    /// Gets or sets the contact information for manufacturer support.
-    /// </summary>
+    /// <summary>Contact information for technical support.</summary>
     public string? SupportContact { get; set; }
 }
 
 /// <summary>
-/// Represents a supplier of hardware or software components.
+/// Represents a business partner that supplies assets.
 /// </summary>
-public class Supplier
+public partial class Supplier
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for the supplier.
-    /// </summary>
+    /// <summary>Unique identifier for the supplier.</summary>
     public Guid Id { get; set; }
-    /// <summary>
-    /// Gets or sets the name of the supplier. This field is required and has a maximum length of 255 characters.
-    /// </summary>
+    /// <summary>The name of the supplier company.</summary>
     [Required, MaxLength(255)]
     public string Name { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the official website URL of the supplier.
-    /// </summary>
+    /// <summary>Official website URL.</summary>
     public string? Website { get; set; }
-    /// <summary>
-    /// Gets or sets the name of the primary contact person at the supplier.
-    /// </summary>
+    /// <summary>Primary contact person.</summary>
     public string? ContactPerson { get; set; }
-    /// <summary>
-    /// Gets or sets the email address of the contact person at the supplier.
-    /// </summary>
+    /// <summary>Contact email address.</summary>
     public string? Email { get; set; }
 }
 
+// --- LAYOUT & VISUALS ---
+
 /// <summary>
-/// Represents a physical production machine.
+/// Represents a physical factory floor plan, stored as a DXF/SVG.
 /// </summary>
-public class Machine
+public partial class FloorPlan
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for the machine.
-    /// </summary>
+    /// <summary>Unique identifier for the floor plan.</summary>
     public Guid Id { get; set; }
-
-    /// <summary>
-    /// Gets or sets the ID of the organization that owns this machine.
-    /// </summary>
-    public string? OrganizationId { get; set; }
-
-    /// <summary>
-    /// Gets or sets a custom identifier for the machine, e.g., "Assembly Line 1".
-    /// </summary>
-    [Required, MaxLength(255)]
-    public string CustomIdentifier { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets a handle to an object on a floor plan (e.g., DXF handle).
-    /// </summary>
-    public string? PinnedObjectHandle { get; set; }
-
-    /// <summary>
-    /// Gets or sets the list of <see cref="ClientPc"/> entities that control this machine.
-    /// </summary>
-    public List<ClientPc> ClientPcs { get; set; } = new();
-
-    /// <summary>
-    /// Gets or sets the list of top-level hardware components associated with this machine.
-    /// </summary>
-    public List<InventoryComponent> Components { get; set; } = new();
-}
-
-/// <summary>
-/// Represents flags for top-level inventory components, stored as JSONB.
-/// </summary>
-public class ComponentTopLevelFlags
-{
-    /// <summary>
-    /// Gets or sets the type of the component (e.g., "controlling", "sensor", "vision").
-    /// </summary>
-    public string? Type { get; set; } // controlling, sensor, vision, screwing, coating, dispensing
-    
-    /// <summary>
-    /// Gets or sets the owner of the component (e.g., "in-house", "outsourced", "mixed").
-    /// </summary>
-    public string? Owner { get; set; } // in-house, outsourced, mixed
-    
-    /// <summary>
-    /// Gets or sets a dictionary for any additional custom flags.
-    /// </summary>
-    public Dictionary<string, object>? CustomFlags { get; set; }
-}
-
-/// <summary>
-/// Represents a unified inventory component (Hardware, Software, or Peripheral).
-/// Components form a recursive tree structure and can be linked laterally.
-/// </summary>
-public class InventoryComponent
-{
-    /// <summary>
-    /// Gets or sets the unique identifier for the inventory component.
-    /// </summary>
-    public Guid Id { get; set; }
-
-    /// <summary>
-    /// Gets or sets the full searchable name of the component.
-    /// </summary>
+    /// <summary>The name of the floor or building.</summary>
     [Required, MaxLength(255)]
     public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the user-friendly display name.
-    /// </summary>
-    public string? DisplayName { get; set; }
-
-    /// <summary>
-    /// Gets or sets the quantity of this component.
-    /// </summary>
-    public decimal Quantity { get; set; } = 1;
-
-    /// <summary>
-    /// Gets or sets the identifier of the entity that created this record.
-    /// </summary>
-    public string? EntityCreator { get; set; }
-
-    /// <summary>
-    /// Gets or sets the identifier of the entity that last updated this record.
-    /// </summary>
-    public string? EntityUpdater { get; set; }
-
-    /// <summary>
-    /// Gets or sets the cost center associated with this component.
-    /// </summary>
-    public string? CostCenter { get; set; }
-
-    /// <summary>
-    /// Gets or sets the Organizational Unit (OU) for the cost center (e.g., logistics, engineering).
-    /// </summary>
-    public string? CostCenterOU { get; set; }
-
-    /// <summary>
-    /// Gets or sets the team responsible for this component.
-    /// </summary>
-    public string? Technology { get; set; }
-
-    /// <summary>
-    /// Gets or sets top-level flags for searching and categorization, stored as JSONB.
-    /// </summary>
-    public ComponentTopLevelFlags? TopLevelFlags { get; set; }
-
-    /// <summary>
-    /// Gets or sets a generic JSONB object for flexible component data.
-    /// </summary>
-    public JsonDocument? Data { get; set; }
-
-    /// <summary>
-    /// Gets or sets the manufacturer of the component.
-    /// </summary>
-    public Guid? ManufacturerId { get; set; }
-    public Manufacturer? Manufacturer { get; set; }
-
-    /// <summary>
-    /// Gets or sets the supplier of the component.
-    /// </summary>
-    public Guid? SupplierId { get; set; }
-    public Supplier? Supplier { get; set; }
-
-    // --- Tree Structure ---
-    /// <summary>
-    /// Gets or sets the parent component ID.
-    /// </summary>
-    public Guid? ParentId { get; set; }
-    public InventoryComponent? Parent { get; set; }
-    public List<InventoryComponent> Children { get; set; } = new();
-
-    // --- Lateral Links ---
-    /// <summary>
-    /// Gets or sets an optional link to another component at the same or different level.
-    /// </summary>
-    public Guid? LateralLinkId { get; set; }
-    public InventoryComponent? LateralLink { get; set; }
-
-    // --- Associations ---
-    /// <summary>
-    /// Gets or sets the ID of the Machine this component belongs to (optional).
-    /// </summary>
-    public Guid? MachineId { get; set; }
-    public Machine? Machine { get; set; }
-
-    /// <summary>
-    /// Gets or sets the ID of the ClientPc this component belongs to (optional).
-    /// </summary>
-    public Guid? ClientPcId { get; set; }
-    public ClientPc? ClientPc { get; set; }
-}
-
-// --- LEGACY ENTITIES (Satisfy Migrations) ---
-
-public class ComponentTechnicalSpecs
-{
-    public List<string> Categories { get; set; } = new();
-    public string? Resolution { get; set; }
-    public string? FrameRate { get; set; }
-    public string? InterfaceType { get; set; }
-    public string? SensingDistance { get; set; }
-    public string? OutputType { get; set; }
-    public string? ConnectionType { get; set; }
-    public double? TorqueMin { get; set; }
-    public double? TorqueMax { get; set; }
-    public int? MaxSpeed { get; set; }
-    public string? FirmwareVersion { get; set; }
-    public List<string>? SupportedProfiles { get; set; }
-    public Dictionary<string, object>? ExtraAttributes { get; set; }
-}
-
-public class HardwareComponent
-{
-    public Guid Id { get; set; }
-    public Guid? ManufacturerId { get; set; }
-    public Manufacturer? Manufacturer { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? ModelNumber { get; set; }
-    public string? Revision { get; set; }
-    public string? Description { get; set; }
-    public DateTimeOffset? PurchaseDate { get; set; }
-    public string? SerialNumber { get; set; }
-    public Guid? SupplierId { get; set; }
-    public Supplier? Supplier { get; set; }
-    public decimal? CostInHUF { get; set; }
-    public ComponentTechnicalSpecs? TechnicalSpecs { get; set; }
-    public Guid? ParentId { get; set; }
-    public HardwareComponent? Parent { get; set; }
-    public List<HardwareComponent> Children { get; set; } = new();
-}
-
-public class SoftwareComponent
-{
-    public Guid Id { get; set; }
-    public Guid? ManufacturerId { get; set; }
-    public Manufacturer? Manufacturer { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Version { get; set; }
-    public string? Description { get; set; }
-    public DateTimeOffset? PurchaseDate { get; set; }
-    public string? SerialNumber { get; set; }
-    public Guid? SupplierId { get; set; }
-    public Supplier? Supplier { get; set; }
-    public decimal? CostInHUF { get; set; }
-    public Guid? ParentId { get; set; }
-    public SoftwareComponent? Parent { get; set; }
-    public List<SoftwareComponent> Children { get; set; } = new();
-}
-
-public class HardwareConfig
-{
-    public string Cpu { get; set; } = string.Empty;
-    public string Ram { get; set; } = string.Empty;
-    public string Storage { get; set; } = string.Empty;
-}
-
-public class SoftwareConfig
-{
-    public string OsVersion { get; set; } = string.Empty;
-    public List<string> InstalledPackages { get; set; } = new();
-}
-
-public class Component
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public ComponentType Type { get; set; }
-    public string? Description { get; set; }
-    public JsonDocument? AdminManagedFields { get; set; }
-}
-
-public enum ComponentType
-{
-    Hardware = 0,
-    Software = 1
-}
-
-/// <summary>
-/// Represents a Client PC that reports system data and controls production machines.
-/// </summary>
-public class ClientPc
-{
-    public Guid Id { get; set; }
-    public string? OrganizationId { get; set; }
-
-    [Required, MaxLength(255)]
-    public string Hostname { get; set; } = string.Empty;
-
-    [Required, MaxLength(255)]
-    public string MachineIdentifier { get; set; } = string.Empty;
-
-    [Required, MaxLength(17)]
-    public string MacAddress { get; set; } = string.Empty;
-
-    public DateTimeOffset? LastOnline { get; set; }
-
-    /// <summary>
-    /// Gets or sets the list of machines controlled by this Client PC.
-    /// </summary>
-    public List<Machine> Machines { get; set; } = new();
-
-    /// <summary>
-    /// Gets or sets top-level inventory components (Hardware, Software, Peripherals).
-    /// </summary>
-    public List<InventoryComponent> Components { get; set; } = new();
-
-    public JsonDocument? CustomDataPoints { get; set; }
-
-    /// <summary>
-    /// Gets or sets the free disk space information.
-    /// </summary>
-    public DiskSpaceInfo? FreeDiskSpace { get; set; }
-
-    /// <summary>
-    /// Gets or sets the resource monitoring configuration (sampling, retention).
-    /// </summary>
-    public ResourceMonitoringConfig? MonitoringConfig { get; set; }
-
-    /// <summary>
-    /// Gets or sets the calculated running averages for resources.
-    /// </summary>
-    public ResourceAverages? ResourceAverages { get; set; }
-
-    /// <summary>
-    /// Gets or sets custom alerting limits for the PC.
-    /// </summary>
-    public AlertingLimits? AlertingLimits { get; set; }
-
-    public List<PcPredecessor> Predecessors { get; set; } = new();
-
-    public Guid? FloorPlanId { get; set; }
-    public string? PinnedObjectHandle { get; set; }
-}
-
-/// <summary>
-/// Represents a floor plan (e.g., a factory layout) onto which machines can be pinned.
-/// </summary>
-public class FloorPlan
-{
-    /// <summary>
-    /// Gets or sets the unique identifier for the floor plan.
-    /// </summary>
-    public Guid Id { get; set; }
-
-    /// <summary>
-    /// Gets or sets the name of the floor plan. This field is required and has a maximum length of 255 characters.
-    /// </summary>
-    [Required]
-    [MaxLength(255)]
-    public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the SVG content representing the floor plan. This field is required.
-    /// </summary>
+    /// <summary>The SVG content for rendering the layout in the browser.</summary>
     [Required]
     public string SvgContent { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets a list of extractable anchors (e.g., DXF Blocks, Named Objects) from the floor plan.
-    /// </summary>
+    /// <summary>List of predefined anchor points within the layout (JSONB).</summary>
     public List<FloorPlanAnchor> Anchors { get; set; } = new();
-
-    /// <summary>
-    /// Gets or sets the creation timestamp of the floor plan. Defaults to UTC now.
-    /// </summary>
+    /// <summary>Timestamp when the plan was uploaded.</summary>
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 /// <summary>
-/// Represents an anchor point on a floor plan, typically corresponding to a DXF entity.
+/// Represents a coordinate-based anchor point on a floor plan.
 /// </summary>
-public class FloorPlanAnchor
+public partial class FloorPlanAnchor
 {
-    /// <summary>
-    /// Gets or sets the persistent DXF Handle of the anchor object.
-    /// </summary>
-    public string Handle { get; set; } = string.Empty; // Persistent DXF Handle
-    /// <summary>
-    /// Gets or sets the name of the anchor (e.g., Block Name or Attribute value).
-    /// </summary>
-    public string Name { get; set; } = string.Empty;   // Block Name or Attribute value
-    /// <summary>
-    /// Gets or sets the optional X-coordinate of the anchor's centroid for UI centering.
-    /// </summary>
-    public double? X { get; set; }                     // Optional Centroid for UI centering
-    /// <summary>
-    /// Gets or sets the optional Y-coordinate of the anchor's centroid for UI centering.
-    /// </summary>
+    /// <summary>The CAD object handle associated with this anchor.</summary>
+    public string Handle { get; set; } = string.Empty;
+    /// <summary>A descriptive name for the anchor point.</summary>
+    public string Name { get; set; } = string.Empty;
+    /// <summary>Horizontal coordinate.</summary>
+    public double? X { get; set; }
+    /// <summary>Vertical coordinate.</summary>
     public double? Y { get; set; }
 }
 
+// --- SYSTEM POCOs (JSONB Mapping) ---
+
 /// <summary>
-/// Represents a user role with a name and associated privileges.
+/// Telemetry data for disk space usage on a node.
 /// </summary>
-public class UserRole
+public class DiskSpaceInfo
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for the user role.
-    /// </summary>
-    public Guid Id { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the name of the role (e.g., "admin", "engineer"). This field is required and has a maximum length of 255 characters.
-    /// </summary>
-    [Required]
-    [MaxLength(255)]
-    public string Name { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Gets or sets a list of privileges associated with this role.
-    /// </summary>
-    public List<string> Privileges { get; set; } = new();
+    /// <summary>Total free space across all drives in GB.</summary>
+    public double TotalFreeGB { get; set; }
+    /// <summary>Available space on the OS (primary) drive in GB.</summary>
+    public double OsDriveFreeGB { get; set; }
+    /// <summary>Dictionary mapping drive labels to their free space in GB.</summary>
+    public Dictionary<string, double> Drives { get; set; } = new();
 }
 
-// --- AUTH ENTITIES (Better-Auth) ---
+/// <summary>
+/// Configuration for the monitoring agent's resource collection behavior.
+/// </summary>
+public class ResourceMonitoringConfig
+{
+    /// <summary>How often the agent should sample resource usage (in seconds).</summary>
+    public int SamplingIntervalSeconds { get; set; } = 60;
+}
 
 /// <summary>
-/// Represents a user entity managed by the Better-Auth system.
-/// Mapped to the "user" table in the "auth" schema.
+/// Aggregated resource usage telemetry.
+/// </summary>
+public class ResourceAverages
+{
+    /// <summary>Average CPU usage percentage over the last sampling period.</summary>
+    public double CpuUsageAverage { get; set; }
+    /// <summary>Average RAM usage percentage over the last sampling period.</summary>
+    public double RamUsageAverage { get; set; }
+}
+
+/// <summary>
+/// Thresholds for triggering system health alerts.
+/// </summary>
+public class AlertingLimits
+{
+    /// <summary>CPU usage percentage threshold for triggering an alert.</summary>
+    public double CpuThreshold { get; set; } = 90.0;
+}
+
+// --- AUTH (Better-Auth) ---
+
+/// <summary>
+/// Represents a user role with specific access privileges.
+/// </summary>
+public partial class UserRole
+{
+    /// <summary>Unique identifier for the role.</summary>
+    public Guid Id { get; set; }
+    /// <summary>The name of the role (e.g., "admin", "operator").</summary>
+    [Required, MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    /// <summary>JSON document containing the fine-grained permissions for this role.</summary>
+    public JsonDocument? Privileges { get; set; }
+}
+
+/// <summary>
+/// Represents a user within the system, managed by the Better-Auth framework.
 /// </summary>
 [Table("user", Schema = "auth")]
 public class AuthUser
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for the user.
-    /// </summary>
+    /// <summary>Unique identifier for the user (Better-Auth ID).</summary>
     [Key]
     public string Id { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the display name of the user.
-    /// </summary>
+    /// <summary>Full name of the user.</summary>
     public string Name { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the email address of the user.
-    /// </summary>
+    /// <summary>Email address for authentication and notifications.</summary>
     public string Email { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets a value indicating whether the user's email address has been verified.
-    /// </summary>
-    public bool EmailVerified { get; set; }
-    /// <summary>
-    /// Gets or sets the URL to the user's profile image.
-    /// </summary>
-    public string? Image { get; set; }
-    /// <summary>
-    /// Gets or sets the timestamp when the user account was created.
-    /// </summary>
-    public DateTimeOffset CreatedAt { get; set; }
-    /// <summary>
-    /// Gets or sets the timestamp when the user account was last updated.
-    /// </summary>
-    public DateTimeOffset UpdatedAt { get; set; }
-    /// <summary>
-    /// Gets or sets the role of the user within the system.
-    /// </summary>
+    /// <summary>The assigned system-wide role.</summary>
     public string? Role { get; set; }
-    /// <summary>
-    /// Gets or sets the username of the user.
-    /// </summary>
-    public string? Username { get; set; }
-    /// <summary>
-    /// Gets or sets a value indicating whether the user is banned.
-    /// </summary>
-    public bool? Banned { get; set; }
-    /// <summary>
-    /// Gets or sets the reason for the user's ban.
-    /// </summary>
-    public string? BanReason { get; set; }
-    /// <summary>
-    /// Gets or sets the timestamp when the user's ban expires.
-    /// </summary>
-    public DateTimeOffset? BanExpiresAt { get; set; }
-
-    /// <summary>
-    /// Gets or sets the list of active authentication sessions for this user.
-    /// </summary>
-    public List<AuthSession> Sessions { get; set; } = new();
+    /// <summary>List of organizations this user is a member of.</summary>
+    public List<AuthMember> Members { get; set; } = new();
 }
 
 /// <summary>
-/// Represents an authentication session for a user, managed by the Better-Auth system.
-/// Mapped to the "session" table in the "auth" schema.
+/// Represents an active authentication session.
 /// </summary>
 [Table("session", Schema = "auth")]
 public class AuthSession
 {
-    /// <summary>
-    /// Gets or sets the unique identifier for the session.
-    /// </summary>
+    /// <summary>Unique identifier for the session.</summary>
     [Key]
-    public string Id { get; set; } = string.Empty;    /// <summary>
-    /// Gets or sets the timestamp when the session expires.
-    /// </summary>
-    public DateTimeOffset ExpiresAt { get; set; }
-    /// <summary>
-    /// Gets or sets the authentication token associated with this session.
-    /// </summary>
+    public string Id { get; set; } = string.Empty;
+    /// <summary>The session token used for authentication.</summary>
     public string Token { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the timestamp when the session was created.
-    /// </summary>
-    public DateTimeOffset CreatedAt { get; set; }
-    /// <summary>
-    /// Gets or sets the timestamp when the session was last updated.
-    /// </summary>
-    public DateTimeOffset UpdatedAt { get; set; }
-    /// <summary>
-    /// Gets or sets the IP address from which the session originated.
-    /// </summary>
-    public string? IpAddress { get; set; }
-    /// <summary>
-    /// Gets or sets the User-Agent string of the client that created the session.
-    /// </summary>
-    public string? UserAgent { get; set; }
-    /// <summary>
-    /// Gets or sets the foreign key to the <see cref="AuthUser"/> associated with this session.
-    /// </summary>
+    /// <summary>Timestamp when the session will expire.</summary>
+    public DateTimeOffset ExpiresAt { get; set; }
+    /// <summary>The ID of the user associated with this session.</summary>
     public string UserId { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the <see cref="AuthUser"/> associated with this session.
-    /// </summary>
+    /// <summary>Navigation property for the user.</summary>
     public AuthUser User { get; set; } = null!;
-    /// <summary>
-    /// Gets or sets the ID of the active organization for this session.
-    /// </summary>
+    /// <summary>The organization currently selected in this session.</summary>
     public string? ActiveOrganizationId { get; set; }
 }
 
-    /// <summary>
-    /// Represents an organization managed by the Better-Auth system.
-    /// Mapped to the "organization" table in the "auth" schema.
-    /// </summary>
-    [Table("organization", Schema = "auth")]
-    public class AuthOrganization
-    {
-        /// <summary>
-        /// Gets or sets the unique identifier for the organization.
-        /// </summary>
-        [Key]
-        public string Id { get; set; } = string.Empty;
-        /// <summary>
-        /// Gets or sets the name of the organization.
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        /// <summary>
-        /// Gets or sets the slug of the organization.
-        /// </summary>
-        public string? Slug { get; set; }
-        /// <summary>
-        /// Gets or sets the logo URL of the organization.
-        /// </summary>
-        public string? Logo { get; set; }
-        /// <summary>
-        /// Gets or sets the timestamp when the organization was created.
-        /// </summary>
-        public DateTimeOffset CreatedAt { get; set; }
-        /// <summary>
-        /// Gets or sets metadata associated with the organization.
-        /// </summary>
-        public string? Metadata { get; set; }
-
-        /// <summary>
-        /// Gets or sets the list of members in this organization.
-        /// </summary>
-        public List<AuthMember> Members { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Represents a member of an organization managed by the Better-Auth system.
-    /// Mapped to the "member" table in the "auth" schema.
-    /// </summary>
-    [Table("member", Schema = "auth")]
-    public class AuthMember
-    {
-        /// <summary>
-        /// Gets or sets the unique identifier for the membership.
-        /// </summary>
-        [Key]
-        public string Id { get; set; } = string.Empty;
-        /// <summary>
-        /// Gets or sets the foreign key to the <see cref="AuthOrganization"/> associated with this membership.
-        /// </summary>
-        public string OrganizationId { get; set; } = string.Empty;
-        /// <summary>
-        /// Gets or sets the <see cref="AuthOrganization"/> associated with this membership.
-        /// </summary>
-        public AuthOrganization Organization { get; set; } = null!;
-        /// <summary>
-        /// Gets or sets the foreign key to the <see cref="AuthUser"/> associated with this membership.
-        /// </summary>
-        public string UserId { get; set; } = string.Empty;
-        /// <summary>
-        /// Gets or sets the <see cref="AuthUser"/> associated with this membership.
-        /// </summary>
-        public AuthUser User { get; set; } = null!;
-        /// <summary>
-        /// Gets or sets the role of the user within the organization.
-        /// </summary>
-        public string Role { get; set; } = string.Empty;
-        /// <summary>
-        /// Gets or sets the timestamp when the membership was created.
-        /// </summary>
-        public DateTimeOffset CreatedAt { get; set; }
-    }
-
-    // --- JSONB POCOs ---
+/// <summary>
+/// Represents a tenant/organization unit within the system.
+/// </summary>
+[Table("organization", Schema = "auth")]
+public class AuthOrganization
+{
+    /// <summary>Unique identifier for the organization.</summary>
+    [Key]
+    public string Id { get; set; } = string.Empty;
+    /// <summary>The name of the organization.</summary>
+    public string Name { get; set; } = string.Empty;
+    /// <summary>List of members belonging to this organization.</summary>
+    public List<AuthMember> Members { get; set; } = new();
+}
 
 /// <summary>
-/// Represents the hardware configuration of a Client PC, stored as a JSONB object.
+/// Represents the membership relationship between a user and an organization.
 /// </summary>
-public class PcPredecessor
+[Table("member", Schema = "auth")]
+public class AuthMember
 {
-    /// <summary>
-    /// Gets or sets the hostname of the predecessor PC.
-    /// </summary>
-    public string Hostname { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the serial number of the predecessor PC.
-    /// </summary>
-    public string SerialNumber { get; set; } = string.Empty;
-}
-
-public class DiskSpaceInfo
-{
-    public double TotalFreeGB { get; set; }
-    public double OsDriveFreeGB { get; set; }
-    public Dictionary<string, double> Drives { get; set; } = new();
-}
-
-public class ResourceMonitoringConfig
-{
-    public int SamplingIntervalSeconds { get; set; } = 60;
-    public int RetentionDays { get; set; } = 30;
-}
-
-public class ResourceAverages
-{
-    public double CpuUsageAverage { get; set; }
-    public double RamUsageAverage { get; set; }
-    public double DiskIoAverage { get; set; }
-    public DateTimeOffset LastCalculated { get; set; }
-}
-
-public class AlertingLimits
-{
-    public double CpuThreshold { get; set; } = 90.0;
-    public double RamThreshold { get; set; } = 90.0;
-    public double DiskFreeSpaceMinGB { get; set; } = 10.0;
+    /// <summary>Unique identifier for the membership record.</summary>
+    [Key]
+    public string Id { get; set; } = string.Empty;
+    /// <summary>The ID of the organization.</summary>
+    public string OrganizationId { get; set; } = string.Empty;
+    /// <summary>Navigation property for the organization.</summary>
+    public AuthOrganization Organization { get; set; } = null!;
+    /// <summary>The ID of the user.</summary>
+    public string UserId { get; set; } = string.Empty;
+    /// <summary>Navigation property for the user.</summary>
+    public AuthUser User { get; set; } = null!;
 }

@@ -6,57 +6,67 @@ import argparse
 import sys
 import json
 import os
+import csv
+import uuid
+import threading
 from google.protobuf.timestamp_pb2 import Timestamp
 
-import system_info_pb2
-import system_info_pb2_grpc
+try:
+    import system_info_pb2
+    import system_info_pb2_grpc
+except ImportError:
+    # If not in path, try to import from the root directory
+    sys.path.append(os.getcwd())
+    import system_info_pb2
+    import system_info_pb2_grpc
 
 # Configuration
 GRPC_HOST = os.environ.get('GRPC_HOST', 'localhost:5001')
-# Sample data for simulation
-CLIENTS = {
-    f"ROBOT-CELL-{i:02d}": {
-        "hostname": f"ROBOT-CELL-{i:02d}",
-        "machine_identifier": f"UUID-ROBOT-{i:04d}",
-        "mac_address": f"00:1A:2B:3C:4D:{i:02d}",
-        "cpu": "Intel Core i7-12700K",
-        "ram": "32 GB",
-        "storage": "512 GB NVMe",
-        "os": "Windows 10 IoT Enterprise",
-        "packages": ["KUKA System Software", "VLC", "Chrome"]
-    }
-    for i in range(1, 6)
-}
-CLIENTS.update({
-    f"ASSEMBLY-ST-{i:02d}": {
-        "hostname": f"ASSEMBLY-ST-{i:02d}",
-        "machine_identifier": f"UUID-ASSM-{i:04d}",
-        "mac_address": f"00:1A:2B:3C:5D:{i:02d}",
-        "cpu": "Intel Core i5-11400",
-        "ram": "16 GB",
-        "storage": "256 GB SSD",
-        "os": "Ubuntu 22.04 LTS",
-        "packages": ["Docker", "Python 3.10", "Node.js"]
-    }
-    for i in range(1, 6)
-})
+CSV_PATH = 'seed_data/inventory_seed.csv'
 
-def simulate_single_client(client_hostname: str):
-    """Simulates a single client reporting its status periodically."""
-    if client_hostname not in CLIENTS:
-        print(f"Error: Client with hostname '{client_hostname}' not found.", file=sys.stderr)
-        sys.exit(1)
+def load_clients_from_csv():
+    clients = []
+    if not os.path.exists(CSV_PATH):
+        print(f"Error: {CSV_PATH} not found.")
+        return clients
 
-    client = CLIENTS[client_hostname]
-    print(f"Simulating agent for '{client['hostname']}'. Connecting to Heimdall Backend at {GRPC_HOST}...")
+    with open(CSV_PATH, mode='r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row['Type'] == 'ClientPc':
+                # Replicate the UUID logic from incremental_seed.py
+                item_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, row['Name']))
+                mac = f"02:{item_id[0:2]}:{item_id[2:4]}:{item_id[4:6]}:{item_id[6:8]}:{item_id[9:11]}".upper()
+                
+                metadata = json.loads(row['Metadata']) if row['Metadata'] else {}
+                
+                clients.append({
+                    "hostname": row['ClientPcHostname'] or row['Name'],
+                    "machine_identifier": f"ID-{item_id[:8]}",
+                    "mac_address": mac,
+                    "os": metadata.get("OS", "Windows 10 IoT"),
+                    "ip": metadata.get("IP", "127.0.0.1"),
+                    "security_level": metadata.get("SecurityLevel", "Standard")
+                })
+    return clients
 
+def simulate_client_loop(client):
+    """Loop for a single client in its own thread."""
+    print(f"Starting simulator for {client['hostname']} ({client['mac_address']})")
+    
+    # We use a persistent channel per thread for better performance
     with grpc.insecure_channel(GRPC_HOST) as channel:
         stub = system_info_pb2_grpc.SystemInfoCollectorStub(channel)
+        
         while True:
             try:
                 now = datetime.datetime.now(datetime.timezone.utc)
                 ts = Timestamp()
                 ts.FromDatetime(now)
+                
+                # Dynamic performance data
+                cpu_load = random.uniform(5.0, 85.0)
+                ram_load = random.uniform(20.0, 90.0)
                 
                 req = system_info_pb2.SystemInfoRequest(
                     hostname=client["hostname"],
@@ -65,118 +75,63 @@ def simulate_single_client(client_hostname: str):
                     last_online=ts,
                     components=[
                         system_info_pb2.InventoryComponent(
-                            name="Hardware",
-                            technology="Agent",
-                            type="hardware",
-                            data_json=json.dumps({
-                                "Cpu": client["cpu"],
-                                "Ram": client["ram"],
-                                "Storage": client["storage"]
-                            })
-                        ),
-                        system_info_pb2.InventoryComponent(
-                            name="Software",
+                            name="OS Environment",
                             technology="Agent",
                             type="software",
                             data_json=json.dumps({
                                 "OsVersion": client["os"],
-                                "InstalledPackages": client["packages"]
+                                "IPAddress": client["ip"],
+                                "SecurityLevel": client["security_level"],
+                                "UpdateStatus": "Current"
+                            })
+                        ),
+                        system_info_pb2.InventoryComponent(
+                            name="Live Telemetry",
+                            technology="Agent",
+                            type="telemetry",
+                            data_json=json.dumps({
+                                "CpuLoad": f"{cpu_load:.1f}%",
+                                "RamUsage": f"{ram_load:.1f}%",
+                                "Uptime": f"{random.randint(10, 1000)}h"
                             })
                         )
                     ],
                     disk_info=system_info_pb2.DiskInfo(
-                        total_free_gb=120.5,
-                        os_drive_free_gb=45.2,
+                        total_free_gb=random.uniform(50.0, 200.0),
+                        os_drive_free_gb=random.uniform(10.0, 50.0),
                         drives={"C:": 45.2, "D:": 75.3} if "Windows" in client["os"] else {"/": 45.2, "/var": 75.3}
                     )
                 )
                 
                 resp = stub.ReportSystemInfo(req)
-                print(f"[{now.strftime('%H:%M:%S')}] Sent data for {client['hostname']} -> Success: {resp.success}")
-
+                # Success output is a bit noisy for 20+ clients, so we only print failures or periodic heartbeats
             except Exception as e:
-                print(f"Failed to send data for {client['hostname']}: {e}")
+                print(f"[{client['hostname']}] Error: {e}")
             
-            # Wait for a random interval before the next report to make it more realistic
-            wait_time = random.randint(10, 30)
-            print(f"--- Waiting {wait_time} seconds before next report... ---")
-            time.sleep(wait_time)
+            # Randomized interval 15-45 seconds
+            time.sleep(random.randint(15, 45))
 
+def start_multi_simulator():
+    clients = load_clients_from_csv()
+    if not clients:
+        print("No clients found to simulate.")
+        return
 
-def simulate_all_clients():
-    """Original simulation logic: cycles through all clients in a single process."""
-    print(f"Connecting to Heimdall Backend at {GRPC_HOST}...")
-    
-    with grpc.insecure_channel(GRPC_HOST) as channel:
-        stub = system_info_pb2_grpc.SystemInfoCollectorStub(channel)
+    print(f"--- Launching simulation for {len(clients)} PCs ---")
+    threads = []
+    for client in clients:
+        t = threading.Thread(target=simulate_client_loop, args=(client,), daemon=True)
+        t.start()
+        threads.append(t)
+        # Stagger start times slightly
+        time.sleep(0.5)
+
+    print("All simulators running in background. Press Ctrl+C to exit.")
+    try:
         while True:
-            for client_hostname in CLIENTS:
-                try:
-                    client = CLIENTS[client_hostname]
-                    
-                    now = datetime.datetime.now(datetime.timezone.utc)
-                    ts = Timestamp()
-                    ts.FromDatetime(now)
-                    
-                    req = system_info_pb2.SystemInfoRequest(
-                        hostname=client["hostname"],
-                        machine_identifier=client["machine_identifier"],
-                        mac_address=client["mac_address"],
-                        last_online=ts,
-                        components=[
-                            system_info_pb2.InventoryComponent(
-                                name="Hardware",
-                                technology="Agent",
-                                type="hardware",
-                                data_json=json.dumps({
-                                    "Cpu": client["cpu"],
-                                    "Ram": client["ram"],
-                                    "Storage": client["storage"]
-                                })
-                            ),
-                            system_info_pb2.InventoryComponent(
-                                name="Software",
-                                technology="Agent",
-                                type="software",
-                                data_json=json.dumps({
-                                    "OsVersion": client["os"],
-                                    "InstalledPackages": client["packages"]
-                                })
-                            )
-                        ],
-                        disk_info=system_info_pb2.DiskInfo(
-                            total_free_gb=120.5,
-                            os_drive_free_gb=45.2,
-                            drives={"C:": 45.2, "D:": 75.3} if "Windows" in client["os"] else {"/": 45.2, "/var": 75.3}
-                        )
-                    )
-                    
-                    resp = stub.ReportSystemInfo(req)
-                    print(f"[{now.strftime('%H:%M:%S')}] Sent data for {client['hostname']} -> Success: {resp.success}")
-                except Exception as e:
-                    print(f"Failed to send data for {client['hostname']}: {e}")
-                
-                # Small delay between each client report
-                time.sleep(1)
-                
-            # Wait a bit before next full cycle
-            print("--- Cycle complete. Waiting 10 seconds... ---")
-            time.sleep(10)
-
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down simulator...")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Simulate one or more Heimdall agents.")
-    parser.add_argument(
-        '--client', 
-        metavar='HOSTNAME',
-        type=str, 
-        help=f"Hostname of a single client to simulate. Available: {', '.join(CLIENTS.keys())}"
-    )
-    args = parser.parse_args()
-
-    if args.client:
-        simulate_single_client(args.client)
-    else:
-        print("Starting simulation for ALL clients in a single process.")
-        print("To simulate a single client, use the --client HOSTNAME argument.")
-        simulate_all_clients()
+    start_multi_simulator()

@@ -16,41 +16,22 @@ export const useInventory = () => {
   })
 
   // --- Search State & Logic ---
-  const searchQuery = ref({
-    logic: 'and',
-    conditions: [],
-  })
-
-  const buildQueryString = (query: any): string => {
-    // This is a simplified serializer. A real implementation would handle
-    // nested groups, different operators, and value types more robustly.
-    const params = new URLSearchParams()
-    
-    if (query.conditions && query.conditions.length > 0) {
-      // For simplicity, we'll AND all top-level conditions.
-      // We'll primarily use a single 'query' for full-text and specific fields for filters.
-      const generalSearch = query.conditions.find(c => c.field === 'general_query');
-      if (generalSearch?.value) {
-        params.append('query', generalSearch.value);
-      }
-      
-      const categorySearch = query.conditions.find(c => c.field === 'categories');
-      if (categorySearch?.value) {
-        params.append('category', categorySearch.value);
-      }
-    }
-    return params.toString()
-  }
+  const searchQuery = ref('')
 
   const fetchData = async () => {
     loading.value = true
     try {
-      const queryString = buildQueryString(searchQuery.value)
-      const url = `/api/proxy/Inventory/${activeTab.value}/search?${queryString}`
+      let q = searchQuery.value
+      // If we're on a specific tab and no type filter is specified, add it
+      if (activeTab.value && !q.includes('type:')) {
+        q = `${q} type:${activeTab.value}`.trim()
+      }
+
+      const url = `/api/proxy/inventory/search?query=${encodeURIComponent(q)}`
       
-      const data = await $fetch(url)
+      const data = await $fetch<any[]>(url)
       if (data) {
-        items.value = data as any[]
+        items.value = data
       }
     } catch (e) {
       console.error('Error fetching inventory:', e)
@@ -62,7 +43,7 @@ export const useInventory = () => {
   // --- Component Management ---
   const addComponent = async (type: 'hardware' | 'software', formData: any) => {
     try {
-      await $fetch(`/api/proxy/Inventory/${type}`, {
+      await $fetch('/api/proxy/inventory', {
         method: 'POST',
         body: formData,
       })
@@ -77,7 +58,7 @@ export const useInventory = () => {
   // --- Watchers ---
   watch(activeTab, () => {
     // Reset search when switching tabs and fetch data
-    searchQuery.value = { logic: 'and', conditions: [] };
+    searchQuery.value = ''
     fetchData()
   })
 

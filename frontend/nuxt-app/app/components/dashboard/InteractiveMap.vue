@@ -11,6 +11,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'object-clicked', handle: string, name: string): void
+  (e: 'object-dblclicked', handle: string, name: string): void
+  (e: 'map-clicked'): void
 }>()
 
 const loading = ref(true)
@@ -21,6 +23,7 @@ const svgContainer = ref<SVGSVGElement | null>(null)
 // For simple pan/zoom state
 const viewBox = ref({ x: 0, y: -50, width: 200, height: 100 })
 let isDragging = false
+let hasMoved = false
 let startDrag = { x: 0, y: 0 }
 
 const loadDxf = async () => {
@@ -86,6 +89,7 @@ const handleWheel = (e: WheelEvent) => {
 
 const handleMouseDown = (e: MouseEvent) => {
   isDragging = true
+  hasMoved = false
   startDrag = { x: e.clientX, y: e.clientY }
 }
 
@@ -94,6 +98,10 @@ const handleMouseMove = (e: MouseEvent) => {
   
   const dx = e.clientX - startDrag.x
   const dy = e.clientY - startDrag.y
+
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+    hasMoved = true
+  }
   
   // Convert screen pixels to SVG units
   const svgRect = svgContainer.value?.getBoundingClientRect()
@@ -109,6 +117,12 @@ const handleMouseMove = (e: MouseEvent) => {
 
 const handleMouseUp = () => {
   isDragging = false
+}
+
+const handleMapClick = () => {
+  if (!hasMoved) {
+    emit('map-clicked')
+  }
 }
 
 onMounted(() => {
@@ -131,6 +145,38 @@ const isHighlighted = (handle: string) => {
     if (props.highlightedHandles && props.highlightedHandles.includes(handle)) return true
     if (props.activePin === handle) return true
     return false
+}
+
+const getEntityColor = (entity: any) => {
+    // Simple ACI to CSS mapping
+    const aciToCss: Record<number, string> = {
+        1: '#ff0000', // Red
+        2: '#ffff00', // Yellow
+        3: '#00ff00', // Green
+        4: '#00ffff', // Cyan
+        5: '#0000ff', // Blue
+        6: '#ff00ff', // Magenta
+        7: '#ffffff', // White
+        8: '#808080', // Grey
+    }
+
+    if (entity.color !== undefined) return aciToCss[entity.color] || '#64748b'
+    
+    // Check layer color
+    const layerName = entity.layer
+    if (!layerName || !dxfData.value) return '#64748b'
+
+    // Try multiple possible locations for layer table
+    const layerTable = dxfData.value.layers || (dxfData.value.tables && dxfData.value.tables.layer)
+    const layer = layerTable ? layerTable[layerName] : null
+
+    if (layer && layer.color !== undefined) return aciToCss[layer.color] || '#64748b'
+
+    return '#64748b'
+}
+
+const getPolylinePoints = (vertices: any[]) => {
+    return vertices.map((v: any) => `${v.x},${v.y}`).join(' ')
 }
 
 // "Real-like" assets mapping - using high-quality SVG paths for industrial components
@@ -189,6 +235,7 @@ const getBlockAsset = (name: string) => {
                 @mousedown="handleMouseDown"
                 @mousemove="handleMouseMove"
                 @mouseleave="handleMouseUp"
+                @click="handleMapClick"
                 xmlns="http://www.w3.org/2000/svg"
             >
                 <!-- Background Grid -->
@@ -212,18 +259,31 @@ const getBlockAsset = (name: string) => {
                         <line v-if="entity.type === 'LINE'" 
                               :x1="entity.vertices[0].x" :y1="entity.vertices[0].y" 
                               :x2="entity.vertices[1].x" :y2="entity.vertices[1].y" 
-                              stroke="rgba(100, 116, 139, 0.4)" stroke-width="0.8" stroke-linecap="round" />
+                              :stroke="getEntityColor(entity)" stroke-width="0.8" stroke-linecap="round" 
+                              class="opacity-60" />
                         
+                        <polyline v-if="entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE'"
+                                  :points="getPolylinePoints(entity.vertices)"
+                                  fill="none"
+                                  :stroke="getEntityColor(entity)" stroke-width="0.8" stroke-linecap="round"
+                                  class="opacity-60" />
+
+                        <circle v-if="entity.type === 'CIRCLE'"
+                                :cx="entity.center.x" :cy="entity.center.y" :r="entity.radius"
+                                fill="none"
+                                :stroke="getEntityColor(entity)" stroke-width="0.8"
+                                class="opacity-60" />
+
                         <text v-if="entity.type === 'TEXT'"
                               :x="entity.startPoint.x" :y="-entity.startPoint.y"
-                              fill="rgba(148, 163, 184, 0.6)"
+                              :fill="getEntityColor(entity)"
                               font-size="4"
                               font-weight="900"
                               font-family="system-ui"
                               text-anchor="middle"
                               dominant-baseline="central"
                               transform="scale(1, -1)"
-                              class="uppercase tracking-tighter pointer-events-none">
+                              class="uppercase tracking-tighter pointer-events-none opacity-40">
                               {{ entity.text }}
                         </text>
                               
@@ -231,6 +291,7 @@ const getBlockAsset = (name: string) => {
                         <g v-if="entity.type === 'INSERT'" 
                            :transform="`translate(${entity.position.x}, ${entity.position.y}) rotate(${entity.rotation || 0})`"
                            @click.stop="emit('object-clicked', entity.handle, entity.name)"
+                           @dblclick.stop="emit('object-dblclicked', entity.handle, entity.name)"
                            class="cursor-pointer transition-all duration-300 group/insert"
                         >
                             <!-- Selection Glow -->
@@ -273,7 +334,7 @@ const getBlockAsset = (name: string) => {
                             </template>
 
                             <!-- Fallback DXF Rendering -->
-                            <template v-else-if="blocks[entity.name]">
+                            <template v-else-if="blocks[entity.name] && blocks[entity.name].entities">
                                 <template v-for="(bEnt, bIdx) in blocks[entity.name].entities" :key="`b-${bIdx}`">
                                     <line v-if="bEnt.type === 'LINE'" 
                                           :x1="bEnt.vertices[0].x" :y1="bEnt.vertices[0].y" 

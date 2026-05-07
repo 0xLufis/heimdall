@@ -85,7 +85,9 @@ def simulate_windows_10_pc():
                             "Cpu": "Intel Core i9-13900K",
                             "Ram": "64 GB",
                             "Storage": "1 TB NVMe",
-                            "WmicRaw": wmic_data['cpu']
+                            "WmicRaw": wmic_data['cpu'],
+                            "SerialNumber": f"WMIC-HW-{hostname}",
+                            "CostInHUF": 3500000
                         })
                     ),
                     system_info_pb2.InventoryComponent(
@@ -95,7 +97,9 @@ def simulate_windows_10_pc():
                         data_json=json.dumps({
                             "OsVersion": "Windows 10 Pro",
                             "InstalledPackages": ["Office 365", "Visual Studio 2022", "Docker Desktop"],
-                            "WmicRaw": wmic_data['os']
+                            "WmicRaw": wmic_data['os'],
+                            "SerialNumber": f"WMIC-SW-{hostname}",
+                            "CostInHUF": 125000
                         })
                     )
                 ]

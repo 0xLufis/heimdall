@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { authClient } from "~/utils/auth-client"
 
-const session = authClient.useSession()
+const authSession = authClient.useSession()
 
-const userEmail = computed(() => session.data?.value?.user?.email ?? '...')
-const userName = computed(() => session.data?.value?.user?.name ?? 'User')
+const userEmail = computed(() => authSession?.data?.value?.user?.email ?? '...')
+const userName = computed(() => authSession?.data?.value?.user?.name ?? 'User')
 </script>
 
 <template>

@@ -10,7 +10,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     volumes:
-      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin:/var/lib/pgadmin
     networks:
       - heimdall_net
     restart: unless-stopped
@@ -57,9 +57,6 @@ services:
 networks:
   heimdall_net:
     driver: bridge
-
-volumes:
-  pgadmin-data:
 
 secrets:
   pg_user:

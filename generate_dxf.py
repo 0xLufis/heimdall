@@ -14,16 +14,16 @@ doc.layers.add("STATIONS", color=colors.GREEN)
 doc.layers.add("TEXT", color=colors.WHITE)
 
 # Draw building walls
-msp.add_lwpolyline([(0, 0), (200, 0), (200, 150), (0, 150), (0, 0)], dxfattribs={'layer': 'WALLS'})
+msp.add_lwpolyline([(0, 0), (250, 0), (250, 180), (0, 180), (0, 0)], dxfattribs={'layer': 'WALLS'})
 # Inner walls
-msp.add_lwpolyline([(60, 0), (60, 50), (200, 50)], dxfattribs={'layer': 'WALLS'})
-msp.add_lwpolyline([(140, 50), (140, 150)], dxfattribs={'layer': 'WALLS'})
+msp.add_lwpolyline([(80, 0), (80, 60), (250, 60)], dxfattribs={'layer': 'WALLS'})
+msp.add_lwpolyline([(160, 60), (160, 180)], dxfattribs={'layer': 'WALLS'})
 
-# Add text labels for areas
-msp.add_text("CNC MACHINING").set_placement((30, 25), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
-msp.add_text("ASSEMBLY LINE A").set_placement((100, 25), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
-msp.add_text("ASSEMBLY LINE B").set_placement((70, 100), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
-msp.add_text("PACKAGING & QA").set_placement((170, 100), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
+# Add text labels for areas matching seed data logic
+msp.add_text("ASSEMBLY HALL").set_placement((40, 30), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
+msp.add_text("LOGISTICS & PACKAGING").set_placement((165, 30), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
+msp.add_text("QUALITY & SPECIALTY").set_placement((80, 120), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
+msp.add_text("CNC MACHINING").set_placement((205, 120), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
 
 # --- Define Blocks for Reusability ---
 
@@ -35,15 +35,12 @@ cnc_block.add_text("CNC", height=2).set_placement((0, 0), align=TextEntityAlignm
 
 # Robot Cell Block (Safety fence + Robot)
 robot_cell = doc.blocks.new(name='ROBOT_CELL')
-# Fence
 robot_cell.add_lwpolyline([(-10, -10), (10, -10), (10, 10), (-10, 10), (-10, -10)], dxfattribs={'layer': 'ROBOT_CELLS', 'linetype': 'DASHED'})
-# Base
 robot_cell.add_circle((0, 0), 3, dxfattribs={'layer': 'ROBOT_CELLS'})
-# Arm
 robot_cell.add_line((0, 0), (6, 6), dxfattribs={'layer': 'ROBOT_CELLS'})
 robot_cell.add_text("ROBOT", height=1.5).set_placement((0, -8), align=TextEntityAlignment.MIDDLE_CENTER)
 
-# Manual Assembly Station
+# Assembly Station
 assembly_st = doc.blocks.new(name='ASSEMBLY_STATION')
 assembly_st.add_lwpolyline([(-5, -4), (5, -4), (5, 4), (-5, 4), (-5, -4)], dxfattribs={'layer': 'STATIONS'})
 assembly_st.add_text("STATION", height=1.5).set_placement((0, 0), align=TextEntityAlignment.MIDDLE_CENTER)
@@ -55,38 +52,43 @@ pack_st.add_line((-6, -6), (6, 6), dxfattribs={'layer': 'STATIONS'})
 pack_st.add_line((-6, 6), (6, -6), dxfattribs={'layer': 'STATIONS'})
 pack_st.add_text("PACK", height=1.5).set_placement((0, -8), align=TextEntityAlignment.MIDDLE_CENTER)
 
-# --- Insert Blocks into Modelspace ---
+# --- Insert Blocks into Modelspace with specific handles from seed data ---
 
-# CNC Machines
-for i in range(3):
-    msp.add_blockref('CNC_MACHINE', (15 + i*20, 40))
+# ASSEMBLY HALL
+# Assembly Line 1 (handle: H-AL1)
+al1 = msp.add_blockref('ROBOT_CELL', (40, 45))
+al1.dxf.handle = 'H-AL1'
 
-# Assembly Line A (Conveyor + Stations + Robots)
-msp.add_lwpolyline([(65, 20), (195, 20)], dxfattribs={'layer': 'CONVEYORS'})
-msp.add_lwpolyline([(65, 22), (195, 22)], dxfattribs={'layer': 'CONVEYORS'})
+# Welding Station 5 (handle: H-WS5)
+ws5 = msp.add_blockref('ASSEMBLY_STATION', (20, 15))
+ws5.dxf.handle = 'H-WS5'
 
-msp.add_blockref('ROBOT_CELL', (80, 35))
-msp.add_blockref('ASSEMBLY_STATION', (110, 30))
-msp.add_blockref('ROBOT_CELL', (140, 35))
-msp.add_blockref('ASSEMBLY_STATION', (170, 30))
+# LOGISTICS & PACKAGING
+# Logistics Sorting System (handle: L-SORT-A)
+log_a = msp.add_blockref('ROBOT_CELL', (130, 30))
+log_a.dxf.handle = 'L-SORT-A'
 
-# Assembly Line B
-msp.add_lwpolyline([(10, 60), (130, 60)], dxfattribs={'layer': 'CONVEYORS'})
-msp.add_lwpolyline([(10, 62), (130, 62)], dxfattribs={'layer': 'CONVEYORS'})
+# Packaging Line B (handle: P-LINE-B)
+pack_b = msp.add_blockref('PACKAGING_STATION', (200, 30))
+pack_b.dxf.handle = 'P-LINE-B'
 
-msp.add_blockref('ASSEMBLY_STATION', (30, 70))
-msp.add_blockref('ASSEMBLY_STATION', (60, 70))
-msp.add_blockref('ROBOT_CELL', (90, 75))
-msp.add_blockref('ASSEMBLY_STATION', (120, 70))
+# QUALITY & SPECIALTY
+# Quality Inspection Cell (handle: Q-CELL-01)
+q_cell = msp.add_blockref('ASSEMBLY_STATION', (40, 140))
+q_cell.dxf.handle = 'Q-CELL-01'
 
-# Packaging Area
-msp.add_blockref('PACKAGING_STATION', (160, 70))
-msp.add_blockref('PACKAGING_STATION', (185, 70))
-msp.add_blockref('PACKAGING_STATION', (160, 110))
-msp.add_blockref('PACKAGING_STATION', (185, 110))
+# Chemical Mixing Tank (handle: C-TANK-4)
+tank_4 = msp.add_circle((120, 140), 10, dxfattribs={'layer': 'STATIONS'})
+tank_4.dxf.handle = 'C-TANK-4'
+msp.add_text("TANK 4", height=2).set_placement((120, 140), align=TextEntityAlignment.MIDDLE_CENTER)
+
+# MACHINING
+# CNC Milling Center (handle: CNC-MC-12)
+cnc_12 = msp.add_blockref('CNC_MACHINE', (210, 140))
+cnc_12.dxf.handle = 'CNC-MC-12'
 
 
 # Ensure output directory exists
 os.makedirs('frontend/nuxt-app/public/sample', exist_ok=True)
 doc.saveas('frontend/nuxt-app/public/sample/assembly_line.dxf')
-print("Realistic DXF created successfully!")
+print("Realistic DXF created successfully matching seed data handles!")

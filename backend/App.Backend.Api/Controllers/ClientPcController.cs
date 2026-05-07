@@ -8,53 +8,96 @@ using Microsoft.EntityFrameworkCore;
 namespace App.Backend.Api.Controllers;
 
 /// <summary>
-/// Controller for managing Client PCs.
-/// Provides API endpoints for retrieving, creating, updating, and deleting client PC information.
-/// Requires authentication for all endpoints by default, but some can be overridden with [AllowAnonymous].
+/// Controller for managing Client PCs using the refactored model.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // Require BetterAuth session for all endpoints
+[Authorize]
 public class ClientPcController : ControllerBase
 {
     private readonly ClientPcRepository _repository;
     private readonly ILogger<ClientPcController> _logger;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ClientPcController"/> class.
-    /// </summary>
-    /// <param name="repository">The repository for Client PC data operations.</param>
-    /// <param name="logger">The logger for the controller.</param>
     public ClientPcController(ClientPcRepository repository, ILogger<ClientPcController> logger)
     {
         _repository = repository;
         _logger = logger;
     }
 
-    /// <summary>
-    /// Retrieves a list of all Client PCs, including their associated Machines.
-    /// Can be accessed anonymously for testing purposes.
-    /// </summary>
-    /// <param name="dbContext">The application's database context.</param>
-    /// <returns>A list of <see cref="ClientPc"/> objects.</returns>
     [HttpGet]
-    [AllowAnonymous] // Allow testing without full auth
-    public async Task<ActionResult<IEnumerable<ClientPc>>> GetClientPcs(
+    [AllowAnonymous]
+    public async Task<ActionResult<IEnumerable<App.Backend.Api.Dtos.ClientPcDto>>> GetClientPcs(
         [FromServices] AppDbContext dbContext)
     {
         var pcs = await dbContext.ClientPcs
-            .Include(c => c.Machines)
-            .Include(c => c.Components)
-                .ThenInclude(comp => comp.Children)
+            .Select(c => new App.Backend.Api.Dtos.ClientPcDto
+            {
+                Id = c.Id,
+                Name = c.Hostname ?? c.Name,
+                DisplayName = c.Hostname ?? c.Name, // Default to hostname
+                OrganizationId = "Heimdall Root", // Default for now
+                Hostname = c.Hostname,
+                MacAddress = c.MacAddress,
+                MachineIdentifier = c.MachineIdentifier,
+                PinnedObjectHandle = c.PinnedObjectHandle,
+                LastSeen = c.LastOnline,
+                Machines = c.ControlledMachines.Select(m => new App.Backend.Api.Dtos.MachineSummaryDto
+                {
+                    Id = m.Id,
+                    CustomIdentifier = m.CustomIdentifier,
+                    PinnedObjectHandle = m.PinnedObjectHandle,
+                    Name = m.Name
+                }).ToList(),
+                ResponsibleTeams = c.ResponsibleTeams.Select(t => new App.Backend.Api.Dtos.TeamSummaryDto
+                {
+                    Id = t.Id,
+                    Name = t.Name
+                }).ToList(),
+                InventoryItems = c.InventoryItems.Select(i => new App.Backend.Api.Dtos.InventoryItemDto
+                {
+                    Id = i.Id,
+                    Name = i.Name,
+                    DisplayName = i.DisplayName,
+                    ItemType = i.GetType().Name,
+                    Metadata = i.Metadata,
+                    Children = i.Children.Select(ci => new App.Backend.Api.Dtos.InventoryItemDto
+                    {
+                        Id = ci.Id,
+                        Name = ci.Name,
+                        DisplayName = ci.DisplayName,
+                        ItemType = ci.GetType().Name,
+                        Metadata = ci.Metadata,
+                        Children = ci.Children.Select(gci => new App.Backend.Api.Dtos.InventoryItemDto
+                        {
+                            Id = gci.Id,
+                            Name = gci.Name,
+                            DisplayName = gci.DisplayName,
+                            ItemType = gci.GetType().Name,
+                            Metadata = gci.Metadata,
+                            Children = gci.Children.Select(ggci => new App.Backend.Api.Dtos.InventoryItemDto
+                            {
+                                Id = ggci.Id,
+                                Name = ggci.Name,
+                                DisplayName = ggci.DisplayName,
+                                ItemType = ggci.GetType().Name,
+                                Metadata = ggci.Metadata,
+                                Children = ggci.Children.Select(gggci => new App.Backend.Api.Dtos.InventoryItemDto
+                                {
+                                    Id = gggci.Id,
+                                    Name = gggci.Name,
+                                    DisplayName = gggci.DisplayName,
+                                    ItemType = gggci.GetType().Name,
+                                    Metadata = gggci.Metadata
+                                }).ToList()
+                            }).ToList()
+                        }).ToList()
+                    }).ToList()
+                }).ToList()
+            })
             .ToListAsync();
         return Ok(pcs);
     }
 
-    /// <summary>
-    /// Retrieves a specific Client PC by its ID.
-    /// </summary>
-    /// <param name="id">The unique identifier of the Client PC.</param>
-    /// <returns>A <see cref="ClientPc"/> object if found, otherwise <see cref="NotFoundResult"/>.</returns>
     [HttpGet("{id}")]
     public async Task<ActionResult<ClientPc>> GetClientPc(Guid id)
     {
@@ -66,11 +109,6 @@ public class ClientPcController : ControllerBase
         return Ok(pc);
     }
 
-    /// <summary>
-    /// Creates a new Client PC.
-    /// </summary>
-    /// <param name="pc">The <see cref="ClientPc"/> object to create.</param>
-    /// <returns>The newly created <see cref="ClientPc"/> object.</returns>
     [HttpPost]
     public async Task<ActionResult<ClientPc>> CreateClientPc(ClientPc pc)
     {
@@ -78,36 +116,32 @@ public class ClientPcController : ControllerBase
         return CreatedAtAction(nameof(GetClientPc), new { id = createdPc.Id }, createdPc);
     }
 
-    /// <summary>
-    /// Updates an existing Client PC's pinned object handle and associated machines.
-    /// Can be accessed anonymously for testing purposes.
-    /// </summary>
-    /// <param name="id">The unique identifier of the Client PC to update.</param>
-    /// <param name="update">The <see cref="ClientPc"/> object containing the updated data.</param>
-    /// <param name="dbContext">The application's database context.</param>
-    /// <returns>A <see cref="NoContentResult"/> if successful, <see cref="NotFoundResult"/> if the PC is not found.</returns>
     [HttpPut("{id}")]
     [AllowAnonymous]
-    public async Task<IActionResult> UpdateClientPc(Guid id, [FromBody] ClientPc update, [FromServices] AppDbContext dbContext)
+    public async Task<IActionResult> UpdateClientPc(Guid id, [FromBody] App.Backend.Api.Dtos.ClientPcUpdateDto update, [FromServices] AppDbContext dbContext)
     {
         var pc = await dbContext.ClientPcs
-            .Include(c => c.Machines)
+            .Include(c => c.ControlledMachines)
+            .Include(c => c.ResponsibleTeams)
             .FirstOrDefaultAsync(c => c.Id == id);
             
         if (pc == null) return NotFound();
 
-        pc.PinnedObjectHandle = update.PinnedObjectHandle;
+        if (!string.IsNullOrEmpty(update.PinnedObjectHandle)) pc.PinnedObjectHandle = update.PinnedObjectHandle;
+        if (!string.IsNullOrEmpty(update.Name)) pc.Name = update.Name;
+        if (!string.IsNullOrEmpty(update.Hostname)) pc.Hostname = update.Hostname;
+        if (!string.IsNullOrEmpty(update.MacAddress)) pc.MacAddress = update.MacAddress;
         
-        // Update many-to-many relationship
-        if (update.Machines != null)
+        // Update Controlled Machines
+        if (update.ControlledMachineIds != null)
         {
-            pc.Machines.Clear();
-            foreach (var machineUpdate in update.Machines)
+            pc.ControlledMachines.Clear();
+            foreach (var machineId in update.ControlledMachineIds)
             {
-                var existingMachine = await dbContext.Machines.FindAsync(machineUpdate.Id);
+                var existingMachine = await dbContext.Machines.FindAsync(machineId);
                 if (existingMachine != null)
                 {
-                    pc.Machines.Add(existingMachine);
+                    pc.ControlledMachines.Add(existingMachine);
                 }
             }
         }

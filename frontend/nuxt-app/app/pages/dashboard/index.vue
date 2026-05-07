@@ -31,7 +31,8 @@
 import { authClient } from "~/utils/auth-client"
 import { useDashboard } from "@/composables/useDashboard"
 
-const { data: session } = authClient.useSession()
+const authSession = authClient.useSession()
+const session = computed(() => authSession?.data?.value)
 const { stats, recentClients, securityEvents } = useDashboard()
 
 definePageMeta({

@@ -35,4 +35,11 @@ message DiskInfo {
 message SystemInfoResponse {
   bool success = 1;
   string message = 2;
+  repeated ServerCommand commands = 3;
+}
+
+message ServerCommand {
+  string type = 1; // "UPDATE_CONFIG", "FILE_CHECK"
+  string payload = 2; // JSON payload or file path
+  string signature = 3; // RSA signature if required
 }
