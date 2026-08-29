@@ -6,6 +6,10 @@ using System.Text.Json;
 
 namespace App.Shared.Entities;
 
+// Industrial domain entity aliases
+using ProductionStation = Machine;
+using IndustrialController = ClientPc;
+
 // --- SHARED RESPONSIBILITY ---
 
 /// <summary>
@@ -61,7 +65,7 @@ public abstract partial class BaseInventoryItem
     /// <summary>Navigation property for the supplier.</summary>
     public Supplier? Supplier { get; set; }
 
-    /// <summary>The ID of the Client PC this asset is associated with (e.g., if it's a component of a PC).</summary>
+    /// <summary>The ID of the Client PC this asset is associated with (e.g., if it is a component of a PC).</summary>
     public Guid? ClientPcId { get; set; }
     /// <summary>Navigation property for the associated Client PC.</summary>
     public ClientPc? ClientPc { get; set; }
@@ -101,6 +105,9 @@ public partial class Machine : BaseInventoryItem
     
     /// <summary>List of Client PCs that control or monitor this station.</summary>
     public List<ClientPc> Controllers { get; set; } = new();
+
+    /// <summary>List of StationController junction entries for graph relationships.</summary>
+    public List<StationController> StationControllers { get; set; } = new();
 }
 
 /// <summary>
@@ -139,6 +146,9 @@ public partial class ClientPc
     /// <summary>List of production stations controlled by this PC.</summary>
     public List<Machine> ControlledMachines { get; set; } = new();
 
+    /// <summary>List of StationController junction entries for graph relationships.</summary>
+    public List<StationController> StationControllers { get; set; } = new();
+
     /// <summary>List of internal hardware and software components assigned to this PC.</summary>
     public List<BaseInventoryItem> InventoryItems { get; set; } = new();
 
@@ -165,6 +175,46 @@ public partial class ClientPc
 
     /// <summary>Thresholds for system health alerting (JSONB).</summary>
     public AlertingLimits? AlertingLimits { get; set; }
+}
+
+/// <summary>
+/// Explicit M:N junction entity linking Production Stations (Machines) with Industrial Controllers (Client PCs).
+/// Represents control edges in the industrial graph-relational model.
+/// </summary>
+[Table("StationControllers")]
+public partial class StationController
+{
+    /// <summary>Unique identifier for the station controller edge.</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>The ID of the controlled Machine / ProductionStation.</summary>
+    public Guid MachineId { get; set; }
+    /// <summary>Navigation property for the controlled Machine / ProductionStation.</summary>
+    public Machine? Machine { get; set; }
+
+    /// <summary>The ID of the controlling ClientPc / IndustrialController.</summary>
+    public Guid ClientPcId { get; set; }
+    /// <summary>Navigation property for the controlling ClientPc / IndustrialController.</summary>
+    public ClientPc? ClientPc { get; set; }
+
+    /// <summary>The role of this controller (e.g., "Primary", "Secondary", "Gateway", "Safety").</summary>
+    public string? Role { get; set; }
+
+    /// <summary>Timestamp when the association was established.</summary>
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Flexible JSONB metadata for edge properties.</summary>
+    public JsonDocument? Metadata { get; set; }
+
+    // Domain Graph-Relational alias helper properties
+    [NotMapped]
+    public Guid ProductionStationId { get => MachineId; set => MachineId = value; }
+    [NotMapped]
+    public Machine? ProductionStation { get => Machine; set => Machine = value; }
+    [NotMapped]
+    public Guid IndustrialControllerId { get => ClientPcId; set => ClientPcId = value; }
+    [NotMapped]
+    public ClientPc? IndustrialController { get => ClientPc; set => ClientPc = value; }
 }
 
 /// <summary>
@@ -221,19 +271,28 @@ public partial class HardwareComponent : BaseInventoryItem
     public string? ModelNumber { get; set; }
 
     /// <summary>List of software/firmware components associated with this hardware.</summary>
-    public List<SoftwareComponent> Firmware { get; set; } = new();
+    public List<SoftwareAsset> Firmware { get; set; } = new();
 }
 
 /// <summary>
 /// Represents logical assets such as PLC Programs, Software Licenses, or Firmware.
+/// Contains encrypted sensitive properties such as LicenseKey.
 /// </summary>
 [Table("software_assets")]
-public partial class SoftwareComponent : BaseInventoryItem
+public partial class SoftwareAsset : BaseInventoryItem
 {
-    /// <summary>The software version string.</summary>
+    /// <summary>The software version string or commit SHA.</summary>
     public string? Version { get; set; }
-    /// <summary>The license key or activation code.</summary>
+    /// <summary>The encrypted license key or activation code.</summary>
     public string? LicenseKey { get; set; }
+}
+
+/// <summary>
+/// Subclass / Alias entity for SoftwareAsset for backward compatibility.
+/// </summary>
+[Table("software_assets")]
+public partial class SoftwareComponent : SoftwareAsset
+{
 }
 
 /// <summary>
@@ -246,6 +305,166 @@ public partial class PcHardware : BaseInventoryItem
     public string? Capacity { get; set; }
     /// <summary>The specific type/standard (e.g., "DDR4", "NVMe").</summary>
     public string? Type { get; set; }
+}
+
+/// <summary>
+/// Represents a graph edge / connectivity link between two equipment / inventory items.
+/// Maps physical or logical network interconnectivity (e.g., OPC UA, EtherNet/IP, PROFINET, Modbus).
+/// </summary>
+[Table("equipment_interconnects")]
+public partial class EquipmentInterconnect
+{
+    /// <summary>Unique identifier for the interconnect link.</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>The ID of the source inventory item / equipment.</summary>
+    public Guid SourceEquipmentId { get; set; }
+    /// <summary>Navigation property for the source equipment.</summary>
+    public BaseInventoryItem? SourceEquipment { get; set; }
+
+    /// <summary>The ID of the target inventory item / equipment.</summary>
+    public Guid TargetEquipmentId { get; set; }
+    /// <summary>Navigation property for the target equipment.</summary>
+    public BaseInventoryItem? TargetEquipment { get; set; }
+
+    /// <summary>The interconnection type (e.g., "OPC UA", "PROFINET", "Modbus", "EtherNet/IP", "Serial").</summary>
+    public string InterconnectType { get; set; } = "Ethernet";
+
+    /// <summary>Optional connection string or endpoint URL.</summary>
+    public string? ConnectionString { get; set; }
+
+    /// <summary>Physical port, tag path, or IP address information.</summary>
+    public string? PortOrAddress { get; set; }
+
+    /// <summary>Communication protocol identifier.</summary>
+    public string? Protocol { get; set; }
+
+    /// <summary>Operational status of the connection (e.g., "Active", "Inactive", "Degraded").</summary>
+    public string? Status { get; set; }
+
+    /// <summary>Flexible JSONB metadata for custom edge properties.</summary>
+    public JsonDocument? Metadata { get; set; }
+
+    /// <summary>Timestamp when the interconnect was created.</summary>
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Represents a maintenance ticket recorded against equipment, machines, or client PCs.
+/// Part of the graph-relational incident management system.
+/// </summary>
+[Table("maintenance_tickets")]
+public partial class MaintenanceTicket
+{
+    /// <summary>Unique identifier for the maintenance ticket.</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>Short summary title of the issue or maintenance requirement.</summary>
+    [Required, MaxLength(255)]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Detailed description of the issue or ticket work.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>Current status (e.g., "Open", "InProgress", "Resolved", "Closed").</summary>
+    public string Status { get; set; } = "Open";
+
+    /// <summary>Priority level (e.g., "Low", "Medium", "High", "Critical").</summary>
+    public string Priority { get; set; } = "Medium";
+
+    /// <summary>Optional reference to associated inventory item.</summary>
+    public Guid? EquipmentId { get; set; }
+    /// <summary>Navigation property for associated equipment.</summary>
+    public BaseInventoryItem? Equipment { get; set; }
+
+    /// <summary>Optional reference to associated Client PC.</summary>
+    public Guid? ClientPcId { get; set; }
+    /// <summary>Navigation property for associated Client PC.</summary>
+    public ClientPc? ClientPc { get; set; }
+
+    /// <summary>Optional reference to associated Machine / Production Station.</summary>
+    public Guid? MachineId { get; set; }
+    /// <summary>Navigation property for associated Machine.</summary>
+    public Machine? Machine { get; set; }
+
+    /// <summary>User or team assigned to resolve the ticket.</summary>
+    public string? AssignedTo { get; set; }
+
+    /// <summary>User who created the ticket.</summary>
+    public string? CreatedBy { get; set; }
+
+    /// <summary>Timestamp when ticket was created.</summary>
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Timestamp when ticket was resolved.</summary>
+    public DateTimeOffset? ResolvedAt { get; set; }
+
+    /// <summary>Flexible JSONB metadata for extra ticket context.</summary>
+    public JsonDocument? Metadata { get; set; }
+
+    /// <summary>Collection of comments associated with this ticket.</summary>
+    public List<TicketComment> Comments { get; set; } = new();
+
+    /// <summary>Collection of file attachments associated with this ticket.</summary>
+    public List<TicketAttachment> Attachments { get; set; } = new();
+}
+
+/// <summary>
+/// Represents a comment posted on a maintenance ticket.
+/// </summary>
+[Table("ticket_comments")]
+public partial class TicketComment
+{
+    /// <summary>Unique identifier for the comment.</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>The maintenance ticket ID.</summary>
+    public Guid MaintenanceTicketId { get; set; }
+    /// <summary>Navigation property for the maintenance ticket.</summary>
+    public MaintenanceTicket? MaintenanceTicket { get; set; }
+
+    /// <summary>Author of the comment.</summary>
+    [Required, MaxLength(255)]
+    public string Author { get; set; } = string.Empty;
+
+    /// <summary>Markdown or plain text content of the comment.</summary>
+    [Required]
+    public string Content { get; set; } = string.Empty;
+
+    /// <summary>Timestamp when the comment was created.</summary>
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Represents a file attachment on a maintenance ticket.
+/// </summary>
+[Table("ticket_attachments")]
+public partial class TicketAttachment
+{
+    /// <summary>Unique identifier for the attachment.</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>The maintenance ticket ID.</summary>
+    public Guid MaintenanceTicketId { get; set; }
+    /// <summary>Navigation property for the maintenance ticket.</summary>
+    public MaintenanceTicket? MaintenanceTicket { get; set; }
+
+    /// <summary>Original filename of the attachment.</summary>
+    [Required, MaxLength(255)]
+    public string FileName { get; set; } = string.Empty;
+
+    /// <summary>Internal storage key or file path.</summary>
+    [Required]
+    public string StoragePath { get; set; } = string.Empty;
+
+    /// <summary>MIME content type (e.g. "image/png", "application/pdf").</summary>
+    public string? ContentType { get; set; }
+
+    /// <summary>Size of the file in bytes.</summary>
+    public long FileSizeBytes { get; set; }
+
+    /// <summary>Timestamp when the file was uploaded.</summary>
+    public DateTimeOffset UploadedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 // --- REFERENCE ENTITIES ---
@@ -336,7 +555,7 @@ public class DiskSpaceInfo
 }
 
 /// <summary>
-/// Configuration for the monitoring agent's resource collection behavior.
+/// Configuration for the monitoring agent resource collection behavior.
 /// </summary>
 public class ResourceMonitoringConfig
 {

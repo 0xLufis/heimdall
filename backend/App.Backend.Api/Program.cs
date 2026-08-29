@@ -67,6 +67,8 @@ else if (builder.Environment.IsEnvironment("Test"))
 
 // --- 2. Repositories ---
 builder.Services.AddScoped<ClientPcRepository>();
+builder.Services.AddScoped<OpcUaGatewayService>();
+builder.Services.AddScoped<CopiaIntegrationService>();
 
 // --- 3. Authentication & Authorization ---
 // Register our custom Better-Auth handler
