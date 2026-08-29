@@ -1,10 +1,7 @@
-using App.Shared.Data;
-using App.Shared.Entities;
+using App.Infrastructure.Repositories;
+using App.Backend.Api.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using App.Backend.Api.Dtos;
-using System.Linq;
 
 namespace App.Backend.Api.Controllers;
 
@@ -16,79 +13,47 @@ namespace App.Backend.Api.Controllers;
 [Authorize]
 public class DashboardController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IControllerRepository _controllerRepository;
+    private readonly IAssetRepository _assetRepository;
+    private readonly IMaintenanceTicketRepository _ticketRepository;
     private readonly ILogger<DashboardController> _logger;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DashboardController"/> class.
-    /// </summary>
-    /// <param name="context">The database context.</param>
-    /// <param name="logger">The logger instance.</param>
-    public DashboardController(AppDbContext context, ILogger<DashboardController> logger)
+    public DashboardController(
+        IControllerRepository controllerRepository,
+        IAssetRepository assetRepository,
+        IMaintenanceTicketRepository ticketRepository,
+        ILogger<DashboardController> logger)
     {
-        _context = context;
+        _controllerRepository = controllerRepository;
+        _assetRepository = assetRepository;
+        _ticketRepository = ticketRepository;
         _logger = logger;
     }
 
     /// <summary>
     /// Retrieves a unified data package for the dashboard, including stats, recent clients, and security events.
     /// </summary>
-    /// <returns>A <see cref="DashboardDto"/> containing the current system state.</returns>
-    /// <response code="200">Returns the aggregated dashboard data.</response>
-    /// <response code="401">If the user is not authenticated.</response>
     [HttpGet]
     [AllowAnonymous]
     public async Task<ActionResult<DashboardDto>> GetDashboardData()
     {
-        var now = DateTimeOffset.UtcNow;
-        var activeThreshold = now.AddMinutes(-5);
+        int totalUsers = await _assetRepository.GetAuthUsersCountAsync();
+        int totalClients = await _controllerRepository.GetCountAsync();
+        int activeClients = await _controllerRepository.GetActiveCountAsync(TimeSpan.FromMinutes(5));
+        int pendingAlerts = await _ticketRepository.GetPendingAlertsCountAsync(TimeSpan.FromDays(1));
 
-        // Stats
-        int totalUsers = 0;
-        try {
-            totalUsers = await _context.AuthUsers.CountAsync();
-        } catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to count auth users. Casing or permissions issue?");
-        }
+        double avgUptime = totalClients > 0 ? (double)activeClients / totalClients * 100 : 0;
 
-        var totalClients = await _context.ClientPcs.CountAsync();
-        var activeClients = await _context.ClientPcs.CountAsync(c => c.LastOnline >= activeThreshold);
-        
-        int pendingAlerts = 0;
-        try {
-            pendingAlerts = await _context.AgentEvents.CountAsync(e => (e.Level == "Warning" || e.Level == "Error" || e.Level == "Critical") && e.Timestamp >= now.AddDays(-1).DateTime);
-        } catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to count agent events.");
-        }
-        
-        var avgUptime = totalClients > 0 ? (double)activeClients / totalClients * 100 : 0;
-
-        // Recent Clients
-        var recentClientsRaw = await _context.ClientPcs
-            .OrderByDescending(c => c.LastOnline)
-            .Take(5)
-            .Select(c => new 
-            {
-                c.Id,
-                Hostname = c.Hostname ?? c.Name,
-                LastOnline = c.LastOnline
-            })
-            .ToListAsync();
-
+        var recentClientsRaw = await _controllerRepository.GetRecentClientsAsync(5);
         var recentClients = recentClientsRaw.Select(c => new RecentClientDto
         {
             Id = c.Id,
-            Hostname = c.Hostname,
+            Hostname = c.Hostname ?? c.Name,
             Os = "Unknown",
             LastSeen = c.LastOnline.HasValue ? GetRelativeTime(c.LastOnline.Value) : "Never"
         }).ToList();
 
-        // Security Events / Activity
-        var securityEventsRaw = await _context.AgentEvents
-            .OrderByDescending(e => e.Timestamp)
-            .Take(10)
-            .ToListAsync();
-
+        var securityEventsRaw = await _ticketRepository.GetRecentAgentEventsAsync(10);
         var securityEvents = securityEventsRaw.Select(e => new AgentEventDto
         {
             Title = e.Source,
@@ -117,11 +82,6 @@ public class DashboardController : ControllerBase
         };
     }
 
-    /// <summary>
-    /// Helper method to convert a timestamp into a human-readable relative time string.
-    /// </summary>
-    /// <param name="dateTime">The timestamp to convert.</param>
-    /// <returns>A string like "2 mins ago" or "Just now".</returns>
     private static string GetRelativeTime(DateTimeOffset dateTime)
     {
         var span = DateTimeOffset.UtcNow - dateTime;

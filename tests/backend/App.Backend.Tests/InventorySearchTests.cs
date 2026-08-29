@@ -1,4 +1,6 @@
 using App.Backend.Api.Controllers;
+using App.Backend.Api.Dtos;
+using App.Infrastructure.Repositories;
 using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -29,15 +31,17 @@ public class InventorySearchTests
         });
         await context.SaveChangesAsync();
 
-        var controller = new InventoryController(context);
+        var assetRepo = new AssetRepository(context);
+        var controllerRepo = new ControllerRepository(context);
+        var controller = new InventoryController(assetRepo, controllerRepo);
 
         // Act
         var result = await controller.Search("name:target");
 
         // Assert
-        var actionResult = Assert.IsType<ActionResult<IEnumerable<BaseInventoryItem>>>(result);
+        var actionResult = Assert.IsType<ActionResult<IEnumerable<SearchResultDto>>>(result);
         var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
-        var components = Assert.IsAssignableFrom<IEnumerable<BaseInventoryItem>>(okResult.Value);
+        var components = Assert.IsAssignableFrom<IEnumerable<SearchResultDto>>(okResult.Value);
         Assert.Single(components);
         Assert.Contains(components, c => c.Name == "Target Component");
     }
@@ -56,17 +60,19 @@ public class InventorySearchTests
         });
         await context.SaveChangesAsync();
 
-        var controller = new InventoryController(context);
+        var assetRepo = new AssetRepository(context);
+        var controllerRepo = new ControllerRepository(context);
+        var controller = new InventoryController(assetRepo, controllerRepo);
 
         // Act
         var result = await controller.Search("manufacturer:vision");
 
         // Assert
-        var actionResult = Assert.IsType<ActionResult<IEnumerable<BaseInventoryItem>>>(result);
+        var actionResult = Assert.IsType<ActionResult<IEnumerable<SearchResultDto>>>(result);
         var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
-        var components = Assert.IsAssignableFrom<IEnumerable<BaseInventoryItem>>(okResult.Value);
+        var components = Assert.IsAssignableFrom<IEnumerable<SearchResultDto>>(okResult.Value);
         Assert.Single(components);
-        Assert.Equal("VisionCorp", components.First().Manufacturer?.Name);
+        Assert.Equal("VisionCorp", components.First().ManufacturerName);
     }
 
     [Fact]
@@ -81,17 +87,19 @@ public class InventorySearchTests
         });
         await context.SaveChangesAsync();
 
-        var controller = new InventoryController(context);
+        var assetRepo = new AssetRepository(context);
+        var controllerRepo = new ControllerRepository(context);
+        var controller = new InventoryController(assetRepo, controllerRepo);
 
         // Act
         var result = await controller.Search("type:hardware");
 
         // Assert
-        var actionResult = Assert.IsType<ActionResult<IEnumerable<BaseInventoryItem>>>(result);
+        var actionResult = Assert.IsType<ActionResult<IEnumerable<SearchResultDto>>>(result);
         var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
-        var components = Assert.IsAssignableFrom<IEnumerable<BaseInventoryItem>>(okResult.Value);
+        var components = Assert.IsAssignableFrom<IEnumerable<SearchResultDto>>(okResult.Value);
         Assert.Single(components);
-        Assert.IsType<HardwareComponent>(components.First());
+        Assert.Equal("HardwareComponent", components.First().ItemType);
         Assert.Equal("Hardware", components.First().Name);
     }
 
@@ -110,17 +118,19 @@ public class InventorySearchTests
         });
         await context.SaveChangesAsync();
 
-        var controller = new InventoryController(context);
+        var assetRepo = new AssetRepository(context);
+        var controllerRepo = new ControllerRepository(context);
+        var controller = new InventoryController(assetRepo, controllerRepo);
 
         // Act
         var result = await controller.Search("name:target manufacturer:vision");
 
         // Assert
-        var actionResult = Assert.IsType<ActionResult<IEnumerable<BaseInventoryItem>>>(result);
+        var actionResult = Assert.IsType<ActionResult<IEnumerable<SearchResultDto>>>(result);
         var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
-        var components = Assert.IsAssignableFrom<IEnumerable<BaseInventoryItem>>(okResult.Value);
+        var components = Assert.IsAssignableFrom<IEnumerable<SearchResultDto>>(okResult.Value);
         Assert.Single(components);
         Assert.Equal("Target", components.First().Name);
-        Assert.Equal("VisionCorp", components.First().Manufacturer?.Name);
+        Assert.Equal("VisionCorp", components.First().ManufacturerName);
     }
 }
