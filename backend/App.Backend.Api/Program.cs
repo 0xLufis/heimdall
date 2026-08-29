@@ -1,3 +1,4 @@
+using App.Backend.Api.Hubs;
 using App.Backend.Api.Security;
 using App.Backend.Api.Services;
 using App.Infrastructure.Repositories;
@@ -66,7 +67,12 @@ else if (builder.Environment.IsEnvironment("Test"))
 }
 
 // --- 2. Repositories ---
+builder.Services.AddScoped<IStationRepository, StationRepository>();
+builder.Services.AddScoped<IControllerRepository, ControllerRepository>();
+builder.Services.AddScoped<IClientPcRepository, ClientPcRepository>();
 builder.Services.AddScoped<ClientPcRepository>();
+builder.Services.AddScoped<IAssetRepository, AssetRepository>();
+builder.Services.AddScoped<IMaintenanceTicketRepository, MaintenanceTicketRepository>();
 
 // --- 3. Authentication & Authorization ---
 // Register our custom Better-Auth handler
@@ -75,13 +81,14 @@ builder.Services.AddAuthentication("BetterAuth")
 
 builder.Services.AddAuthorization();
 
-// --- 4. Controllers & gRPC & Swagger ---
+// --- 4. Controllers & SignalR & gRPC & Swagger ---
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
+builder.Services.AddSignalR();
 builder.Services.AddGrpc();
 builder.Services.AddGrpcReflection();
 builder.Services.AddEndpointsApiExplorer();
@@ -107,6 +114,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<MaintenanceHub>("/hubs/maintenance");
 app.MapGrpcService<SystemInfoCollectorService>();
 
 if (app.Environment.IsDevelopment())

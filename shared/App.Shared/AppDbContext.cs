@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<QueuedAgentCommand> QueuedAgentCommands { get; set; }
     public DbSet<AgentEvent> AgentEvents { get; set; }
+    public DbSet<MaintenanceTicket> MaintenanceTickets { get; set; }
     
     // Auth Sets (Managed by Better-Auth, excluded from migrations)
     /// <summary>
@@ -216,6 +217,27 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AgentEvent>(entity =>
         {
             entity.ToTable("agent_events");
+        });
+
+        modelBuilder.Entity<MaintenanceTicket>(entity =>
+        {
+            entity.ToTable("maintenance_tickets");
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.Machine)
+                  .WithMany()
+                  .HasForeignKey(e => e.MachineId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ClientPc)
+                  .WithMany()
+                  .HasForeignKey(e => e.ClientPcId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Asset)
+                  .WithMany()
+                  .HasForeignKey(e => e.AssetId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Configure HardwareComponent
