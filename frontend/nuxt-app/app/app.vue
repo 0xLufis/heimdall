@@ -9,13 +9,19 @@ useHead({
   ],
   meta: [
     { name: 'theme-color', content: '#4f46e5' },
+    { name: 'mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }
   ]
 })
 
 onMounted(() => {
-  if (typeof window !== 'undefined' && 'serviceWorker' in navigator && process.env.NODE_ENV !== 'test') {
+  if (
+    typeof window !== 'undefined' && 
+    'serviceWorker' in navigator && 
+    process.env.NODE_ENV !== 'test' &&
+    !import.meta.dev
+  ) {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
       console.log('Heimdall Service Worker registered with scope:', reg.scope)
     }).catch((err) => {

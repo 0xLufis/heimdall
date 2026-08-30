@@ -208,12 +208,15 @@ async function handleManageMembers(org: any) {
     showMembersModal.value = true
     loadingMembers.value = true
     try {
-        const { data, error } = await authClient.organization.listMembers({
-            organizationId: org.id
-        })
-        if (data) members.value = data
+        const res = await $fetch<{ success: boolean; members: any[] }>(`/api/organizations/${org.id}/members`)
+        if (res && res.members) {
+            members.value = res.members
+        } else {
+            const { data } = await (authClient.organization as any).getMembers?.({ query: { organizationId: org.id } }) || {}
+            if (data) members.value = data
+        }
     } catch (e) {
-        console.error(e)
+        console.error('Error fetching org members:', e)
     } finally {
         loadingMembers.value = false
     }

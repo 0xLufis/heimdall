@@ -1,14 +1,14 @@
 import { defineEventHandler, getQuery } from 'h3'
 
-// Mock base assets for tree aggregation offloading
-const mockMachines = [
+// Rich seed datasets for offline/local dev fallback
+const SEED_MACHINES = [
   {
     id: 'mach-op10',
     name: 'OP10 Machining Cell',
     hostname: 'OP10-CELL-01',
     customIdentifier: 'STATION-OP10-01',
     displayName: 'Main CNC Milling Station',
-    organizationId: 'Org-Alpha',
+    organizationId: 'Production Floor A',
     responsibleTeams: [{ id: 'team-mech', name: 'Mechanical Maintenance' }],
     controllers: [
       { id: 'ctrl-101', name: 'Siemens S7-1500 PLC', hostname: 'plc-op10.local' }
@@ -16,12 +16,12 @@ const mockMachines = [
     children: [
       {
         id: 'comp-101',
-        name: 'Spindle Motor Assembly',
+        name: 'Spindle Motor Assembly 15kW',
         serialNumber: 'SN-SPINDLE-994',
         itemType: 'hardware',
         costInHUF: 1850000,
         purchaseDate: '2023-04-12T00:00:00Z',
-        manufacturer: { name: 'Siemens Industrial' },
+        manufacturer: { name: 'Siemens' },
         metadata: { Power: '15kW', MaxRPM: '12000' }
       },
       {
@@ -52,8 +52,8 @@ const mockMachines = [
     name: 'OP20 Robotic Welding Station',
     hostname: 'OP20-WELD-02',
     customIdentifier: 'STATION-OP20-02',
-    displayName: 'KUKA Robotic Cell',
-    organizationId: 'Org-Alpha',
+    displayName: 'KUKA Robotic Welding Cell',
+    organizationId: 'Production Floor A',
     responsibleTeams: [{ id: 'team-elec', name: 'Electrical Engineering' }],
     controllers: [
       { id: 'ctrl-201', name: 'KUKA KRC4 Controller', hostname: 'kuka-op20.local' }
@@ -61,7 +61,7 @@ const mockMachines = [
     children: [
       {
         id: 'comp-201',
-        name: 'Servo Driver Module 30A',
+        name: 'KUKA Servo Driver Module 30A',
         serialNumber: 'SN-SERVO-881',
         itemType: 'hardware',
         costInHUF: 940000,
@@ -77,8 +77,8 @@ const mockMachines = [
     name: 'OP30 Automated Quality Inspector',
     hostname: 'OP30-INSPECT-03',
     customIdentifier: 'STATION-OP30-03',
-    displayName: 'Cognex Vision Inspection',
-    organizationId: 'Org-Beta',
+    displayName: 'Cognex Optical Inspection Station',
+    organizationId: 'Production Floor B',
     responsibleTeams: [{ id: 'team-quality', name: 'Quality Automation' }],
     controllers: [],
     children: [
@@ -107,14 +107,14 @@ const mockMachines = [
   }
 ]
 
-const mockClients = [
+const SEED_CLIENTS = [
   {
     id: 'pc-workstation-01',
     name: 'IPC-AssemblyLine-Line1',
     hostname: 'ipc-line1.factory.local',
     customIdentifier: 'IPC-L1-01',
     displayName: 'Line 1 Master Workstation',
-    organizationId: 'Org-Alpha',
+    organizationId: 'Production Floor A',
     lastOnline: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
     responsibleTeams: [{ id: 'team-it', name: 'Industrial IT' }],
     controlledMachines: [
@@ -151,7 +151,7 @@ const mockClients = [
     hostname: 'ipc-line2.factory.local',
     customIdentifier: 'IPC-L2-02',
     displayName: 'Quality Inspection HMI Node',
-    organizationId: 'Org-Beta',
+    organizationId: 'Production Floor B',
     lastOnline: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
     responsibleTeams: [{ id: 'team-quality', name: 'Quality Automation' }],
     controlledMachines: [
@@ -173,7 +173,7 @@ const mockClients = [
   }
 ]
 
-// Recursive node calculation helper for tree aggregation
+// Recursive node metric calculation helper
 function computeNodeMetrics(node: any) {
   let hardwareCount = 0
   let softwareCount = 0
@@ -182,8 +182,12 @@ function computeNodeMetrics(node: any) {
   const allItems = [...(node.children || []), ...(node.inventoryItems || [])]
 
   for (const item of allItems) {
-    if (item.itemType === 'hardware') hardwareCount++
-    if (item.itemType === 'software') softwareCount++
+    const rawType = (item.itemType || '').toLowerCase()
+    if (rawType.includes('soft')) {
+      softwareCount++
+    } else {
+      hardwareCount++
+    }
     if (typeof item.costInHUF === 'number') costHuf += item.costInHUF
   }
 
@@ -192,13 +196,13 @@ function computeNodeMetrics(node: any) {
     aggregatedMetrics: {
       hardwareCount,
       softwareCount,
-      totalCostHuf,
+      totalCostHuf: costHuf,
       totalChildItems: allItems.length
     }
   }
 }
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const primaryKey = (query.primaryKey as string) === 'client' ? 'client' : 'machine'
   const searchQuery = (query.query as string || '').toLowerCase().trim()
@@ -206,7 +210,54 @@ export default defineEventHandler((event) => {
   const sortBy = (query.sortBy as string || 'name').trim()
   const sortOrder = (query.sortOrder as string || 'asc').trim()
 
-  const rawList = primaryKey === 'client' ? mockClients : mockMachines
+  let rawList: any[] = []
+
+  try {
+    if (primaryKey === 'client') {
+      const pcs = await $fetch<any[]>('http://localhost:5099/api/ClientPc', {
+        headers: event.headers as any
+      })
+      if (pcs && Array.isArray(pcs) && pcs.length > 0) {
+        rawList = pcs.map(p => ({
+          id: p.id || p.Id,
+          name: p.hostname || p.name || p.Name,
+          hostname: p.hostname || p.Hostname,
+          customIdentifier: p.machineIdentifier || p.customIdentifier,
+          displayName: p.hostname || p.displayName,
+          organizationId: p.organizationId || 'Production Floor',
+          lastOnline: p.lastSeen || p.lastOnline,
+          responsibleTeams: p.responsibleTeams || [],
+          controlledMachines: p.controlledMachines || [],
+          children: p.inventoryItems || p.children || [],
+          inventoryItems: []
+        }))
+      }
+    } else {
+      const machines = await $fetch<any[]>('http://localhost:5099/api/inventory/machines', {
+        headers: event.headers as any
+      })
+      if (machines && Array.isArray(machines) && machines.length > 0) {
+        rawList = machines.map(m => ({
+          id: m.id || m.Id,
+          name: m.customIdentifier || m.name || m.Name,
+          hostname: m.name || m.hostname,
+          customIdentifier: m.customIdentifier || m.CustomIdentifier,
+          displayName: m.displayName || m.DisplayName,
+          organizationId: m.organizationId || 'Production Floor',
+          responsibleTeams: m.responsibleTeams || [],
+          controllers: m.controllers || [],
+          children: m.children || [],
+          inventoryItems: m.inventoryItems || []
+        }))
+      }
+    }
+  } catch {
+    // Graceful fallback
+  }
+
+  if (rawList.length === 0) {
+    rawList = primaryKey === 'client' ? SEED_CLIENTS : SEED_MACHINES
+  }
 
   let filtered = rawList.map(computeNodeMetrics)
 
@@ -216,21 +267,21 @@ export default defineEventHandler((event) => {
       const name = (item.name || item.hostname || item.customIdentifier || '').toLowerCase()
       const disp = (item.displayName || '').toLowerCase()
       const org = (item.organizationId || '').toLowerCase()
-      return name.includes(searchQuery) || disp.includes(searchQuery) || org.includes(searchQuery) || item.id.toLowerCase().includes(searchQuery)
+      return name.includes(searchQuery) || disp.includes(searchQuery) || org.includes(searchQuery) || String(item.id).toLowerCase().includes(searchQuery)
     })
   }
 
   // Team responsibility filtering
   if (responsibility !== 'all') {
     filtered = filtered.filter(item =>
-      item.responsibleTeams?.some((t: any) => t.id === responsibility)
+      item.responsibleTeams?.some((t: any) => t.id === responsibility || t.name?.toLowerCase() === responsibility.toLowerCase())
     )
   }
 
   // Sorting
   filtered.sort((a, b) => {
-    let valA = a[sortBy] ?? a.aggregatedMetrics[sortBy] ?? a.name ?? ''
-    let valB = b[sortBy] ?? b.aggregatedMetrics[sortBy] ?? b.name ?? ''
+    let valA = a[sortBy] ?? a.aggregatedMetrics?.[sortBy] ?? a.name ?? ''
+    let valB = b[sortBy] ?? b.aggregatedMetrics?.[sortBy] ?? b.name ?? ''
 
     if (typeof valA === 'string') valA = valA.toLowerCase()
     if (typeof valB === 'string') valB = valB.toLowerCase()
@@ -240,11 +291,11 @@ export default defineEventHandler((event) => {
     return 0
   })
 
-  // Offloaded tree aggregations summary
+  // Tree aggregations summary
   const totalNodes = filtered.length
-  const totalCost = filtered.reduce((acc, curr) => acc + curr.aggregatedMetrics.totalCostHuf, 0)
-  const totalHardware = filtered.reduce((acc, curr) => acc + curr.aggregatedMetrics.hardwareCount, 0)
-  const totalSoftware = filtered.reduce((acc, curr) => acc + curr.aggregatedMetrics.softwareCount, 0)
+  const totalCost = filtered.reduce((acc, curr) => acc + (curr.aggregatedMetrics?.totalCostHuf || 0), 0)
+  const totalHardware = filtered.reduce((acc, curr) => acc + (curr.aggregatedMetrics?.hardwareCount || 0), 0)
+  const totalSoftware = filtered.reduce((acc, curr) => acc + (curr.aggregatedMetrics?.softwareCount || 0), 0)
 
   return {
     primaryKey,

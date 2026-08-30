@@ -39,6 +39,19 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
+  // Bypass Vite dev server resources, HMR, DevTools, and source maps
+  if (
+    url.pathname.startsWith('/_nuxt/') ||
+    url.pathname.startsWith('/@vite') ||
+    url.pathname.startsWith('/@fs') ||
+    url.pathname.startsWith('/@id') ||
+    url.pathname.includes('hot-update') ||
+    url.pathname.startsWith('/__nuxt_devtools__') ||
+    url.pathname.startsWith('/__vite_ping')
+  ) {
+    return
+  }
+
   // Handle API requests with Network-first & Cache fallback
   if (url.pathname.startsWith('/api/')) {
     if (request.method === 'GET') {

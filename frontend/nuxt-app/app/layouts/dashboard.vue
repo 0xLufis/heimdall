@@ -1,3 +1,30 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useAuthSession } from '~/composables/useAuthSession'
+
+const { user, signOut } = useAuthSession()
+const route = useRoute()
+
+const userEmail = computed(() => user.value?.email ?? 'admin@heimdall.dev')
+const userName = computed(() => user.value?.name ?? 'System Administrator')
+const userInitials = computed(() => (userName.value || 'U').charAt(0).toUpperCase())
+const environment = process.env.NODE_ENV || 'development'
+
+const pageTitle = computed(() => {
+  if (route.path.includes('/users')) return 'Users & Roles'
+  if (route.path.includes('/organizations')) return 'Organizations'
+  if (route.path.includes('/clients')) return 'Client PCs & Controllers'
+  if (route.path.includes('/inventory')) return 'Inventory Repository'
+  if (route.path.includes('/map')) return 'Plant Map'
+  if (route.path.includes('/tickets')) return 'Maintenance Tickets'
+  return 'Dashboard Overview'
+})
+
+async function handleSignOut() {
+  await signOut()
+}
+</script>
+
 <template>
   <div class="min-h-screen bg-slate-950 flex">
     <!-- Sidebar -->
@@ -50,6 +77,17 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
           Plant Map
+        </NuxtLink>
+
+        <NuxtLink 
+          to="/dashboard/tickets" 
+          class="flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
+          :class="route.path.startsWith('/dashboard/tickets') ? 'bg-white/5 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-400 hover:bg-white/5 hover:text-white'"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+          </svg>
+          Tickets
         </NuxtLink>
         
         <div class="pt-4 pb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 select-none">Administration</div>
@@ -111,28 +149,3 @@
     </main>
   </div>
 </template>
-
-<script setup lang="ts">
-import { authClient } from "~/utils/auth-client"
-
-const authSession = authClient.useSession()
-const route = useRoute()
-
-const userEmail = computed(() => authSession?.data?.value?.user?.email ?? '...')
-const userName = computed(() => authSession?.data?.value?.user?.name ?? 'User')
-const userInitials = computed(() => userName.value.charAt(0).toUpperCase())
-const environment = process.env.NODE_ENV || 'development'
-
-const pageTitle = computed(() => {
-  if (route.path.includes('/users')) return 'Users'
-  if (route.path.includes('/organizations')) return 'Organizations'
-  if (route.path.includes('/clients')) return 'Client PCs'
-  if (route.path.includes('/inventory')) return 'Inventory'
-  return 'Dashboard'
-})
-
-async function handleSignOut() {
-  await authClient.signOut()
-  navigateTo('/auth/login')
-}
-</script>
