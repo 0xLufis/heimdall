@@ -120,6 +120,11 @@ export const useOmniSearch = (customConfig: Partial<SearchInstanceConfig> = {}) 
     )
   }
 
+  // React to rawInput changes
+  watch(rawInput, (newVal) => {
+    handleInputChange(newVal)
+  })
+
   const addTag = (tag: Partial<TagPill>) => {
     const key = tag.key || 'keyword'
     const value = tag.value || ''

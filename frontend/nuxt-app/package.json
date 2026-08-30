@@ -7,8 +7,9 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
-    "test": "bun x vitest run"
+    "test": "bun x vitest run",
+    "test:unit": "bun x vitest run",
+    "test:e2e": "bun x playwright test"
   },
   "dependencies": {
     "@better-auth/infra": "^0.1.13",
@@ -47,6 +48,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/pg": "^8.18.0",
     "@types/react": "^19.2.14",
     "@vue/test-utils": "^2.5.0",

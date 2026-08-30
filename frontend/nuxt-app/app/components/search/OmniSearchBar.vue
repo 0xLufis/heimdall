@@ -45,7 +45,7 @@ const {
 const isFocused = ref(false)
 
 const showDropdown = computed(() => {
-  return isFocused.value && (autoSuggestions.value.length > 0 || results.value.length > 0 || searchKeyGroups.value.length > 0)
+  return (isFocused.value || rawInput.value.length > 0) && (autoSuggestions.value.length > 0 || results.value.length > 0 || searchKeyGroups.value.length > 0)
 })
 
 const handleKeydown = (e: KeyboardEvent) => {
