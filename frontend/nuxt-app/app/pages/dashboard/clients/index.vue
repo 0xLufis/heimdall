@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, Map, Grid, Plus } from 'lucide-vue-next'
+import { RefreshCw, Map, Grid, Plus, X } from 'lucide-vue-next'
 import { useControllers } from '~/composables/useControllers'
 import { useStations } from '~/composables/useStations'
 import ControllerGrid from '~/components/controllers/ControllerGrid.vue'
@@ -18,6 +19,8 @@ definePageMeta({
 
 const { controllers, isLoading, fetchControllers } = useControllers()
 const { stations } = useStations()
+const router = useRouter()
+const route = useRoute()
 
 const activeViewMode = ref<'grid' | 'map'>('grid')
 const selectedController = ref<IndustrialController | null>(null)
@@ -45,14 +48,22 @@ const filteredControllers = computed(() => {
 
 const handleSelectController = (pc: IndustrialController) => {
   selectedController.value = pc
+  router.replace({
+    query: { ...route.query, selected: pc.id, hostname: pc.hostname }
+  })
+}
+
+const handleCloseTelemetry = () => {
+  selectedController.value = null
+  router.replace({
+    query: { ...route.query, selected: undefined, hostname: undefined }
+  })
 }
 
 const handleQueueCommand = (pc: IndustrialController) => {
   commandTargetController.value = pc
   isCommandModalOpen.value = true
 }
-
-const route = useRoute()
 
 onMounted(() => {
   if (route.query.selected || route.query.hostname) {
@@ -67,8 +78,13 @@ onMounted(() => {
   }
 })
 
+// Keep selected controller telemetry updated without auto-reopening if dismissed
 watch(() => controllers.value, (list) => {
-  if (route.query.selected && !selectedController.value) {
+  if (selectedController.value) {
+    const updated = list.find(c => c.id === selectedController.value?.id)
+    if (updated) selectedController.value = updated
+  } else if (route.query.selected && !selectedController.value) {
+    // Only check if URL still has selected param and controller list just populated
     const match = list.find(c => c.id === route.query.selected || c.hostname === route.query.hostname)
     if (match) selectedController.value = match
   }
@@ -115,7 +131,7 @@ const onSearch = (q: string) => {
 
         <Button
           variant="outline"
-          @click="fetchControllers"
+          @click="fetchControllers(false)"
           class="bg-slate-900 border-slate-800 text-slate-300 rounded-2xl px-5 h-11 hover:bg-slate-800 text-xs font-bold uppercase tracking-wider"
         >
           <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5 mr-2" />
@@ -134,13 +150,15 @@ const onSearch = (q: string) => {
     </div>
 
     <!-- Selected Controller Telemetry Highlight Drawer/Card -->
-    <div v-if="selectedController" class="relative">
+    <div v-if="selectedController" class="relative animate-in fade-in slide-in-from-top-3 duration-300">
       <ControllerTelemetryCard :controller="selectedController" />
       <button
-        @click="selectedController = null"
-        class="absolute top-4 right-4 text-xs font-bold text-slate-500 hover:text-white uppercase tracking-wider"
+        type="button"
+        @click="handleCloseTelemetry"
+        class="absolute top-4 right-4 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] font-black text-slate-400 hover:text-white hover:border-slate-700 transition-all uppercase tracking-wider shadow-lg"
       >
-        ✕ Close Telemetry
+        <X class="w-3.5 h-3.5" />
+        <span>Close Telemetry</span>
       </button>
     </div>
 
@@ -165,7 +183,7 @@ const onSearch = (q: string) => {
       :controller="commandTargetController"
       :open="isCommandModalOpen"
       @update:open="isCommandModalOpen = $event"
-      @submitted="fetchControllers"
+      @submitted="fetchControllers(false)"
     />
   </div>
 </template>
