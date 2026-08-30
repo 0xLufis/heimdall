@@ -12,7 +12,8 @@ export default defineNuxtConfig({
       ],
       server: {
          allowedHosts: [
-            'noncategorical-ludivina-tinglingly.ngrok-free.dev'
+            'localhost',
+            '127.0.0.1'
          ]
       }
    },

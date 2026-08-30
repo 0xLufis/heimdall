@@ -308,6 +308,10 @@ namespace App.Shared.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("resource_averages");
 
+                    b.Property<JsonDocument>("SystemMetadata")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("system_metadata");
+
                     b.HasKey("Id")
                         .HasName("pk_client_pcs");
 

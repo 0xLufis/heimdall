@@ -270,9 +270,12 @@ const getBlockAsset = (name: string) => {
 
                         <circle v-if="entity.type === 'CIRCLE'"
                                 :cx="entity.center.x" :cy="entity.center.y" :r="entity.radius"
-                                fill="none"
-                                :stroke="getEntityColor(entity)" stroke-width="0.8"
-                                class="opacity-60" />
+                                :fill="isHighlighted(entity.handle) ? 'rgba(16, 185, 129, 0.2)' : 'none'"
+                                :stroke="isHighlighted(entity.handle) ? '#10b981' : getEntityColor(entity)" 
+                                :stroke-width="isHighlighted(entity.handle) ? 1.5 : 0.8"
+                                @click.stop="emit('object-clicked', entity.handle, entity.name || 'TANK')"
+                                @dblclick.stop="emit('object-dblclicked', entity.handle, entity.name || 'TANK')"
+                                class="cursor-pointer transition-all duration-300" />
 
                         <text v-if="entity.type === 'TEXT'"
                               :x="entity.startPoint.x" :y="-entity.startPoint.y"
@@ -294,14 +297,12 @@ const getBlockAsset = (name: string) => {
                            @dblclick.stop="emit('object-dblclicked', entity.handle, entity.name)"
                            class="cursor-pointer transition-all duration-300 group/insert"
                         >
-                            <!-- Selection Glow -->
+                            <!-- Selection Outline -->
                             <rect v-if="isHighlighted(entity.handle)" 
                                   x="-15" y="-15" width="30" height="30" 
-                                  fill="rgba(16, 185, 129, 0.1)" 
-                                  stroke="rgba(16, 185, 129, 0.5)" 
-                                  stroke-width="1"
-                                  stroke-dasharray="2,2"
-                                  class="animate-[pulse_2s_infinite]" />
+                                  fill="rgba(16, 185, 129, 0.15)" 
+                                  stroke="#10b981" 
+                                  stroke-width="1" />
 
                             <!-- Invisible bounding box for easier clicking -->
                             <rect x="-20" y="-20" width="40" height="40" fill="transparent" />

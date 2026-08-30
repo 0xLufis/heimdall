@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { authClient } from "~/utils/auth-client"
+import { useAuthSession } from '~/composables/useAuthSession'
+import GlobalOmniSearchModal from '~/components/search/GlobalOmniSearchModal.vue'
 
-const authSession = authClient.useSession()
-
-const userEmail = computed(() => authSession?.data?.value?.user?.email ?? '...')
-const userName = computed(() => authSession?.data?.value?.user?.name ?? 'User')
+const { user } = useAuthSession()
 </script>
 
 <template>
@@ -17,6 +15,7 @@ const userName = computed(() => authSession?.data?.value?.user?.name ?? 'User')
           <slot />
         </div>
       </div>
+      <GlobalOmniSearchModal />
     </SidebarInset>
   </SidebarProvider>
 </template>

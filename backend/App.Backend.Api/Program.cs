@@ -14,7 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Connection String and DataSource declaration ---
 var connectionString = builder.Configuration["DATABASE_URL"] 
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=ef_admin;Password=migrate";
 NpgsqlDataSource? dataSource = null;
 
 // Configure Kestrel for HTTP/2
@@ -41,35 +42,30 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 builder.Configuration.AddEnvironmentVariables();
 
 // --- 1. Database ---
-// Conditionally build NpgsqlDataSource only if a connection string is provided
-if (!string.IsNullOrEmpty(connectionString))
+if (!builder.Environment.IsEnvironment("Test"))
 {
     var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
     dataSourceBuilder.EnableDynamicJson();
-    
-    // Increase pool size for high concurrency
+
     if (!connectionString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
     {
         dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 250;
     }
 
     dataSource = dataSourceBuilder.Build();
-    
+
     // Register DbContext and DbContextFactory
-    builder.Services.AddDbContextFactory<AppDbContext>(options =>
-    {
-        options.UseNpgsql(dataSource!).UseSnakeCaseNamingConvention();
-    });
     builder.Services.AddDbContext<AppDbContext>(options =>
     {
         options.UseNpgsql(dataSource!).UseSnakeCaseNamingConvention();
     });
-}
-else if (builder.Environment.IsEnvironment("Test"))
-{
-    // Configure for testing if needed
+    builder.Services.AddDbContextFactory<AppDbContext>(options =>
+    {
+        options.UseNpgsql(dataSource!).UseSnakeCaseNamingConvention();
+    }, ServiceLifetime.Scoped);
 }
 
+// --- 2. Repositories & Services ---
 builder.Services.AddScoped<IStationRepository, StationRepository>();
 builder.Services.AddScoped<IControllerRepository, ControllerRepository>();
 builder.Services.AddScoped<IClientPcRepository, ClientPcRepository>();
@@ -80,7 +76,6 @@ builder.Services.AddScoped<OpcUaGatewayService>();
 builder.Services.AddScoped<CopiaIntegrationService>();
 
 // --- 3. Authentication & Authorization ---
-// Register our custom Better-Auth handler
 builder.Services.AddAuthentication("BetterAuth")
     .AddScheme<BetterAuthOptions, BetterAuthHandler>("BetterAuth", options => { });
 
@@ -96,6 +91,7 @@ builder.Services.AddControllers()
 builder.Services.AddSignalR();
 builder.Services.AddGrpc();
 builder.Services.AddGrpcReflection();
+builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -104,23 +100,19 @@ var app = builder.Build();
 // Enable middleware to serve generated Swagger as a JSON endpoint.
 app.UseSwagger();
 
-// Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.),
-// specifying the Swagger JSON endpoint.
 app.UseSwaggerUI(c => 
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Heimdall API V1");
     c.RoutePrefix = "api-docs";
 });
 
-// app.UseHttpsRedirection(); // Commented out for development to allow cleartext gRPC
-
-// These two must be in this exact order, right before MapControllers!
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<MaintenanceHub>("/hubs/maintenance");
 app.MapGrpcService<SystemInfoCollectorService>();
+app.MapHub<MaintenanceHub>("/hubs/maintenance");
 
 if (app.Environment.IsDevelopment())
 {

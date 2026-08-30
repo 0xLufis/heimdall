@@ -164,6 +164,10 @@ public class AppDbContext : DbContext
                 .Property(e => e.Privileges)
                 .HasConversion(jsonConverter);
 
+            modelBuilder.Entity<ClientPc>()
+                .Property(e => e.SystemMetadata)
+                .HasConversion(jsonConverter);
+
             // Converters for ClientPc POCOs
             modelBuilder.Entity<ClientPc>().Property(e => e.FreeDiskSpace)
                 .HasConversion(

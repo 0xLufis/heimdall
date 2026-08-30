@@ -5,12 +5,18 @@ public class Worker : BackgroundService
     private readonly ILogger<Worker> _logger;
     private readonly SystemInfoService _systemInfoService;
     private readonly SystemInfoReporter _systemInfoReporter;
+    private readonly ConfigurationService _configService;
 
-    public Worker(ILogger<Worker> logger, SystemInfoService systemInfoService, SystemInfoReporter systemInfoReporter)
+    public Worker(
+        ILogger<Worker> logger,
+        SystemInfoService systemInfoService,
+        SystemInfoReporter systemInfoReporter,
+        ConfigurationService configService)
     {
         _logger = logger;
         _systemInfoService = systemInfoService;
         _systemInfoReporter = systemInfoReporter;
+        _configService = configService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -54,19 +60,29 @@ public class Worker : BackgroundService
     private async Task HandleCommandAsync(App.Shared.Protos.ServerCommand command)
     {
         _logger.LogInformation("Received command from server: {Type}", command.Type);
+
+        if (!_configService.VerifyCommandSignature(command))
+        {
+            _logger.LogWarning("Command of type {Type} rejected: signature verification failed.", command.Type);
+            return;
+        }
         
         switch (command.Type)
         {
             case "UPDATE_CONFIG":
-                var configService = _systemInfoReporter.GetConfigService();
-                configService.UpdateConfigSigned(command.Payload, command.Signature);
+                _configService.UpdateConfigSigned(command.Payload, command.Signature);
                 break;
             
             case "FILE_CHECK":
                 // Logic to add a file to the next report
-                // For now just log it, but we could add it to a list in SystemInfoService
                 _logger.LogInformation("Server requested file check: {Path}", command.Payload);
                 break;
+
+            default:
+                _logger.LogWarning("Unknown command type received: {Type}", command.Type);
+                break;
         }
+
+        await Task.CompletedTask;
     }
 }

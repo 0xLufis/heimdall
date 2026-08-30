@@ -1,10 +1,38 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useAuthSession } from '~/composables/useAuthSession'
+import { useDashboard } from '~/composables/useDashboard'
+import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
+import type { SearchInstanceConfig } from '~/types/search'
+
+definePageMeta({
+  layout: 'shadcn-dashboard'
+})
+
+const { user, userRole } = useAuthSession()
+const { stats, recentClients, securityEvents } = useDashboard()
+
+const dashboardSearchConfig: SearchInstanceConfig = {
+  instanceId: 'dashboard',
+  placeholder: 'OmniSearch: Search stations, IPCs, assets, telemetry, or incident numbers...',
+  defaultEndpoints: ['/api/proxy/inventory/search'],
+  enableAutoTagging: true,
+  showGlobalShortcut: true
+}
+</script>
+
 <template>
-  <div class="space-y-10 pb-12">
+  <div class="space-y-8 pb-12">
     <!-- Hero Section -->
     <DashboardHero 
-      :user-name="session?.user.name" 
-      :user-role="session?.user.role"
+      :user-name="user?.name || 'Operator'" 
+      :user-role="userRole"
     />
+
+    <!-- Quick Search Bar -->
+    <div class="max-w-4xl mx-auto w-full">
+      <OmniSearchBar :config="dashboardSearchConfig" />
+    </div>
 
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -16,7 +44,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2">
         <DashboardClientPreview :clients="recentClients" />
       </div>
@@ -26,16 +54,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { authClient } from "~/utils/auth-client"
-import { useDashboard } from "@/composables/useDashboard"
-
-const authSession = authClient.useSession()
-const session = computed(() => authSession?.data?.value)
-const { stats, recentClients, securityEvents } = useDashboard()
-
-definePageMeta({
-  layout: 'shadcn-dashboard'
-})
-</script>

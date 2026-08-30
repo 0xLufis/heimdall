@@ -23,8 +23,8 @@ ON ALL SEQUENCES IN SCHEMA public TO dotnet_backend,
 GRANT ALL PRIVILEGES
 ON SCHEMA public TO ef_admin,
 drizzle_admin;
--- 4. heimdall_dev_db Schema Permissions
--- Only the admin roles get access here
+-- 4. heimdall_dev_db Database & Schema Permissions
+GRANT ALL PRIVILEGES ON DATABASE heimdall_dev_db TO ef_admin, drizzle_admin;
 GRANT USAGE, CREATE
 ON SCHEMA heimdall_dev_db TO ef_admin,
 drizzle_admin;

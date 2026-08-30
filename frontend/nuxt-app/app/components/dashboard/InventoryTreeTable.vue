@@ -55,7 +55,7 @@ const expandedGroups = ref<Record<string, boolean>>({
 const CACHE_KEY = `inventory_cols_${props.primaryKey}`
 
 onMounted(async () => {
-  const cached = localStorage.getItem(CACHE_KEY)
+  const cached = typeof localStorage !== 'undefined' ? localStorage.getItem(CACHE_KEY) : null
   if (cached) {
     selectedDynamicColumns.value = JSON.parse(cached)
   }
@@ -78,37 +78,28 @@ const fetchTeams = async () => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const endpoint = props.primaryKey === 'client' ? '/api/proxy/ClientPc' : '/api/proxy/Machine'
-    const data = await $fetch<any[]>(endpoint)
-    if (data) {
-      items.value = data
+    const res = await $fetch<any>('/api/inventory/tree', {
+      query: {
+        primaryKey: props.primaryKey,
+        query: searchQuery.value,
+        responsibility: responsibilityFilter.value
+      }
+    })
+    if (res && res.tree) {
+      items.value = res.tree
     }
   } catch (e) {
-    console.error('Error fetching data:', e)
+    console.error('Error fetching tree from Nitro BFF handler:', e)
   } finally {
     loading.value = false
   }
 }
 
-const filteredItems = computed(() => {
-  let result = items.value
-  
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    result = result.filter(item => {
-      const name = item.name || item.hostname || item.customIdentifier
-      return name?.toLowerCase().includes(q) || item.id.includes(q)
-    })
-  }
-
-  if (responsibilityFilter.value !== 'all') {
-    result = result.filter(item => 
-      item.responsibleTeams?.some((t: any) => t.id === responsibilityFilter.value)
-    )
-  }
-
-  return result
+watch([searchQuery, responsibilityFilter, () => props.primaryKey], () => {
+  fetchData()
 })
+
+const filteredItems = computed(() => items.value)
 
 const isOnline = (lastOnline: string | null): boolean => {
   if (!lastOnline) return false
@@ -306,17 +297,17 @@ const toggleGroup = (group: string) => {
 
               <!-- Status (Online/Offline) -->
               <TableCell v-if="primaryKey === 'client' && defaultColumns.lastOnline">
-                 <div class="flex items-center gap-2.5">
-                    <div class="w-2.5 h-2.5 rounded-full" :class="isOnline(item.lastOnline) ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-800'"></div>
-                    <span class="text-[10px] font-black uppercase tracking-widest" :class="isOnline(item.lastOnline) ? 'text-emerald-500' : 'text-slate-600'">
-                       {{ isOnline(item.lastOnline) ? 'System Active' : 'Node Offline' }}
+                 <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" :class="isOnline(item.lastOnline) ? 'bg-emerald-500' : 'bg-muted-foreground/30'"></span>
+                    <span class="text-[10px] font-mono font-medium uppercase tracking-wider" :class="isOnline(item.lastOnline) ? 'text-emerald-500' : 'text-muted-foreground'">
+                       {{ isOnline(item.lastOnline) ? 'ONLINE' : 'OFFLINE' }}
                     </span>
                  </div>
               </TableCell>
 
               <!-- Owner -->
               <TableCell v-if="defaultColumns.owner">
-                 <Badge variant="outline" class="text-[9px] font-black uppercase tracking-[0.1em] border-slate-800 text-slate-500 bg-slate-900/50 px-2 py-1">
+                 <Badge variant="outline" class="text-[9px] font-mono uppercase border-border text-muted-foreground bg-muted/40 px-2 py-0.5">
                     {{ item.organizationId || 'Heimdall Root' }}
                  </Badge>
               </TableCell>

@@ -1,6 +1,15 @@
 #!/bin/bash
 
-# Configuration
+# Ensure script runs from project root directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Ensure user-installed binaries (zellij, bun, dotnet local tools, etc.) are in PATH
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$HOME/.dotnet/tools:$HOME/.dotnet:$PATH"
+if [ -d "$HOME/.dotnet" ]; then
+    export DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.dotnet}"
+fi
+
 SESSION_NAME="heimdall-dev"
 LAYOUT_FILE="dev_layout.kdl"
 
@@ -35,11 +44,13 @@ stop_services() {
         kill -9 $pids 2>/dev/null
     fi
 
-    # 3. Stop Docker Compose
+    # 3. Stop Database via Docker Compose
     echo "Stopping Database via Docker Compose..."
-    cd infra/database
-    docker compose down
-    cd ../../
+    if [ -d "infra/database" ]; then
+        cd infra/database
+        docker compose down 2>/dev/null || true
+        cd "$SCRIPT_DIR"
+    fi
     
     echo "All services stopped."
 }
@@ -52,35 +63,37 @@ start_services() {
 
     # Ensure Database is running
     echo "Starting Database via Docker Compose..."
-    cd infra/database
-    docker compose up -d
-    cd ../../
+    if [ -d "infra/database" ]; then
+        cd infra/database
+        docker compose up -d 2>/dev/null || true
+        cd "$SCRIPT_DIR"
+    fi
 
     # Check for Zellij
     if command -v zellij >/dev/null 2>&1; then
         echo "Starting/Attaching Zellij session: $SESSION_NAME"
         
         # Correct Zellij syntax: global flags come before the subcommand
-        exec zellij --layout "$LAYOUT_FILE" attach "$SESSION_NAME" --create
+        exec zellij --layout "$LAYOUT_FILE" attach "$SESSION_NAME" --create --force-run-commands
     else
         echo "Zellij not found. Falling back to traditional background processes."
         # Traditional startup (original script logic)
         
         # Start Backend API
-        cd backend/App.Backend.Api && dotnet run & cd ../../
+        (export DOTNET_ROOT="$HOME/.dotnet" && export PATH="$HOME/.dotnet:$PATH" && cd backend/App.Backend.Api && dotnet run) &
         
         # Start Nuxt Frontend
-        cd frontend/nuxt-app && bun run dev & cd ../../
+        (export PATH="$HOME/.bun/bin:$PATH" && cd frontend/nuxt-app && bun run dev) &
         
         # Start Agent
-        cd agent/App.Agent.Daemon && dotnet run & cd ../../
+        (export DOTNET_ROOT="$HOME/.dotnet" && export PATH="$HOME/.dotnet:$PATH" && cd agent/App.Agent.Daemon && dotnet run) &
         
         # Start PC Simulator
-        source venv/bin/activate && python simulate_pcs.py & deactivate
+        (source venv/bin/activate && python simulate_pcs.py) &
         
         # Start ngrok
         if command -v ngrok >/dev/null 2>&1; then
-            cd frontend/nuxt-app && bunx ngrok http 3000 & cd ../../
+            (cd frontend/nuxt-app && bunx ngrok http 3000) &
         fi
         
         echo "Services started in background. Use '$0 stop' to kill them."
