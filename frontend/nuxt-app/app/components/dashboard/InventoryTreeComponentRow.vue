@@ -81,7 +81,7 @@ const getNestedValue = (item: any, key: string) => {
             <span class="text-[10px] font-bold uppercase tracking-widest" :class="isVisible ? 'text-slate-300' : 'text-slate-600'">{{ component.name }}</span>
             <span v-if="component.itemType" class="text-[8px] text-slate-600 font-black uppercase">{{ component.itemType }}</span>
           </div>
-          <Badge v-for="team in component.responsibleTeams" :key="team.id" variant="outline" class="text-[8px] font-black uppercase border-slate-800 text-slate-500 py-0 h-4">
+          <Badge v-for="team in component.responsibleTeams" :key="team.id" variant="outline" class="text-[7.5px] font-black uppercase tracking-wider border-slate-800 text-slate-400 bg-slate-950/60 px-3 py-1 rounded-full shadow-sm">
             {{ team.name }}
           </Badge>
         </div>
@@ -96,8 +96,8 @@ const getNestedValue = (item: any, key: string) => {
       <TableCell v-if="defaultColumns.linkedAsset"></TableCell>
 
       <TableCell v-if="defaultColumns.teams">
-        <div class="flex flex-wrap gap-1">
-          <Badge v-for="team in component.responsibleTeams" :key="team.id" variant="outline" class="text-[7px] font-black uppercase border-slate-800 text-slate-600 px-1 py-0 h-3">
+        <div class="flex flex-wrap gap-1.5">
+          <Badge v-for="team in component.responsibleTeams" :key="team.id" variant="outline" class="text-[7.5px] font-black uppercase tracking-wider border-slate-800 text-slate-400 bg-slate-950/60 px-3 py-1 rounded-full shadow-sm">
             {{ team.name }}
           </Badge>
         </div>

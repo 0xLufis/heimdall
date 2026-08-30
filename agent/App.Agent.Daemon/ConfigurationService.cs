@@ -90,40 +90,89 @@ public class ConfigurationService
         }
     }
 
-    public bool UpdateConfigSigned(string jsonConfig, string signatureBase64)
+    public bool VerifyCommandSignature(App.Shared.Protos.ServerCommand command)
+    {
+        return VerifySignature(command.Payload, command.Signature);
+    }
+
+    public bool VerifySignature(string payload, string? signatureBase64)
     {
         if (string.IsNullOrEmpty(_config.ServerPublicKey))
         {
-            _logger.LogWarning("Cannot verify signed config update: ServerPublicKey is not set.");
+            _logger.LogWarning("ServerPublicKey is not configured in AgentConfig. Command signature verification skipped (Insecure Mode).");
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(signatureBase64))
+        {
+            _logger.LogWarning("Command signature is empty, but ServerPublicKey is configured. Signature verification failed.");
             return false;
         }
 
         try
         {
             using var rsa = RSA.Create();
-            rsa.FromXmlString(_config.ServerPublicKey); // Simplified for now, usually PEM or other formats are used
+            string key = _config.ServerPublicKey.Trim();
 
-            var signature = Convert.FromBase64String(signatureBase64);
-            var data = System.Text.Encoding.UTF8.GetBytes(jsonConfig);
-
-            if (rsa.VerifyData(data, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1))
+            if (key.StartsWith("<"))
             {
-                var newConfig = JsonSerializer.Deserialize<AgentConfig>(jsonConfig);
-                if (newConfig != null)
-                {
-                    SaveConfig(newConfig);
-                    _logger.LogInformation("Configuration updated and verified via RSA signature.");
-                    return true;
-                }
+                rsa.FromXmlString(key);
+            }
+            else if (key.Contains("-----BEGIN"))
+            {
+                rsa.ImportFromPem(key);
             }
             else
             {
-                _logger.LogWarning("Configuration update signature verification failed.");
+                try
+                {
+                    var bytes = Convert.FromBase64String(key);
+                    rsa.ImportSubjectPublicKeyInfo(bytes, out _);
+                }
+                catch
+                {
+                    rsa.FromXmlString(key);
+                }
+            }
+
+            var signature = Convert.FromBase64String(signatureBase64);
+            var data = System.Text.Encoding.UTF8.GetBytes(payload);
+
+            bool isValid = rsa.VerifyData(data, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            if (!isValid)
+            {
+                _logger.LogWarning("Command signature verification failed against configured ServerPublicKey.");
+            }
+            return isValid;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying RSA command signature.");
+            return false;
+        }
+    }
+
+    public bool UpdateConfigSigned(string jsonConfig, string signatureBase64)
+    {
+        if (!VerifySignature(jsonConfig, signatureBase64))
+        {
+            _logger.LogWarning("Configuration update failed signature verification.");
+            return false;
+        }
+
+        try
+        {
+            var newConfig = JsonSerializer.Deserialize<AgentConfig>(jsonConfig);
+            if (newConfig != null)
+            {
+                SaveConfig(newConfig);
+                _logger.LogInformation("Configuration updated and verified via RSA signature.");
+                return true;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error verifying signed configuration update.");
+            _logger.LogError(ex, "Error applying new configuration after signature verification.");
         }
 
         return false;

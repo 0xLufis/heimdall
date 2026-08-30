@@ -1,0 +1,3695 @@
+{
+  "production_hall": {
+    "name": "Heimdall Mega-Factory",
+    "lines": [
+      {
+        "id": "LINE-A",
+        "name": "Final Assembly Line LINE-A",
+        "description": "Automated final assembly line line-a",
+        "stations": [
+          {
+            "id": "STA-LINE-A-10",
+            "name": "Mechanical Station 1",
+            "type": "Mechanical",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-A-10-1",
+                "hostname": "PROD-LINE-A-10-PC1",
+                "ip": "10.1.1.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-A-10-2",
+                "hostname": "PROD-LINE-A-10-PC2",
+                "ip": "10.1.1.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-A-20",
+            "name": "Mechanical Station 2",
+            "type": "Mechanical",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-A-20-1",
+                "hostname": "PROD-LINE-A-20-PC1",
+                "ip": "10.1.2.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-A-20-2",
+                "hostname": "PROD-LINE-A-20-PC2",
+                "ip": "10.1.2.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-A-30",
+            "name": "Vision Station 3",
+            "type": "Vision",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-A-30-1",
+                "hostname": "PROD-LINE-A-30-PC1",
+                "ip": "10.1.3.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-A-30-2",
+                "hostname": "PROD-LINE-A-30-PC2",
+                "ip": "10.1.3.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-A-40",
+            "name": "Dispensing Station 4",
+            "type": "Dispensing",
+            "team": "Dispensing",
+            "pcs": [
+              {
+                "id": "PC-LINE-A-40-1",
+                "hostname": "PROD-LINE-A-40-PC1",
+                "ip": "10.1.4.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-A-40-2",
+                "hostname": "PROD-LINE-A-40-PC2",
+                "ip": "10.1.4.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-A-50",
+            "name": "Vision Station 5",
+            "type": "Vision",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-A-50-1",
+                "hostname": "PROD-LINE-A-50-PC1",
+                "ip": "10.1.5.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-A-50-2",
+                "hostname": "PROD-LINE-A-50-PC2",
+                "ip": "10.1.5.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-A-60",
+            "name": "Mechanical Station 6",
+            "type": "Mechanical",
+            "team": "Vision",
+            "pcs": [
+              {
+                "id": "PC-LINE-A-60-1",
+                "hostname": "PROD-LINE-A-60-PC1",
+                "ip": "10.1.6.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-A-60-2",
+                "hostname": "PROD-LINE-A-60-PC2",
+                "ip": "10.1.6.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-A-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-A-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-B",
+        "name": "Electronics Test Line LINE-B",
+        "description": "Automated electronics test line line-b",
+        "stations": [
+          {
+            "id": "STA-LINE-B-10",
+            "name": "Mechanical Station 1",
+            "type": "Mechanical",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-B-10-1",
+                "hostname": "PROD-LINE-B-10-PC1",
+                "ip": "10.2.1.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-B-10-2",
+                "hostname": "PROD-LINE-B-10-PC2",
+                "ip": "10.2.1.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-B-20",
+            "name": "Test Station 2",
+            "type": "Test",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-B-20-1",
+                "hostname": "PROD-LINE-B-20-PC1",
+                "ip": "10.2.2.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-B-20-2",
+                "hostname": "PROD-LINE-B-20-PC2",
+                "ip": "10.2.2.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-B-30",
+            "name": "Dispensing Station 3",
+            "type": "Dispensing",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-B-30-1",
+                "hostname": "PROD-LINE-B-30-PC1",
+                "ip": "10.2.3.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-B-30-2",
+                "hostname": "PROD-LINE-B-30-PC2",
+                "ip": "10.2.3.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-B-40",
+            "name": "Welding Station 4",
+            "type": "Welding",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-B-40-1",
+                "hostname": "PROD-LINE-B-40-PC1",
+                "ip": "10.2.4.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-B-40-2",
+                "hostname": "PROD-LINE-B-40-PC2",
+                "ip": "10.2.4.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-B-50",
+            "name": "Packaging Station 5",
+            "type": "Packaging",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-B-50-1",
+                "hostname": "PROD-LINE-B-50-PC1",
+                "ip": "10.2.5.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-B-50-2",
+                "hostname": "PROD-LINE-B-50-PC2",
+                "ip": "10.2.5.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-B-60",
+            "name": "Dispensing Station 6",
+            "type": "Dispensing",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-B-60-1",
+                "hostname": "PROD-LINE-B-60-PC1",
+                "ip": "10.2.6.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-B-60-2",
+                "hostname": "PROD-LINE-B-60-PC2",
+                "ip": "10.2.6.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-B-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-B-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-C",
+        "name": "Final Assembly Line LINE-C",
+        "description": "Automated final assembly line line-c",
+        "stations": [
+          {
+            "id": "STA-LINE-C-10",
+            "name": "Screwing Station 1",
+            "type": "Screwing",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-C-10-1",
+                "hostname": "PROD-LINE-C-10-PC1",
+                "ip": "10.3.1.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-C-10-2",
+                "hostname": "PROD-LINE-C-10-PC2",
+                "ip": "10.3.1.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-C-20",
+            "name": "Packaging Station 2",
+            "type": "Packaging",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-C-20-1",
+                "hostname": "PROD-LINE-C-20-PC1",
+                "ip": "10.3.2.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-C-20-2",
+                "hostname": "PROD-LINE-C-20-PC2",
+                "ip": "10.3.2.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-C-30",
+            "name": "Welding Station 3",
+            "type": "Welding",
+            "team": "Dispensing",
+            "pcs": [
+              {
+                "id": "PC-LINE-C-30-1",
+                "hostname": "PROD-LINE-C-30-PC1",
+                "ip": "10.3.3.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-C-30-2",
+                "hostname": "PROD-LINE-C-30-PC2",
+                "ip": "10.3.3.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-C-40",
+            "name": "Vision Station 4",
+            "type": "Vision",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-C-40-1",
+                "hostname": "PROD-LINE-C-40-PC1",
+                "ip": "10.3.4.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-C-40-2",
+                "hostname": "PROD-LINE-C-40-PC2",
+                "ip": "10.3.4.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-C-50",
+            "name": "Welding Station 5",
+            "type": "Welding",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-C-50-1",
+                "hostname": "PROD-LINE-C-50-PC1",
+                "ip": "10.3.5.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-C-50-2",
+                "hostname": "PROD-LINE-C-50-PC2",
+                "ip": "10.3.5.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-C-60",
+            "name": "Welding Station 6",
+            "type": "Welding",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-C-60-1",
+                "hostname": "PROD-LINE-C-60-PC1",
+                "ip": "10.3.6.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-C-60-2",
+                "hostname": "PROD-LINE-C-60-PC2",
+                "ip": "10.3.6.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-C-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-C-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-D",
+        "name": "Battery Module Line LINE-D",
+        "description": "Automated battery module line line-d",
+        "stations": [
+          {
+            "id": "STA-LINE-D-10",
+            "name": "Dispensing Station 1",
+            "type": "Dispensing",
+            "team": "Vision",
+            "pcs": [
+              {
+                "id": "PC-LINE-D-10-1",
+                "hostname": "PROD-LINE-D-10-PC1",
+                "ip": "10.4.1.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-D-10-2",
+                "hostname": "PROD-LINE-D-10-PC2",
+                "ip": "10.4.1.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-D-20",
+            "name": "Welding Station 2",
+            "type": "Welding",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-D-20-1",
+                "hostname": "PROD-LINE-D-20-PC1",
+                "ip": "10.4.2.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-D-20-2",
+                "hostname": "PROD-LINE-D-20-PC2",
+                "ip": "10.4.2.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-D-30",
+            "name": "Dispensing Station 3",
+            "type": "Dispensing",
+            "team": "Vision",
+            "pcs": [
+              {
+                "id": "PC-LINE-D-30-1",
+                "hostname": "PROD-LINE-D-30-PC1",
+                "ip": "10.4.3.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-D-30-2",
+                "hostname": "PROD-LINE-D-30-PC2",
+                "ip": "10.4.3.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-D-40",
+            "name": "Packaging Station 4",
+            "type": "Packaging",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-D-40-1",
+                "hostname": "PROD-LINE-D-40-PC1",
+                "ip": "10.4.4.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-D-40-2",
+                "hostname": "PROD-LINE-D-40-PC2",
+                "ip": "10.4.4.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-D-50",
+            "name": "Screwing Station 5",
+            "type": "Screwing",
+            "team": "Dispensing",
+            "pcs": [
+              {
+                "id": "PC-LINE-D-50-1",
+                "hostname": "PROD-LINE-D-50-PC1",
+                "ip": "10.4.5.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-D-50-2",
+                "hostname": "PROD-LINE-D-50-PC2",
+                "ip": "10.4.5.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-D-60",
+            "name": "Packaging Station 6",
+            "type": "Packaging",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-D-60-1",
+                "hostname": "PROD-LINE-D-60-PC1",
+                "ip": "10.4.6.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-D-60-2",
+                "hostname": "PROD-LINE-D-60-PC2",
+                "ip": "10.4.6.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-D-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-D-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-E",
+        "name": "Sealant Dispensing Line LINE-E",
+        "description": "Automated sealant dispensing line line-e",
+        "stations": [
+          {
+            "id": "STA-LINE-E-10",
+            "name": "Mechanical Station 1",
+            "type": "Mechanical",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-E-10-1",
+                "hostname": "PROD-LINE-E-10-PC1",
+                "ip": "10.5.1.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-E-10-2",
+                "hostname": "PROD-LINE-E-10-PC2",
+                "ip": "10.5.1.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-E-20",
+            "name": "Dispensing Station 2",
+            "type": "Dispensing",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-E-20-1",
+                "hostname": "PROD-LINE-E-20-PC1",
+                "ip": "10.5.2.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-E-20-2",
+                "hostname": "PROD-LINE-E-20-PC2",
+                "ip": "10.5.2.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-E-30",
+            "name": "Welding Station 3",
+            "type": "Welding",
+            "team": "Vision",
+            "pcs": [
+              {
+                "id": "PC-LINE-E-30-1",
+                "hostname": "PROD-LINE-E-30-PC1",
+                "ip": "10.5.3.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-E-30-2",
+                "hostname": "PROD-LINE-E-30-PC2",
+                "ip": "10.5.3.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-E-40",
+            "name": "Vision Station 4",
+            "type": "Vision",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-E-40-1",
+                "hostname": "PROD-LINE-E-40-PC1",
+                "ip": "10.5.4.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-E-40-2",
+                "hostname": "PROD-LINE-E-40-PC2",
+                "ip": "10.5.4.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-E-50",
+            "name": "Welding Station 5",
+            "type": "Welding",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-E-50-1",
+                "hostname": "PROD-LINE-E-50-PC1",
+                "ip": "10.5.5.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-E-50-2",
+                "hostname": "PROD-LINE-E-50-PC2",
+                "ip": "10.5.5.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-E-60",
+            "name": "Screwing Station 6",
+            "type": "Screwing",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-E-60-1",
+                "hostname": "PROD-LINE-E-60-PC1",
+                "ip": "10.5.6.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-E-60-2",
+                "hostname": "PROD-LINE-E-60-PC2",
+                "ip": "10.5.6.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-E-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-E-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-F",
+        "name": "Electronics Test Line LINE-F",
+        "description": "Automated electronics test line line-f",
+        "stations": [
+          {
+            "id": "STA-LINE-F-10",
+            "name": "Vision Station 1",
+            "type": "Vision",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-F-10-1",
+                "hostname": "PROD-LINE-F-10-PC1",
+                "ip": "10.6.1.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-F-10-2",
+                "hostname": "PROD-LINE-F-10-PC2",
+                "ip": "10.6.1.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-F-20",
+            "name": "Dispensing Station 2",
+            "type": "Dispensing",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-F-20-1",
+                "hostname": "PROD-LINE-F-20-PC1",
+                "ip": "10.6.2.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-F-20-2",
+                "hostname": "PROD-LINE-F-20-PC2",
+                "ip": "10.6.2.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-F-30",
+            "name": "Vision Station 3",
+            "type": "Vision",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-F-30-1",
+                "hostname": "PROD-LINE-F-30-PC1",
+                "ip": "10.6.3.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-F-30-2",
+                "hostname": "PROD-LINE-F-30-PC2",
+                "ip": "10.6.3.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-F-40",
+            "name": "Welding Station 4",
+            "type": "Welding",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-F-40-1",
+                "hostname": "PROD-LINE-F-40-PC1",
+                "ip": "10.6.4.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-F-40-2",
+                "hostname": "PROD-LINE-F-40-PC2",
+                "ip": "10.6.4.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-F-50",
+            "name": "Screwing Station 5",
+            "type": "Screwing",
+            "team": "Vision",
+            "pcs": [
+              {
+                "id": "PC-LINE-F-50-1",
+                "hostname": "PROD-LINE-F-50-PC1",
+                "ip": "10.6.5.11",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-F-50-2",
+                "hostname": "PROD-LINE-F-50-PC2",
+                "ip": "10.6.5.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-F-60",
+            "name": "Dispensing Station 6",
+            "type": "Dispensing",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-F-60-1",
+                "hostname": "PROD-LINE-F-60-PC1",
+                "ip": "10.6.6.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-F-60-2",
+                "hostname": "PROD-LINE-F-60-PC2",
+                "ip": "10.6.6.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-F-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-F-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-G",
+        "name": "Electronics Test Line LINE-G",
+        "description": "Automated electronics test line line-g",
+        "stations": [
+          {
+            "id": "STA-LINE-G-10",
+            "name": "Screwing Station 1",
+            "type": "Screwing",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-G-10-1",
+                "hostname": "PROD-LINE-G-10-PC1",
+                "ip": "10.7.1.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-G-10-2",
+                "hostname": "PROD-LINE-G-10-PC2",
+                "ip": "10.7.1.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-G-20",
+            "name": "Screwing Station 2",
+            "type": "Screwing",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-G-20-1",
+                "hostname": "PROD-LINE-G-20-PC1",
+                "ip": "10.7.2.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-G-20-2",
+                "hostname": "PROD-LINE-G-20-PC2",
+                "ip": "10.7.2.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-G-30",
+            "name": "Vision Station 3",
+            "type": "Vision",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-G-30-1",
+                "hostname": "PROD-LINE-G-30-PC1",
+                "ip": "10.7.3.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-G-30-2",
+                "hostname": "PROD-LINE-G-30-PC2",
+                "ip": "10.7.3.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-G-40",
+            "name": "Welding Station 4",
+            "type": "Welding",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-G-40-1",
+                "hostname": "PROD-LINE-G-40-PC1",
+                "ip": "10.7.4.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-G-40-2",
+                "hostname": "PROD-LINE-G-40-PC2",
+                "ip": "10.7.4.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-G-50",
+            "name": "Mechanical Station 5",
+            "type": "Mechanical",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-G-50-1",
+                "hostname": "PROD-LINE-G-50-PC1",
+                "ip": "10.7.5.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-G-50-2",
+                "hostname": "PROD-LINE-G-50-PC2",
+                "ip": "10.7.5.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-G-60",
+            "name": "Mechanical Station 6",
+            "type": "Mechanical",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-G-60-1",
+                "hostname": "PROD-LINE-G-60-PC1",
+                "ip": "10.7.6.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-G-60-2",
+                "hostname": "PROD-LINE-G-60-PC2",
+                "ip": "10.7.6.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-G-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-G-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-H",
+        "name": "Vision Inspection Line LINE-H",
+        "description": "Automated vision inspection line line-h",
+        "stations": [
+          {
+            "id": "STA-LINE-H-10",
+            "name": "Packaging Station 1",
+            "type": "Packaging",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-H-10-1",
+                "hostname": "PROD-LINE-H-10-PC1",
+                "ip": "10.8.1.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-H-10-2",
+                "hostname": "PROD-LINE-H-10-PC2",
+                "ip": "10.8.1.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-H-20",
+            "name": "Vision Station 2",
+            "type": "Vision",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-H-20-1",
+                "hostname": "PROD-LINE-H-20-PC1",
+                "ip": "10.8.2.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-H-20-2",
+                "hostname": "PROD-LINE-H-20-PC2",
+                "ip": "10.8.2.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-H-30",
+            "name": "Welding Station 3",
+            "type": "Welding",
+            "team": "Vision",
+            "pcs": [
+              {
+                "id": "PC-LINE-H-30-1",
+                "hostname": "PROD-LINE-H-30-PC1",
+                "ip": "10.8.3.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-H-30-2",
+                "hostname": "PROD-LINE-H-30-PC2",
+                "ip": "10.8.3.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-H-40",
+            "name": "Vision Station 4",
+            "type": "Vision",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-H-40-1",
+                "hostname": "PROD-LINE-H-40-PC1",
+                "ip": "10.8.4.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-H-40-2",
+                "hostname": "PROD-LINE-H-40-PC2",
+                "ip": "10.8.4.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-H-50",
+            "name": "Packaging Station 5",
+            "type": "Packaging",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-H-50-1",
+                "hostname": "PROD-LINE-H-50-PC1",
+                "ip": "10.8.5.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-H-50-2",
+                "hostname": "PROD-LINE-H-50-PC2",
+                "ip": "10.8.5.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-H-60",
+            "name": "Dispensing Station 6",
+            "type": "Dispensing",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-H-60-1",
+                "hostname": "PROD-LINE-H-60-PC1",
+                "ip": "10.8.6.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-H-60-2",
+                "hostname": "PROD-LINE-H-60-PC2",
+                "ip": "10.8.6.12",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-H-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-H-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-I",
+        "name": "Sealant Dispensing Line LINE-I",
+        "description": "Automated sealant dispensing line line-i",
+        "stations": [
+          {
+            "id": "STA-LINE-I-10",
+            "name": "Mechanical Station 1",
+            "type": "Mechanical",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-I-10-1",
+                "hostname": "PROD-LINE-I-10-PC1",
+                "ip": "10.9.1.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-I-10-2",
+                "hostname": "PROD-LINE-I-10-PC2",
+                "ip": "10.9.1.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-I-20",
+            "name": "Packaging Station 2",
+            "type": "Packaging",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-I-20-1",
+                "hostname": "PROD-LINE-I-20-PC1",
+                "ip": "10.9.2.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-I-20-2",
+                "hostname": "PROD-LINE-I-20-PC2",
+                "ip": "10.9.2.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-I-30",
+            "name": "Dispensing Station 3",
+            "type": "Dispensing",
+            "team": "Dispensing",
+            "pcs": [
+              {
+                "id": "PC-LINE-I-30-1",
+                "hostname": "PROD-LINE-I-30-PC1",
+                "ip": "10.9.3.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-I-30-2",
+                "hostname": "PROD-LINE-I-30-PC2",
+                "ip": "10.9.3.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-I-40",
+            "name": "Test Station 4",
+            "type": "Test",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-I-40-1",
+                "hostname": "PROD-LINE-I-40-PC1",
+                "ip": "10.9.4.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-I-40-2",
+                "hostname": "PROD-LINE-I-40-PC2",
+                "ip": "10.9.4.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-I-50",
+            "name": "Screwing Station 5",
+            "type": "Screwing",
+            "team": "Dispensing",
+            "pcs": [
+              {
+                "id": "PC-LINE-I-50-1",
+                "hostname": "PROD-LINE-I-50-PC1",
+                "ip": "10.9.5.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-I-50-2",
+                "hostname": "PROD-LINE-I-50-PC2",
+                "ip": "10.9.5.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Atlas-Copco-Controller",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "ToolModel": "Tensor STR"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-I-60",
+            "name": "Test Station 6",
+            "type": "Test",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-I-60-1",
+                "hostname": "PROD-LINE-I-60-PC1",
+                "ip": "10.9.6.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-I-60-2",
+                "hostname": "PROD-LINE-I-60-PC2",
+                "ip": "10.9.6.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-I-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-I-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LINE-J",
+        "name": "Final Assembly Line LINE-J",
+        "description": "Automated final assembly line line-j",
+        "stations": [
+          {
+            "id": "STA-LINE-J-10",
+            "name": "Test Station 1",
+            "type": "Test",
+            "team": "Screwing",
+            "pcs": [
+              {
+                "id": "PC-LINE-J-10-1",
+                "hostname": "PROD-LINE-J-10-PC1",
+                "ip": "10.10.1.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-J-10-2",
+                "hostname": "PROD-LINE-J-10-PC2",
+                "ip": "10.10.1.12",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-10",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-J-20",
+            "name": "Dispensing Station 2",
+            "type": "Dispensing",
+            "team": "Mechanical",
+            "pcs": [
+              {
+                "id": "PC-LINE-J-20-1",
+                "hostname": "PROD-LINE-J-20-PC1",
+                "ip": "10.10.2.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-J-20-2",
+                "hostname": "PROD-LINE-J-20-PC2",
+                "ip": "10.10.2.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-20",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-J-30",
+            "name": "Dispensing Station 3",
+            "type": "Dispensing",
+            "team": "Controls",
+            "pcs": [
+              {
+                "id": "PC-LINE-J-30-1",
+                "hostname": "PROD-LINE-J-30-PC1",
+                "ip": "10.10.3.11",
+                "os": "Windows 11 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-J-30-2",
+                "hostname": "PROD-LINE-J-30-PC2",
+                "ip": "10.10.3.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-30",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-J-40",
+            "name": "Dispensing Station 4",
+            "type": "Dispensing",
+            "team": "Test",
+            "pcs": [
+              {
+                "id": "PC-LINE-J-40-1",
+                "hostname": "PROD-LINE-J-40-PC1",
+                "ip": "10.10.4.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-J-40-2",
+                "hostname": "PROD-LINE-J-40-PC2",
+                "ip": "10.10.4.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-40",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-J-50",
+            "name": "Vision Station 5",
+            "type": "Vision",
+            "team": "Dispensing",
+            "pcs": [
+              {
+                "id": "PC-LINE-J-50-1",
+                "hostname": "PROD-LINE-J-50-PC1",
+                "ip": "10.10.5.11",
+                "os": "Ubuntu 22.04 LTS",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-J-50-2",
+                "hostname": "PROD-LINE-J-50-PC2",
+                "ip": "10.10.5.12",
+                "os": "Windows 10 Pro",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-50",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  },
+                  {
+                    "name": "Cognex-Camera",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Sensor": "12MP",
+                      "Interface": "GigE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "STA-LINE-J-60",
+            "name": "Test Station 6",
+            "type": "Test",
+            "team": "Vision",
+            "pcs": [
+              {
+                "id": "PC-LINE-J-60-1",
+                "hostname": "PROD-LINE-J-60-PC1",
+                "ip": "10.10.6.11",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "PC-LINE-J-60-2",
+                "hostname": "PROD-LINE-J-60-PC2",
+                "ip": "10.10.6.12",
+                "os": "Windows 10 IoT",
+                "status": "Healthy",
+                "components": [
+                  {
+                    "name": "PLC-LINE-J-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Model": "Siemens S7-1500",
+                      "Firmware": "v2.8"
+                    }
+                  },
+                  {
+                    "name": "HMI-LINE-J-60",
+                    "type": "HardwareComponent",
+                    "metadata": {
+                      "Resolution": "1920x1080"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

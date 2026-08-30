@@ -1,11 +1,101 @@
 using App.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace App.Shared.Data;
 
 /// <summary>
+/// Value converter for AES-256-GCM string encryption and decryption.
+/// Used for sensitive database properties such as FloorPlan.SvgContent and SoftwareAsset.LicenseKey.
+/// </summary>
+public class EncryptedStringConverter : ValueConverter<string?, string?>
+{
+    public EncryptedStringConverter() : base(
+        v => Encrypt(v),
+        v => Decrypt(v))
+    { }
+
+    /// <summary>
+    /// Encrypts plain text using AES-256-GCM.
+    /// Payload structure: Nonce (12B) + Tag (16B) + CipherText (variable). Encoded as Base64.
+    /// </summary>
+    public static string? Encrypt(string? plainText)
+    {
+        if (string.IsNullOrEmpty(plainText)) return plainText;
+        try
+        {
+            byte[] key = GetEncryptionKey();
+            byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
+            byte[] nonce = new byte[12];
+            RandomNumberGenerator.Fill(nonce);
+            byte[] tag = new byte[16];
+            byte[] cipherText = new byte[plainBytes.Length];
+
+            using var aesGcm = new AesGcm(key, 16);
+            aesGcm.Encrypt(nonce, plainBytes, cipherText, tag);
+
+            byte[] result = new byte[nonce.Length + tag.Length + cipherText.Length];
+            Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
+            Buffer.BlockCopy(tag, 0, result, nonce.Length, tag.Length);
+            Buffer.BlockCopy(cipherText, 0, result, nonce.Length + tag.Length, cipherText.Length);
+
+            return Convert.ToBase64String(result);
+        }
+        catch
+        {
+            return plainText;
+        }
+    }
+
+    /// <summary>
+    /// Decrypts AES-256-GCM Base64 payload.
+    /// Falls back to unencrypted text if payload format is invalid or decryption fails.
+    /// </summary>
+    public static string? Decrypt(string? encryptedText)
+    {
+        if (string.IsNullOrEmpty(encryptedText)) return encryptedText;
+        try
+        {
+            byte[] encryptedBytes = Convert.FromBase64String(encryptedText);
+            if (encryptedBytes.Length < 28) return encryptedText; // 12 nonce + 16 tag minimum
+
+            byte[] key = GetEncryptionKey();
+            byte[] nonce = new byte[12];
+            byte[] tag = new byte[16];
+            byte[] cipherText = new byte[encryptedBytes.Length - 28];
+
+            Buffer.BlockCopy(encryptedBytes, 0, nonce, 0, 12);
+            Buffer.BlockCopy(encryptedBytes, 12, tag, 0, 16);
+            Buffer.BlockCopy(encryptedBytes, 28, cipherText, 0, cipherText.Length);
+
+            byte[] plainBytes = new byte[cipherText.Length];
+            using var aesGcm = new AesGcm(key, 16);
+            aesGcm.Decrypt(nonce, cipherText, tag, plainBytes);
+
+            return Encoding.UTF8.GetString(plainBytes);
+        }
+        catch
+        {
+            return encryptedText;
+        }
+    }
+
+    private static byte[] GetEncryptionKey()
+    {
+        string? envKey = Environment.GetEnvironmentVariable("HEIMDALL_ENCRYPTION_KEY");
+        if (!string.IsNullOrEmpty(envKey))
+        {
+            return SHA256.HashData(Encoding.UTF8.GetBytes(envKey));
+        }
+        return SHA256.HashData(Encoding.UTF8.GetBytes("Heimdall_AES256_GCM_SecretKey_32B"));
+    }
+}
+
+/// <summary>
 /// Represents the database context for the Heimdall application, providing access to all entities.
-/// Configures entity mappings, relationships, and PostgreSQL-specific JSONB column types.
+/// Configures entity mappings, relationships, graph-relational edges, encrypted fields, and EF Core GIN indexes for JSONB columns.
 /// </summary>
 public class AppDbContext : DbContext
 {
@@ -19,9 +109,15 @@ public class AppDbContext : DbContext
     public DbSet<BaseInventoryItem> InventoryItems { get; set; }
     public DbSet<ClientPc> ClientPcs { get; set; }
     public DbSet<Machine> Machines { get; set; }
+    public DbSet<StationController> StationControllers { get; set; }
     public DbSet<HardwareComponent> HardwareComponents { get; set; }
+    public DbSet<SoftwareAsset> SoftwareAssets { get; set; }
     public DbSet<SoftwareComponent> SoftwareComponents { get; set; }
     public DbSet<PcHardware> PcHardwares { get; set; }
+    public DbSet<EquipmentInterconnect> EquipmentInterconnects { get; set; }
+    public DbSet<MaintenanceTicket> MaintenanceTickets { get; set; }
+    public DbSet<TicketComment> TicketComments { get; set; }
+    public DbSet<TicketAttachment> TicketAttachments { get; set; }
     public DbSet<ResponsibleTeam> ResponsibleTeams { get; set; }
     
     public DbSet<FloorPlan> FloorPlans { get; set; }
@@ -32,26 +128,13 @@ public class AppDbContext : DbContext
     public DbSet<AgentEvent> AgentEvents { get; set; }
     
     // Auth Sets (Managed by Better-Auth, excluded from migrations)
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthUser"/> entities.
-    /// </summary>
     public DbSet<AuthUser> AuthUsers { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthSession"/> entities.
-    /// </summary>
     public DbSet<AuthSession> AuthSessions { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthOrganization"/> entities.
-    /// </summary>
     public DbSet<AuthOrganization> AuthOrganizations { get; set; }
-    /// <summary>
-    /// Gets or sets the <see cref="DbSet{TEntity}"/> for <see cref="AuthMember"/> entities.
-    /// </summary>
     public DbSet<AuthMember> AuthMembers { get; set; }
 
     /// <summary>
     /// Configures the schema needed for the model.
-    /// This method is called for each context created.
     /// </summary>
     /// <param name="modelBuilder">The builder being used to construct the model for this context.</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -62,12 +145,13 @@ public class AppDbContext : DbContext
         modelBuilder.HasDefaultSchema("backend");
 
         bool isInMemory = Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+        var encryptedConverter = new EncryptedStringConverter();
 
         if (isInMemory)
         {
-            // In-memory doesn't support JsonDocument or JSONB POCOs as native types
+            // In-memory doesn me-not support JsonDocument or JSONB POCOs as native types
             // Use a value converter to store it as a string
-            var jsonConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<System.Text.Json.JsonDocument?, string?>(
+            var jsonConverter = new ValueConverter<System.Text.Json.JsonDocument?, string?>(
                 v => v == null ? null : v.RootElement.GetRawText(),
                 v => v == null ? null : System.Text.Json.JsonDocument.Parse(v, default));
 
@@ -77,6 +161,10 @@ public class AppDbContext : DbContext
 
             modelBuilder.Entity<UserRole>()
                 .Property(e => e.Privileges)
+                .HasConversion(jsonConverter);
+
+            modelBuilder.Entity<ClientPc>()
+                .Property(e => e.SystemMetadata)
                 .HasConversion(jsonConverter);
 
             // Converters for ClientPc POCOs
@@ -99,6 +187,18 @@ public class AppDbContext : DbContext
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                     v => System.Text.Json.JsonSerializer.Deserialize<AlertingLimits>(v, (System.Text.Json.JsonSerializerOptions?)null));
+
+            modelBuilder.Entity<StationController>()
+                .Property(e => e.Metadata)
+                .HasConversion(jsonConverter);
+
+            modelBuilder.Entity<EquipmentInterconnect>()
+                .Property(e => e.Metadata)
+                .HasConversion(jsonConverter);
+
+            modelBuilder.Entity<MaintenanceTicket>()
+                .Property(e => e.Metadata)
+                .HasConversion(jsonConverter);
         }
 
         // Configure Auth entities (Better-Auth) - Exclude from migrations as they are managed externally
@@ -135,6 +235,7 @@ public class AppDbContext : DbContext
             if (!isInMemory)
             {
                 entity.Property(e => e.Metadata).HasColumnType("jsonb");
+                entity.HasIndex(e => e.Metadata).HasMethod("gin");
             }
             
             entity.HasOne(e => e.Manufacturer)
@@ -183,11 +284,21 @@ public class AppDbContext : DbContext
                 entity.Property(e => e.MonitoringConfig).HasColumnType("jsonb");
                 entity.Property(e => e.ResourceAverages).HasColumnType("jsonb");
                 entity.Property(e => e.AlertingLimits).HasColumnType("jsonb");
+                entity.Property(e => e.SystemMetadata).HasColumnType("jsonb");
+                entity.HasIndex(e => e.SystemMetadata).HasMethod("gin");
             }
 
             entity.HasMany(e => e.ControlledMachines)
                   .WithMany(m => m.Controllers)
-                  .UsingEntity(j => j.ToTable("StationControllers"));
+                  .UsingEntity<StationController>(
+                      j => j.HasOne(sc => sc.Machine).WithMany(m => m.StationControllers).HasForeignKey(sc => sc.MachineId),
+                      j => j.HasOne(sc => sc.ClientPc).WithMany(c => c.StationControllers).HasForeignKey(sc => sc.ClientPcId),
+                      j =>
+                      {
+                          j.ToTable("StationControllers");
+                          j.HasKey(sc => sc.Id);
+                          j.HasIndex(sc => new { sc.MachineId, sc.ClientPcId }).IsUnique();
+                      });
 
             entity.HasIndex(e => e.MacAddress).IsUnique();
             entity.HasIndex(e => e.Hostname);
@@ -203,8 +314,21 @@ public class AppDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasMany(e => e.ResponsibleTeams)
-                  .WithMany() // Or if we want back-ref on ResponsibleTeam, we'd add it there
+                  .WithMany()
                   .UsingEntity(j => j.ToTable("PcResponsibilities"));
+        });
+
+        // Configure StationController
+        modelBuilder.Entity<StationController>(entity =>
+        {
+            entity.ToTable("StationControllers");
+            entity.HasKey(sc => sc.Id);
+
+            if (!isInMemory)
+            {
+                entity.Property(e => e.Metadata).HasColumnType("jsonb");
+                entity.HasIndex(e => e.Metadata).HasMethod("gin");
+            }
         });
 
         // Configure QueuedAgentCommand
@@ -218,26 +342,132 @@ public class AppDbContext : DbContext
             entity.ToTable("agent_events");
         });
 
+        modelBuilder.Entity<MaintenanceTicket>(entity =>
+        {
+            entity.ToTable("maintenance_tickets");
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.Machine)
+                  .WithMany()
+                  .HasForeignKey(e => e.MachineId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ClientPc)
+                  .WithMany()
+                  .HasForeignKey(e => e.ClientPcId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Equipment)
+                  .WithMany()
+                  .HasForeignKey(e => e.EquipmentId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
         // Configure HardwareComponent
         modelBuilder.Entity<HardwareComponent>(entity =>
         {
             entity.ToTable("hardware_assets"); // TPT
             
             entity.HasMany(e => e.Firmware)
-                  .WithOne() // Relationship is now purely hierarchical via ParentId
+                  .WithOne()
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure SoftwareAsset
+        modelBuilder.Entity<SoftwareAsset>(entity =>
+        {
+            entity.ToTable("software_assets"); // TPT
+
+            // Encrypted string property for SoftwareAsset.LicenseKey
+            entity.Property(e => e.LicenseKey)
+                  .HasConversion(encryptedConverter);
         });
 
         // Configure SoftwareComponent
         modelBuilder.Entity<SoftwareComponent>(entity =>
         {
-            entity.ToTable("software_assets"); // TPT
+            entity.ToTable("software_components"); // TPT
         });
 
         // Configure PcHardware
         modelBuilder.Entity<PcHardware>(entity =>
         {
             entity.ToTable("pc_hardware"); // TPT
+        });
+
+        // Configure EquipmentInterconnect
+        modelBuilder.Entity<EquipmentInterconnect>(entity =>
+        {
+            entity.ToTable("equipment_interconnects");
+            entity.HasKey(e => e.Id);
+
+            if (!isInMemory)
+            {
+                entity.Property(e => e.Metadata).HasColumnType("jsonb");
+                entity.HasIndex(e => e.Metadata).HasMethod("gin");
+            }
+
+            entity.HasOne(e => e.SourceEquipment)
+                  .WithMany()
+                  .HasForeignKey(e => e.SourceEquipmentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.TargetEquipment)
+                  .WithMany()
+                  .HasForeignKey(e => e.TargetEquipmentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure MaintenanceTicket
+        modelBuilder.Entity<MaintenanceTicket>(entity =>
+        {
+            entity.ToTable("maintenance_tickets");
+            entity.HasKey(e => e.Id);
+
+            if (!isInMemory)
+            {
+                entity.Property(e => e.Metadata).HasColumnType("jsonb");
+                entity.HasIndex(e => e.Metadata).HasMethod("gin");
+            }
+
+            entity.HasOne(e => e.Equipment)
+                  .WithMany()
+                  .HasForeignKey(e => e.EquipmentId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ClientPc)
+                  .WithMany()
+                  .HasForeignKey(e => e.ClientPcId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Machine)
+                  .WithMany()
+                  .HasForeignKey(e => e.MachineId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(e => e.Comments)
+                  .WithOne(c => c.MaintenanceTicket)
+                  .HasForeignKey(c => c.MaintenanceTicketId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Attachments)
+                  .WithOne(a => a.MaintenanceTicket)
+                  .HasForeignKey(a => a.MaintenanceTicketId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure TicketComment
+        modelBuilder.Entity<TicketComment>(entity =>
+        {
+            entity.ToTable("ticket_comments");
+            entity.HasKey(c => c.Id);
+        });
+
+        // Configure TicketAttachment
+        modelBuilder.Entity<TicketAttachment>(entity =>
+        {
+            entity.ToTable("ticket_attachments");
+            entity.HasKey(a => a.Id);
         });
 
         // Configure ResponsibleTeam
@@ -258,12 +488,15 @@ public class AppDbContext : DbContext
                 entity.Ignore(e => e.Anchors);
             }
             entity.HasIndex(e => e.Name);
+
+            // Encrypted string property for FloorPlan.SvgContent
+            entity.Property(e => e.SvgContent)
+                  .HasConversion(encryptedConverter);
         });
 
         modelBuilder.Entity<FloorPlanAnchor>(entity =>
         {
             entity.HasNoKey();
         });
-
     }
 }

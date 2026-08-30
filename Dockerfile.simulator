@@ -10,5 +10,6 @@ COPY shared/App.Shared/Protos/system_info.proto .
 COPY system_info_pb2.py .
 COPY system_info_pb2_grpc.py .
 COPY simulate_pcs.py .
+COPY seed_data/ seed_data/
 
 ENTRYPOINT ["python", "-u", "simulate_pcs.py"]

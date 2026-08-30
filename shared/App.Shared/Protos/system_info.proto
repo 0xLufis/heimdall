@@ -8,6 +8,9 @@ import "google/protobuf/timestamp.proto";
 
 service SystemInfoCollector {
   rpc ReportSystemInfo (SystemInfoRequest) returns (SystemInfoResponse);
+  rpc ReportTelemetryBatch (TelemetryBatchRequest) returns (TelemetryBatchResponse);
+  rpc StreamAgentEvents (stream AgentEventMessage) returns (AgentEventStreamAck);
+  rpc SyncRecipes (RecipeSyncRequest) returns (RecipeSyncResponse);
 }
 
 message SystemInfoRequest {
@@ -39,7 +42,49 @@ message SystemInfoResponse {
 }
 
 message ServerCommand {
-  string type = 1; // "UPDATE_CONFIG", "FILE_CHECK"
+  string type = 1; // "UPDATE_CONFIG", "FILE_CHECK", "APPLY_RECIPE"
   string payload = 2; // JSON payload or file path
-  string signature = 3; // RSA signature if required
+  string signature = 3; // Cryptographic signature
+}
+
+message TelemetryBatchRequest {
+  string machine_identifier = 1;
+  string hostname = 2;
+  google.protobuf.Timestamp batch_timestamp = 3;
+  bool is_compressed = 4;
+  string compression_algorithm = 5; // "zstd", "gzip", "none"
+  bytes payload_bytes = 6; // Compressed or raw JSON array of TelemetryDataPoint
+}
+
+message TelemetryBatchResponse {
+  bool success = 1;
+  int32 processed_count = 2;
+  string message = 3;
+}
+
+message AgentEventMessage {
+  string machine_identifier = 1;
+  string hostname = 2;
+  string event_id = 3;
+  string source = 4; // "EtherCAT", "TwinCAT", "OPCUA", "System"
+  string level = 5; // "Critical", "High", "Warning", "Info"
+  string message = 6;
+  google.protobuf.Timestamp timestamp = 7;
+  string payload_json = 8;
+}
+
+message AgentEventStreamAck {
+  bool success = 1;
+  string message = 2;
+}
+
+message RecipeSyncRequest {
+  string machine_identifier = 1;
+  string current_recipe_hashes = 2; // Comma-separated or JSON map of active recipe IDs to version hashes
+}
+
+message RecipeSyncResponse {
+  bool has_updates = 1;
+  repeated string signed_recipe_json_bundles = 2;
+  repeated string revoked_recipe_ids = 3;
 }

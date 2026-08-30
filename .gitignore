@@ -31,6 +31,7 @@ yarn-error.log*
 # NEVER commit database data or logs
 infra/database/data/
 infra/database/logs/
+infra/database/pgadmin/
 
 infra/database/secrets/*.txt
 infra/database/certs/*.key

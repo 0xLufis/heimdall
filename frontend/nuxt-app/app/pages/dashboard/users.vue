@@ -55,18 +55,19 @@ async function fetchUsers() {
   loading.value = true
   error.value = ''
   try {
-    const { data, error: fetchError } = await authClient.admin.listUsers({
-        query: {
-            limit: 100
-        }
-    })
-    if (fetchError) {
-      error.value = fetchError.message || 'Failed to fetch users. Ensure you have admin privileges.'
+    const res = await $fetch<{ success: boolean; users: any[] }>('/api/users')
+    if (res && res.success && res.users && res.users.length > 0) {
+      users.value = res.users
     } else {
-      users.value = data.users
+      // Auto-seed in dev mode if empty
+      await $fetch('/api/dev/seed-admin')
+      const seededRes = await $fetch<{ success: boolean; users: any[] }>('/api/users')
+      if (seededRes && seededRes.users) {
+        users.value = seededRes.users
+      }
     }
   } catch (e: any) {
-    error.value = 'An unexpected error occurred while fetching users.'
+    error.value = 'Failed to load user directory.'
   } finally {
     loading.value = false
   }

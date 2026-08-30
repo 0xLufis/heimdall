@@ -155,16 +155,16 @@ const newOrgSlug = ref('')
 async function fetchOrgs() {
     loading.value = true
     try {
-        console.log("Fetching organizations from authClient...");
-        const res = await authClient.organization.list()
-        console.log("Organizations response:", res);
-        
-        if (res && res.data) {
-            orgs.value = res.data
-        } else if (Array.isArray(res)) {
-            orgs.value = res
+        const res = await $fetch<{ success: boolean; organizations: any[] }>('/api/organizations')
+        if (res && res.success && res.organizations && res.organizations.length > 0) {
+            orgs.value = res.organizations
+        } else {
+            await $fetch('/api/dev/seed-admin')
+            const seededRes = await $fetch<{ success: boolean; organizations: any[] }>('/api/organizations')
+            if (seededRes && seededRes.organizations) {
+                orgs.value = seededRes.organizations
+            }
         }
-        console.log("Rendered organizations count:", orgs.value.length);
     } catch (e) {
         console.error("Error fetching organizations:", e)
     } finally {
@@ -208,12 +208,15 @@ async function handleManageMembers(org: any) {
     showMembersModal.value = true
     loadingMembers.value = true
     try {
-        const { data, error } = await authClient.organization.listMembers({
-            organizationId: org.id
-        })
-        if (data) members.value = data
+        const res = await $fetch<{ success: boolean; members: any[] }>(`/api/organizations/${org.id}/members`)
+        if (res && res.members) {
+            members.value = res.members
+        } else {
+            const { data } = await (authClient.organization as any).getMembers?.({ query: { organizationId: org.id } }) || {}
+            if (data) members.value = data
+        }
     } catch (e) {
-        console.error(e)
+        console.error('Error fetching org members:', e)
     } finally {
         loadingMembers.value = false
     }

@@ -260,7 +260,7 @@ function clearSearch() {
                  <div class="size-20 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-6 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
                     <Icon name="i-lucide-command" class="size-8 text-indigo-500/50" />
                  </div>
-                 <h3 class="text-xs font-black text-slate-200 uppercase tracking-[0.2em] mb-2">Omni-Search Engaged</h3>
+                 <h3 class="text-xs font-black text-slate-200 uppercase tracking-[0.2em] mb-2">Global Search Active</h3>
                  <p class="text-[11px] text-slate-500 max-w-[280px] mx-auto leading-relaxed mb-6 font-medium">
                    Search across components, machines, and networks with unified tagging.
                  </p>

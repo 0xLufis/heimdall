@@ -157,7 +157,7 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
             return new SystemInfoResponse
             {
                 Success = false,
-                Message = "Error while saving reported data."
+                Message = $"Error while saving reported data: {ex.Message} -> {ex.InnerException?.Message}"
             };
         }
     }

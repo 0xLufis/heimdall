@@ -9,29 +9,25 @@ defineProps<{
 </script>
 
 <template>
-  <Card class="bg-slate-900 border-slate-800 p-8 text-white shadow-2xl relative overflow-hidden rounded-3xl">
-    <CardContent class="p-0 relative z-10">
-      <div class="flex items-center gap-6">
-        <Avatar class="w-20 h-20 border border-white/10 shadow-inner group transition-all hover:bg-white/10 bg-white/5 backdrop-blur-md">
-          <AvatarFallback class="text-4xl font-black bg-transparent">
-            {{ userName?.charAt(0) }}
+  <Card class="bg-card border-border p-6 text-card-foreground shadow-sm rounded-xl">
+    <CardContent class="p-0">
+      <div class="flex items-center gap-5">
+        <Avatar class="w-14 h-14 border border-border bg-muted">
+          <AvatarFallback class="text-2xl font-bold text-foreground bg-transparent">
+            {{ userName?.charAt(0) || 'U' }}
           </AvatarFallback>
         </Avatar>
         <div>
-          <h3 class="text-4xl font-black tracking-tight leading-none mb-2 text-slate-100">Welcome back, {{ userName }}</h3>
-          <div class="flex items-center gap-3">
+          <h3 class="text-2xl font-bold tracking-tight text-foreground">Welcome back, {{ userName }}</h3>
+          <div class="flex items-center gap-3 mt-1">
             <DashboardRoleBadge :role="userRole" />
-            <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
-              <span class="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse"></span>
-              <span class="text-slate-400 text-[10px] font-black uppercase tracking-widest opacity-80">System Oversight Active</span>
+            <div class="flex items-center gap-2 px-2.5 py-0.5 rounded border border-border bg-muted/50 text-xs font-mono">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span class="text-muted-foreground uppercase tracking-wider text-[11px]">System Nominal</span>
             </div>
           </div>
         </div>
       </div>
     </CardContent>
-    <!-- Abstract Background Shapes -->
-    <div class="absolute -right-20 -top-20 w-80 h-80 bg-slate-800 rounded-full blur-[100px] opacity-30"></div>
-    <div class="absolute right-40 bottom-0 w-64 h-64 bg-slate-900 rounded-full blur-[80px] opacity-20" style="animation-delay: 1s"></div>
-    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-gradient-to-br from-transparent via-slate-800/20 to-transparent pointer-events-none"></div>
   </Card>
 </template>

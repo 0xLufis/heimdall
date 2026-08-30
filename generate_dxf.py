@@ -13,82 +13,98 @@ doc.layers.add("ROBOT_CELLS", color=colors.MAGENTA)
 doc.layers.add("STATIONS", color=colors.GREEN)
 doc.layers.add("TEXT", color=colors.WHITE)
 
-# Draw building walls
-msp.add_lwpolyline([(0, 0), (250, 0), (250, 180), (0, 180), (0, 0)], dxfattribs={'layer': 'WALLS'})
-# Inner walls
-msp.add_lwpolyline([(80, 0), (80, 60), (250, 60)], dxfattribs={'layer': 'WALLS'})
-msp.add_lwpolyline([(160, 60), (160, 180)], dxfattribs={'layer': 'WALLS'})
+# 1. Main Plant Outer Perimeter (1200 x 800 units)
+msp.add_lwpolyline([(0, 0), (1200, 0), (1200, 800), (0, 800), (0, 0)], dxfattribs={'layer': 'WALLS'})
 
-# Add text labels for areas matching seed data logic
-msp.add_text("ASSEMBLY HALL").set_placement((40, 30), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
-msp.add_text("LOGISTICS & PACKAGING").set_placement((165, 30), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
-msp.add_text("QUALITY & SPECIALTY").set_placement((80, 120), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
-msp.add_text("CNC MACHINING").set_placement((205, 120), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
+# 2. Four Main Production Floors Division Walls
+# Floor A (Top Left: 0-600, 400-800)
+# Floor B (Top Right: 600-1200, 400-800)
+# Floor C (Bottom Left: 0-600, 0-400)
+# Floor D (Bottom Right: 600-1200, 0-400)
+msp.add_lwpolyline([(600, 0), (600, 800)], dxfattribs={'layer': 'WALLS'})
+msp.add_lwpolyline([(0, 400), (1200, 400)], dxfattribs={'layer': 'WALLS'})
+
+# Floor Labels
+msp.add_text("PRODUCTION FLOOR A - BODY & PRESS", height=12).set_placement((300, 770), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
+msp.add_text("PRODUCTION FLOOR B - POWERTRAIN & BATTERY", height=12).set_placement((900, 770), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
+msp.add_text("PRODUCTION FLOOR C - EOL TESTING & PACKAGING", height=12).set_placement((300, 370), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
+msp.add_text("PRODUCTION FLOOR D - CHEMICAL & INTEGRATION", height=12).set_placement((900, 370), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
 
 # --- Define Blocks for Reusability ---
-
-# CNC Machine Block
 cnc_block = doc.blocks.new(name='CNC_MACHINE')
 cnc_block.add_lwpolyline([(-8, -6), (8, -6), (8, 6), (-8, 6), (-8, -6)], dxfattribs={'layer': 'STATIONS'})
 cnc_block.add_circle((0, 0), 2, dxfattribs={'layer': 'STATIONS'})
 cnc_block.add_text("CNC", height=2).set_placement((0, 0), align=TextEntityAlignment.MIDDLE_CENTER)
 
-# Robot Cell Block (Safety fence + Robot)
 robot_cell = doc.blocks.new(name='ROBOT_CELL')
 robot_cell.add_lwpolyline([(-10, -10), (10, -10), (10, 10), (-10, 10), (-10, -10)], dxfattribs={'layer': 'ROBOT_CELLS', 'linetype': 'DASHED'})
 robot_cell.add_circle((0, 0), 3, dxfattribs={'layer': 'ROBOT_CELLS'})
 robot_cell.add_line((0, 0), (6, 6), dxfattribs={'layer': 'ROBOT_CELLS'})
 robot_cell.add_text("ROBOT", height=1.5).set_placement((0, -8), align=TextEntityAlignment.MIDDLE_CENTER)
 
-# Assembly Station
 assembly_st = doc.blocks.new(name='ASSEMBLY_STATION')
-assembly_st.add_lwpolyline([(-5, -4), (5, -4), (5, 4), (-5, 4), (-5, -4)], dxfattribs={'layer': 'STATIONS'})
+assembly_st.add_lwpolyline([(-6, -5), (6, -5), (6, 5), (-6, 5), (-6, -5)], dxfattribs={'layer': 'STATIONS'})
 assembly_st.add_text("STATION", height=1.5).set_placement((0, 0), align=TextEntityAlignment.MIDDLE_CENTER)
 
-# Packaging Station
 pack_st = doc.blocks.new(name='PACKAGING_STATION')
 pack_st.add_lwpolyline([(-6, -6), (6, -6), (6, 6), (-6, 6), (-6, -6)], dxfattribs={'layer': 'STATIONS'})
 pack_st.add_line((-6, -6), (6, 6), dxfattribs={'layer': 'STATIONS'})
 pack_st.add_line((-6, 6), (6, -6), dxfattribs={'layer': 'STATIONS'})
 pack_st.add_text("PACK", height=1.5).set_placement((0, -8), align=TextEntityAlignment.MIDDLE_CENTER)
 
-# --- Insert Blocks into Modelspace with specific handles from seed data ---
+# Chemical Tanks in Floor D
+for i, (tx, ty) in enumerate([(750, 200), (850, 200), (1000, 200), (1100, 200)]):
+    tank = msp.add_circle((tx, ty), 16, dxfattribs={'layer': 'STATIONS'})
+    tank.dxf.handle = f"C-TANK-{i+1}" if i > 0 else "C-TANK-4"
+    msp.add_text(f"TANK {i+1}", height=4).set_placement((tx, ty), align=TextEntityAlignment.MIDDLE_CENTER).dxf.layer = 'TEXT'
 
-# ASSEMBLY HALL
-# Assembly Line 1 (handle: H-AL1)
-al1 = msp.add_blockref('ROBOT_CELL', (40, 45))
+# Specific Seed Station Placements
+# Floor A (Body & Press)
+al1 = msp.add_blockref('ROBOT_CELL', (120, 650))
 al1.dxf.handle = 'H-AL1'
-
-# Welding Station 5 (handle: H-WS5)
-ws5 = msp.add_blockref('ASSEMBLY_STATION', (20, 15))
+ws5 = msp.add_blockref('ASSEMBLY_STATION', (250, 650))
 ws5.dxf.handle = 'H-WS5'
+cnc_mc = msp.add_blockref('CNC_MACHINE', (400, 650))
+cnc_mc.dxf.handle = 'CNC-MC-12'
 
-# LOGISTICS & PACKAGING
-# Logistics Sorting System (handle: L-SORT-A)
-log_a = msp.add_blockref('ROBOT_CELL', (130, 30))
-log_a.dxf.handle = 'L-SORT-A'
-
-# Packaging Line B (handle: P-LINE-B)
-pack_b = msp.add_blockref('PACKAGING_STATION', (200, 30))
-pack_b.dxf.handle = 'P-LINE-B'
-
-# QUALITY & SPECIALTY
-# Quality Inspection Cell (handle: Q-CELL-01)
-q_cell = msp.add_blockref('ASSEMBLY_STATION', (40, 140))
+# Floor B (Powertrain & Battery)
+q_cell = msp.add_blockref('ASSEMBLY_STATION', (750, 650))
 q_cell.dxf.handle = 'Q-CELL-01'
+p_cell = msp.add_blockref('ROBOT_CELL', (900, 650))
+p_cell.dxf.handle = 'P-CELL-02'
+t_cell = msp.add_blockref('CNC_MACHINE', (1050, 650))
+t_cell.dxf.handle = 'T-CELL-01'
 
-# Chemical Mixing Tank (handle: C-TANK-4)
-tank_4 = msp.add_circle((120, 140), 10, dxfattribs={'layer': 'STATIONS'})
-tank_4.dxf.handle = 'C-TANK-4'
-msp.add_text("TANK 4", height=2).set_placement((120, 140), align=TextEntityAlignment.MIDDLE_CENTER)
+# Floor C (EOL Testing & Packaging)
+log_a = msp.add_blockref('ROBOT_CELL', (150, 250))
+log_a.dxf.handle = 'L-SORT-A'
+pack_b = msp.add_blockref('PACKAGING_STATION', (300, 250))
+pack_b.dxf.handle = 'P-LINE-B'
+pack_c = msp.add_blockref('PACKAGING_STATION', (450, 250))
+pack_c.dxf.handle = 'P-LINE-C'
 
-# MACHINING
-# CNC Milling Center (handle: CNC-MC-12)
-cnc_12 = msp.add_blockref('CNC_MACHINE', (210, 140))
-cnc_12.dxf.handle = 'CNC-MC-12'
+# Layout production conveyor lines & additional interactive stations
+block_types = ['ROBOT_CELL', 'ASSEMBLY_STATION', 'CNC_MACHINE', 'PACKAGING_STATION']
 
+# Conveyor tracks across the floors
+for floor_x, floor_y in [(50, 520), (50, 650), (650, 520), (650, 650), (50, 150), (50, 250), (650, 100), (650, 300)]:
+    msp.add_line((floor_x, floor_y), (floor_x + 500, floor_y), dxfattribs={'layer': 'CONVEYORS', 'linetype': 'CENTER'})
+    for col in range(6):
+        x = floor_x + (col * 80) + 40
+        y = floor_y
+        # Skip if near specific seed handles
+        if (abs(x - 120) < 30 and abs(y - 650) < 30) or (abs(x - 250) < 30 and abs(y - 650) < 30) or \
+           (abs(x - 400) < 30 and abs(y - 650) < 30) or (abs(x - 750) < 30 and abs(y - 650) < 30) or \
+           (abs(x - 900) < 30 and abs(y - 650) < 30) or (abs(x - 1050) < 30 and abs(y - 650) < 30) or \
+           (abs(x - 150) < 30 and abs(y - 250) < 30) or (abs(x - 300) < 30 and abs(y - 250) < 30) or \
+           (abs(x - 450) < 30 and abs(y - 250) < 30):
+            continue
+        
+        btype = block_types[(col + int(floor_y)) % len(block_types)]
+        ref = msp.add_blockref(btype, (x, y))
+        ref.dxf.handle = f"ST-{int(floor_x/100)}-{int(floor_y/100)}-{col+1}"
 
 # Ensure output directory exists
 os.makedirs('frontend/nuxt-app/public/sample', exist_ok=True)
 doc.saveas('frontend/nuxt-app/public/sample/assembly_line.dxf')
-print("Realistic DXF created successfully matching seed data handles!")
+print("Multi-floor Enterprise Plant DXF generated successfully with realistic conveyor lines, tanks, and stations!")

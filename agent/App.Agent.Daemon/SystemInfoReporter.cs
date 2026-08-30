@@ -125,6 +125,17 @@ public class SystemInfoReporter
                 DataJson = System.Text.Json.JsonSerializer.Serialize(data.Disk.PhysicalDrives)
             });
 
+            if (data.Hardware?.BeckhoffRtDrivers != null && data.Hardware.BeckhoffRtDrivers.Any())
+            {
+                request.Components.Add(new App.Shared.Protos.InventoryComponent
+                {
+                    Name = "Beckhoff RT Driver",
+                    Technology = "Beckhoff",
+                    Type = "hardware",
+                    DataJson = System.Text.Json.JsonSerializer.Serialize(data.Hardware.BeckhoffRtDrivers)
+                });
+            }
+
             if (data.Events != null && data.Events.Any())
             {
                 request.Components.Add(new App.Shared.Protos.InventoryComponent

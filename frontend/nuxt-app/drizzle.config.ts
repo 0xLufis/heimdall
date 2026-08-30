@@ -8,6 +8,7 @@ export default defineConfig({
       url: process.env.DATABASE_URL!,
    },
 
+   schemaFilter: ['auth'],
    migrations: {
       schema: 'auth',
       table: '__drizzle_migrations',

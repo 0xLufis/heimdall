@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-App.Agent.Daemon-b6d14ba2-0a68-4282-b8ca-a994dc3c6ad1</UserSecretsId>
+    <UseAppHost>false</UseAppHost>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +17,9 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.2" />
     <PackageReference Include="System.Management" Version="9.0.0" />
+    <PackageReference Include="System.IO.Hashing" Version="9.0.2" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,27 +1,33 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AppSidebar from '../../app/components/layout/AppSidebar.vue'
-import { navMenu, navMenuBottom } from '../../app/constants/menus' // Adjust path as necessary
+import AppSidebar from '~/components/layout/AppSidebar.vue'
+import { navMenu, navMenuBottom } from '~/constants/menus'
+
+import { ref } from 'vue'
+
+vi.stubGlobal('useAppConfig', () => ({ appSettings: {} }))
+vi.stubGlobal('useCookie', (key: string, opts: any) => ref(opts?.default ? opts.default() : {}))
 
 describe('AppSidebar', () => {
   it('renders correctly in expanded state', async () => {
     const wrapper = mount(AppSidebar, {
-      props: {
-        // Mock any props if AppSidebar expects them
-      },
+      props: {},
       global: {
         stubs: {
-          // Stub out NuxtLink, Icon, etc. if they cause issues or are external
           NuxtLink: { template: '<a><slot /></a>' },
           Icon: { template: '<span></span>' },
           Sidebar: { template: '<div class="sidebar-expanded"><slot /></div>' },
           SidebarHeader: { template: '<div><slot /></div>' },
           SidebarContent: { template: '<div><slot /></div>' },
+          SidebarFooter: { template: '<div><slot /></div>' },
+          SidebarRail: { template: '<div></div>' },
           SidebarGroup: { template: '<div><slot /></div>' },
-          SidebarGroupLabel: { template: '<div>{{ heading }}</div>', props: ['heading'] },
+          SidebarGroupLabel: { template: '<div><slot /></div>' },
           SidebarMenuItem: { template: '<div><slot /></div>' },
           SidebarMenuButton: { template: '<button><slot /></button>' },
           LayoutSidebarNavHeader: { template: '<div></div>' },
+          LayoutSidebarNavLink: { template: '<div>{{ item?.title }}</div>', props: ['item'] },
+          LayoutSidebarNavGroup: { template: '<div>{{ item?.title }}</div>', props: ['item'] },
           Search: { template: '<div></div>' },
           LayoutSidebarNavFooter: { template: '<div></div>' },
         },

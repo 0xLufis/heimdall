@@ -29,6 +29,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-package',
         link: '/dashboard/inventory',
       },
+      {
+        title: 'Tickets',
+        icon: 'i-lucide-wrench',
+        link: '/dashboard/tickets',
+      },
     ],
   },
   {

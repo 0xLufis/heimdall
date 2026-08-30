@@ -7,12 +7,14 @@ let connection: ReturnType<typeof postgres> | null = null;
 export const useDb = () => {
    if (!connection) {
       const config = useRuntimeConfig();
+      const dbUrl = (config.databaseUrl as string) 
+         || process.env.DATABASE_URL 
+         || "postgres://ef_admin:migrate@localhost:5432/heimdall_dev_db";
 
-      // Initialize the postgres connection
-      connection = postgres(config.databaseUrl as string, {
-         ssl: {
-            rejectUnauthorized: false
-         }
+      const useSsl = dbUrl.includes('sslmode=require') || dbUrl.includes('ssl=true');
+
+      connection = postgres(dbUrl, {
+         ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {})
       });
    }
 
