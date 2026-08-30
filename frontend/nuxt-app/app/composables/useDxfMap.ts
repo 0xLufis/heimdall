@@ -12,7 +12,8 @@ export const useDxfMap = (dxfUrl: string = '/sample/assembly_line.dxf') => {
   const isLoading = ref(true)
   const error = ref<string | null>(null)
   const parsedEntities = ref<any[]>([])
-  const viewBox = ref<ViewBox>({ x: -50, y: -50, width: 1300, height: 900 })
+  const parsedBlocks = ref<Record<string, any>>({})
+  const viewBox = ref<ViewBox>({ x: -10, y: -10, width: 270, height: 200 })
   const activePinHandle = ref<string | null>(null)
   const highlightedHandles = ref<string[]>([])
 
@@ -26,9 +27,10 @@ export const useDxfMap = (dxfUrl: string = '/sample/assembly_line.dxf') => {
       const parser = new DxfParser()
       const parsed = parser.parseSync(text)
 
-      if (parsed && parsed.entities) {
-        parsedEntities.value = parsed.entities
-        computeInitialViewBox(parsed.entities)
+      if (parsed) {
+        parsedEntities.value = parsed.entities || []
+        parsedBlocks.value = parsed.blocks || {}
+        computeInitialViewBox(parsed.entities || [])
       }
     } catch (e: any) {
       error.value = e.message || 'Failed to parse DXF layout'
@@ -49,10 +51,10 @@ export const useDxfMap = (dxfUrl: string = '/sample/assembly_line.dxf') => {
           maxY = Math.max(maxY, v.y)
         })
       } else if (entity.type === 'INSERT' && entity.position) {
-        minX = Math.min(minX, entity.position.x - 30)
-        maxX = Math.max(maxX, entity.position.x + 30)
-        minY = Math.min(minY, entity.position.y - 30)
-        maxY = Math.max(maxY, entity.position.y + 30)
+        minX = Math.min(minX, entity.position.x - 15)
+        maxX = Math.max(maxX, entity.position.x + 15)
+        minY = Math.min(minY, entity.position.y - 15)
+        maxY = Math.max(maxY, entity.position.y + 15)
       } else if (entity.type === 'LINE' && entity.vertices) {
         minX = Math.min(minX, entity.vertices[0].x, entity.vertices[1].x)
         maxX = Math.max(maxX, entity.vertices[0].x, entity.vertices[1].x)
@@ -66,22 +68,22 @@ export const useDxfMap = (dxfUrl: string = '/sample/assembly_line.dxf') => {
         maxY = Math.max(maxY, entity.center.y + r)
       } else if (entity.type === 'TEXT' && entity.startPoint) {
         minX = Math.min(minX, entity.startPoint.x - 20)
-        maxX = Math.max(maxX, entity.startPoint.x + 100)
-        minY = Math.min(minY, entity.startPoint.y - 20)
-        maxY = Math.max(maxY, entity.startPoint.y + 20)
+        maxX = Math.max(maxX, entity.startPoint.x + 20)
+        minY = Math.min(minY, entity.startPoint.y - 10)
+        maxY = Math.max(maxY, entity.startPoint.y + 10)
       }
     })
 
     if (minX !== Infinity && maxX !== -Infinity) {
-      const pad = 40
+      const pad = 12
       viewBox.value = {
         x: minX - pad,
         y: minY - pad,
-        width: Math.max(100, maxX - minX + pad * 2),
-        height: Math.max(100, maxY - minY + pad * 2)
+        width: Math.max(50, maxX - minX + pad * 2),
+        height: Math.max(50, maxY - minY + pad * 2)
       }
     } else {
-      viewBox.value = { x: -40, y: -40, width: 1280, height: 880 }
+      viewBox.value = { x: -10, y: -10, width: 270, height: 200 }
     }
   }
 
@@ -109,6 +111,7 @@ export const useDxfMap = (dxfUrl: string = '/sample/assembly_line.dxf') => {
     isLoading,
     error,
     parsedEntities,
+    parsedBlocks,
     viewBox,
     activePinHandle,
     highlightedHandles,

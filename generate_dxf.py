@@ -87,8 +87,7 @@ msp.add_text("TANK 4", height=2).set_placement((120, 140), align=TextEntityAlign
 cnc_12 = msp.add_blockref('CNC_MACHINE', (210, 140))
 cnc_12.dxf.handle = 'CNC-MC-12'
 
-
 # Ensure output directory exists
 os.makedirs('frontend/nuxt-app/public/sample', exist_ok=True)
 doc.saveas('frontend/nuxt-app/public/sample/assembly_line.dxf')
-print("Realistic DXF created successfully matching seed data handles!")
+print("Realistic factory plant DXF generated successfully!")
