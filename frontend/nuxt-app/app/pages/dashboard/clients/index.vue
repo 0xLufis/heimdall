@@ -46,6 +46,23 @@ const filteredControllers = computed(() => {
   )
 })
 
+const searchedHandles = computed(() => {
+  if (!searchQuery.value) return []
+  const q = searchQuery.value.toLowerCase()
+  const list: string[] = []
+  controllers.value.forEach(c => {
+    if (
+      c.hostname.toLowerCase().includes(q) ||
+      c.macAddress.toLowerCase().includes(q) ||
+      (c.pinnedObjectHandle && c.pinnedObjectHandle.toLowerCase().includes(q))
+    ) {
+      if (c.pinnedObjectHandle) list.push(c.pinnedObjectHandle)
+      list.push(c.hostname)
+    }
+  })
+  return list
+})
+
 const handleSelectController = (pc: IndustrialController) => {
   selectedController.value = pc
   router.replace({
@@ -58,6 +75,16 @@ const handleCloseTelemetry = () => {
   router.replace({
     query: { ...route.query, selected: undefined, hostname: undefined }
   })
+}
+
+const handleMapObjectClick = (handle: string) => {
+  const match = controllers.value.find(c => c.pinnedObjectHandle === handle || c.hostname === handle)
+  if (match) selectedController.value = match
+}
+
+const handleMapObjectDblClick = (handle: string) => {
+  const match = controllers.value.find(c => c.pinnedObjectHandle === handle || c.hostname === handle)
+  if (match) selectedController.value = match
 }
 
 const handleQueueCommand = (pc: IndustrialController) => {
@@ -84,7 +111,6 @@ watch(() => controllers.value, (list) => {
     const updated = list.find(c => c.id === selectedController.value?.id)
     if (updated) selectedController.value = updated
   } else if (route.query.selected && !selectedController.value) {
-    // Only check if URL still has selected param and controller list just populated
     const match = list.find(c => c.id === route.query.selected || c.hostname === route.query.hostname)
     if (match) selectedController.value = match
   }
@@ -174,7 +200,12 @@ const onSearch = (q: string) => {
 
     <template v-else>
       <div class="h-[600px] rounded-3xl overflow-hidden border border-slate-800 shadow-2xl">
-        <InteractiveMapCanvas />
+        <InteractiveMapCanvas
+          :highlighted-handles="searchedHandles"
+          :active-pin="selectedController?.pinnedObjectHandle"
+          @object-clicked="handleMapObjectClick"
+          @object-dblclicked="handleMapObjectDblClick"
+        />
       </div>
     </template>
 

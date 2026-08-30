@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useDxfMap } from '~/composables/useDxfMap'
-import { ZoomIn, ZoomOut, Maximize2, Loader2, AlertCircle, Tag } from 'lucide-vue-next'
+import { ZoomIn, ZoomOut, Maximize2, Loader2, AlertCircle } from 'lucide-vue-next'
 
 const props = withDefaults(
   defineProps<{
@@ -25,7 +25,6 @@ const emit = defineEmits<{
 const svgContainer = ref<SVGSVGElement | null>(null)
 const { isLoading, error, parsedEntities, viewBox, loadAndParseDxf, zoom, pan } = useDxfMap(props.dxfUrl)
 
-const showLabels = ref(true)
 const hoveredEntity = ref<string | null>(null)
 
 let isDragging = false
@@ -90,6 +89,10 @@ const isHovered = (entity: any) => {
   return hoveredEntity.value === h
 }
 
+const shouldShowLabel = (entity: any) => {
+  return isHovered(entity) || isHighlighted(entity)
+}
+
 const formatPolylinePoints = (vertices: any[] = []) => {
   return vertices.map(v => `${v.x},${v.y}`).join(' ')
 }
@@ -106,17 +109,9 @@ const getBlockColor = (blockName: string) => {
   return '#6366f1' // Indigo default
 }
 
-// Calculate badge dimensions based on text length to prevent overlapping
 const getBadgeWidth = (text: string) => {
-  return Math.max(16, (text || '').length * 3.4 + 6)
+  return Math.max(18, (text || '').length * 3.6 + 8)
 }
-
-// Scale text dynamically based on viewBox dimensions
-const labelScale = computed(() => {
-  const baseWidth = 500
-  const currentWidth = viewBox.value.width || 500
-  return Math.max(0.6, Math.min(1.6, currentWidth / baseWidth))
-})
 
 onMounted(() => {
   loadAndParseDxf(props.dxfUrl)
@@ -231,28 +226,28 @@ watch(() => props.dxfUrl, (newUrl) => {
               r="2.5"
               fill="#38bdf8"
             />
-            <!-- Handle Label with Backdrop Shield -->
-            <g v-if="entity.handle && (showLabels || isHighlighted(entity) || isHovered(entity))">
+            <!-- Handle Label (Only shown on Hover or Search/Highlight) -->
+            <g v-if="entity.handle && shouldShowLabel(entity)" class="pointer-events-none">
               <rect
                 :x="entity.center.x - getBadgeWidth(entity.handle) / 2"
                 :y="entity.center.y + (entity.radius || 10) + 3"
                 :width="getBadgeWidth(entity.handle)"
-                height="6.5"
-                rx="1.5"
+                height="7"
+                rx="2"
                 fill="#030712"
-                :stroke="isHighlighted(entity) ? '#38bdf8' : '#1e293b'"
-                stroke-width="0.5"
-                opacity="0.95"
+                :stroke="isHighlighted(entity) ? '#38bdf8' : '#0ea5e9'"
+                stroke-width="0.8"
+                class="shadow-xl"
               />
               <text
                 :x="entity.center.x"
-                :y="entity.center.y + (entity.radius || 10) + 7.5"
+                :y="entity.center.y + (entity.radius || 10) + 7.8"
                 fill="#38bdf8"
-                font-size="3.5"
+                font-size="3.8"
                 font-family="monospace"
                 font-weight="bold"
                 text-anchor="middle"
-                class="select-none pointer-events-none"
+                class="select-none font-mono"
               >
                 {{ entity.handle }}
               </text>
@@ -260,7 +255,7 @@ watch(() => props.dxfUrl, (newUrl) => {
           </g>
         </template>
 
-        <!-- Layer 4: CAD Text & Zone Headers (with Halo Stroke to prevent line collisions) -->
+        <!-- Layer 4: CAD Text & Zone Headers (with Halo Stroke) -->
         <template v-for="(entity, idx) in parsedEntities" :key="`txt-${idx}`">
           <text
             v-if="entity.type === 'TEXT' && entity.startPoint"
@@ -334,28 +329,28 @@ watch(() => props.dxfUrl, (newUrl) => {
               class="animate-pulse"
             />
 
-            <!-- Non-Overlapping Station Handle Badge with Shield Pill -->
-            <g v-if="showLabels || isHighlighted(entity) || isHovered(entity)">
+            <!-- Station Handle Badge (Only rendered on Hover or Search/Highlight) -->
+            <g v-if="shouldShowLabel(entity)" class="pointer-events-none">
               <rect
                 :x="-getBadgeWidth(entity.handle || entity.name) / 2"
-                y="11.5"
+                y="12"
                 :width="getBadgeWidth(entity.handle || entity.name)"
-                height="6.5"
-                rx="1.5"
+                height="7"
+                rx="2"
                 fill="#030712"
-                :stroke="isHighlighted(entity) ? '#818cf8' : '#1e293b'"
-                stroke-width="0.5"
-                opacity="0.95"
+                :stroke="isHighlighted(entity) ? '#818cf8' : '#38bdf8'"
+                stroke-width="0.8"
+                class="shadow-xl"
               />
               <text
                 :x="0"
-                y="16"
-                :fill="isHighlighted(entity) ? '#c7d2fe' : '#cbd5e1'"
+                y="16.8"
+                :fill="isHighlighted(entity) ? '#c7d2fe' : '#e2e8f0'"
                 font-size="3.8"
                 font-family="monospace"
                 font-weight="bold"
                 text-anchor="middle"
-                class="select-none pointer-events-none font-mono"
+                class="select-none font-mono"
               >
                 {{ entity.handle || entity.name }}
               </text>
@@ -367,17 +362,6 @@ watch(() => props.dxfUrl, (newUrl) => {
 
     <!-- Floating CAD Controls -->
     <div class="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
-      <!-- Toggle Labels Button -->
-      <button
-        type="button"
-        @click="showLabels = !showLabels"
-        :class="showLabels ? 'bg-indigo-600 text-white' : 'bg-slate-900/90 text-slate-400 hover:text-slate-200'"
-        class="p-2.5 rounded-xl border border-slate-800 shadow-xl transition-all"
-        :title="showLabels ? 'Hide Labels' : 'Show Labels'"
-      >
-        <Tag class="w-4 h-4" />
-      </button>
-
       <button
         type="button"
         @click="zoom(0.85)"
