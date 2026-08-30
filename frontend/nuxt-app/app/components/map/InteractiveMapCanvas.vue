@@ -110,7 +110,7 @@ watch(() => props.dxfUrl, (newUrl) => {
     <!-- Loading State -->
     <div v-if="isLoading" class="flex flex-col items-center justify-center gap-3 p-12 text-slate-500">
       <Loader2 class="w-8 h-8 animate-spin text-indigo-500" />
-      <span class="text-xs font-black uppercase tracking-widest">Rendering Plant CAD Topography...</span>
+      <span class="text-xs font-black uppercase tracking-widest">Rendering Enterprise CAD Topography...</span>
     </div>
 
     <!-- Error State -->
@@ -137,12 +137,8 @@ watch(() => props.dxfUrl, (newUrl) => {
     >
       <defs>
         <!-- Grid Pattern -->
-        <pattern id="cad-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" stroke-width="0.3" stroke-dasharray="2,2" />
-        </pattern>
-        <!-- Tank Fill Pattern -->
-        <pattern id="tank-hatch" width="4" height="4" patternUnits="userSpaceOnUse">
-          <line x1="0" y1="0" x2="4" y2="4" stroke="#0284c7" stroke-width="0.5" />
+        <pattern id="cad-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5" stroke-dasharray="3,3" />
         </pattern>
       </defs>
 
@@ -150,20 +146,20 @@ watch(() => props.dxfUrl, (newUrl) => {
       <rect :x="viewBox.x" :y="viewBox.y" :width="viewBox.width" :height="viewBox.height" fill="url(#cad-grid)" />
 
       <g>
-        <!-- Layer 1: Factory Walls (LWPOLYLINE) -->
+        <!-- Layer 1: Factory Walls & Division Boundaries (LWPOLYLINE) -->
         <template v-for="(entity, idx) in parsedEntities" :key="`wall-${idx}`">
           <polyline
             v-if="(entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') && entity.vertices"
             :points="formatPolylinePoints(entity.vertices)"
             stroke="#64748b"
-            stroke-width="1.8"
+            stroke-width="3"
             stroke-linejoin="round"
             stroke-linecap="round"
             fill="none"
           />
         </template>
 
-        <!-- Layer 2: Partition & Conveyor Lines -->
+        <!-- Layer 2: Conveyor Lines & Tracks -->
         <template v-for="(entity, idx) in parsedEntities" :key="`line-${idx}`">
           <line
             v-if="entity.type === 'LINE' && entity.vertices && entity.vertices.length >= 2"
@@ -172,12 +168,12 @@ watch(() => props.dxfUrl, (newUrl) => {
             :x2="entity.vertices[1].x"
             :y2="entity.vertices[1].y"
             :stroke="entity.layer === 'CONVEYORS' ? '#3b82f6' : '#475569'"
-            :stroke-width="entity.layer === 'CONVEYORS' ? '1.2' : '0.8'"
-            :stroke-dasharray="entity.layer === 'CONVEYORS' ? '4,2' : 'none'"
+            :stroke-width="entity.layer === 'CONVEYORS' ? '2' : '1'"
+            :stroke-dasharray="entity.layer === 'CONVEYORS' ? '8,4' : 'none'"
           />
         </template>
 
-        <!-- Layer 3: Chemical Tanks & Circles (e.g. C-TANK-4) -->
+        <!-- Layer 3: Chemical Mixing Tanks & Circles (e.g. C-TANK-4) -->
         <template v-for="(entity, idx) in parsedEntities" :key="`circ-${idx}`">
           <g 
             v-if="entity.type === 'CIRCLE' && entity.center"
@@ -190,33 +186,33 @@ watch(() => props.dxfUrl, (newUrl) => {
               v-if="isHighlighted(entity)"
               :cx="entity.center.x"
               :cy="entity.center.y"
-              :r="(entity.radius || 10) + 4"
-              class="fill-indigo-500/20 stroke-indigo-400 stroke-1 animate-pulse"
+              :r="(entity.radius || 16) + 8"
+              class="fill-indigo-500/20 stroke-indigo-400 stroke-2 animate-pulse"
             />
             <!-- Tank Body -->
             <circle
               :cx="entity.center.x"
               :cy="entity.center.y"
-              :r="entity.radius || 10"
+              :r="entity.radius || 16"
               fill="#082f49"
               :stroke="isHighlighted(entity) ? '#38bdf8' : '#0284c7'"
-              stroke-width="1.5"
+              stroke-width="2"
               class="transition-colors group-hover:stroke-sky-300"
             />
             <!-- Inner Center Dot -->
             <circle
               :cx="entity.center.x"
               :cy="entity.center.y"
-              r="2"
+              r="4"
               fill="#38bdf8"
             />
             <!-- Tank Handle Label -->
             <text
               v-if="entity.handle"
               :x="entity.center.x"
-              :y="entity.center.y + 16"
+              :y="entity.center.y + 26"
               fill="#38bdf8"
-              font-size="3.5"
+              font-size="8"
               font-family="monospace"
               font-weight="bold"
               text-anchor="middle"
@@ -226,17 +222,17 @@ watch(() => props.dxfUrl, (newUrl) => {
           </g>
         </template>
 
-        <!-- Layer 4: Production Hall Zone Labels (TEXT) -->
+        <!-- Layer 4: Production Floor Zone Headers (TEXT) -->
         <template v-for="(entity, idx) in parsedEntities" :key="`text-${idx}`">
           <text
             v-if="entity.type === 'TEXT' && entity.startPoint"
             :x="entity.startPoint.x"
             :y="entity.startPoint.y"
             fill="#94a3b8"
-            font-size="4.5"
+            font-size="12"
             font-family="monospace"
             font-weight="900"
-            letter-spacing="0.08em"
+            letter-spacing="0.1em"
             text-anchor="middle"
             class="select-none pointer-events-none"
           >
@@ -256,34 +252,34 @@ watch(() => props.dxfUrl, (newUrl) => {
             <!-- Highlight Ring -->
             <rect
               v-if="isHighlighted(entity)"
-              x="-12"
-              y="-12"
-              width="24"
-              height="24"
-              rx="4"
-              class="fill-indigo-500/20 stroke-indigo-400 stroke-1 animate-pulse"
+              x="-22"
+              y="-22"
+              width="44"
+              height="44"
+              rx="8"
+              class="fill-indigo-500/20 stroke-indigo-400 stroke-2 animate-pulse"
             />
 
             <!-- Station Block Housing -->
             <rect
-              x="-8"
-              y="-8"
-              width="16"
-              height="16"
-              rx="3"
+              x="-16"
+              y="-16"
+              width="32"
+              height="32"
+              rx="6"
               :fill="isHighlighted(entity) ? '#312e81' : '#0f172a'"
               :stroke="isHighlighted(entity) ? '#818cf8' : getBlockColor(entity.name)"
-              stroke-width="1.2"
-              class="transition-colors group-hover:stroke-white shadow-sm"
+              stroke-width="1.8"
+              class="transition-colors group-hover:stroke-white shadow-md"
             />
 
-            <!-- Block Type Badge / Icon -->
+            <!-- Block Type Core -->
             <rect
-              x="-6"
-              y="-6"
-              width="12"
-              height="12"
-              rx="2"
+              x="-11"
+              y="-11"
+              width="22"
+              height="22"
+              rx="4"
               :fill="isHighlighted(entity) ? '#4338ca' : '#1e293b'"
               class="transition-colors"
             />
@@ -292,17 +288,17 @@ watch(() => props.dxfUrl, (newUrl) => {
             <circle
               cx="0"
               cy="0"
-              r="1.8"
+              r="3.5"
               :fill="isHighlighted(entity) ? '#ffffff' : '#10b981'"
               class="animate-pulse"
             />
 
-            <!-- Station Handle Badge Label -->
+            <!-- Station Handle Label -->
             <text
               :x="0"
-              :y="13"
+              :y="26"
               :fill="isHighlighted(entity) ? '#a5b4fc' : '#cbd5e1'"
-              font-size="3.2"
+              font-size="7.5"
               font-family="monospace"
               font-weight="bold"
               text-anchor="middle"

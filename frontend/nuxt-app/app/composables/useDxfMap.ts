@@ -13,7 +13,7 @@ export const useDxfMap = (dxfUrl: string = '/sample/assembly_line.dxf') => {
   const error = ref<string | null>(null)
   const parsedEntities = ref<any[]>([])
   const parsedBlocks = ref<Record<string, any>>({})
-  const viewBox = ref<ViewBox>({ x: -10, y: -10, width: 270, height: 200 })
+  const viewBox = ref<ViewBox>({ x: -40, y: -40, width: 1280, height: 880 })
   const activePinHandle = ref<string | null>(null)
   const highlightedHandles = ref<string[]>([])
 
@@ -51,39 +51,39 @@ export const useDxfMap = (dxfUrl: string = '/sample/assembly_line.dxf') => {
           maxY = Math.max(maxY, v.y)
         })
       } else if (entity.type === 'INSERT' && entity.position) {
-        minX = Math.min(minX, entity.position.x - 15)
-        maxX = Math.max(maxX, entity.position.x + 15)
-        minY = Math.min(minY, entity.position.y - 15)
-        maxY = Math.max(maxY, entity.position.y + 15)
+        minX = Math.min(minX, entity.position.x - 30)
+        maxX = Math.max(maxX, entity.position.x + 30)
+        minY = Math.min(minY, entity.position.y - 30)
+        maxY = Math.max(maxY, entity.position.y + 30)
       } else if (entity.type === 'LINE' && entity.vertices) {
         minX = Math.min(minX, entity.vertices[0].x, entity.vertices[1].x)
         maxX = Math.max(maxX, entity.vertices[0].x, entity.vertices[1].x)
         minY = Math.min(minY, entity.vertices[0].y, entity.vertices[1].y)
         maxY = Math.max(maxY, entity.vertices[0].y, entity.vertices[1].y)
       } else if (entity.type === 'CIRCLE' && entity.center) {
-        const r = entity.radius || 10
+        const r = entity.radius || 16
         minX = Math.min(minX, entity.center.x - r)
         maxX = Math.max(maxX, entity.center.x + r)
         minY = Math.min(minY, entity.center.y - r)
         maxY = Math.max(maxY, entity.center.y + r)
       } else if (entity.type === 'TEXT' && entity.startPoint) {
-        minX = Math.min(minX, entity.startPoint.x - 20)
-        maxX = Math.max(maxX, entity.startPoint.x + 20)
-        minY = Math.min(minY, entity.startPoint.y - 10)
-        maxY = Math.max(maxY, entity.startPoint.y + 10)
+        minX = Math.min(minX, entity.startPoint.x - 50)
+        maxX = Math.max(maxX, entity.startPoint.x + 50)
+        minY = Math.min(minY, entity.startPoint.y - 20)
+        maxY = Math.max(maxY, entity.startPoint.y + 20)
       }
     })
 
     if (minX !== Infinity && maxX !== -Infinity) {
-      const pad = 12
+      const pad = 40
       viewBox.value = {
         x: minX - pad,
         y: minY - pad,
-        width: Math.max(50, maxX - minX + pad * 2),
-        height: Math.max(50, maxY - minY + pad * 2)
+        width: Math.max(100, maxX - minX + pad * 2),
+        height: Math.max(100, maxY - minY + pad * 2)
       }
     } else {
-      viewBox.value = { x: -10, y: -10, width: 270, height: 200 }
+      viewBox.value = { x: -40, y: -40, width: 1280, height: 880 }
     }
   }
 
