@@ -10,7 +10,7 @@ const props = withDefaults(
     activePin?: string | null
   }>(),
   {
-    dxfUrl: '/sample/assembly_line.dxf',
+    dxfUrl: '/sample/production_hall.dxf',
     highlightedHandles: () => [],
     activePin: null
   }
@@ -87,13 +87,15 @@ const formatPolylinePoints = (vertices: any[] = []) => {
 }
 
 const getBlockColor = (blockName: string) => {
-  switch (blockName) {
-    case 'ROBOT_CELL': return '#a855f7' // Purple
-    case 'CNC_MACHINE': return '#3b82f6' // Blue
-    case 'ASSEMBLY_STATION': return '#10b981' // Emerald
-    case 'PACKAGING_STATION': return '#f59e0b' // Amber
-    default: return '#6366f1' // Indigo
-  }
+  const b = (blockName || '').toUpperCase()
+  if (b.includes('VISION')) return '#38bdf8' // Sky Blue
+  if (b.includes('WELD')) return '#eab308' // Yellow
+  if (b.includes('PACK')) return '#f97316' // Orange
+  if (b.includes('SCREW') || b.includes('ROBOT')) return '#a855f7' // Purple
+  if (b.includes('DISPENS') || b.includes('CHEMICAL')) return '#f43f5e' // Rose
+  if (b.includes('TEST') || b.includes('INSPECT')) return '#10b981' // Emerald
+  if (b.includes('CNC') || b.includes('MECH')) return '#3b82f6' // Blue
+  return '#6366f1' // Indigo default
 }
 
 onMounted(() => {
@@ -110,7 +112,7 @@ watch(() => props.dxfUrl, (newUrl) => {
     <!-- Loading State -->
     <div v-if="isLoading" class="flex flex-col items-center justify-center gap-3 p-12 text-slate-500">
       <Loader2 class="w-8 h-8 animate-spin text-indigo-500" />
-      <span class="text-xs font-black uppercase tracking-widest">Rendering Enterprise CAD Topography...</span>
+      <span class="text-xs font-black uppercase tracking-widest">Rendering Plant Layout Topography...</span>
     </div>
 
     <!-- Error State -->
@@ -136,26 +138,27 @@ watch(() => props.dxfUrl, (newUrl) => {
       @click="emit('map-clicked')"
     >
       <defs>
-        <!-- Grid Pattern -->
-        <pattern id="cad-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5" stroke-dasharray="3,3" />
+        <!-- CAD Grid Background Pattern -->
+        <pattern id="cad-grid-pattern" width="25" height="25" patternUnits="userSpaceOnUse">
+          <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#1e293b" stroke-width="0.4" stroke-dasharray="2,2" />
         </pattern>
       </defs>
 
-      <!-- Grid Background -->
-      <rect :x="viewBox.x" :y="viewBox.y" :width="viewBox.width" :height="viewBox.height" fill="url(#cad-grid)" />
+      <!-- Background Grid -->
+      <rect :x="viewBox.x" :y="viewBox.y" :width="viewBox.width" :height="viewBox.height" fill="url(#cad-grid-pattern)" />
 
       <g>
-        <!-- Layer 1: Factory Walls & Division Boundaries (LWPOLYLINE) -->
-        <template v-for="(entity, idx) in parsedEntities" :key="`wall-${idx}`">
+        <!-- Layer 1: Floor Zones & Building Outlines (LWPOLYLINE) -->
+        <template v-for="(entity, idx) in parsedEntities" :key="`poly-${idx}`">
           <polyline
             v-if="(entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') && entity.vertices"
             :points="formatPolylinePoints(entity.vertices)"
-            stroke="#64748b"
-            stroke-width="3"
+            :stroke="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '#64748b' : entity.layer === 'WALKWAYS' ? '#334155' : '#1e293b'"
+            :stroke-width="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '2.5' : '1.2'"
+            :stroke-dasharray="entity.layer === 'WALKWAYS' ? '4,4' : 'none'"
+            :fill="entity.layer === 'FLOOR' ? 'rgba(30, 41, 59, 0.25)' : 'none'"
             stroke-linejoin="round"
             stroke-linecap="round"
-            fill="none"
           />
         </template>
 
@@ -167,13 +170,13 @@ watch(() => props.dxfUrl, (newUrl) => {
             :y1="entity.vertices[0].y"
             :x2="entity.vertices[1].x"
             :y2="entity.vertices[1].y"
-            :stroke="entity.layer === 'CONVEYORS' ? '#3b82f6' : '#475569'"
-            :stroke-width="entity.layer === 'CONVEYORS' ? '2' : '1'"
-            :stroke-dasharray="entity.layer === 'CONVEYORS' ? '8,4' : 'none'"
+            :stroke="entity.layer === 'CONVEYORS' ? '#38bdf8' : entity.layer === 'SAFETY' ? '#eab308' : '#475569'"
+            :stroke-width="entity.layer === 'CONVEYORS' ? '1.5' : '0.8'"
+            :stroke-dasharray="entity.layer === 'SAFETY' ? '3,3' : 'none'"
           />
         </template>
 
-        <!-- Layer 3: Chemical Mixing Tanks & Circles (e.g. C-TANK-4) -->
+        <!-- Layer 3: Circular Entities & Chemical Vessels -->
         <template v-for="(entity, idx) in parsedEntities" :key="`circ-${idx}`">
           <g 
             v-if="entity.type === 'CIRCLE' && entity.center"
@@ -186,33 +189,33 @@ watch(() => props.dxfUrl, (newUrl) => {
               v-if="isHighlighted(entity)"
               :cx="entity.center.x"
               :cy="entity.center.y"
-              :r="(entity.radius || 16) + 8"
+              :r="(entity.radius || 10) + 6"
               class="fill-indigo-500/20 stroke-indigo-400 stroke-2 animate-pulse"
             />
-            <!-- Tank Body -->
+            <!-- Vessel Body -->
             <circle
               :cx="entity.center.x"
               :cy="entity.center.y"
-              :r="entity.radius || 16"
+              :r="entity.radius || 10"
               fill="#082f49"
               :stroke="isHighlighted(entity) ? '#38bdf8' : '#0284c7'"
-              stroke-width="2"
+              stroke-width="1.8"
               class="transition-colors group-hover:stroke-sky-300"
             />
-            <!-- Inner Center Dot -->
+            <!-- Center Core -->
             <circle
               :cx="entity.center.x"
               :cy="entity.center.y"
-              r="4"
+              r="2.5"
               fill="#38bdf8"
             />
-            <!-- Tank Handle Label -->
+            <!-- Handle Label -->
             <text
               v-if="entity.handle"
               :x="entity.center.x"
-              :y="entity.center.y + 26"
+              :y="entity.center.y + (entity.radius || 10) + 10"
               fill="#38bdf8"
-              font-size="8"
+              font-size="6"
               font-family="monospace"
               font-weight="bold"
               text-anchor="middle"
@@ -222,17 +225,18 @@ watch(() => props.dxfUrl, (newUrl) => {
           </g>
         </template>
 
-        <!-- Layer 4: Production Floor Zone Headers (TEXT) -->
-        <template v-for="(entity, idx) in parsedEntities" :key="`text-${idx}`">
+        <!-- Layer 4: CAD Text & Zone Headers -->
+        <template v-for="(entity, idx) in parsedEntities" :key="`txt-${idx}`">
           <text
             v-if="entity.type === 'TEXT' && entity.startPoint"
             :x="entity.startPoint.x"
             :y="entity.startPoint.y"
+            :transform="entity.rotation ? `rotate(${-entity.rotation}, ${entity.startPoint.x}, ${entity.startPoint.y})` : undefined"
             fill="#94a3b8"
-            font-size="12"
+            :font-size="Math.max(3.5, entity.textHeight || 5)"
             font-family="monospace"
-            font-weight="900"
-            letter-spacing="0.1em"
+            font-weight="bold"
+            letter-spacing="0.05em"
             text-anchor="middle"
             class="select-none pointer-events-none"
           >
@@ -241,7 +245,7 @@ watch(() => props.dxfUrl, (newUrl) => {
         </template>
 
         <!-- Layer 5: Interactive Station Blocks (INSERT) -->
-        <template v-for="(entity, idx) in parsedEntities" :key="`insert-${idx}`">
+        <template v-for="(entity, idx) in parsedEntities" :key="`ins-${idx}`">
           <g
             v-if="entity.type === 'INSERT' && entity.position"
             :transform="`translate(${entity.position.x}, ${entity.position.y})`"
@@ -249,56 +253,56 @@ watch(() => props.dxfUrl, (newUrl) => {
             @click="handleEntityClick(entity, $event)"
             @dblclick="handleEntityDblClick(entity, $event)"
           >
-            <!-- Highlight Ring -->
+            <!-- Highlight Glow Ring -->
             <rect
               v-if="isHighlighted(entity)"
-              x="-22"
-              y="-22"
-              width="44"
-              height="44"
-              rx="8"
+              x="-18"
+              y="-18"
+              width="36"
+              height="36"
+              rx="6"
               class="fill-indigo-500/20 stroke-indigo-400 stroke-2 animate-pulse"
             />
 
-            <!-- Station Block Housing -->
+            <!-- Station Housing Box -->
             <rect
-              x="-16"
-              y="-16"
-              width="32"
-              height="32"
-              rx="6"
+              x="-12"
+              y="-12"
+              width="24"
+              height="24"
+              rx="5"
               :fill="isHighlighted(entity) ? '#312e81' : '#0f172a'"
               :stroke="isHighlighted(entity) ? '#818cf8' : getBlockColor(entity.name)"
-              stroke-width="1.8"
+              stroke-width="1.5"
               class="transition-colors group-hover:stroke-white shadow-md"
             />
 
-            <!-- Block Type Core -->
+            <!-- Station Type Icon Core -->
             <rect
-              x="-11"
-              y="-11"
-              width="22"
-              height="22"
-              rx="4"
+              x="-8"
+              y="-8"
+              width="16"
+              height="16"
+              rx="3"
               :fill="isHighlighted(entity) ? '#4338ca' : '#1e293b'"
               class="transition-colors"
             />
 
-            <!-- Status Indicator Dot -->
+            <!-- Status Dot -->
             <circle
               cx="0"
               cy="0"
-              r="3.5"
+              r="2.5"
               :fill="isHighlighted(entity) ? '#ffffff' : '#10b981'"
               class="animate-pulse"
             />
 
-            <!-- Station Handle Label -->
+            <!-- Station Handle Badge -->
             <text
               :x="0"
-              :y="26"
+              :y="19"
               :fill="isHighlighted(entity) ? '#a5b4fc' : '#cbd5e1'"
-              font-size="7.5"
+              font-size="5"
               font-family="monospace"
               font-weight="bold"
               text-anchor="middle"
@@ -311,7 +315,7 @@ watch(() => props.dxfUrl, (newUrl) => {
       </g>
     </svg>
 
-    <!-- Map Zoom / Reset Floating Controls -->
+    <!-- Floating Zoom & Reset Controls -->
     <div class="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
       <button
         type="button"

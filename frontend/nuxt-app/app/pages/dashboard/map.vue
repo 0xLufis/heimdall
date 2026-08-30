@@ -3,7 +3,9 @@ import { ref, onMounted, computed } from 'vue'
 import InteractiveMapCanvas from '~/components/map/InteractiveMapCanvas.vue'
 import MapPinningDialog from '~/components/dashboard/MapPinningDialog.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { MonitorIcon, MapPinIcon, Cpu, RefreshCw } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import { MonitorIcon, MapPinIcon, Cpu, Layers, ChevronDown } from 'lucide-vue-next'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useStations } from '~/composables/useStations'
 import { useControllers } from '~/composables/useControllers'
 
@@ -14,10 +16,27 @@ definePageMeta({
 const { stations, fetchStations, updateStationPin } = useStations()
 const { controllers, fetchControllers, updateControllerPin } = useControllers()
 
+const availableFloorPlans = [
+  { id: 'production_hall', name: 'Master Production Hall', url: '/sample/production_hall.dxf', badge: 'Integrated Hall' },
+  { id: 'line_a', name: 'Line A - Pre-Assembly', url: '/sample/LINE-A.dxf', badge: 'Cell Line' },
+  { id: 'line_b', name: 'Line B - Screwing & Fastening', url: '/sample/LINE-B.dxf', badge: 'Cell Line' },
+  { id: 'line_c', name: 'Line C - Vision & Quality', url: '/sample/LINE-C.dxf', badge: 'Cell Line' },
+  { id: 'line_d', name: 'Line D - Dispensing & Bonding', url: '/sample/LINE-D.dxf', badge: 'Cell Line' },
+  { id: 'line_e', name: 'Line E - Robotic Welding', url: '/sample/LINE-E.dxf', badge: 'Cell Line' },
+  { id: 'line_f', name: 'Line F - Mechanical Assembly', url: '/sample/LINE-F.dxf', badge: 'Cell Line' },
+  { id: 'line_g', name: 'Line G - High Voltage Battery', url: '/sample/LINE-G.dxf', badge: 'Cell Line' },
+  { id: 'line_h', name: 'Line H - Powertrain Cells', url: '/sample/LINE-H.dxf', badge: 'Cell Line' },
+  { id: 'line_i', name: 'Line I - Subassembly Line', url: '/sample/LINE-I.dxf', badge: 'Cell Line' },
+  { id: 'line_j', name: 'Line J - EOL Final Testing', url: '/sample/LINE-J.dxf', badge: 'Cell Line' },
+  { id: 'assembly_line', name: 'Assembly Line Overview', url: '/sample/assembly_line.dxf', badge: 'Overview' }
+]
+
+const currentPlanId = ref('production_hall')
+const currentPlan = computed(() => availableFloorPlans.find(p => p.id === currentPlanId.value) || availableFloorPlans[0])
+
 const activePin = ref<string | null>(null)
 const activeBlockName = ref<string | null>(null)
 const isPinningDialogOpen = ref(false)
-const loading = ref(false)
 
 const handleObjectClick = (handle: string, blockName: string) => {
   activePin.value = handle
@@ -91,19 +110,50 @@ const activePinType = computed(() => {
 
 <template>
   <div class="space-y-8 h-full bg-slate-950 text-slate-100 pb-12">
-    <!-- Header -->
-    <div class="flex items-end justify-between">
+    <!-- Header with Floor Plan Dropdown Selector -->
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
       <div>
-        <h3 class="text-3xl font-black text-slate-100 tracking-tight uppercase">Plant Layout</h3>
+        <h3 class="text-3xl font-black text-slate-100 tracking-tight uppercase">Plant Layout & Spatial CAD</h3>
         <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest leading-none">
-          Spatial CAD (DXF) Mapping of Machines, Sensors & Controllers
+          Interactive AutoCAD (DXF) Mapping of Machines, Sensors & Controllers
         </p>
       </div>
 
       <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2 px-4 py-2 bg-emerald-950/20 border border-emerald-900/30 rounded-xl">
+        <!-- Floor Plan Switcher -->
+        <Popover>
+          <PopoverTrigger as-child>
+            <Button variant="outline" class="bg-slate-900 border-slate-800 text-slate-200 rounded-2xl h-11 px-4 text-xs font-black uppercase tracking-wider flex items-center gap-2 hover:bg-slate-800">
+              <Layers class="w-4 h-4 text-indigo-400" />
+              <span>{{ currentPlan.name }}</span>
+              <ChevronDown class="w-3.5 h-3.5 text-slate-500 ml-1" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" class="w-80 p-2 bg-slate-950 border-slate-800 shadow-2xl text-slate-200 max-h-96 overflow-y-auto">
+            <div class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-900 mb-1">
+              Select Plant CAD Drawing
+            </div>
+            <div
+              v-for="plan in availableFloorPlans"
+              :key="plan.id"
+              @click="currentPlanId = plan.id"
+              class="p-2.5 rounded-xl cursor-pointer transition-colors flex items-center justify-between group"
+              :class="currentPlanId === plan.id ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'hover:bg-slate-900 text-slate-400 hover:text-slate-200'"
+            >
+              <div class="flex flex-col">
+                <span class="text-xs font-bold">{{ plan.name }}</span>
+                <span class="text-[9px] text-slate-500 font-mono">{{ plan.url }}</span>
+              </div>
+              <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400 group-hover:text-indigo-300">
+                {{ plan.badge }}
+              </span>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <div class="flex items-center gap-2 px-4 py-2 bg-emerald-950/20 border border-emerald-900/30 rounded-2xl h-11">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live Sync Active</span>
+          <span class="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live Sync</span>
         </div>
       </div>
     </div>
@@ -112,7 +162,7 @@ const activePinType = computed(() => {
       <!-- Map Canvas Area -->
       <div class="lg:col-span-3 h-full rounded-3xl overflow-hidden border border-slate-800 shadow-2xl relative bg-slate-900">
         <InteractiveMapCanvas
-          dxf-url="/sample/assembly_line.dxf"
+          :dxf-url="currentPlan.url"
           :active-pin="activePin"
           @object-clicked="handleObjectClick"
           @object-dblclicked="handleObjectDblClick"

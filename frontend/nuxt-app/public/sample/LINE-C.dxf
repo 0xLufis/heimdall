@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461160.8857523147
+2461170.9069791664
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461160.8857523147
+2461170.9069791664
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-65
+8D
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{F232A070-9AC7-4D9F-92B0-A10145919EC1}
+{A85B83BC-F43B-428C-924F-CE4B06B97394}
   9
 $VERSIONGUID
   2
-{CC1D8E11-FFBE-402C-8A5F-1B398EB593B0}
+{53CB64D9-12FE-4342-8A4E-FF89583A3F2C}
   9
 $EXTNAMES
 290
@@ -1323,9 +1323,9 @@ ISM
   0
 CLASS
   1
-ACDBPLACEHOLDER
+LAYOUT
   2
-AcDbPlaceHolder
+AcDbLayout
   3
 ObjectDBX Classes
  90
@@ -1339,9 +1339,9 @@ ObjectDBX Classes
   0
 CLASS
   1
-LAYOUT
+ACDBPLACEHOLDER
   2
-AcDbLayout
+AcDbPlaceHolder
   3
 ObjectDBX Classes
  90
@@ -1611,11 +1611,11 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-WALLS
+STATIONS
  70
 0
  62
-4
+3
   6
 Continuous
 370
@@ -1635,13 +1635,13 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-CONVEYORS
+SAFETY
  70
 0
  62
 2
   6
-Continuous
+DASHED
 370
 -3
 390
@@ -1659,11 +1659,11 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-ROBOT_CELLS
+CONVEYORS
  70
 0
  62
-6
+4
   6
 Continuous
 370
@@ -1683,11 +1683,11 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-STATIONS
+TEXT
  70
 0
  62
-3
+7
   6
 Continuous
 370
@@ -1707,11 +1707,11 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-TEXT
+FLOOR
  70
 0
  62
-7
+8
   6
 Continuous
 370
@@ -1821,7 +1821,7 @@ ACAD
   0
 APPID
   5
-62
+8A
 330
 3
 100
@@ -1835,7 +1835,7 @@ HATCHBACKGROUNDCOLOR
   0
 APPID
   5
-63
+8B
 330
 3
 100
@@ -2011,7 +2011,7 @@ BLOCK_RECORD
 100
 AcDbSymbolTable
  70
-6
+9
   0
 BLOCK_RECORD
   5
@@ -2055,7 +2055,7 @@ AcDbBlockTableRecord
   0
 BLOCK_RECORD
   5
-3B
+34
 330
 9
 100
@@ -2063,7 +2063,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-CNC_MACHINE
+TYPE_MECHANICAL
 340
 0
  70
@@ -2075,7 +2075,7 @@ CNC_MACHINE
   0
 BLOCK_RECORD
   5
-41
+3C
 330
 9
 100
@@ -2083,7 +2083,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-ROBOT_CELL
+TYPE_SCREWING
 340
 0
  70
@@ -2095,7 +2095,7 @@ ROBOT_CELL
   0
 BLOCK_RECORD
   5
-48
+43
 330
 9
 100
@@ -2103,7 +2103,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-ASSEMBLY_STATION
+TYPE_VISION
 340
 0
  70
@@ -2115,7 +2115,7 @@ ASSEMBLY_STATION
   0
 BLOCK_RECORD
   5
-4D
+4C
 330
 9
 100
@@ -2123,7 +2123,67 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-PACKAGING_STATION
+TYPE_TEST
+340
+0
+ 70
+0
+280
+1
+281
+0
+  0
+BLOCK_RECORD
+  5
+53
+330
+9
+100
+AcDbSymbolTableRecord
+100
+AcDbBlockTableRecord
+  2
+TYPE_DISPENSING
+340
+0
+ 70
+0
+280
+1
+281
+0
+  0
+BLOCK_RECORD
+  5
+5A
+330
+9
+100
+AcDbSymbolTableRecord
+100
+AcDbBlockTableRecord
+  2
+TYPE_WELDING
+340
+0
+ 70
+0
+280
+1
+281
+0
+  0
+BLOCK_RECORD
+  5
+61
+330
+9
+100
+AcDbSymbolTableRecord
+100
+AcDbBlockTableRecord
+  2
+TYPE_PACKAGING
 340
 0
  70
@@ -2219,9 +2279,9 @@ AcDbBlockEnd
   0
 BLOCK
   5
-3C
+35
 330
-3B
+34
 100
 AcDbEntity
   8
@@ -2229,7 +2289,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-CNC_MACHINE
+TYPE_MECHANICAL
  70
 0
  10
@@ -2239,205 +2299,137 @@ CNC_MACHINE
  30
 0.0
   3
-CNC_MACHINE
+TYPE_MECHANICAL
   1
 
   0
 LWPOLYLINE
   5
-3E
+37
 330
-3B
+34
 100
 AcDbEntity
   8
-STATIONS
-100
-AcDbPolyline
- 90
-5
- 70
-0
- 10
--8.0
- 20
--6.0
- 10
-8.0
- 20
--6.0
- 10
-8.0
- 20
-6.0
- 10
--8.0
- 20
-6.0
- 10
--8.0
- 20
--6.0
-  0
-CIRCLE
-  5
-3F
-330
-3B
-100
-AcDbEntity
-  8
-STATIONS
-100
-AcDbCircle
- 10
-0.0
- 20
-0.0
- 30
-0.0
- 40
-2.0
-  0
-TEXT
-  5
-40
-330
-3B
-100
-AcDbEntity
-  8
-0
-100
-AcDbText
- 10
-0.0
- 20
-0.0
- 30
-0.0
- 40
-2.0
-  1
-CNC
- 72
-1
- 11
-0.0
- 21
-0.0
- 31
-0.0
-100
-AcDbText
- 73
-2
-  0
-ENDBLK
-  5
-3D
-330
-3B
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockEnd
-  0
-BLOCK
-  5
-42
-330
-41
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockBegin
-  2
-ROBOT_CELL
- 70
-0
- 10
-0.0
- 20
-0.0
- 30
-0.0
-  3
-ROBOT_CELL
-  1
-
-  0
-LWPOLYLINE
-  5
-44
-330
-41
-100
-AcDbEntity
-  8
-ROBOT_CELLS
+SAFETY
   6
 DASHED
+ 62
+2
 100
 AcDbPolyline
  90
 5
  70
-0
+1
  10
--10.0
+-1.0
  20
--10.0
+-1.0
  10
-10.0
+13.0
  20
--10.0
+-1.0
  10
-10.0
+13.0
  20
-10.0
+11.0
  10
--10.0
+-1.0
  20
-10.0
+11.0
  10
--10.0
+-1.0
  20
--10.0
+-1.0
   0
-CIRCLE
+LWPOLYLINE
   5
-45
+38
 330
-41
+34
 100
 AcDbEntity
   8
-ROBOT_CELLS
+STATIONS
+ 62
+4
 100
-AcDbCircle
+AcDbPolyline
+ 90
+5
+ 70
+1
  10
 0.0
  20
 0.0
- 30
+ 10
+12.0
+ 20
 0.0
- 40
-3.0
+ 10
+12.0
+ 20
+10.0
+ 10
+0.0
+ 20
+10.0
+ 10
+0.0
+ 20
+0.0
+  0
+LWPOLYLINE
+  5
+39
+330
+34
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+8
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+2.0
+ 20
+2.0
+ 10
+10.0
+ 20
+2.0
+ 10
+10.0
+ 20
+8.0
+ 10
+2.0
+ 20
+8.0
+ 10
+2.0
+ 20
+2.0
   0
 LINE
   5
-46
+3A
 330
-41
+34
 100
 AcDbEntity
   8
-ROBOT_CELLS
+STATIONS
+ 62
+8
 100
 AcDbLine
  10
@@ -2447,51 +2439,43 @@ AcDbLine
  30
 0.0
  11
-6.0
+12.0
  21
-6.0
+10.0
  31
 0.0
   0
-TEXT
+LINE
   5
-47
+3B
 330
-41
+34
 100
 AcDbEntity
   8
-0
+STATIONS
+ 62
+8
 100
-AcDbText
+AcDbLine
  10
 0.0
  20
--8.0
+10.0
  30
 0.0
- 40
-1.5
-  1
-ROBOT
- 72
-1
  11
-0.0
+12.0
  21
--8.0
+0.0
  31
 0.0
-100
-AcDbText
- 73
-2
   0
 ENDBLK
   5
-43
+36
 330
-41
+34
 100
 AcDbEntity
   8
@@ -2501,9 +2485,9 @@ AcDbBlockEnd
   0
 BLOCK
   5
-49
+3D
 330
-48
+3C
 100
 AcDbEntity
   8
@@ -2511,7 +2495,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-ASSEMBLY_STATION
+TYPE_SCREWING
  70
 0
  10
@@ -2521,85 +2505,145 @@ ASSEMBLY_STATION
  30
 0.0
   3
-ASSEMBLY_STATION
+TYPE_SCREWING
   1
 
   0
 LWPOLYLINE
   5
-4B
+3F
 330
-48
+3C
 100
 AcDbEntity
   8
-STATIONS
+SAFETY
+  6
+DASHED
+ 62
+2
 100
 AcDbPolyline
  90
 5
  70
-0
+1
  10
--5.0
+-1.0
  20
--4.0
+-1.0
  10
-5.0
+13.0
  20
--4.0
+-1.0
  10
-5.0
+13.0
  20
-4.0
+11.0
  10
--5.0
+-1.0
  20
-4.0
+11.0
  10
--5.0
+-1.0
  20
--4.0
+-1.0
   0
-TEXT
+LWPOLYLINE
   5
-4C
+40
 330
-48
+3C
 100
 AcDbEntity
   8
-0
+STATIONS
+ 62
+3
 100
-AcDbText
+AcDbPolyline
+ 90
+5
+ 70
+1
  10
 0.0
  20
 0.0
+ 10
+12.0
+ 20
+0.0
+ 10
+12.0
+ 20
+10.0
+ 10
+0.0
+ 20
+10.0
+ 10
+0.0
+ 20
+0.0
+  0
+LWPOLYLINE
+  5
+41
+330
+3C
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+7
+100
+AcDbPolyline
+ 90
+3
+ 70
+0
+ 10
+6.0
+ 20
+10.0
+ 10
+6.0
+ 20
+6.0
+ 10
+9.0
+ 20
+6.0
+  0
+CIRCLE
+  5
+42
+330
+3C
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+2
+100
+AcDbCircle
+ 10
+9.0
+ 20
+6.0
  30
 0.0
  40
-1.5
-  1
-STATION
- 72
-1
- 11
-0.0
- 21
-0.0
- 31
-0.0
-100
-AcDbText
- 73
-2
+1.0
   0
 ENDBLK
   5
-4A
+3E
 330
-48
+3C
 100
 AcDbEntity
   8
@@ -2609,9 +2653,9 @@ AcDbBlockEnd
   0
 BLOCK
   5
-4E
+44
 330
-4D
+43
 100
 AcDbEntity
   8
@@ -2619,7 +2663,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-PACKAGING_STATION
+TYPE_VISION
  70
 0
  10
@@ -2629,133 +2673,859 @@ PACKAGING_STATION
  30
 0.0
   3
-PACKAGING_STATION
+TYPE_VISION
   1
 
+  0
+LWPOLYLINE
+  5
+46
+330
+43
+100
+AcDbEntity
+  8
+SAFETY
+  6
+DASHED
+ 62
+2
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+-1.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+-1.0
+  0
+LWPOLYLINE
+  5
+47
+330
+43
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+6
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+0.0
+ 20
+0.0
+ 10
+12.0
+ 20
+0.0
+ 10
+12.0
+ 20
+10.0
+ 10
+0.0
+ 20
+10.0
+ 10
+0.0
+ 20
+0.0
+  0
+CIRCLE
+  5
+48
+330
+43
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+7
+100
+AcDbCircle
+ 10
+6.0
+ 20
+5.0
+ 30
+0.0
+ 40
+2.0
+  0
+CIRCLE
+  5
+49
+330
+43
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+4
+100
+AcDbCircle
+ 10
+6.0
+ 20
+5.0
+ 30
+0.0
+ 40
+0.5
+  0
+LINE
+  5
+4A
+330
+43
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+2
+100
+AcDbLine
+ 10
+2.0
+ 20
+1.0
+ 30
+0.0
+ 11
+10.0
+ 21
+1.0
+ 31
+0.0
+  0
+LINE
+  5
+4B
+330
+43
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+2
+100
+AcDbLine
+ 10
+2.0
+ 20
+9.0
+ 30
+0.0
+ 11
+10.0
+ 21
+9.0
+ 31
+0.0
+  0
+ENDBLK
+  5
+45
+330
+43
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockEnd
+  0
+BLOCK
+  5
+4D
+330
+4C
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+TYPE_TEST
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+TYPE_TEST
+  1
+
+  0
+LWPOLYLINE
+  5
+4F
+330
+4C
+100
+AcDbEntity
+  8
+SAFETY
+  6
+DASHED
+ 62
+2
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+-1.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+-1.0
   0
 LWPOLYLINE
   5
 50
 330
-4D
+4C
 100
 AcDbEntity
   8
 STATIONS
+ 62
+1
 100
 AcDbPolyline
  90
 5
  70
-0
+1
  10
--6.0
+0.0
  20
--6.0
+0.0
  10
-6.0
+12.0
  20
--6.0
+0.0
  10
-6.0
+12.0
  20
-6.0
+10.0
  10
--6.0
+0.0
  20
-6.0
+10.0
  10
--6.0
+0.0
  20
--6.0
+0.0
   0
-LINE
+LWPOLYLINE
   5
 51
 330
-4D
+4C
 100
 AcDbEntity
   8
 STATIONS
+ 62
+7
 100
-AcDbLine
+AcDbPolyline
+ 90
+5
+ 70
+1
  10
--6.0
+3.0
  20
--6.0
- 30
-0.0
- 11
-6.0
- 21
-6.0
- 31
-0.0
+3.0
+ 10
+9.0
+ 20
+3.0
+ 10
+9.0
+ 20
+7.0
+ 10
+3.0
+ 20
+7.0
+ 10
+3.0
+ 20
+3.0
   0
 LINE
   5
 52
 330
-4D
+4C
 100
 AcDbEntity
   8
 STATIONS
+ 62
+3
 100
 AcDbLine
  10
--6.0
+4.0
  20
-6.0
+4.0
  30
 0.0
  11
-6.0
+8.0
  21
--6.0
+6.0
  31
 0.0
   0
-TEXT
+ENDBLK
   5
-53
+4E
 330
-4D
+4C
 100
 AcDbEntity
   8
 0
 100
-AcDbText
+AcDbBlockEnd
+  0
+BLOCK
+  5
+54
+330
+53
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+TYPE_DISPENSING
+ 70
+0
  10
 0.0
  20
--8.0
+0.0
+ 30
+0.0
+  3
+TYPE_DISPENSING
+  1
+
+  0
+LWPOLYLINE
+  5
+56
+330
+53
+100
+AcDbEntity
+  8
+SAFETY
+  6
+DASHED
+ 62
+2
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+-1.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+-1.0
+  0
+LWPOLYLINE
+  5
+57
+330
+53
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+5
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+0.0
+ 20
+0.0
+ 10
+12.0
+ 20
+0.0
+ 10
+12.0
+ 20
+10.0
+ 10
+0.0
+ 20
+10.0
+ 10
+0.0
+ 20
+0.0
+  0
+CIRCLE
+  5
+58
+330
+53
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+7
+100
+AcDbCircle
+ 10
+3.0
+ 20
+5.0
  30
 0.0
  40
-1.5
-  1
-PACK
- 72
-1
- 11
-0.0
- 21
--8.0
- 31
-0.0
+2.0
+  0
+LWPOLYLINE
+  5
+59
+330
+53
 100
-AcDbText
- 73
-2
+AcDbEntity
+  8
+STATIONS
+ 62
+7
+100
+AcDbPolyline
+ 90
+3
+ 70
+0
+ 10
+5.0
+ 20
+5.0
+ 10
+10.0
+ 20
+5.0
+ 10
+10.0
+ 20
+3.0
   0
 ENDBLK
   5
-4F
+55
 330
-4D
+53
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockEnd
+  0
+BLOCK
+  5
+5B
+330
+5A
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+TYPE_WELDING
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+TYPE_WELDING
+  1
+
+  0
+LWPOLYLINE
+  5
+5D
+330
+5A
+100
+AcDbEntity
+  8
+SAFETY
+  6
+DASHED
+ 62
+2
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+-1.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+-1.0
+  0
+LWPOLYLINE
+  5
+5E
+330
+5A
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+2
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+0.0
+ 20
+0.0
+ 10
+12.0
+ 20
+0.0
+ 10
+12.0
+ 20
+10.0
+ 10
+0.0
+ 20
+10.0
+ 10
+0.0
+ 20
+0.0
+  0
+LWPOLYLINE
+  5
+5F
+330
+5A
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+7
+100
+AcDbPolyline
+ 90
+3
+ 70
+0
+ 10
+2.0
+ 20
+2.0
+ 10
+6.0
+ 20
+5.0
+ 10
+10.0
+ 20
+8.0
+  0
+CIRCLE
+  5
+60
+330
+5A
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+1
+100
+AcDbCircle
+ 10
+10.0
+ 20
+8.0
+ 30
+0.0
+ 40
+0.5
+  0
+ENDBLK
+  5
+5C
+330
+5A
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockEnd
+  0
+BLOCK
+  5
+62
+330
+61
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+TYPE_PACKAGING
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+TYPE_PACKAGING
+  1
+
+  0
+LWPOLYLINE
+  5
+64
+330
+61
+100
+AcDbEntity
+  8
+SAFETY
+  6
+DASHED
+ 62
+2
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+-1.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+-1.0
+ 10
+13.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+11.0
+ 10
+-1.0
+ 20
+-1.0
+  0
+LWPOLYLINE
+  5
+65
+330
+61
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+40
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+0.0
+ 20
+0.0
+ 10
+12.0
+ 20
+0.0
+ 10
+12.0
+ 20
+10.0
+ 10
+0.0
+ 20
+10.0
+ 10
+0.0
+ 20
+0.0
+  0
+LWPOLYLINE
+  5
+66
+330
+61
+100
+AcDbEntity
+  8
+STATIONS
+ 62
+7
+100
+AcDbPolyline
+ 90
+5
+ 70
+1
+ 10
+4.0
+ 20
+4.0
+ 10
+8.0
+ 20
+4.0
+ 10
+8.0
+ 20
+8.0
+ 10
+4.0
+ 20
+8.0
+ 10
+4.0
+ 20
+4.0
+  0
+ENDBLK
+  5
+63
+330
+61
 100
 AcDbEntity
   8
@@ -2771,95 +3541,63 @@ ENTITIES
   0
 LWPOLYLINE
   5
-34
+67
 330
 17
 100
 AcDbEntity
   8
-WALLS
+FLOOR
 100
 AcDbPolyline
  90
 5
  70
-0
+1
  10
 0.0
  20
-0.0
+-40.0
  10
-250.0
+282.0
  20
-0.0
+-40.0
  10
-250.0
+282.0
  20
-180.0
- 10
-0.0
- 20
-180.0
+50.0
  10
 0.0
  20
+50.0
+ 10
 0.0
+ 20
+-40.0
   0
-LWPOLYLINE
+INSERT
   5
-35
+STA-LINE-C-10
 330
 17
 100
 AcDbEntity
   8
-WALLS
-100
-AcDbPolyline
- 90
-3
- 70
 0
+100
+AcDbBlockReference
+  2
+TYPE_SCREWING
  10
-80.0
+30.0
  20
 0.0
- 10
-80.0
- 20
-60.0
- 10
-250.0
- 20
-60.0
-  0
-LWPOLYLINE
-  5
-36
-330
-17
-100
-AcDbEntity
-  8
-WALLS
-100
-AcDbPolyline
- 90
-2
- 70
-0
- 10
-160.0
- 20
-60.0
- 10
-160.0
- 20
-180.0
+ 30
+0.0
   0
 TEXT
   5
-37
+6A
 330
 17
 100
@@ -2869,65 +3607,131 @@ TEXT
 100
 AcDbText
  10
-40.0
+36.0
  20
-30.0
+14.0
  30
 0.0
  40
-2.5
+1.8
   1
-ASSEMBLY HALL
+Screwing Station 1
  72
 1
  11
-40.0
+36.0
  21
-30.0
+14.0
  31
 0.0
 100
 AcDbText
- 73
-2
   0
 TEXT
   5
-38
+6B
 330
 17
 100
 AcDbEntity
   8
 TEXT
+ 62
+7
 100
 AcDbText
  10
-165.0
+36.0
  20
-30.0
+-5.0
  30
 0.0
  40
-2.5
+1.2
   1
-LOGISTICS & PACKAGING
+STA-LINE-C-10
  72
 1
  11
-165.0
+36.0
  21
-30.0
+-5.0
  31
 0.0
 100
 AcDbText
- 73
-2
+  0
+LINE
+  5
+6C
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+42.0
+ 20
+3.0
+ 30
+0.0
+ 11
+72.0
+ 21
+3.0
+ 31
+0.0
+  0
+LINE
+  5
+6D
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+42.0
+ 20
+7.0
+ 30
+0.0
+ 11
+72.0
+ 21
+7.0
+ 31
+0.0
+  0
+INSERT
+  5
+STA-LINE-C-20
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+TYPE_PACKAGING
+ 10
+72.0
+ 20
+0.0
+ 30
+0.0
   0
 TEXT
   5
-39
+70
 330
 17
 100
@@ -2937,65 +3741,111 @@ TEXT
 100
 AcDbText
  10
-80.0
+78.0
  20
-120.0
+14.0
  30
 0.0
  40
-2.5
+1.8
   1
-QUALITY & SPECIALTY
+Packaging Station 2
  72
 1
  11
-80.0
+78.0
  21
-120.0
+14.0
  31
 0.0
 100
 AcDbText
- 73
-2
   0
 TEXT
   5
-3A
+71
 330
 17
 100
 AcDbEntity
   8
 TEXT
+ 62
+7
 100
 AcDbText
  10
-205.0
+78.0
  20
-120.0
+-5.0
  30
 0.0
  40
-2.5
+1.2
   1
-CNC MACHINING
+STA-LINE-C-20
  72
 1
  11
-205.0
+78.0
  21
-120.0
+-5.0
  31
 0.0
 100
 AcDbText
- 73
-2
+  0
+LINE
+  5
+72
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+84.0
+ 20
+3.0
+ 30
+0.0
+ 11
+114.0
+ 21
+3.0
+ 31
+0.0
+  0
+LINE
+  5
+73
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+84.0
+ 20
+7.0
+ 30
+0.0
+ 11
+114.0
+ 21
+7.0
+ 31
+0.0
   0
 INSERT
   5
-H-AL1
+STA-LINE-C-30
 330
 17
 100
@@ -3005,151 +3855,131 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-ROBOT_CELL
+TYPE_WELDING
  10
-40.0
+114.0
  20
-45.0
+0.0
  30
 0.0
-  0
-INSERT
-  5
-H-WS5
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-ASSEMBLY_STATION
- 10
-20.0
- 20
-15.0
- 30
-0.0
-  0
-INSERT
-  5
-L-SORT-A
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-ROBOT_CELL
- 10
-130.0
- 20
-30.0
- 30
-0.0
-  0
-INSERT
-  5
-P-LINE-B
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-PACKAGING_STATION
- 10
-200.0
- 20
-30.0
- 30
-0.0
-  0
-INSERT
-  5
-Q-CELL-01
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-ASSEMBLY_STATION
- 10
-40.0
- 20
-140.0
- 30
-0.0
-  0
-CIRCLE
-  5
-C-TANK-4
-330
-17
-100
-AcDbEntity
-  8
-STATIONS
-100
-AcDbCircle
- 10
-120.0
- 20
-140.0
- 30
-0.0
- 40
-10.0
   0
 TEXT
   5
-5F
+76
 330
 17
 100
 AcDbEntity
   8
-0
+TEXT
 100
 AcDbText
  10
 120.0
  20
-140.0
+14.0
  30
 0.0
  40
-2.0
+1.8
   1
-TANK 4
+Welding Station 3
  72
 1
  11
 120.0
  21
-140.0
+14.0
  31
 0.0
 100
 AcDbText
- 73
-2
+  0
+TEXT
+  5
+77
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+ 62
+7
+100
+AcDbText
+ 10
+120.0
+ 20
+-5.0
+ 30
+0.0
+ 40
+1.2
+  1
+STA-LINE-C-30
+ 72
+1
+ 11
+120.0
+ 21
+-5.0
+ 31
+0.0
+100
+AcDbText
+  0
+LINE
+  5
+78
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+126.0
+ 20
+3.0
+ 30
+0.0
+ 11
+156.0
+ 21
+3.0
+ 31
+0.0
+  0
+LINE
+  5
+79
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+126.0
+ 20
+7.0
+ 30
+0.0
+ 11
+156.0
+ 21
+7.0
+ 31
+0.0
   0
 INSERT
   5
-CNC-MC-12
+STA-LINE-C-40
 330
 17
 100
@@ -3159,13 +3989,347 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-CNC_MACHINE
+TYPE_VISION
+ 10
+156.0
+ 20
+0.0
+ 30
+0.0
+  0
+TEXT
+  5
+7C
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+162.0
+ 20
+14.0
+ 30
+0.0
+ 40
+1.8
+  1
+Vision Station 4
+ 72
+1
+ 11
+162.0
+ 21
+14.0
+ 31
+0.0
+100
+AcDbText
+  0
+TEXT
+  5
+7D
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+ 62
+7
+100
+AcDbText
+ 10
+162.0
+ 20
+-5.0
+ 30
+0.0
+ 40
+1.2
+  1
+STA-LINE-C-40
+ 72
+1
+ 11
+162.0
+ 21
+-5.0
+ 31
+0.0
+100
+AcDbText
+  0
+LINE
+  5
+7E
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+168.0
+ 20
+3.0
+ 30
+0.0
+ 11
+198.0
+ 21
+3.0
+ 31
+0.0
+  0
+LINE
+  5
+7F
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+168.0
+ 20
+7.0
+ 30
+0.0
+ 11
+198.0
+ 21
+7.0
+ 31
+0.0
+  0
+INSERT
+  5
+STA-LINE-C-50
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+TYPE_WELDING
+ 10
+198.0
+ 20
+0.0
+ 30
+0.0
+  0
+TEXT
+  5
+82
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+204.0
+ 20
+14.0
+ 30
+0.0
+ 40
+1.8
+  1
+Welding Station 5
+ 72
+1
+ 11
+204.0
+ 21
+14.0
+ 31
+0.0
+100
+AcDbText
+  0
+TEXT
+  5
+83
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+ 62
+7
+100
+AcDbText
+ 10
+204.0
+ 20
+-5.0
+ 30
+0.0
+ 40
+1.2
+  1
+STA-LINE-C-50
+ 72
+1
+ 11
+204.0
+ 21
+-5.0
+ 31
+0.0
+100
+AcDbText
+  0
+LINE
+  5
+84
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
  10
 210.0
  20
-140.0
+3.0
  30
 0.0
+ 11
+240.0
+ 21
+3.0
+ 31
+0.0
+  0
+LINE
+  5
+85
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+210.0
+ 20
+7.0
+ 30
+0.0
+ 11
+240.0
+ 21
+7.0
+ 31
+0.0
+  0
+INSERT
+  5
+STA-LINE-C-60
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+TYPE_WELDING
+ 10
+240.0
+ 20
+0.0
+ 30
+0.0
+  0
+TEXT
+  5
+88
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+246.0
+ 20
+14.0
+ 30
+0.0
+ 40
+1.8
+  1
+Welding Station 6
+ 72
+1
+ 11
+246.0
+ 21
+14.0
+ 31
+0.0
+100
+AcDbText
+  0
+TEXT
+  5
+89
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+ 62
+7
+100
+AcDbText
+ 10
+246.0
+ 20
+-5.0
+ 30
+0.0
+ 40
+1.2
+  1
+STA-LINE-C-60
+ 72
+1
+ 11
+246.0
+ 21
+-5.0
+ 31
+0.0
+100
+AcDbText
   0
 ENDSEC
   0
@@ -4157,7 +5321,7 @@ CREATED_BY_EZDXF
   3
 WRITTEN_BY_EZDXF
 350
-64
+8C
   0
 DICTIONARYVAR
   5
@@ -4169,11 +5333,11 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-04-29T19:15:29.168211+00:00
+1.4.3 @ 2026-05-09T19:46:03.627380+00:00
   0
 DICTIONARYVAR
   5
-64
+8C
 330
 2D
 100
@@ -4181,7 +5345,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-04-29T19:15:29.170952+00:00
+1.4.3 @ 2026-05-09T19:46:03.632595+00:00
   0
 ENDSEC
   0
