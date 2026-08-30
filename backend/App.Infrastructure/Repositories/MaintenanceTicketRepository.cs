@@ -18,7 +18,7 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         return await _context.MaintenanceTickets
             .Include(t => t.Machine)
             .Include(t => t.ClientPc)
-            .Include(t => t.Asset)
+            .Include(t => t.Equipment)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();
     }
@@ -28,7 +28,7 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         return await _context.MaintenanceTickets
             .Include(t => t.Machine)
             .Include(t => t.ClientPc)
-            .Include(t => t.Asset)
+            .Include(t => t.Equipment)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 
@@ -37,7 +37,7 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         return await _context.MaintenanceTickets
             .Include(t => t.Machine)
             .Include(t => t.ClientPc)
-            .Include(t => t.Asset)
+            .Include(t => t.Equipment)
             .Where(t => t.Status.ToLower() == status.ToLower())
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();

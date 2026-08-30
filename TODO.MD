@@ -15,11 +15,14 @@
 
 ---
 
-## Milestone 2: Windows System Telemetry & Driver Diagnostics
+## Milestone 2: Industrial Edge Agent & System Telemetry
 - [x] Design WMI / P/Invoke telemetry contract for Beckhoff Real-Time Ethernet Drivers (`TcRTEthernet`, `TcEth`).
 - [x] Implement Registry uninstall key scanner for fast installed software detection on Windows IPCs.
-- [ ] Add Beckhoff TwinCAT ADS System API integration (`TcAdsDll.dll` / ADS protocol) to query TwinCAT AMS NetID, PLC state, and RT task CPU load.
-- [ ] Implement Windows SetupAPI (`cfgmgr32.dll` / `setupapi.dll`) P/Invoke wrapper in `App.Agent.Daemon` for exact PCI Vendor/Device ID extraction (`VEN_8086&DEV_1539`).
+- [x] Add Beckhoff TwinCAT ADS System API integration and EtherCAT diagnostics (`DevState`, `ST_EcSlaveState`, `WcState`, CRC counters, SDO).
+- [x] Implement Declarative Recipe Engine with Multi-Recipe Runtime Merger (CSTK deduplication, strictest min-interval, deepest scope).
+- [x] Add 4-tier priority channels, Token Bucket network rate limiting, xxHash64 delta evaluation, and store-and-forward SQLite WAL spooling.
+- [x] Implement PII-safe filesystem scanner with strict directory pruning (Chrome, Edge, Firefox, cookies, user docs) and process secret scrubber.
+- [x] Hardware-bound configuration encryption (Windows DPAPI & Linux AES-256-GCM HKDF Machine-Binding).
 
 ---
 
@@ -44,7 +47,7 @@
 - [x] Multi-tier caching strategy (L1 `IMemoryCache` for static references, L2 Redis for telemetry state).
 - [x] Data tiering specification (Instant Summary Payload vs. On-Demand Lazy Queries).
 - [x] PostgreSQL GIN indexing for JSONB columns (`system_metadata`, `metadata`).
-- [ ] Configure Redis L2 cache provider in `App.Backend.Api`.
+- [x] Configure Redis L2 cache provider in `App.Backend.Api`.
 - [ ] Add database ETag / Conditional GET middleware (`304 Not Modified`) in Nuxt Nitro BFF.
 
 ---
@@ -55,4 +58,19 @@
 - [x] Modularize `AppSidebar.vue` and `useAppSettings.ts` composables.
 - [ ] Move client-side sorting, filtering, and aggregation to Nuxt Nitro server routes (`server/api/`).
 - [ ] Add spatial layout viewer component with interactive DXF handle selection.
+
+---
+
+## Milestone 7: Telemetry Visualization & Remote Agent Configuration UI
+- [ ] Implement Live Telemetry Dashboard (`/dashboard/telemetry`) with real-time SignalR telemetry feeds, station cards, and spindle/metric gauges.
+- [ ] Create Over-the-Wire Agent Configuration UI (`/dashboard/agent-config`) to remotely manage recipes, update polling strategies, configure driver endpoints, inspect merged DAG execution graphs, and adjust token-bucket egress throttles.
+- [ ] Build EtherCAT Topology Visualizer (`/dashboard/fieldbus/ethercat`) rendering live slave states (`INIT`..`OP`), Working Counter (`WcState`) error counters, and CRC diagnostics.
+- [ ] Add TcOpen `_data` inspector component to live-browse Structured Text DUT values with Zod runtime validation.
+
+---
+
+## Milestone 8: Automated Data Export & Reporting Engine (XLSX & XLSB)
+- [ ] Build streaming Excel export engine supporting `.xlsx` (OpenXML / ClosedXML / EPPlus) and `.xlsb` (Binary Excel format for ultra-compact high-speed mass data reporting).
+- [ ] Implement Automated Scheduled Report Dispatcher (Cron-scheduled telemetry reports with customizable templates via SMTP / SendGrid / Microsoft Graph API).
+- [ ] Add Frontend 1-Click Export UI to download telemetry history, ticket metrics, and inventory trees in `.xlsx`, `.xlsb`, and `.csv` formats.
 

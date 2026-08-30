@@ -126,7 +126,6 @@ public class AppDbContext : DbContext
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<QueuedAgentCommand> QueuedAgentCommands { get; set; }
     public DbSet<AgentEvent> AgentEvents { get; set; }
-    public DbSet<MaintenanceTicket> MaintenanceTickets { get; set; }
     
     // Auth Sets (Managed by Better-Auth, excluded from migrations)
     public DbSet<AuthUser> AuthUsers { get; set; }
@@ -358,9 +357,9 @@ public class AppDbContext : DbContext
                   .HasForeignKey(e => e.ClientPcId)
                   .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasOne(e => e.Asset)
+            entity.HasOne(e => e.Equipment)
                   .WithMany()
-                  .HasForeignKey(e => e.AssetId)
+                  .HasForeignKey(e => e.EquipmentId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -382,6 +381,12 @@ public class AppDbContext : DbContext
             // Encrypted string property for SoftwareAsset.LicenseKey
             entity.Property(e => e.LicenseKey)
                   .HasConversion(encryptedConverter);
+        });
+
+        // Configure SoftwareComponent
+        modelBuilder.Entity<SoftwareComponent>(entity =>
+        {
+            entity.ToTable("software_components"); // TPT
         });
 
         // Configure PcHardware

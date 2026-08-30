@@ -34,7 +34,7 @@ const localTicket = ref<MaintenanceTicket | null>(null)
 
 watch(() => props.ticket, (newVal) => {
   localTicket.value = newVal ? JSON.parse(JSON.stringify(newVal)) : null
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
 async function updateStatus(newStatus: string) {
   if (!localTicket.value) return

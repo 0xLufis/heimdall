@@ -114,7 +114,7 @@ const formatCurrency = (val: any) => {
                         <span>{{ item.name }}</span>
                         <Badge 
                           variant="outline" 
-                          class="text-[8px] font-black uppercase tracking-widest px-1.5 py-0 border-slate-700 text-indigo-400 bg-indigo-500/10"
+                          class="text-[7.5px] font-black uppercase tracking-widest px-3 py-1 rounded-full border-slate-700 text-indigo-400 bg-indigo-500/10 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm"
                         >
                           {{ item.itemType || type }}
                         </Badge>
@@ -136,16 +136,16 @@ const formatCurrency = (val: any) => {
 
                 <!-- Teams -->
                 <TableCell class="px-6 py-4">
-                  <div class="flex flex-wrap gap-1">
+                  <div class="flex flex-wrap gap-1.5">
                     <Badge 
                       v-for="team in item.responsibleTeams" 
                       :key="team.id || team.name" 
                       variant="secondary" 
-                      class="bg-indigo-950/40 text-indigo-300 border border-indigo-800/40 text-[9px] uppercase font-bold"
+                      class="bg-indigo-950/40 text-indigo-300 border border-indigo-800/40 text-[8px] uppercase font-black tracking-wider px-3 py-1 rounded-full inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm"
                     >
                       {{ team.name || team }}
                     </Badge>
-                    <Badge v-if="!item.responsibleTeams?.length" variant="outline" class="text-slate-600 border-slate-800 text-[8px]">
+                    <Badge v-if="!item.responsibleTeams?.length" variant="outline" class="text-slate-600 border-slate-800 text-[8px] rounded-full px-3 py-1">
                       UNASSIGNED
                     </Badge>
                   </div>
@@ -154,19 +154,19 @@ const formatCurrency = (val: any) => {
                 <!-- Specs -->
                 <TableCell v-if="columns.specs" class="px-6 py-4">
                   <div class="flex flex-wrap gap-1.5 max-w-xs">
-                    <span v-if="item.metadata?.Power" class="text-[9px] font-black uppercase border border-amber-900/30 bg-amber-900/10 px-2 py-0.5 rounded text-amber-400">
+                    <span v-if="item.metadata?.Power" class="text-[8px] font-black uppercase tracking-wider border border-amber-900/30 bg-amber-900/10 px-3 py-1 rounded-full text-amber-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
                       {{ item.metadata.Power }}
                     </span>
-                    <span v-if="item.metadata?.Voltage" class="text-[9px] font-black uppercase border border-blue-900/30 bg-blue-900/10 px-2 py-0.5 rounded text-blue-400">
+                    <span v-if="item.metadata?.Voltage" class="text-[8px] font-black uppercase tracking-wider border border-blue-900/30 bg-blue-900/10 px-3 py-1 rounded-full text-blue-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
                       {{ item.metadata.Voltage }}
                     </span>
-                    <span v-if="item.metadata?.Resolution" class="text-[9px] font-black uppercase border border-purple-900/30 bg-purple-900/10 px-2 py-0.5 rounded text-purple-400">
+                    <span v-if="item.metadata?.Resolution" class="text-[8px] font-black uppercase tracking-wider border border-purple-900/30 bg-purple-900/10 px-3 py-1 rounded-full text-purple-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
                       {{ item.metadata.Resolution }}
                     </span>
-                    <span v-if="item.metadata?.Version || item.version" class="text-[9px] font-black uppercase border border-emerald-900/30 bg-emerald-900/10 px-2 py-0.5 rounded text-emerald-400">
+                    <span v-if="item.metadata?.Version || item.version" class="text-[8px] font-black uppercase tracking-wider border border-emerald-900/30 bg-emerald-900/10 px-3 py-1 rounded-full text-emerald-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
                       v{{ item.metadata?.Version || item.version }}
                     </span>
-                    <span v-if="item.modelNumber" class="text-[9px] font-black uppercase border border-slate-700 bg-slate-800 px-2 py-0.5 rounded text-slate-400">
+                    <span v-if="item.modelNumber" class="text-[8px] font-black uppercase tracking-wider border border-slate-700 bg-slate-800 px-3 py-1 rounded-full text-slate-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
                       {{ item.modelNumber }}
                     </span>
                   </div>
@@ -174,9 +174,9 @@ const formatCurrency = (val: any) => {
 
                 <!-- Tags / Metadata -->
                 <TableCell v-if="columns.tags" class="px-6 py-4">
-                  <div class="flex flex-wrap gap-1 max-w-xs">
+                  <div class="flex flex-wrap gap-1.5 max-w-xs">
                     <template v-for="(val, key) in item.metadata" :key="key">
-                      <span v-if="!['Power', 'Voltage', 'Resolution', 'Version'].includes(key as string)" class="px-1.5 py-0.5 rounded bg-slate-950 text-[9px] font-bold uppercase tracking-tight text-slate-400 border border-slate-800">
+                      <span v-if="!['Power', 'Voltage', 'Resolution', 'Version'].includes(key as string)" class="px-3 py-1 rounded-full bg-slate-950 text-[8px] font-bold uppercase tracking-wider text-slate-400 border border-slate-800 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
                         {{ key }}: {{ val }}
                       </span>
                     </template>

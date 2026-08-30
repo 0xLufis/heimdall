@@ -7,6 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using App.Backend.Api.Services;
+
 namespace App.Backend.Tests;
 
 public class InventorySearchTests
@@ -17,6 +23,13 @@ public class InventorySearchTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         return new AppDbContext(options);
+    }
+
+    private ICacheService CreateCacheService()
+    {
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var distributedCache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        return new CacheService(distributedCache, memoryCache, NullLogger<CacheService>.Instance);
     }
 
     [Fact]
@@ -33,7 +46,7 @@ public class InventorySearchTests
 
         var assetRepo = new AssetRepository(context);
         var controllerRepo = new ControllerRepository(context);
-        var controller = new InventoryController(assetRepo, controllerRepo);
+        var controller = new InventoryController(assetRepo, controllerRepo, CreateCacheService());
 
         // Act
         var result = await controller.Search("name:target");
@@ -62,7 +75,7 @@ public class InventorySearchTests
 
         var assetRepo = new AssetRepository(context);
         var controllerRepo = new ControllerRepository(context);
-        var controller = new InventoryController(assetRepo, controllerRepo);
+        var controller = new InventoryController(assetRepo, controllerRepo, CreateCacheService());
 
         // Act
         var result = await controller.Search("manufacturer:vision");
@@ -89,7 +102,7 @@ public class InventorySearchTests
 
         var assetRepo = new AssetRepository(context);
         var controllerRepo = new ControllerRepository(context);
-        var controller = new InventoryController(assetRepo, controllerRepo);
+        var controller = new InventoryController(assetRepo, controllerRepo, CreateCacheService());
 
         // Act
         var result = await controller.Search("type:hardware");
@@ -120,7 +133,7 @@ public class InventorySearchTests
 
         var assetRepo = new AssetRepository(context);
         var controllerRepo = new ControllerRepository(context);
-        var controller = new InventoryController(assetRepo, controllerRepo);
+        var controller = new InventoryController(assetRepo, controllerRepo, CreateCacheService());
 
         // Act
         var result = await controller.Search("name:target manufacturer:vision");

@@ -1,0 +1,64 @@
+(* ============================================================================== *)
+(* HEIMDALL INDUSTRIAL EDGE - STANDALONE TWINCAT 3 TELEMETRY BRIDGE BLOCK        *)
+(* ============================================================================== *)
+
+(*
+    STRUCTURE: ST_HeimdallTelemetrySnapshot
+    Description:
+    Contiguous telemetry buffer containing application state, sequence IDs, and
+    diagnostics for 1-packet ADS Sum Read operations.
+*)
+TYPE ST_HeimdallTelemetrySnapshot :
+STRUCT
+    nSequenceId      : ULINT;
+    dcTimestampNs    : ULINT;
+    nStationState    : INT;
+    fSpindleVelocity : LREAL;
+    fBearingTempC    : REAL;
+    fMotorCurrentA   : REAL;
+    nActiveJobCount  : INT;
+    bEStopActive     : BOOL;
+    bSafetyGateOpen  : BOOL;
+END_STRUCT
+END_TYPE
+
+
+(*
+    FUNCTION BLOCK: FB_HeimdallTelemetryBridge
+    Description:
+    Drop-in Function Block for vanilla TwinCAT 3 projects.
+    Provides lock-free, atomic double-buffering (ping-pong) so external ADS clients
+    read consistent snapshots without task blocking or race conditions.
+*)
+FUNCTION_BLOCK FB_HeimdallTelemetryBridge
+VAR_INPUT
+    bEnable : BOOL := TRUE;
+END_VAR
+VAR_OUTPUT
+    nSnapshotsPublished : ULINT;
+    nActiveBufferIndex  : INT;
+END_VAR
+VAR
+    // Double-buffered telemetry snapshot for atomic lock-free ADS reading
+    stTelemetryBuffer : ARRAY[0..1] OF ST_HeimdallTelemetrySnapshot;
+    nActiveBufferIdx  : INT := 0;
+    nSequenceCounter  : ULINT := 0;
+END_VAR
+
+IF NOT bEnable THEN
+    RETURN;
+END_IF
+
+// Increment sequence counter
+nSequenceCounter := nSequenceCounter + 1;
+
+// Switch to the inactive buffer for writing
+nActiveBufferIdx := 1 - nActiveBufferIdx;
+
+// Populate header
+stTelemetryBuffer[nActiveBufferIdx].nSequenceId   := nSequenceCounter;
+stTelemetryBuffer[nActiveBufferIdx].dcTimestampNs := F_GetCurDcTaskTime64();
+
+// Export outputs
+nActiveBufferIndex  := nActiveBufferIdx;
+nSnapshotsPublished := nSequenceCounter;

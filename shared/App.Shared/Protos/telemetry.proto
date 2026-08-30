@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+option csharp_namespace = "App.Shared.Protos.Telemetry";
+package heimdall.telemetry;
+
+import "google/protobuf/timestamp.proto";
+
+// Quality of data point aligned with OPC UA and industrial telemetry standards
+enum QualityCode {
+  QUALITY_GOOD = 0;
+  QUALITY_UNCERTAIN = 1;
+  QUALITY_BAD = 2;
+  QUALITY_COMM_FAILURE = 3;
+  QUALITY_STALE = 4;
+  QUALITY_OUT_OF_RANGE = 5;
+}
+
+// Atomic IEC 61131-3 and OPC UA data type classifier
+enum DataTypeClassifier {
+  TYPE_UNSPECIFIED = 0;
+  TYPE_BOOL = 1;
+  TYPE_INT8 = 2;
+  TYPE_UINT8 = 3;
+  TYPE_INT16 = 4;
+  TYPE_UINT16 = 5;
+  TYPE_INT32 = 6;
+  TYPE_UINT32 = 7;
+  TYPE_INT64 = 8;
+  TYPE_UINT64 = 9;
+  TYPE_FLOAT32 = 10;
+  TYPE_FLOAT64 = 11;
+  TYPE_STRING = 12;
+  TYPE_DATETIME = 13;
+  TYPE_DURATION = 14;
+  TYPE_BYTES = 15;
+  TYPE_STRUCT = 16;
+  TYPE_ARRAY = 17;
+  TYPE_DEVICE_STATE = 18;
+}
+
+// Universal strongly-typed telemetry value container
+message TelemetryValue {
+  oneof value {
+    bool bool_value = 1;
+    int32 int32_value = 2;
+    int64 int64_value = 3;
+    uint32 uint32_value = 4;
+    uint64 uint64_value = 5;
+    float float_value = 6;
+    double double_value = 7;
+    string string_value = 8;
+    bytes bytes_value = 9;
+    google.protobuf.Timestamp timestamp_value = 10;
+    
+    // Structured and collection types
+    StructValue struct_value = 11;
+    ListValue list_value = 12;
+    DeviceStateValue state_value = 13;
+  }
+}
+
+// Strongly-typed key-value map for nested PLC DUTs, TcOpen _data, and CIM objects
+message StructValue {
+  map<string, TelemetryValue> fields = 1;
+}
+
+// Strongly-typed sequence for PLC arrays and process tables
+message ListValue {
+  repeated TelemetryValue elements = 1;
+}
+
+// Finite-state machine and bitmask state representation
+message DeviceStateValue {
+  int32 state_code = 1;
+  string state_label = 2;
+  uint32 raw_bitmask = 3;
+  map<string, bool> flag_states = 4;
+}
+
+// Rich type metadata describing the data point
+message TypeDescriptor {
+  DataTypeClassifier classifier = 1;
+  string original_plc_type = 2;      // e.g., "ST_Station1TelemetryData", "LREAL"
+  string unit = 3;                   // e.g., "RPM", "°C", "bar", "mm/s", "kW"
+  double min_range = 4;
+  double max_range = 5;
+  bool is_array = 6;
+  repeated int32 array_dimensions = 7;
+  string description = 8;
+}
+
+// An atomic telemetry observation
+message TelemetryDataPoint {
+  string point_id = 1;
+  string canonical_key = 2;          // e.g., "Beckhoff.Ads:192.168.1.100.1.1:851:MAIN.Station1.Telemetry._data"
+  google.protobuf.Timestamp timestamp = 3;
+  QualityCode quality = 4;
+  TelemetryValue value = 5;
+  TypeDescriptor type_descriptor = 6;
+  bool is_delta = 7;
+}
+
+// Compressed batch of telemetry data points
+message TelemetryDataBatch {
+  string machine_identifier = 1;
+  string hostname = 2;
+  google.protobuf.Timestamp batch_timestamp = 3;
+  repeated TelemetryDataPoint points = 4;
+  int32 compression_level = 5;       // 0 = uncompressed, 3 = zstd-3, 9 = gzip
+}

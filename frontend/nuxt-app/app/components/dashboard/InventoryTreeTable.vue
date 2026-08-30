@@ -327,7 +327,7 @@ const toggleGroup = (group: string) => {
 
                 <!-- Owner -->
                 <TableCell v-if="defaultColumns.owner">
-                   <Badge variant="outline" class="text-[9px] font-mono uppercase border-border text-muted-foreground bg-muted/40 px-2 py-0.5">
+                   <Badge variant="outline" class="text-[8px] font-mono uppercase tracking-wider border-border text-muted-foreground bg-muted/40 px-3 py-1 rounded-full shadow-sm">
                       {{ item.organizationId || 'Heimdall Root' }}
                    </Badge>
                 </TableCell>
@@ -336,12 +336,12 @@ const toggleGroup = (group: string) => {
                 <TableCell v-if="defaultColumns.linkedAsset">
                    <div class="flex flex-wrap gap-1.5">
                       <template v-if="primaryKey === 'client'">
-                         <Badge v-for="m in item.controlledMachines" :key="m.id" variant="secondary" class="bg-indigo-950/20 text-indigo-400 border-indigo-900/20 text-[9px] font-black uppercase px-2">
+                         <Badge v-for="m in item.controlledMachines" :key="m.id" variant="secondary" class="bg-indigo-950/20 text-indigo-400 border-indigo-900/20 text-[8px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
                             {{ m.customIdentifier || m.name }}
                          </Badge>
                       </template>
                       <template v-else>
-                         <Badge v-for="c in item.controllers" :key="c.id" variant="secondary" class="bg-indigo-950/20 text-indigo-400 border-indigo-900/20 text-[9px] font-black uppercase px-2">
+                         <Badge v-for="c in item.controllers" :key="c.id" variant="secondary" class="bg-indigo-950/20 text-indigo-400 border-indigo-900/20 text-[8px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
                             {{ c.hostname || c.name }}
                          </Badge>
                       </template>
@@ -350,8 +350,8 @@ const toggleGroup = (group: string) => {
 
                 <!-- Teams -->
                 <TableCell v-if="defaultColumns.teams">
-                  <div class="flex flex-wrap gap-1">
-                    <Badge v-for="team in item.responsibleTeams" :key="team.id" variant="outline" class="text-[8px] font-black uppercase border-indigo-500/20 text-indigo-400 bg-indigo-500/5 px-2">
+                  <div class="flex flex-wrap gap-1.5">
+                    <Badge v-for="team in item.responsibleTeams" :key="team.id" variant="outline" class="text-[7.5px] font-black uppercase tracking-wider border-indigo-500/20 text-indigo-400 bg-indigo-500/5 px-3 py-1 rounded-full shadow-sm">
                       {{ team.name }}
                     </Badge>
                   </div>

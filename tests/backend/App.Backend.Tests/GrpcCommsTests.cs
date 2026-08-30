@@ -76,24 +76,28 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            // Remove any existing DbContext registration
-            var dbContextOptionsDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-            if (dbContextOptionsDescriptor != null) services.Remove(dbContextOptionsDescriptor);
+            // Remove all existing DbContext and Npgsql registrations
+            var descriptors = services.Where(d => 
+                d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
+                d.ServiceType == typeof(DbContextOptions) ||
+                d.ServiceType == typeof(IDbContextFactory<AppDbContext>) ||
+                d.ServiceType == typeof(AppDbContext) ||
+                d.ServiceType == typeof(NpgsqlDataSource)).ToList();
 
-            var dbContextDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(AppDbContext));
-            if (dbContextDescriptor != null) services.Remove(dbContextDescriptor);
-
-            // Remove NpgsqlDataSource if it was added
-            var npgsqlDataSourceDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(NpgsqlDataSource));
-            if (npgsqlDataSourceDescriptor != null) services.Remove(npgsqlDataSourceDescriptor);
+            foreach (var descriptor in descriptors)
+            {
+                services.Remove(descriptor);
+            }
 
             // Add in-memory database for testing
+            var dbName = "TestDb_" + Guid.NewGuid().ToString();
             services.AddDbContextFactory<AppDbContext>(options =>
             {
-                options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid().ToString()); // Use unique name for each test run
+                options.UseInMemoryDatabase(dbName);
+            });
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseInMemoryDatabase(dbName);
             });
         });
     }

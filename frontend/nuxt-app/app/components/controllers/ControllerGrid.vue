@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IndustrialController } from '~/types/domain'
-import { Monitor, Activity, HardDrive, Cpu, Terminal, ChevronRight } from 'lucide-vue-next'
+import { Monitor, Activity, HardDrive, Cpu, Terminal, ChevronRight, MapPin, Link } from 'lucide-vue-next'
 import { Badge } from '~/components/ui/badge'
 
 const props = defineProps<{
@@ -11,6 +11,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select', controller: IndustrialController): void
   (e: 'queue-command', controller: IndustrialController): void
+  (e: 'link-dxf', controller: IndustrialController): void
+  (e: 'locate-dxf', handle: string): void
 }>()
 </script>
 
@@ -53,7 +55,7 @@ const emit = defineEmits<{
 
             <Badge
               variant="outline"
-              class="text-[9px] font-black uppercase tracking-wider font-mono"
+              class="text-[9px] font-black uppercase tracking-wider font-mono px-3 py-1 rounded-full"
               :class="pc.telemetry?.isOnline ? 'border-emerald-500/30 text-emerald-400 bg-emerald-950/20' : 'border-slate-800 text-slate-500 bg-slate-950'"
             >
               {{ pc.telemetry?.isOnline ? 'Online' : 'Offline' }}
@@ -90,6 +92,41 @@ const emit = defineEmits<{
             </div>
           </div>
 
+          <!-- Spatial CAD / DXF Mapping Tag -->
+          <div class="mb-4 p-3 bg-slate-950/70 rounded-2xl border border-slate-800/80 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 truncate">
+              <MapPin class="size-3.5 text-indigo-400 shrink-0" />
+              <div class="truncate">
+                <span class="text-[8px] font-black uppercase tracking-widest text-slate-500 block">CAD Tag:</span>
+                <span v-if="pc.pinnedObjectHandle" class="text-[10px] font-mono font-bold text-indigo-300 truncate block">
+                  {{ pc.pinnedObjectHandle }}
+                </span>
+                <span v-else class="text-[10px] font-mono text-slate-600 block">
+                  Unpinned
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button
+                v-if="pc.pinnedObjectHandle"
+                type="button"
+                @click.stop="emit('locate-dxf', pc.pinnedObjectHandle)"
+                class="px-2.5 py-1 rounded-lg bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-500/30 text-[9px] font-black text-indigo-300 uppercase tracking-wider transition-all"
+                title="Locate on CAD Map"
+              >
+                View Map
+              </button>
+              <button
+                type="button"
+                @click.stop="emit('link-dxf', pc)"
+                class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[9px] font-black text-slate-300 hover:text-white uppercase tracking-wider transition-all"
+              >
+                {{ pc.pinnedObjectHandle ? 'Edit DXF' : '+ Link DXF' }}
+              </button>
+            </div>
+          </div>
+
           <!-- Controlled Stations Tags -->
           <div class="space-y-1 mb-4">
             <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 block">Controlled Stations:</span>
@@ -97,7 +134,7 @@ const emit = defineEmits<{
               <span
                 v-for="st in pc.controlledMachines"
                 :key="st.id"
-                class="px-2 py-0.5 bg-indigo-950/30 text-indigo-300 border border-indigo-500/20 rounded text-[9px] font-mono font-bold"
+                class="px-2.5 py-1 bg-indigo-950/30 text-indigo-300 border border-indigo-500/20 rounded-full text-[9px] font-mono font-bold"
               >
                 {{ st.customIdentifier || st.name }}
               </span>

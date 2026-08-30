@@ -28,6 +28,7 @@ const getPillClass = (tag: TagPill) => {
     case 'rose':
       return 'bg-rose-500/10 text-rose-400 border-rose-500/30'
     case 'station':
+    case 'cyan':
       return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
     default:
       return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
@@ -36,11 +37,11 @@ const getPillClass = (tag: TagPill) => {
 </script>
 
 <template>
-  <div v-if="tags.length > 0" class="flex flex-wrap items-center gap-1.5 py-1">
+  <div v-if="tags.length > 0" class="flex flex-wrap items-center gap-2 py-1.5">
     <div
       v-for="tag in tags"
       :key="tag.id"
-      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-bold tracking-tight transition-all group"
+      class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider transition-all group shrink-0 whitespace-nowrap leading-none shadow-sm"
       :class="getPillClass(tag)"
     >
       <Sparkles v-if="tag.isAutoDetected" class="w-3 h-3 text-amber-400 shrink-0" />
@@ -50,7 +51,7 @@ const getPillClass = (tag: TagPill) => {
         v-if="tag.removable !== false"
         type="button"
         @click.stop="emit('remove', tag.id)"
-        class="opacity-60 group-hover:opacity-100 hover:text-white p-0.5 rounded transition-opacity"
+        class="opacity-60 group-hover:opacity-100 hover:text-white p-0.5 rounded transition-opacity ml-0.5"
         aria-label="Remove tag"
       >
         <X class="w-3 h-3" />

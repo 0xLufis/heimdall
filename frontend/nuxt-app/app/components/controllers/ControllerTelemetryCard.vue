@@ -4,13 +4,21 @@ import type { IndustrialController } from '~/types/domain'
 import { 
   Monitor, Cpu, Activity, HardDrive, Network, ShieldCheck, 
   ShieldAlert, Pin, PinOff, Search, Layers, Server, 
-  Terminal, CheckCircle2, AlertTriangle, Info, Copy, Check
+  Terminal, CheckCircle2, AlertTriangle, Info, Copy, Check,
+  MapPin, Link
 } from 'lucide-vue-next'
 import { Badge } from '~/components/ui/badge'
+import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 
 const props = defineProps<{
   controller: IndustrialController
+}>()
+
+const emit = defineEmits<{
+  (e: 'link-dxf', controller: IndustrialController): void
+  (e: 'locate-map', handle: string): void
+  (e: 'unpin-dxf', controller: IndustrialController): void
 }>()
 
 interface ControllerProperty {
@@ -418,6 +426,49 @@ const getStatusColor = (status?: string) => {
         >
           {{ controller.telemetry?.isOnline ? 'Live Telemetry Active' : 'Offline' }}
         </Badge>
+      </div>
+    </div>
+
+    <!-- Spatial CAD / DXF Tag Link Banner -->
+    <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+          <MapPin class="size-4" />
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">AutoCAD (DXF) Spatial Tag:</span>
+            <span v-if="controller.pinnedObjectHandle" class="text-xs font-mono font-black text-indigo-300 bg-indigo-950/60 border border-indigo-500/40 px-3 py-1 rounded-full">
+              {{ controller.pinnedObjectHandle }}
+            </span>
+            <span v-else class="text-[10px] font-mono text-amber-400/80 bg-amber-950/30 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
+              Unpinned (No CAD Coordinate Linked)
+            </span>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-0.5">Physical equipment coordinate mapping on the factory floor plan.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <Button
+          v-if="controller.pinnedObjectHandle"
+          variant="outline"
+          size="sm"
+          @click="emit('locate-map', controller.pinnedObjectHandle)"
+          class="h-8 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/60 border-indigo-500/30 text-indigo-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5"
+        >
+          <MapPin class="size-3" />
+          <span>Locate on CAD Map</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          @click="emit('link-dxf', controller)"
+          class="h-8 rounded-xl bg-slate-950 hover:bg-slate-900 border-slate-800 text-slate-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5"
+        >
+          <Link class="size-3" />
+          <span>{{ controller.pinnedObjectHandle ? 'Edit DXF Link' : '+ Link DXF Tag' }}</span>
+        </Button>
       </div>
     </div>
 

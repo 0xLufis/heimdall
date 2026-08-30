@@ -65,7 +65,20 @@ if (!builder.Environment.IsEnvironment("Test"))
     }, ServiceLifetime.Scoped);
 }
 
-// --- 2. Repositories & Services ---
+// --- 2. Repositories & Services & Caching ---
+builder.Services.AddMemoryCache();
+
+var redisConnectionStr = builder.Configuration["REDIS_CONNECTION_STRING"]
+    ?? builder.Configuration.GetConnectionString("Redis")
+    ?? "localhost:6379,abortConnect=false,connectTimeout=2000";
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConnectionStr;
+    options.InstanceName = "heimdall:";
+});
+
+builder.Services.AddSingleton<ICacheService, CacheService>();
 builder.Services.AddScoped<IStationRepository, StationRepository>();
 builder.Services.AddScoped<IControllerRepository, ControllerRepository>();
 builder.Services.AddScoped<IClientPcRepository, ClientPcRepository>();

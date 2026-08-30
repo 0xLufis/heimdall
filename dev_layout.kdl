@@ -13,13 +13,10 @@ layout {
         }
         pane split_direction="horizontal" {
             pane name="Nuxt Frontend" command="bash" {
-                args "-c" "export PATH=\"$HOME/.bun/bin:$PATH\" && bun --cwd=frontend/nuxt-app run dev"
+                args "-c" "export PATH=\"$HOME/.bun/bin:$PATH\" && cd frontend/nuxt-app && bun run dev"
             }
             pane name="PC Simulator" command="bash" {
                 args "-c" "source venv/bin/activate && python simulate_pcs.py"
-            }
-            pane name="ngrok" command="bash" {
-                args "-c" "if command -v ngrok >/dev/null 2>&1; then ngrok http 3000; else echo 'ngrok not found, skipping...'; sleep 10; fi"
             }
         }
     }

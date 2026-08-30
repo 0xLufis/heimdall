@@ -133,4 +133,50 @@ describe('Maintenance Ticketing UI Components', () => {
     expect(wrapper.text()).toContain('OP10 Machining Cell')
     expect(wrapper.text()).toContain('Start Work')
   })
+
+  it('renders TicketKanbanBoard with drag/drop targets and quick status buttons', async () => {
+    const { default: TicketKanbanBoard } = await import('~/components/tickets/TicketKanbanBoard.vue')
+    const wrapper = mount(TicketKanbanBoard, {
+      props: { tickets: mockTickets }
+    })
+
+    expect(wrapper.text()).toContain('Open')
+    expect(wrapper.text()).toContain('In Progress')
+    expect(wrapper.text()).toContain('TKT-2026-0001')
+    expect(wrapper.text()).toContain('Start')
+
+    // Find and click the quick move button
+    const buttons = wrapper.findAll('button')
+    const startBtn = buttons.find(b => b.text().includes('Start'))
+    expect(startBtn).toBeDefined()
+    await startBtn!.trigger('click')
+
+    expect(wrapper.emitted('moveStatus')).toBeTruthy()
+    expect(wrapper.emitted('moveStatus')![0]).toEqual(['tkt-test-1', 'In_Progress'])
+  })
+
+  it('useMaintenance handles atomic on-demand live events and recalibrates metrics', async () => {
+    const { useMaintenance } = await import('~/composables/useMaintenance')
+    const { tickets, metrics, handleLiveEvent, recalculateMetrics } = useMaintenance()
+
+    // Simulate initial ticket list
+    tickets.value = [...mockTickets]
+    recalculateMetrics()
+
+    expect(metrics.value?.openTickets).toBe(1)
+    expect(metrics.value?.inProgressTickets).toBe(1)
+
+    // Simulate on-demand StatusChanged live push event
+    handleLiveEvent({
+      type: 'StatusChanged',
+      ticketId: 'tkt-test-1',
+      status: 'Resolved',
+      timestamp: new Date().toISOString()
+    })
+
+    const updated = tickets.value.find(t => t.id === 'tkt-test-1')
+    expect(updated?.status).toBe('Resolved')
+    expect(metrics.value?.openTickets).toBe(0)
+    expect(metrics.value?.resolvedToday).toBe(1)
+  })
 })

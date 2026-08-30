@@ -259,30 +259,7 @@ public class QueuedAgentCommand
     public bool IsProcessed { get; set; }
 }
 
-/// <summary>
-/// Represents a maintenance ticket for equipment, machines, or client PCs.
-/// </summary>
-[Table("maintenance_tickets")]
-public class MaintenanceTicket
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    [Required, MaxLength(255)]
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    [Required, MaxLength(50)]
-    public string Status { get; set; } = "Open";
-    [Required, MaxLength(50)]
-    public string Priority { get; set; } = "Medium";
-    public Guid? MachineId { get; set; }
-    public Machine? Machine { get; set; }
-    public Guid? ClientPcId { get; set; }
-    public ClientPc? ClientPc { get; set; }
-    public Guid? AssetId { get; set; }
-    public BaseInventoryItem? Asset { get; set; }
-    public string? AssignedTo { get; set; }
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-    public DateTimeOffset? ResolvedAt { get; set; }
-}
+
 
 /// <summary>
 /// Represents station-level physical equipment (e.g., Valves, Sensors, Motors).
@@ -315,7 +292,7 @@ public partial class SoftwareAsset : BaseInventoryItem
 /// <summary>
 /// Subclass / Alias entity for SoftwareAsset for backward compatibility.
 /// </summary>
-[Table("software_assets")]
+[Table("software_components")]
 public partial class SoftwareComponent : SoftwareAsset
 {
 }
@@ -401,6 +378,11 @@ public partial class MaintenanceTicket
     public Guid? EquipmentId { get; set; }
     /// <summary>Navigation property for associated equipment.</summary>
     public BaseInventoryItem? Equipment { get; set; }
+
+    [NotMapped]
+    public Guid? AssetId { get => EquipmentId; set => EquipmentId = value; }
+    [NotMapped]
+    public BaseInventoryItem? Asset { get => Equipment; set => Equipment = value; }
 
     /// <summary>Optional reference to associated Client PC.</summary>
     public Guid? ClientPcId { get; set; }

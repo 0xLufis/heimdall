@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Badge } from '~/components/ui/badge'
 
 const props = defineProps<{
@@ -26,10 +27,10 @@ const roleConfig = computed(() => {
 <template>
   <Badge 
     variant="outline"
-    class="gap-1.5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-all"
+    class="gap-2 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-full transition-all shadow-sm"
     :class="roleConfig.class"
   >
-    <div class="w-1.5 h-1.5 rounded-full" :class="roleConfig.dot"></div>
+    <div class="w-1.5 h-1.5 rounded-full shrink-0" :class="roleConfig.dot"></div>
     {{ role || 'user' }}
   </Badge>
 </template>

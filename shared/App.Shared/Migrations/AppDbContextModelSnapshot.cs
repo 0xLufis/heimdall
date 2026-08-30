@@ -242,6 +242,11 @@ namespace App.Shared.Migrations
                     b.HasIndex("ManufacturerId")
                         .HasDatabaseName("ix_inventory_items_manufacturer_id");
 
+                    b.HasIndex("Metadata")
+                        .HasDatabaseName("ix_inventory_items_metadata");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Metadata"), "gin");
+
                     b.HasIndex("ParentId")
                         .HasDatabaseName("ix_inventory_items_parent_id");
 
@@ -322,7 +327,73 @@ namespace App.Shared.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_client_pcs_mac_address");
 
+                    b.HasIndex("SystemMetadata")
+                        .HasDatabaseName("ix_client_pcs_system_metadata");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SystemMetadata"), "gin");
+
                     b.ToTable("client_pcs", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.EquipmentInterconnect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConnectionString")
+                        .HasColumnType("text")
+                        .HasColumnName("connection_string");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("InterconnectType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("interconnect_type");
+
+                    b.Property<JsonDocument>("Metadata")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata");
+
+                    b.Property<string>("PortOrAddress")
+                        .HasColumnType("text")
+                        .HasColumnName("port_or_address");
+
+                    b.Property<string>("Protocol")
+                        .HasColumnType("text")
+                        .HasColumnName("protocol");
+
+                    b.Property<Guid>("SourceEquipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_equipment_id");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TargetEquipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_equipment_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_equipment_interconnects");
+
+                    b.HasIndex("Metadata")
+                        .HasDatabaseName("ix_equipment_interconnects_metadata");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Metadata"), "gin");
+
+                    b.HasIndex("SourceEquipmentId")
+                        .HasDatabaseName("ix_equipment_interconnects_source_equipment_id");
+
+                    b.HasIndex("TargetEquipmentId")
+                        .HasDatabaseName("ix_equipment_interconnects_target_equipment_id");
+
+                    b.ToTable("equipment_interconnects", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.FloorPlan", b =>
@@ -382,6 +453,85 @@ namespace App.Shared.Migrations
                         .HasColumnName("y");
 
                     b.ToTable("floor_plan_anchor", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.MaintenanceTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AssignedTo")
+                        .HasColumnType("text")
+                        .HasColumnName("assigned_to");
+
+                    b.Property<Guid?>("ClientPcId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("client_pc_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<Guid?>("EquipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("equipment_id");
+
+                    b.Property<Guid?>("MachineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("machine_id");
+
+                    b.Property<JsonDocument>("Metadata")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("priority");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_maintenance_tickets");
+
+                    b.HasIndex("ClientPcId")
+                        .HasDatabaseName("ix_maintenance_tickets_client_pc_id");
+
+                    b.HasIndex("EquipmentId")
+                        .HasDatabaseName("ix_maintenance_tickets_equipment_id");
+
+                    b.HasIndex("MachineId")
+                        .HasDatabaseName("ix_maintenance_tickets_machine_id");
+
+                    b.HasIndex("Metadata")
+                        .HasDatabaseName("ix_maintenance_tickets_metadata");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Metadata"), "gin");
+
+                    b.ToTable("maintenance_tickets", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.Manufacturer", b =>
@@ -484,6 +634,51 @@ namespace App.Shared.Migrations
                     b.ToTable("responsible_teams", "backend");
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.StationController", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ClientPcId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("client_pc_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("MachineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("machine_id");
+
+                    b.Property<JsonDocument>("Metadata")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata");
+
+                    b.Property<string>("Role")
+                        .HasColumnType("text")
+                        .HasColumnName("role");
+
+                    b.HasKey("Id")
+                        .HasName("pk_station_controllers");
+
+                    b.HasIndex("ClientPcId")
+                        .HasDatabaseName("ix_station_controllers_client_pc_id");
+
+                    b.HasIndex("Metadata")
+                        .HasDatabaseName("ix_station_controllers_metadata");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Metadata"), "gin");
+
+                    b.HasIndex("MachineId", "ClientPcId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_station_controllers_machine_id_client_pc_id");
+
+                    b.ToTable("StationControllers", "backend");
+                });
+
             modelBuilder.Entity("App.Shared.Entities.Supplier", b =>
                 {
                     b.Property<Guid>("Id")
@@ -517,6 +712,84 @@ namespace App.Shared.Migrations
                         .HasDatabaseName("ix_suppliers_name");
 
                     b.ToTable("suppliers", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.TicketAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("text")
+                        .HasColumnName("content_type");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size_bytes");
+
+                    b.Property<Guid>("MaintenanceTicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("maintenance_ticket_id");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("storage_path");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticket_attachments");
+
+                    b.HasIndex("MaintenanceTicketId")
+                        .HasDatabaseName("ix_ticket_attachments_maintenance_ticket_id");
+
+                    b.ToTable("ticket_attachments", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.TicketComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("author");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("MaintenanceTicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("maintenance_ticket_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticket_comments");
+
+                    b.HasIndex("MaintenanceTicketId")
+                        .HasDatabaseName("ix_ticket_comments_maintenance_ticket_id");
+
+                    b.ToTable("ticket_comments", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.UserRole", b =>
@@ -559,25 +832,6 @@ namespace App.Shared.Migrations
                         .HasDatabaseName("ix_item_responsibilities_responsible_teams_id");
 
                     b.ToTable("ItemResponsibilities", "backend");
-                });
-
-            modelBuilder.Entity("ClientPcMachine", b =>
-                {
-                    b.Property<Guid>("ControlledMachinesId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("controlled_machines_id");
-
-                    b.Property<Guid>("ControllersId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("controllers_id");
-
-                    b.HasKey("ControlledMachinesId", "ControllersId")
-                        .HasName("pk_station_controllers");
-
-                    b.HasIndex("ControllersId")
-                        .HasDatabaseName("ix_station_controllers_controllers_id");
-
-                    b.ToTable("StationControllers", "backend");
                 });
 
             modelBuilder.Entity("ClientPcResponsibleTeam", b =>
@@ -646,7 +900,7 @@ namespace App.Shared.Migrations
                     b.ToTable("pc_hardware", "backend");
                 });
 
-            modelBuilder.Entity("App.Shared.Entities.SoftwareComponent", b =>
+            modelBuilder.Entity("App.Shared.Entities.SoftwareAsset", b =>
                 {
                     b.HasBaseType("App.Shared.Entities.BaseInventoryItem");
 
@@ -666,6 +920,13 @@ namespace App.Shared.Migrations
                         .HasDatabaseName("ix_software_assets_hardware_component_id");
 
                     b.ToTable("software_assets", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.SoftwareComponent", b =>
+                {
+                    b.HasBaseType("App.Shared.Entities.SoftwareAsset");
+
+                    b.ToTable("software_components", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.AgentEvent", b =>
@@ -746,6 +1007,54 @@ namespace App.Shared.Migrations
                     b.Navigation("Supplier");
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.EquipmentInterconnect", b =>
+                {
+                    b.HasOne("App.Shared.Entities.BaseInventoryItem", "SourceEquipment")
+                        .WithMany()
+                        .HasForeignKey("SourceEquipmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_equipment_interconnects_inventory_items_source_equipment_id");
+
+                    b.HasOne("App.Shared.Entities.BaseInventoryItem", "TargetEquipment")
+                        .WithMany()
+                        .HasForeignKey("TargetEquipmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_equipment_interconnects_inventory_items_target_equipment_id");
+
+                    b.Navigation("SourceEquipment");
+
+                    b.Navigation("TargetEquipment");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.MaintenanceTicket", b =>
+                {
+                    b.HasOne("App.Shared.Entities.ClientPc", "ClientPc")
+                        .WithMany()
+                        .HasForeignKey("ClientPcId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_maintenance_tickets_client_pcs_client_pc_id");
+
+                    b.HasOne("App.Shared.Entities.BaseInventoryItem", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_maintenance_tickets_inventory_items_equipment_id");
+
+                    b.HasOne("App.Shared.Entities.Machine", "Machine")
+                        .WithMany()
+                        .HasForeignKey("MachineId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_maintenance_tickets_stations_machine_id");
+
+                    b.Navigation("ClientPc");
+
+                    b.Navigation("Equipment");
+
+                    b.Navigation("Machine");
+                });
+
             modelBuilder.Entity("App.Shared.Entities.QueuedAgentCommand", b =>
                 {
                     b.HasOne("App.Shared.Entities.ClientPc", null)
@@ -754,6 +1063,51 @@ namespace App.Shared.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_queued_agent_commands_client_pcs_client_pc_id");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.StationController", b =>
+                {
+                    b.HasOne("App.Shared.Entities.ClientPc", "ClientPc")
+                        .WithMany("StationControllers")
+                        .HasForeignKey("ClientPcId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_station_controllers_client_pcs_client_pc_id");
+
+                    b.HasOne("App.Shared.Entities.Machine", "Machine")
+                        .WithMany("StationControllers")
+                        .HasForeignKey("MachineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_station_controllers_stations_machine_id");
+
+                    b.Navigation("ClientPc");
+
+                    b.Navigation("Machine");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.TicketAttachment", b =>
+                {
+                    b.HasOne("App.Shared.Entities.MaintenanceTicket", "MaintenanceTicket")
+                        .WithMany("Attachments")
+                        .HasForeignKey("MaintenanceTicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ticket_attachments_maintenance_tickets_maintenance_ticket_id");
+
+                    b.Navigation("MaintenanceTicket");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.TicketComment", b =>
+                {
+                    b.HasOne("App.Shared.Entities.MaintenanceTicket", "MaintenanceTicket")
+                        .WithMany("Comments")
+                        .HasForeignKey("MaintenanceTicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ticket_comments_maintenance_tickets_maintenance_ticket_id");
+
+                    b.Navigation("MaintenanceTicket");
                 });
 
             modelBuilder.Entity("BaseInventoryItemResponsibleTeam", b =>
@@ -771,23 +1125,6 @@ namespace App.Shared.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_item_responsibilities_responsible_teams_responsible_teams_id");
-                });
-
-            modelBuilder.Entity("ClientPcMachine", b =>
-                {
-                    b.HasOne("App.Shared.Entities.Machine", null)
-                        .WithMany()
-                        .HasForeignKey("ControlledMachinesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_station_controllers_stations_controlled_machines_id");
-
-                    b.HasOne("App.Shared.Entities.ClientPc", null)
-                        .WithMany()
-                        .HasForeignKey("ControllersId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_station_controllers_client_pcs_controllers_id");
                 });
 
             modelBuilder.Entity("ClientPcResponsibleTeam", b =>
@@ -837,7 +1174,7 @@ namespace App.Shared.Migrations
                         .HasConstraintName("fk_pc_hardware_inventory_items_id");
                 });
 
-            modelBuilder.Entity("App.Shared.Entities.SoftwareComponent", b =>
+            modelBuilder.Entity("App.Shared.Entities.SoftwareAsset", b =>
                 {
                     b.HasOne("App.Shared.Entities.HardwareComponent", null)
                         .WithMany("Firmware")
@@ -847,10 +1184,20 @@ namespace App.Shared.Migrations
 
                     b.HasOne("App.Shared.Entities.BaseInventoryItem", null)
                         .WithOne()
-                        .HasForeignKey("App.Shared.Entities.SoftwareComponent", "Id")
+                        .HasForeignKey("App.Shared.Entities.SoftwareAsset", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_software_assets_inventory_items_id");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.SoftwareComponent", b =>
+                {
+                    b.HasOne("App.Shared.Entities.SoftwareAsset", null)
+                        .WithOne()
+                        .HasForeignKey("App.Shared.Entities.SoftwareComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_software_components_software_assets_id");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.AuthOrganization", b =>
@@ -875,11 +1222,25 @@ namespace App.Shared.Migrations
                     b.Navigation("InventoryItems");
 
                     b.Navigation("PendingCommands");
+
+                    b.Navigation("StationControllers");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.MaintenanceTicket", b =>
+                {
+                    b.Navigation("Attachments");
+
+                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.HardwareComponent", b =>
                 {
                     b.Navigation("Firmware");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.Machine", b =>
+                {
+                    b.Navigation("StationControllers");
                 });
 #pragma warning restore 612, 618
         }

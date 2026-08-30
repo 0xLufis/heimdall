@@ -55,6 +55,24 @@ services:
       - heimdall_net
     restart: unless-stopped
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis_heimdall
+    hostname: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - ./redis_data:/data
+    networks:
+      - heimdall_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
 networks:
   heimdall_net:
     driver: bridge

@@ -1,0 +1,62 @@
+(* ============================================================================== *)
+(* HEIMDALL INDUSTRIAL EDGE - TCOPEN TELEMETRY COMPONENT INTERFACE & BASE BLOCK  *)
+(* ============================================================================== *)
+
+(*
+    INTERFACE: ITcoHeimdallTelemetry
+    Extends: TcoCore.ITcoComponent / ITcoObject
+    
+    Description:
+    Standard contract for TwinCAT 3 / TcOpen production stations and components to expose
+    application-specific telemetry in a clean, standardized '_data' output member.
+    Eliminates fragile, high-risk dynamic ADS pointer dereferencing across networks.
+*)
+INTERFACE ITcoHeimdallTelemetry EXTENDS TcoCore.ITcoComponent
+    /// <summary>
+    /// Refreshes the telemetry snapshot in the _data member. Called cyclically in the PLC task.
+    /// </summary>
+    METHOD UpdateTelemetry : BOOL
+    END_METHOD
+
+    /// <summary>
+    /// Returns the monotonic sequence identifier for change tracking.
+    /// </summary>
+    PROPERTY SequenceId : ULINT
+    END_PROPERTY
+END_INTERFACE
+
+
+(*
+    FUNCTION BLOCK: TcoHeimdallTelemetryBase
+    Extends: TcoCore.TcoComponent
+    Implements: ITcoHeimdallTelemetry
+    
+    Description:
+    Abstract base class providing sequence counting, DC nanosecond timestamps, and
+    lifecycle management for concrete telemetry providers.
+*)
+FUNCTION_BLOCK ABSTRACT TcoHeimdallTelemetryBase EXTENDS TcoCore.TcoComponent IMPLEMENTS ITcoHeimdallTelemetry
+VAR
+    _sequenceId     : ULINT := 0;
+    _lastUpdateTime : ULINT := 0;
+END_VAR
+
+METHOD PUBLIC UpdateTelemetry : BOOL
+BEGIN
+    _sequenceId     := _sequenceId + 1;
+    _lastUpdateTime := F_GetCurDcTaskTime64();
+    
+    // Execute user-defined snapshot population
+    PopulateTelemetryData();
+    
+    UpdateTelemetry := TRUE;
+END_METHOD
+
+METHOD PROTECTED ABSTRACT PopulateTelemetryData : BOOL
+END_METHOD
+
+PROPERTY PUBLIC SequenceId : ULINT
+GET
+    SequenceId := _sequenceId;
+END_GET
+END_PROPERTY

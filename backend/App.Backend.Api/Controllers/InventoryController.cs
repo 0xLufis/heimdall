@@ -1,3 +1,4 @@
+using App.Backend.Api.Services;
 using App.Infrastructure.Repositories;
 using App.Shared.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,7 @@ using System.Text.Json;
 namespace App.Backend.Api.Controllers;
 
 /// <summary>
-/// Controller for managing the unified inventory components using repository interfaces.
+/// Controller for managing the unified inventory components with multi-tier Redis caching.
 /// </summary>
 [ApiController]
 [Route("api/inventory")]
@@ -16,18 +17,23 @@ public class InventoryController : ControllerBase
 {
     private readonly IAssetRepository _assetRepository;
     private readonly IControllerRepository _controllerRepository;
+    private readonly ICacheService _cache;
 
-    public InventoryController(IAssetRepository assetRepository, IControllerRepository controllerRepository)
+    public InventoryController(
+        IAssetRepository assetRepository,
+        IControllerRepository controllerRepository,
+        ICacheService cache)
     {
         _assetRepository = assetRepository;
         _controllerRepository = controllerRepository;
+        _cache = cache;
     }
 
     [HttpGet]
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetInventory()
     {
-        var tree = await _assetRepository.GetInventoryTreeAsync();
+        var tree = await _cache.GetOrSetAsync("inventory:tree", () => _assetRepository.GetInventoryTreeAsync(), TimeSpan.FromMinutes(15));
         return Ok(tree);
     }
 
@@ -35,17 +41,22 @@ public class InventoryController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<object>>> GetSearchKeys()
     {
-        var coreKeys = new 
-        { 
-            Group = "Core Attributes", 
-            Keys = new List<string> { "Name", "DisplayName", "SerialNumber", "Manufacturer", "Supplier", "Cost", "Team", "Type" } 
-        };
+        var result = await _cache.GetOrSetAsync("inventory:search_keys", async () =>
+        {
+            var coreKeys = new 
+            { 
+                Group = "Core Attributes", 
+                Keys = new List<string> { "Name", "DisplayName", "SerialNumber", "Manufacturer", "Supplier", "Cost", "Team", "Type" } 
+            };
 
-        var metadataKeys = await _assetRepository.GetSearchKeysAsync();
-        var result = new List<object> { coreKeys };
-        
-        if (metadataKeys.Any()) 
-            result.Add(new { Group = "Custom Metadata", Keys = metadataKeys.OrderBy(k => k).ToList() });
+            var metadataKeys = await _assetRepository.GetSearchKeysAsync();
+            var list = new List<object> { coreKeys };
+            
+            if (metadataKeys.Any()) 
+                list.Add(new { Group = "Custom Metadata", Keys = metadataKeys.OrderBy(k => k).ToList() });
+
+            return list;
+        }, TimeSpan.FromMinutes(30));
 
         return Ok(result);
     }
@@ -89,7 +100,7 @@ public class InventoryController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<ResponsibleTeam>>> GetTeams()
     {
-        var teams = await _assetRepository.GetTeamsAsync();
+        var teams = await _cache.GetOrSetAsync("inventory:teams", () => _assetRepository.GetTeamsAsync(), TimeSpan.FromMinutes(30));
         return Ok(teams);
     }
 
@@ -97,7 +108,7 @@ public class InventoryController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<BaseInventoryItem>> GetById(Guid id)
     {
-        var item = await _assetRepository.GetByIdAsync(id);
+        var item = await _cache.GetOrSetAsync($"inventory:item:{id}", () => _assetRepository.GetByIdAsync(id), TimeSpan.FromMinutes(15));
         if (item == null) return NotFound();
         return Ok(item);
     }
@@ -106,7 +117,7 @@ public class InventoryController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<Manufacturer>>> GetManufacturers()
     {
-        var manufacturers = await _assetRepository.GetManufacturersAsync();
+        var manufacturers = await _cache.GetOrSetAsync("inventory:manufacturers", () => _assetRepository.GetManufacturersAsync(), TimeSpan.FromMinutes(30));
         return Ok(manufacturers);
     }
 
@@ -114,7 +125,7 @@ public class InventoryController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<Supplier>>> GetSuppliers()
     {
-        var suppliers = await _assetRepository.GetSuppliersAsync();
+        var suppliers = await _cache.GetOrSetAsync("inventory:suppliers", () => _assetRepository.GetSuppliersAsync(), TimeSpan.FromMinutes(30));
         return Ok(suppliers);
     }
 
@@ -122,7 +133,7 @@ public class InventoryController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<Machine>>> GetMachines()
     {
-        var machines = await _assetRepository.GetMachinesAsync();
+        var machines = await _cache.GetOrSetAsync("inventory:machines", () => _assetRepository.GetMachinesAsync(), TimeSpan.FromMinutes(15));
         return Ok(machines);
     }
 
@@ -130,7 +141,7 @@ public class InventoryController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<ClientPc>>> GetClientPcs()
     {
-        var pcs = await _controllerRepository.GetAllAsync();
+        var pcs = await _cache.GetOrSetAsync("inventory:client-pcs", () => _controllerRepository.GetAllAsync(), TimeSpan.FromMinutes(5));
         return Ok(pcs);
     }
 
@@ -208,6 +219,11 @@ public class InventoryController : ControllerBase
         }
 
         var created = await _assetRepository.CreateAsync(item);
+
+        // On-demand invalidation of inventory caches
+        await _cache.RemoveByPatternAsync("inventory:*");
+        await _cache.RemoveAsync("dashboard:metrics");
+
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -216,6 +232,11 @@ public class InventoryController : ControllerBase
     {
         var deleted = await _assetRepository.DeleteAsync(id);
         if (!deleted) return NotFound();
+
+        // On-demand invalidation
+        await _cache.RemoveByPatternAsync("inventory:*");
+        await _cache.RemoveAsync("dashboard:metrics");
+
         return NoContent();
     }
 }

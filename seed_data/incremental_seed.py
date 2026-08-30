@@ -22,6 +22,10 @@ def generate_sql(csv_path, output_path):
         "TRUNCATE TABLE backend.\"ItemResponsibilities\" CASCADE;",
         "TRUNCATE TABLE backend.\"PcResponsibilities\" CASCADE;",
         "TRUNCATE TABLE backend.\"StationControllers\" CASCADE;",
+        "TRUNCATE TABLE backend.equipment_interconnects CASCADE;",
+        "TRUNCATE TABLE backend.maintenance_tickets CASCADE;",
+        "TRUNCATE TABLE backend.ticket_comments CASCADE;",
+        "TRUNCATE TABLE backend.ticket_attachments CASCADE;",
         "",
     ]
 
@@ -133,7 +137,127 @@ def generate_sql(csv_path, output_path):
             pc_id = pc_ids[row['Name']]
             if row['StationIdentifier'] and row['StationIdentifier'] in item_ids:
                 station_id = item_ids[row['StationIdentifier']]
-                sql_statements.append(f"INSERT INTO \"StationControllers\" (controllers_id, controlled_machines_id) VALUES ('{pc_id}', '{station_id}') ON CONFLICT DO NOTHING;")
+                sc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{pc_id}:{station_id}"))
+                sql_statements.append(f"INSERT INTO \"StationControllers\" (id, client_pc_id, machine_id) VALUES ('{sc_id}', '{pc_id}', '{station_id}') ON CONFLICT DO NOTHING;")
+
+    # Fourth pass: Equipment Interconnects (Graph Links between Inventory Items)
+    sql_statements.append("\n-- Seed Equipment Interconnects")
+    interconnects = [
+        ("PLC-01", "SEN-01", "PROFINET", "192.168.1.101:502", "PROFINET IO", "Active"),
+        ("PLC-01", "CAM-01", "EtherNet/IP", "192.168.1.102:44818", "EtherNet/IP", "Active"),
+        ("PLC-02", "ROB-01", "OPC UA", "opc.tcp://192.168.1.120:4840", "OPC UA", "Active"),
+        ("PLC-03", "VAL-01", "Modbus TCP", "192.168.2.50:502", "Modbus TCP", "Active"),
+        ("PLC-01", "DRV-01", "EtherCAT", "EtherCAT Master Port 1", "EtherCAT", "Active"),
+        ("PLC-04", "CAM-02", "EtherNet/IP", "192.168.3.10:44818", "EtherNet/IP", "Active")
+    ]
+    for src, tgt, itype, addr, proto, status in interconnects:
+        src_id = item_ids.get(src)
+        tgt_id = item_ids.get(tgt)
+        if src_id and tgt_id:
+            ic_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{src}->{tgt}"))
+            sql_statements.append(
+                f"INSERT INTO equipment_interconnects (id, source_equipment_id, target_equipment_id, interconnect_type, port_or_address, protocol, status, created_at) "
+                f"VALUES ('{ic_id}', '{src_id}', '{tgt_id}', '{itype}', '{addr}', '{proto}', '{status}', NOW()) ON CONFLICT DO NOTHING;"
+            )
+
+    # Fifth pass: Maintenance Tickets & Comments
+    sql_statements.append("\n-- Seed Maintenance Tickets")
+    tickets = [
+        {
+            "title": "PROFINET Bus Failure on Station 10 Loading",
+            "desc": "Intermittent communication loss between Siemens S7-1500 PLC and Barcode Reader SCN-01. Check cabling and termination resistor.",
+            "status": "InProgress",
+            "priority": "Critical",
+            "eq": "PLC-01",
+            "pc": "CPC-01",
+            "station": "OP10-Load",
+            "assigned": "Controls Engineering",
+            "created_by": "Operator_FloorA",
+            "comments": [
+                ("Lead Engineer", "Inspected cable assembly at Port 2. Detected loose RJ45 connector latch."),
+                ("Field Tech", "Replacement industrial M12 connector ordered from RS Components.")
+            ]
+        },
+        {
+            "title": "Vision System Camera 01 Lens Calibration Required",
+            "desc": "Cognex In-Sight 9000 lens blur detected after station OP20 cleaning. Re-calibrate focal distance.",
+            "status": "Open",
+            "priority": "High",
+            "eq": "CAM-01",
+            "pc": "CPC-02",
+            "station": "OP20-Vision",
+            "assigned": "Vision Systems",
+            "created_by": "QA_Inspector",
+            "comments": [
+                ("QA Supervisor", "Quality inspection pass rate dropped from 99.8% to 94.1%. High priority.")
+            ]
+        },
+        {
+            "title": "Drill Tool Spindle Wear Warning on OP30",
+            "desc": "Spindle motor temperature exceeds 75C baseline. Inspect lubrication and bearings.",
+            "status": "InProgress",
+            "priority": "Medium",
+            "eq": "DRV-01",
+            "pc": "CPC-03",
+            "station": "OP30-Drill",
+            "assigned": "Maintenance Team",
+            "created_by": "Telemetry_Alert",
+            "comments": [
+                ("Maintenance Tech", "Grease levels checked. Ordering replacement bearing kit.")
+            ]
+        },
+        {
+            "title": "Fanuc Robot Arm Weld Joint 3 Overheat",
+            "desc": "Axis 3 torque current spiking above 85%. Perform servo drive thermal check.",
+            "status": "Open",
+            "priority": "Critical",
+            "eq": "ROB-01",
+            "pc": "CPC-03",
+            "station": "OP40-Weld",
+            "assigned": "Robotics Dept",
+            "created_by": "Safety_Auditor",
+            "comments": []
+        },
+        {
+            "title": "Pneumatic Valve Terminal VTUG Pressure Drop",
+            "desc": "Air line supply pressure dropped to 3.8 Bar on Station 60 Packaging line.",
+            "status": "Resolved",
+            "priority": "Low",
+            "eq": "VAL-01",
+            "pc": "CPC-05",
+            "station": "OP60-Pack",
+            "assigned": "Maintenance Team",
+            "created_by": "Shift_Supervisor",
+            "comments": [
+                ("Pneumatics Specialist", "Fixed O-ring seal leak on manifold inlet port. Pressure restored to 6.0 Bar.")
+            ]
+        }
+    ]
+
+    for t in tickets:
+        t_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, t["title"]))
+        eq_id = f"'{item_ids[t['eq']]}'" if t.get("eq") and t["eq"] in item_ids else "NULL"
+        pc_id = f"'{pc_ids[t['pc']]}'" if t.get("pc") and t["pc"] in pc_ids else "NULL"
+        st_id = f"'{item_ids[t['station']]}'" if t.get("station") and t["station"] in item_ids else "NULL"
+        
+        safe_title = t['title'].replace("'", "''")
+        safe_desc = t['desc'].replace("'", "''")
+
+        sql_statements.append(
+            f"INSERT INTO maintenance_tickets (id, title, description, status, priority, equipment_id, client_pc_id, machine_id, assigned_to, created_by, created_at) "
+            f"VALUES ('{t_id}', '{safe_title}', '{safe_desc}', '{t['status']}', '{t['priority']}', {eq_id}, {pc_id}, {st_id}, '{t['assigned']}', '{t['created_by']}', NOW()) "
+            f"ON CONFLICT DO NOTHING;"
+        )
+
+        for author, c_content in t.get("comments", []):
+            c_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{t_id}:{author}:{c_content}"))
+            safe_author = author.replace("'", "''")
+            safe_c_content = c_content.replace("'", "''")
+            sql_statements.append(
+                f"INSERT INTO ticket_comments (id, maintenance_ticket_id, author, content, created_at) "
+                f"VALUES ('{c_id}', '{t_id}', '{safe_author}', '{safe_c_content}', NOW()) "
+                f"ON CONFLICT DO NOTHING;"
+            )
 
     sql_statements.append("\nCOMMIT;")
 

@@ -120,4 +120,34 @@ describe('All Pages, Components, and Table Selectors Test Suite', () => {
     })
     expect(wrapper.text()).toContain('Heimdall Engineering')
   })
+
+  it('renders ControllerGrid with DXF Tag link buttons and emits pinning events', async () => {
+    const { default: ControllerGrid } = await import('~/components/controllers/ControllerGrid.vue')
+    const mockControllers = [
+      {
+        id: 'c-1',
+        hostname: 'IPC-OP10-MAIN',
+        name: 'IPC-OP10-MAIN',
+        macAddress: '00:1A:2B:3C:4D:5E',
+        pinnedObjectHandle: 'OP10_CAD_BLOCK_01',
+        telemetry: { isOnline: true, cpuUsagePercent: 12, ramUsagePercent: 45 }
+      },
+      {
+        id: 'c-2',
+        hostname: 'IPC-STANDALONE',
+        name: 'IPC-STANDALONE',
+        macAddress: '00:1A:2B:3C:4D:5F',
+        pinnedObjectHandle: null,
+        telemetry: { isOnline: false, cpuUsagePercent: 0, ramUsagePercent: 0 }
+      }
+    ]
+
+    const wrapper = mount(ControllerGrid, {
+      props: { controllers: mockControllers as any, loading: false }
+    })
+
+    expect(wrapper.text()).toContain('IPC-OP10-MAIN')
+    expect(wrapper.text()).toContain('OP10_CAD_BLOCK_01')
+    expect(wrapper.text()).toContain('+ Link DXF')
+  })
 })

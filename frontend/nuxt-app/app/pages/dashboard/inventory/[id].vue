@@ -37,6 +37,23 @@ const getFlagColor = (type: string) => {
   }
   return colors[type.toLowerCase()] || 'text-slate-400 border-slate-800 bg-slate-900/50'
 }
+
+const showEditModal = ref(false)
+
+const handleSaveEdit = async (updatedItem: any) => {
+  try {
+    if (updatedItem.id) {
+      await $fetch(`/api/proxy/inventory/components/${updatedItem.id}`, {
+        method: 'PUT',
+        body: updatedItem
+      })
+    }
+  } catch (e) {
+    console.error('Error updating inventory item:', e)
+  } finally {
+    await fetchData()
+  }
+}
 </script>
 
 <template>
@@ -55,7 +72,7 @@ const getFlagColor = (type: string) => {
             <History class="h-4 w-4 mr-2" />
             Audit Trail
          </Button>
-         <Button class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-8 h-10 shadow-lg transition-all border-0">
+         <Button @click="showEditModal = true" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-8 h-10 shadow-lg transition-all border-0 cursor-pointer">
             <span class="text-[10px] font-black uppercase tracking-widest">Edit Component</span>
          </Button>
       </div>
@@ -271,5 +288,13 @@ const getFlagColor = (type: string) => {
         </div>
       </div>
     </template>
+
+    <!-- Edit Asset Modal Overlay -->
+    <DashboardInventoryEditModal
+      :open="showEditModal"
+      :item="component"
+      @update:open="showEditModal = $event"
+      @save="handleSaveEdit"
+    />
   </div>
 </template>
