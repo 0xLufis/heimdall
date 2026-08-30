@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ChevronRight, Cpu, Layers, HardDrive } from 'lucide-vue-next'
+import { ChevronRight, Cpu, Layers, HardDrive, Edit3, ArrowUpRight } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '~/components/ui/table'
 import { Badge } from '~/components/ui/badge'
@@ -12,6 +12,10 @@ const props = defineProps<{
   loading: boolean
   columns: Record<string, boolean>
   isChild?: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'edit', item: any): void
 }>()
 
 const expanded = ref<Record<string, boolean>>({})
@@ -38,7 +42,7 @@ const formatCurrency = (val: any) => {
             {{ type === 'software' ? 'Software Licenses & Packages' : 'Hardware Asset Registry' }}
           </CardTitle>
           <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-            {{ items.length }} {{ type }} assets deployed in active infrastructure
+            {{ items.length }} {{ type }} assets deployed in active infrastructure • Click any row to edit
           </p>
         </div>
       </div>
@@ -69,13 +73,14 @@ const formatCurrency = (val: any) => {
             <TableHead v-if="columns.cost" class="px-6 py-4 uppercase tracking-widest font-black text-slate-500 text-[10px] text-right">
               Valuation (HUF)
             </TableHead>
+            <TableHead class="w-12"></TableHead>
           </TableRow>
         </TableHeader>
         
         <TableBody>
           <template v-if="items.length === 0 && !loading && !isChild">
             <TableRow>
-              <TableCell colspan="7" class="h-32 text-center text-slate-500 uppercase font-black text-xs tracking-widest">
+              <TableCell colspan="8" class="h-32 text-center text-slate-500 uppercase font-black text-xs tracking-widest">
                 No {{ type }} assets found matching criteria.
               </TableCell>
             </TableRow>
@@ -85,7 +90,8 @@ const formatCurrency = (val: any) => {
             <template v-for="item in items" :key="item?.id">
               <TableRow 
                 v-if="item" 
-                class="hover:bg-slate-800/30 transition-colors group border-b border-slate-800 last:border-0" 
+                @click="emit('edit', item)"
+                class="hover:bg-slate-850/70 transition-colors group border-b border-slate-800 last:border-0 cursor-pointer" 
                 :class="{'bg-slate-950/80': isChild}"
               >
                 <!-- Identity -->
@@ -93,18 +99,18 @@ const formatCurrency = (val: any) => {
                   <div class="flex items-center gap-3">
                     <Button 
                       v-if="item.children && item.children.length > 0" 
-                      @click="toggle(item.id)" 
+                      @click.stop="toggle(item.id)" 
                       variant="ghost" 
                       size="icon" 
-                      class="h-6 w-6 text-slate-500 hover:bg-slate-800 rounded-lg"
+                      class="h-6 w-6 text-slate-500 hover:bg-slate-800 rounded-lg shrink-0"
                     >
                       <ChevronRight class="h-4 w-4 transition-transform duration-200" :class="{'rotate-90 text-indigo-400': expanded[item.id]}" />
                     </Button>
-                    <div v-else class="w-6 h-6 flex items-center justify-center">
+                    <div v-else class="w-6 h-6 flex items-center justify-center shrink-0">
                       <div class="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
                     </div>
                     <div>
-                      <div class="text-slate-100 group-hover:text-white transition-colors leading-tight font-black uppercase tracking-tight text-xs flex items-center gap-2">
+                      <div class="text-slate-100 group-hover:text-indigo-300 transition-colors leading-tight font-black uppercase tracking-tight text-xs flex items-center gap-2">
                         <span>{{ item.name }}</span>
                         <Badge 
                           variant="outline" 
@@ -189,17 +195,25 @@ const formatCurrency = (val: any) => {
                     <span v-if="item.costInHUF || item.costInHUF === 0" class="text-[9px] text-slate-500 font-sans ml-1">HUF</span>
                   </div>
                 </TableCell>
+
+                <!-- Edit Action -->
+                <TableCell class="pr-6 text-right">
+                  <div class="p-1.5 rounded-lg text-slate-600 group-hover:text-indigo-400 group-hover:bg-slate-800 transition-all inline-flex items-center justify-center">
+                    <Edit3 class="w-3.5 h-3.5" />
+                  </div>
+                </TableCell>
               </TableRow>
 
               <!-- Child Rows -->
               <TableRow v-if="expanded[item.id] && item.children && item.children.length > 0" class="bg-slate-950/70 border-b border-slate-800 last:border-0">
-                <TableCell colspan="7" class="p-0 pl-8">
+                <TableCell colspan="8" class="p-0 pl-8">
                   <DashboardInventoryTable 
                     :items="item.children" 
                     :type="type" 
                     :loading="false" 
                     :columns="columns" 
-                    :is-child="true" 
+                    :is-child="true"
+                    @edit="emit('edit', $event)" 
                   />
                 </TableCell>
               </TableRow>

@@ -4,6 +4,7 @@ import { PlusIcon, SlidersHorizontal, Check, RefreshCw, Layers, HardDrive, Cpu, 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
+import DashboardInventoryEditModal from '~/components/dashboard/InventoryEditModal.vue'
 import type { SearchInstanceConfig } from '~/types/search'
 
 definePageMeta({
@@ -21,6 +22,10 @@ const kpis = ref({
   totalGlobalSoftware: 0,
   totalGlobalCost: 0
 })
+
+const showAddModal = ref(false)
+const showEditModal = ref(false)
+const selectedEditItem = ref<any | null>(null)
 
 const inventorySearchConfig = computed<SearchInstanceConfig>(() => ({
   instanceId: 'inventory',
@@ -108,13 +113,31 @@ const addComponent = async (type: string, formData: any) => {
   }
 }
 
+const handleEditItem = (item: any) => {
+  selectedEditItem.value = item
+  showEditModal.value = true
+}
+
+const handleSaveEdit = async (updatedItem: any) => {
+  try {
+    if (updatedItem.id) {
+      await $fetch(`/api/proxy/inventory/components/${updatedItem.id}`, {
+        method: 'PUT',
+        body: updatedItem
+      })
+    }
+  } catch (e) {
+    console.error('Error updating inventory item:', e)
+  } finally {
+    await fetchData()
+  }
+}
+
 watch(activeTab, () => {
   if (activeTab.value !== 'hierarchy') {
     fetchData()
   }
 })
-
-const showAddModal = ref(false)
 
 onMounted(() => {
   fetchData('')
@@ -139,13 +162,13 @@ onMounted(() => {
         <div class="flex flex-wrap items-center gap-3 mt-4">
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
             <Layers class="w-3.5 h-3.5 text-indigo-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Total Assets:</span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase">Total:</span>
             <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalCount || items.length }}</span>
           </div>
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
             <Cpu class="w-3.5 h-3.5 text-emerald-400" />
             <span class="text-[10px] font-bold text-slate-500 uppercase">Hardware:</span>
-            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalHardware || items.filter(i => i.itemType === 'hardware').length }}</span>
+            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalHardware || items.filter(i => i.itemType !== 'software').length }}</span>
           </div>
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
             <HardDrive class="w-3.5 h-3.5 text-blue-400" />
@@ -165,7 +188,7 @@ onMounted(() => {
         <!-- View Mode Switcher -->
         <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex gap-1">
           <Button 
-            variant="ghost"
+            variant="ghost" 
             @click="activeTab = 'hardware'" 
             :class="activeTab === 'hardware' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
             class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
@@ -173,7 +196,7 @@ onMounted(() => {
             Hardware
           </Button>
           <Button 
-            variant="ghost"
+            variant="ghost" 
             @click="activeTab = 'software'" 
             :class="activeTab === 'software' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
             class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
@@ -181,7 +204,7 @@ onMounted(() => {
             Software
           </Button>
           <Button 
-            variant="ghost"
+            variant="ghost" 
             @click="activeTab = 'hierarchy'" 
             :class="activeTab === 'hierarchy' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
             class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
@@ -288,6 +311,7 @@ onMounted(() => {
         :type="activeTab" 
         :loading="loading"
         :columns="columns"
+        @edit="handleEditItem"
       />
     </template>
 
@@ -301,6 +325,14 @@ onMounted(() => {
       @update:open="showAddModal = $event"
       :type="activeTab === 'software' ? 'software' : 'hardware'" 
       @save="addComponent(activeTab, $event)"
+    />
+
+    <!-- Edit Asset Modal Overlay -->
+    <DashboardInventoryEditModal
+      :open="showEditModal"
+      :item="selectedEditItem"
+      @update:open="showEditModal = $event"
+      @save="handleSaveEdit"
     />
   </div>
 </template>
