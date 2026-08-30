@@ -52,6 +52,28 @@ const handleQueueCommand = (pc: IndustrialController) => {
   isCommandModalOpen.value = true
 }
 
+const route = useRoute()
+
+onMounted(() => {
+  if (route.query.selected || route.query.hostname) {
+    const targetId = route.query.selected as string
+    const targetHost = route.query.hostname as string
+    const match = controllers.value.find(c => c.id === targetId || c.hostname === targetHost)
+    if (match) {
+      selectedController.value = match
+    } else if (targetHost) {
+      searchQuery.value = targetHost
+    }
+  }
+})
+
+watch(() => controllers.value, (list) => {
+  if (route.query.selected && !selectedController.value) {
+    const match = list.find(c => c.id === route.query.selected || c.hostname === route.query.hostname)
+    if (match) selectedController.value = match
+  }
+})
+
 const onSearch = (q: string) => {
   searchQuery.value = q
 }
