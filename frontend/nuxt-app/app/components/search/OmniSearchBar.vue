@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { SearchInstanceConfig, SearchResultItem, AutoTagResult } from '~/types/search'
 import { useOmniSearch } from '~/composables/useOmniSearch'
@@ -48,10 +48,14 @@ const showDropdown = computed(() => {
   return (isFocused.value || rawInput.value.length > 0) && (autoSuggestions.value.length > 0 || results.value.length > 0 || searchKeyGroups.value.length > 0)
 })
 
+// Emit live search queries to parent components whenever tags or input change
+watch(effectiveQueryString, (newVal) => {
+  emit('search', newVal)
+})
+
 const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
     e.preventDefault()
-    // If there is an auto-suggestion with high confidence, accept the first one
     if (autoSuggestions.value.length > 0) {
       addTag(autoSuggestions.value[0].tag)
       rawInput.value = ''
@@ -60,8 +64,8 @@ const handleKeydown = (e: KeyboardEvent) => {
       emit('search', effectiveQueryString.value)
     }
   } else if (e.key === 'Backspace' && rawInput.value === '' && tags.value.length > 0) {
-    // Remove the last tag on backspace
     removeTag(tags.value[tags.value.length - 1].id)
+    emit('search', effectiveQueryString.value)
   } else if (e.key === 'Escape') {
     isFocused.value = false
     inputRef.value?.blur()
@@ -91,10 +95,32 @@ const handleKeySelect = (key: string) => {
   inputRef.value?.focus()
 }
 
+const handleClear = () => {
+  clearAllTags()
+  emit('search', '')
+}
+
+const handleGlobalKeydown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    inputRef.value?.focus()
+    isFocused.value = true
+  }
+}
+
 onMounted(() => {
   fetchSearchKeys()
   if (props.immediate) {
     executeSearch()
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('keydown', handleGlobalKeydown)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('keydown', handleGlobalKeydown)
   }
 })
 </script>
@@ -123,7 +149,7 @@ onMounted(() => {
         class="flex-1 min-w-[160px] bg-transparent border-0 text-sm font-bold text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:ring-0 py-1"
         @input="handleInputChange(($event.target as HTMLInputElement).value)"
         @focus="isFocused = true"
-        @blur="setTimeout(() => isFocused = false, 200)"
+        @blur="setTimeout(() => isFocused = false, 250)"
         @keydown="handleKeydown"
       />
 
@@ -132,7 +158,7 @@ onMounted(() => {
         <button
           v-if="tags.length > 0 || rawInput.length > 0"
           type="button"
-          @click.stop="clearAllTags"
+          @click.stop="handleClear"
           class="p-1 text-slate-500 hover:text-slate-300 rounded-lg transition-colors"
           title="Clear search"
         >

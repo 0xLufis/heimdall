@@ -1,12 +1,20 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { IndustrialController } from '~/types/domain'
 
+// Singleton module-scoped reactive state across all components and re-renders
+const globalControllers = ref<IndustrialController[]>([])
+const globalSelectedController = ref<IndustrialController | null>(null)
+const globalIsLoading = ref<boolean>(false)
+const globalLastSyncedAt = ref<Date | null>(null)
+const globalError = ref<string | null>(null)
+let pollTimer: any = null
+
 export const useControllers = () => {
-  const controllers = ref<IndustrialController[]>([])
-  const selectedController = ref<IndustrialController | null>(null)
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
-  let pollTimer: any = null
+  const controllers = globalControllers
+  const selectedController = globalSelectedController
+  const isLoading = globalIsLoading
+  const lastSyncedAt = globalLastSyncedAt
+  const error = globalError
 
   const isOnline = (lastOnline: string | null | undefined): boolean => {
     if (!lastOnline) return false
@@ -46,6 +54,13 @@ export const useControllers = () => {
           isOnline: isOnline(c.lastOnline || c.lastSeen)
         }
       }))
+      lastSyncedAt.value = new Date()
+
+      // If a controller is selected, update its reference in place
+      if (selectedController.value) {
+        const updated = controllers.value.find(c => c.id === selectedController.value?.id)
+        if (updated) selectedController.value = updated
+      }
     } catch (e: any) {
       if (!silent) error.value = e?.message || 'Failed to fetch controllers'
     } finally {
@@ -84,8 +99,10 @@ export const useControllers = () => {
   }
 
   onMounted(() => {
-    fetchControllers(false)
-    if (typeof window !== 'undefined') {
+    if (controllers.value.length === 0) {
+      fetchControllers(false)
+    }
+    if (typeof window !== 'undefined' && !pollTimer) {
       pollTimer = setInterval(() => {
         fetchControllers(true)
       }, 5000)
@@ -103,6 +120,7 @@ export const useControllers = () => {
     controllers,
     selectedController,
     isLoading,
+    lastSyncedAt,
     error,
     isOnline,
     fetchControllers,
