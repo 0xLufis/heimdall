@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useDxfMap } from '~/composables/useDxfMap'
-import { ZoomIn, ZoomOut, Maximize2, Loader2, AlertCircle } from 'lucide-vue-next'
+import { ZoomIn, ZoomOut, Maximize2, Loader2, AlertCircle, Tag } from 'lucide-vue-next'
 
 const props = withDefaults(
   defineProps<{
@@ -24,6 +24,9 @@ const emit = defineEmits<{
 
 const svgContainer = ref<SVGSVGElement | null>(null)
 const { isLoading, error, parsedEntities, viewBox, loadAndParseDxf, zoom, pan } = useDxfMap(props.dxfUrl)
+
+const showLabels = ref(true)
+const hoveredEntity = ref<string | null>(null)
 
 let isDragging = false
 let startDrag = { x: 0, y: 0 }
@@ -82,6 +85,11 @@ const isHighlighted = (entity: any) => {
   return props.highlightedHandles.includes(h) || props.activePin === h
 }
 
+const isHovered = (entity: any) => {
+  const h = entity.handle || entity.block || entity.name
+  return hoveredEntity.value === h
+}
+
 const formatPolylinePoints = (vertices: any[] = []) => {
   return vertices.map(v => `${v.x},${v.y}`).join(' ')
 }
@@ -97,6 +105,18 @@ const getBlockColor = (blockName: string) => {
   if (b.includes('CNC') || b.includes('MECH')) return '#3b82f6' // Blue
   return '#6366f1' // Indigo default
 }
+
+// Calculate badge dimensions based on text length to prevent overlapping
+const getBadgeWidth = (text: string) => {
+  return Math.max(16, (text || '').length * 3.4 + 6)
+}
+
+// Scale text dynamically based on viewBox dimensions
+const labelScale = computed(() => {
+  const baseWidth = 500
+  const currentWidth = viewBox.value.width || 500
+  return Math.max(0.6, Math.min(1.6, currentWidth / baseWidth))
+})
 
 onMounted(() => {
   loadAndParseDxf(props.dxfUrl)
@@ -153,10 +173,10 @@ watch(() => props.dxfUrl, (newUrl) => {
           <polyline
             v-if="(entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') && entity.vertices"
             :points="formatPolylinePoints(entity.vertices)"
-            :stroke="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '#64748b' : entity.layer === 'WALKWAYS' ? '#334155' : '#1e293b'"
-            :stroke-width="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '2.5' : '1.2'"
+            :stroke="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '#475569' : entity.layer === 'WALKWAYS' ? '#334155' : '#1e293b'"
+            :stroke-width="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '2.2' : '1.0'"
             :stroke-dasharray="entity.layer === 'WALKWAYS' ? '4,4' : 'none'"
-            :fill="entity.layer === 'FLOOR' ? 'rgba(30, 41, 59, 0.25)' : 'none'"
+            :fill="entity.layer === 'FLOOR' ? 'rgba(30, 41, 59, 0.2)' : 'none'"
             stroke-linejoin="round"
             stroke-linecap="round"
           />
@@ -170,9 +190,9 @@ watch(() => props.dxfUrl, (newUrl) => {
             :y1="entity.vertices[0].y"
             :x2="entity.vertices[1].x"
             :y2="entity.vertices[1].y"
-            :stroke="entity.layer === 'CONVEYORS' ? '#38bdf8' : entity.layer === 'SAFETY' ? '#eab308' : '#475569'"
-            :stroke-width="entity.layer === 'CONVEYORS' ? '1.5' : '0.8'"
-            :stroke-dasharray="entity.layer === 'SAFETY' ? '3,3' : 'none'"
+            :stroke="entity.layer === 'CONVEYORS' ? '#38bdf8' : entity.layer === 'SAFETY' ? '#eab308' : '#334155'"
+            :stroke-width="entity.layer === 'CONVEYORS' ? '1.4' : '0.8'"
+            :stroke-dasharray="entity.layer === 'SAFETY' ? '3,3' : entity.layer === 'CONVEYORS' ? '6,3' : 'none'"
           />
         </template>
 
@@ -181,6 +201,8 @@ watch(() => props.dxfUrl, (newUrl) => {
           <g 
             v-if="entity.type === 'CIRCLE' && entity.center"
             class="cursor-pointer group"
+            @mouseenter="hoveredEntity = entity.handle || 'tank'"
+            @mouseleave="hoveredEntity = null"
             @click="handleEntityClick(entity, $event)"
             @dblclick="handleEntityDblClick(entity, $event)"
           >
@@ -209,23 +231,36 @@ watch(() => props.dxfUrl, (newUrl) => {
               r="2.5"
               fill="#38bdf8"
             />
-            <!-- Handle Label -->
-            <text
-              v-if="entity.handle"
-              :x="entity.center.x"
-              :y="entity.center.y + (entity.radius || 10) + 10"
-              fill="#38bdf8"
-              font-size="6"
-              font-family="monospace"
-              font-weight="bold"
-              text-anchor="middle"
-            >
-              {{ entity.handle }}
-            </text>
+            <!-- Handle Label with Backdrop Shield -->
+            <g v-if="entity.handle && (showLabels || isHighlighted(entity) || isHovered(entity))">
+              <rect
+                :x="entity.center.x - getBadgeWidth(entity.handle) / 2"
+                :y="entity.center.y + (entity.radius || 10) + 3"
+                :width="getBadgeWidth(entity.handle)"
+                height="6.5"
+                rx="1.5"
+                fill="#030712"
+                :stroke="isHighlighted(entity) ? '#38bdf8' : '#1e293b'"
+                stroke-width="0.5"
+                opacity="0.95"
+              />
+              <text
+                :x="entity.center.x"
+                :y="entity.center.y + (entity.radius || 10) + 7.5"
+                fill="#38bdf8"
+                font-size="3.5"
+                font-family="monospace"
+                font-weight="bold"
+                text-anchor="middle"
+                class="select-none pointer-events-none"
+              >
+                {{ entity.handle }}
+              </text>
+            </g>
           </g>
         </template>
 
-        <!-- Layer 4: CAD Text & Zone Headers -->
+        <!-- Layer 4: CAD Text & Zone Headers (with Halo Stroke to prevent line collisions) -->
         <template v-for="(entity, idx) in parsedEntities" :key="`txt-${idx}`">
           <text
             v-if="entity.type === 'TEXT' && entity.startPoint"
@@ -233,12 +268,12 @@ watch(() => props.dxfUrl, (newUrl) => {
             :y="entity.startPoint.y"
             :transform="entity.rotation ? `rotate(${-entity.rotation}, ${entity.startPoint.x}, ${entity.startPoint.y})` : undefined"
             fill="#94a3b8"
-            :font-size="Math.max(3.5, entity.textHeight || 5)"
+            :font-size="Math.max(3.5, (entity.textHeight || 5) * 0.9)"
             font-family="monospace"
             font-weight="bold"
-            letter-spacing="0.05em"
+            letter-spacing="0.06em"
             text-anchor="middle"
-            class="select-none pointer-events-none"
+            class="select-none pointer-events-none cad-text-halo"
           >
             {{ entity.text }}
           </text>
@@ -250,40 +285,42 @@ watch(() => props.dxfUrl, (newUrl) => {
             v-if="entity.type === 'INSERT' && entity.position"
             :transform="`translate(${entity.position.x}, ${entity.position.y})`"
             class="cursor-pointer group"
+            @mouseenter="hoveredEntity = entity.handle || entity.name"
+            @mouseleave="hoveredEntity = null"
             @click="handleEntityClick(entity, $event)"
             @dblclick="handleEntityDblClick(entity, $event)"
           >
             <!-- Highlight Glow Ring -->
             <rect
               v-if="isHighlighted(entity)"
-              x="-18"
-              y="-18"
-              width="36"
-              height="36"
+              x="-16"
+              y="-16"
+              width="32"
+              height="32"
               rx="6"
               class="fill-indigo-500/20 stroke-indigo-400 stroke-2 animate-pulse"
             />
 
             <!-- Station Housing Box -->
             <rect
-              x="-12"
-              y="-12"
-              width="24"
-              height="24"
-              rx="5"
+              x="-10"
+              y="-10"
+              width="20"
+              height="20"
+              rx="4"
               :fill="isHighlighted(entity) ? '#312e81' : '#0f172a'"
               :stroke="isHighlighted(entity) ? '#818cf8' : getBlockColor(entity.name)"
-              stroke-width="1.5"
+              stroke-width="1.4"
               class="transition-colors group-hover:stroke-white shadow-md"
             />
 
             <!-- Station Type Icon Core -->
             <rect
-              x="-8"
-              y="-8"
-              width="16"
-              height="16"
-              rx="3"
+              x="-6.5"
+              y="-6.5"
+              width="13"
+              height="13"
+              rx="2.5"
               :fill="isHighlighted(entity) ? '#4338ca' : '#1e293b'"
               class="transition-colors"
             />
@@ -292,31 +329,55 @@ watch(() => props.dxfUrl, (newUrl) => {
             <circle
               cx="0"
               cy="0"
-              r="2.5"
+              r="2.2"
               :fill="isHighlighted(entity) ? '#ffffff' : '#10b981'"
               class="animate-pulse"
             />
 
-            <!-- Station Handle Badge -->
-            <text
-              :x="0"
-              :y="19"
-              :fill="isHighlighted(entity) ? '#a5b4fc' : '#cbd5e1'"
-              font-size="5"
-              font-family="monospace"
-              font-weight="bold"
-              text-anchor="middle"
-              class="transition-colors group-hover:fill-white font-mono"
-            >
-              {{ entity.handle || entity.name }}
-            </text>
+            <!-- Non-Overlapping Station Handle Badge with Shield Pill -->
+            <g v-if="showLabels || isHighlighted(entity) || isHovered(entity)">
+              <rect
+                :x="-getBadgeWidth(entity.handle || entity.name) / 2"
+                y="11.5"
+                :width="getBadgeWidth(entity.handle || entity.name)"
+                height="6.5"
+                rx="1.5"
+                fill="#030712"
+                :stroke="isHighlighted(entity) ? '#818cf8' : '#1e293b'"
+                stroke-width="0.5"
+                opacity="0.95"
+              />
+              <text
+                :x="0"
+                y="16"
+                :fill="isHighlighted(entity) ? '#c7d2fe' : '#cbd5e1'"
+                font-size="3.8"
+                font-family="monospace"
+                font-weight="bold"
+                text-anchor="middle"
+                class="select-none pointer-events-none font-mono"
+              >
+                {{ entity.handle || entity.name }}
+              </text>
+            </g>
           </g>
         </template>
       </g>
     </svg>
 
-    <!-- Floating Zoom & Reset Controls -->
+    <!-- Floating CAD Controls -->
     <div class="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
+      <!-- Toggle Labels Button -->
+      <button
+        type="button"
+        @click="showLabels = !showLabels"
+        :class="showLabels ? 'bg-indigo-600 text-white' : 'bg-slate-900/90 text-slate-400 hover:text-slate-200'"
+        class="p-2.5 rounded-xl border border-slate-800 shadow-xl transition-all"
+        :title="showLabels ? 'Hide Labels' : 'Show Labels'"
+      >
+        <Tag class="w-4 h-4" />
+      </button>
+
       <button
         type="button"
         @click="zoom(0.85)"
@@ -346,3 +407,13 @@ watch(() => props.dxfUrl, (newUrl) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.cad-text-halo {
+  paint-order: stroke fill;
+  stroke: #030712;
+  stroke-width: 1.8px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+</style>
