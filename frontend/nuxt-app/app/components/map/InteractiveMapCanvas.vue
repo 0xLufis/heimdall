@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useDxfMap } from '~/composables/useDxfMap'
 import { ZoomIn, ZoomOut, Maximize2, Loader2, AlertCircle } from 'lucide-vue-next'
 
@@ -62,15 +62,15 @@ const handleWheel = (e: WheelEvent) => {
 const handleEntityClick = (entity: any, e: MouseEvent) => {
   e.stopPropagation()
   if (hasMoved) return
-  const handle = entity.handle || entity.block || 'UNKNOWN_HANDLE'
-  const name = entity.name || entity.block || 'Block'
+  const handle = entity.handle || entity.block || entity.name || 'UNKNOWN_HANDLE'
+  const name = entity.name || entity.block || 'Station Block'
   emit('object-clicked', handle, name)
 }
 
 const handleEntityDblClick = (entity: any, e: MouseEvent) => {
   e.stopPropagation()
-  const handle = entity.handle || entity.block || 'UNKNOWN_HANDLE'
-  const name = entity.name || entity.block || 'Block'
+  const handle = entity.handle || entity.block || entity.name || 'UNKNOWN_HANDLE'
+  const name = entity.name || entity.block || 'Station Block'
   emit('object-dblclicked', handle, name)
 }
 
@@ -79,8 +79,12 @@ const resetView = () => {
 }
 
 const isHighlighted = (entity: any) => {
-  const h = entity.handle || entity.block
+  const h = entity.handle || entity.block || entity.name
   return props.highlightedHandles.includes(h) || props.activePin === h
+}
+
+const formatPolylinePoints = (vertices: any[] = []) => {
+  return vertices.map(v => `${v.x},${v.y}`).join(' ')
 }
 
 onMounted(() => {
@@ -123,32 +127,65 @@ watch(() => props.dxfUrl, (newUrl) => {
       @click="emit('map-clicked')"
     >
       <g>
-        <template v-for="(entity, idx) in parsedEntities" :key="idx">
-          <!-- Lines -->
+        <!-- Layer 1: Polylines & Walls & Conveyors -->
+        <template v-for="(entity, idx) in parsedEntities" :key="`poly-${idx}`">
+          <polyline
+            v-if="(entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') && entity.vertices"
+            :points="formatPolylinePoints(entity.vertices)"
+            :stroke="entity.layer === 'WALLS' ? '#475569' : entity.layer === 'CONVEYOR' ? '#3b82f6' : '#334155'"
+            :stroke-width="entity.layer === 'WALLS' ? '2.5' : '1.5'"
+            :stroke-dasharray="entity.layer === 'CONVEYOR' ? '6,3' : 'none'"
+            fill="none"
+          />
+        </template>
+
+        <!-- Layer 2: Grid and Partition Lines -->
+        <template v-for="(entity, idx) in parsedEntities" :key="`line-${idx}`">
           <line
-            v-if="entity.type === 'LINE' && entity.vertices"
+            v-if="entity.type === 'LINE' && entity.vertices && entity.vertices.length >= 2"
             :x1="entity.vertices[0].x"
             :y1="entity.vertices[0].y"
             :x2="entity.vertices[1].x"
             :y2="entity.vertices[1].y"
-            stroke="#334155"
+            stroke="#1e293b"
             stroke-width="1.2"
           />
+        </template>
 
-          <!-- Circles -->
+        <!-- Layer 3: Circles and Tanks -->
+        <template v-for="(entity, idx) in parsedEntities" :key="`circ-${idx}`">
           <circle
-            v-else-if="entity.type === 'CIRCLE' && entity.center"
+            v-if="entity.type === 'CIRCLE' && entity.center"
             :cx="entity.center.x"
             :cy="entity.center.y"
-            :r="entity.radius || 8"
-            fill="#1e293b"
+            :r="entity.radius || 12"
+            fill="#0f172a"
             stroke="#475569"
-            stroke-width="1"
+            stroke-width="1.5"
           />
+        </template>
 
-          <!-- Inserted Machine Blocks / Anchors -->
+        <!-- Layer 4: Zone Headers & Text Labels -->
+        <template v-for="(entity, idx) in parsedEntities" :key="`txt-${idx}`">
+          <text
+            v-if="entity.type === 'TEXT' && entity.startPoint"
+            :x="entity.startPoint.x"
+            :y="entity.startPoint.y"
+            fill="#64748b"
+            font-size="11"
+            font-family="monospace"
+            font-weight="bold"
+            letter-spacing="0.1em"
+            text-anchor="middle"
+          >
+            {{ entity.text }}
+          </text>
+        </template>
+
+        <!-- Layer 5: Inserted Machine Blocks / Interactive Anchors -->
+        <template v-for="(entity, idx) in parsedEntities" :key="`ins-${idx}`">
           <g
-            v-else-if="entity.type === 'INSERT' && entity.position"
+            v-if="entity.type === 'INSERT' && entity.position"
             :transform="`translate(${entity.position.x}, ${entity.position.y})`"
             class="cursor-pointer group"
             @click="handleEntityClick(entity, $event)"
@@ -157,11 +194,11 @@ watch(() => props.dxfUrl, (newUrl) => {
             <!-- Highlight Ring -->
             <rect
               v-if="isHighlighted(entity)"
-              x="-18"
-              y="-18"
-              width="36"
-              height="36"
-              rx="8"
+              x="-20"
+              y="-20"
+              width="40"
+              height="40"
+              rx="10"
               class="fill-indigo-500/20 stroke-indigo-400 stroke-2 animate-pulse"
             />
 
@@ -172,17 +209,17 @@ watch(() => props.dxfUrl, (newUrl) => {
               width="28"
               height="28"
               rx="6"
-              :class="isHighlighted(entity) ? 'fill-indigo-600 stroke-indigo-300' : 'fill-slate-800 hover:fill-slate-700 stroke-slate-600'"
+              :class="isHighlighted(entity) ? 'fill-indigo-600 stroke-indigo-300' : 'fill-slate-900 hover:fill-slate-800 stroke-slate-700 group-hover:stroke-indigo-500'"
               stroke-width="1.5"
               class="transition-colors"
             />
 
-            <!-- Machine Icon Symbol -->
+            <!-- Center Status Indicator -->
             <circle
               cx="0"
               cy="0"
-              r="4"
-              :fill="isHighlighted(entity) ? '#ffffff' : '#94a3b8'"
+              r="3.5"
+              :class="isHighlighted(entity) ? 'fill-white' : 'fill-emerald-400'"
             />
           </g>
         </template>

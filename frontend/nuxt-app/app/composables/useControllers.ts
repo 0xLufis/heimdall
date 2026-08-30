@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { IndustrialController } from '~/types/domain'
 
 export const useControllers = () => {
@@ -6,6 +6,7 @@ export const useControllers = () => {
   const selectedController = ref<IndustrialController | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  let pollTimer: any = null
 
   const isOnline = (lastOnline: string | null | undefined): boolean => {
     if (!lastOnline) return false
@@ -14,8 +15,8 @@ export const useControllers = () => {
     return (now.getTime() - date.getTime()) < (5 * 60 * 1000) // Online within 5 minutes
   }
 
-  const fetchControllers = async () => {
-    isLoading.value = true
+  const fetchControllers = async (silent: boolean = false) => {
+    if (!silent) isLoading.value = true
     error.value = null
     try {
       const data = await $fetch<any[]>('/api/proxy/ClientPc')
@@ -46,9 +47,9 @@ export const useControllers = () => {
         }
       }))
     } catch (e: any) {
-      error.value = e?.message || 'Failed to fetch controllers'
+      if (!silent) error.value = e?.message || 'Failed to fetch controllers'
     } finally {
-      isLoading.value = false
+      if (!silent) isLoading.value = false
     }
   }
 
@@ -79,11 +80,23 @@ export const useControllers = () => {
       method: 'PUT',
       body: payload
     })
-    await fetchControllers()
+    await fetchControllers(true)
   }
 
   onMounted(() => {
-    fetchControllers()
+    fetchControllers(false)
+    if (typeof window !== 'undefined') {
+      pollTimer = setInterval(() => {
+        fetchControllers(true)
+      }, 5000)
+    }
+  })
+
+  onUnmounted(() => {
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
   })
 
   return {

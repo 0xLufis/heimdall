@@ -7,12 +7,17 @@ export default defineNuxtConfig({
     compatibilityVersion: 4
   },
   devtools: { enabled: true },
-  ssr: false,
+  ssr: true,
   css: ['~/assets/css/tailwind.css'],
   vite: {
     plugins: [
       tailwindcss(),
     ],
+    build: {
+      modulePreload: {
+        polyfill: false
+      }
+    },
     server: {
       hmr: {
         clientPort: 3000,
@@ -23,6 +28,9 @@ export default defineNuxtConfig({
         '127.0.0.1'
       ]
     }
+  },
+  experimental: {
+    payloadExtraction: false
   },
   modules: [
     'shadcn-nuxt',
