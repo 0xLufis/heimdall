@@ -2,6 +2,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Button } from '~/components/ui/button'
+import DashboardUserAvatar from './UserAvatar.vue'
+import DashboardRoleBadge from './RoleBadge.vue'
 
 defineProps<{
   users: any[],

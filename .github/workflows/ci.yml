@@ -46,5 +46,11 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      - name: Generate Nuxt Types & Tsconfig
+        run: bun x nuxt prepare
+
       - name: Run Frontend Vitest Suite
         run: bun x vitest run
+
+      - name: Build Frontend Application
+        run: bun run build
