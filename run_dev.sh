@@ -144,6 +144,24 @@ stop_services() {
     echo "All services stopped."
 }
 
+clean_environment() {
+    echo "========================================"
+    echo " Cleaning all Heimdall processes & ports"
+    echo "========================================"
+    stop_services
+    pkill -9 -f "App.Backend.Api" 2>/dev/null || true
+    pkill -9 -f "App.Agent.Daemon" 2>/dev/null || true
+    pkill -9 -f "dotnet exec" 2>/dev/null || true
+    pkill -9 -f "dotnet run" 2>/dev/null || true
+    pkill -9 -f "dotnet watch" 2>/dev/null || true
+    pkill -9 -f "fleet_simulator.py" 2>/dev/null || true
+    if command -v zellij >/dev/null 2>&1; then
+        zellij delete-session "$SESSION_NAME" 2>/dev/null || true
+    fi
+    rm -rf "$PID_DIR"/*
+    echo "Environment clean. Ports 5099, 5001, 3000, 5432, 6379 released."
+}
+
 start_services() {
     echo "========================================"
     echo " Starting Heimdall in Background Daemon Mode"
@@ -198,6 +216,48 @@ start_zellij() {
     fi
 }
 
+docker_dev() {
+    local action="${1:-up}"
+    shift || true
+    case "$action" in
+        up|start)
+            clean_environment
+            echo "Starting Heimdall Containerized Dev Environment via Docker Compose..."
+            docker compose up -d "$@"
+            echo ""
+            echo "Heimdall services started in containers:"
+            echo "  - Web Frontend:  http://localhost:3000"
+            echo "  - REST API:      http://localhost:5099/swagger"
+            echo "  - gRPC Collector: localhost:5001"
+            echo "  - pgAdmin:       http://localhost:5050 (demo@example.com / secret)"
+            echo "  - PostgreSQL:    localhost:5432"
+            echo "  - Redis Cache:   localhost:6379"
+            echo ""
+            echo "Use './run_dev.sh docker logs -f' to stream logs."
+            ;;
+        down|stop)
+            echo "Stopping Heimdall Containerized Dev Environment..."
+            docker compose down "$@"
+            ;;
+        build)
+            echo "Building Heimdall container images..."
+            docker compose build "$@"
+            ;;
+        logs)
+            docker compose logs "$@"
+            ;;
+        ps|status)
+            docker compose ps "$@"
+            ;;
+        restart)
+            docker compose restart "$@"
+            ;;
+        *)
+            docker compose "$action" "$@"
+            ;;
+    esac
+}
+
 start_dev() {
     local mode="$1"
 
@@ -239,10 +299,12 @@ show_help() {
     echo "Commands:"
     echo "  start [options]     Start development environment (defaults to Zellij if installed, or background daemons)"
     echo "                      Options: --daemon, -d, --no-zellij (runs in background without multiplexer)"
-    echo "  stop                Stop all running services, Zellij sessions, and Docker database"
+    echo "  stop                Stop running services, Zellij sessions, and Docker database"
+    echo "  clean               Force kill all lingering host processes and free all network ports"
     echo "  restart [service]   Restart all or a specific service (backend, frontend, agent, simulator, db)"
     echo "  status [-w|--watch] Display service health matrix (pass -w for live updating dashboard)"
     echo "  monitor, watch      Launch continuous, live-updating service health dashboard"
+    echo "  docker [action]     Manage containerized development stack (up, down, build, logs, ps)"
     echo "  logs [service]      Stream logs for a service (backend, frontend, agent, simulator, db)"
     echo "  zellij              Explicitly launch or attach to Zellij session"
     echo "  daemon              Explicitly start services in background daemon mode"
@@ -256,6 +318,9 @@ case "$1" in
         ;;
     stop)
         stop_services
+        ;;
+    clean)
+        clean_environment
         ;;
     restart)
         stop_services
@@ -271,6 +336,10 @@ case "$1" in
         ;;
     monitor|watch)
         watch_status
+        ;;
+    docker|compose)
+        shift
+        docker_dev "$@"
         ;;
     logs)
         show_logs "$2"

@@ -175,8 +175,9 @@ export default defineEventHandler(async (event) => {
 
   let allItems: any[] = []
 
+  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   try {
-    const raw = await $fetch<any[]>('http://localhost:5099/api/inventory', {
+    const raw = await $fetch<any[]>(`${backendBase}/api/inventory`, {
       headers: event.headers as any
     })
     if (raw && Array.isArray(raw) && raw.length > 0) {

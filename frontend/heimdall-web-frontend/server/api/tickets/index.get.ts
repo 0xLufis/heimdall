@@ -13,8 +13,9 @@ export default defineEventHandler(async (event) => {
 
   let allTickets: any[] = []
 
+  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   try {
-    const rawList = await $fetch<any[]>('http://localhost:5099/api/MaintenanceTicket', {
+    const rawList = await $fetch<any[]>(`${backendBase}/api/MaintenanceTicket`, {
       headers: event.headers as any
     })
     if (rawList && rawList.length > 0) {

@@ -1,0 +1,26 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0
+
+WORKDIR /workspace
+
+# Copy Directory.Build.props and project files for layer caching
+COPY Directory.Build.props ./
+COPY shared/App.Shared/App.Shared.csproj ./shared/App.Shared/
+COPY backend/App.Infrastructure/App.Infrastructure.csproj ./backend/App.Infrastructure/
+COPY backend/App.Backend.Api/App.Backend.Api.csproj ./backend/App.Backend.Api/
+
+# Restore dependencies
+RUN dotnet restore backend/App.Backend.Api/App.Backend.Api.csproj
+
+# Copy source code
+COPY shared/ ./shared/
+COPY backend/ ./backend/
+
+WORKDIR /workspace/backend/App.Backend.Api
+
+EXPOSE 5099 5001
+
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:5099;http://+:5001
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1
+
+ENTRYPOINT ["dotnet", "watch", "run", "--non-interactive"]

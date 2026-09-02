@@ -24,10 +24,12 @@ _heimdall_run_dev() {
     commands=(
         'start:Start all background services (PostgreSQL, Backend API, Nuxt Frontend, Agent Daemon, Fleet Simulator)'
         'stop:Stop all running Heimdall background services and processes'
+        'clean:Force kill all lingering host processes and free all network ports'
         'restart:Restart all services or a specific subsystem'
         'status:Display real-time status matrix for all services (supports -w for live monitor)'
         'monitor:Launch continuous, live-updating service health dashboard'
         'watch:Launch continuous, live-updating service health dashboard'
+        'docker:Manage containerized development stack (up, down, build, logs, ps)'
         'daemon:Start development services in background daemon mode'
         'logs:Tail log streams for a specific subsystem'
         'zellij:Launch interactive multi-pane Zellij terminal workspace'

@@ -212,9 +212,10 @@ export default defineEventHandler(async (event) => {
 
   let rawList: any[] = []
 
+  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   try {
     if (primaryKey === 'client') {
-      const pcs = await $fetch<any[]>('http://localhost:5099/api/ClientPc', {
+      const pcs = await $fetch<any[]>(`${backendBase}/api/ClientPc`, {
         headers: event.headers as any
       })
       if (pcs && Array.isArray(pcs) && pcs.length > 0) {
@@ -233,7 +234,7 @@ export default defineEventHandler(async (event) => {
         }))
       }
     } else {
-      const machines = await $fetch<any[]>('http://localhost:5099/api/inventory/machines', {
+      const machines = await $fetch<any[]>(`${backendBase}/api/inventory/machines`, {
         headers: event.headers as any
       })
       if (machines && Array.isArray(machines) && machines.length > 0) {

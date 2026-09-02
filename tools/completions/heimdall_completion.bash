@@ -13,7 +13,7 @@ _heimdall_run_dev_completion() {
     local cur prev words cword
     _init_completion || return
 
-    local commands="start stop restart status monitor watch logs zellij daemon completion help"
+    local commands="start stop clean restart status monitor watch docker logs zellij daemon completion help"
     local services="backend frontend agent simulator db all"
 
     if [ "$cword" -eq 1 ]; then
