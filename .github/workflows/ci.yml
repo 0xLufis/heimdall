@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend-test:
-    name: Backend CI (.NET 9)
+    name: Backend CI (.NET 10)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
@@ -17,7 +17,7 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore Dependencies
         run: dotnet restore

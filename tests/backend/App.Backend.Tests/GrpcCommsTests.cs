@@ -67,7 +67,7 @@ public class GrpcCommsTests : IClassFixture<CustomWebApplicationFactory>
 }
 
 // Custom WebApplicationFactory to override services for testing
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+public class CustomWebApplicationFactory : WebApplicationFactory<App.Backend.Api.Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

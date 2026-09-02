@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-App.Agent.Daemon-b6d14ba2-0a68-4282-b8ca-a994dc3c6ad1</UserSecretsId>
@@ -10,16 +10,16 @@
 
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.33.1" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.76.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.76.0">
+    <PackageReference Include="Google.Protobuf" Version="3.36.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.83.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.83.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.12" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.12" />
-    <PackageReference Include="System.Management" Version="9.0.12" />
-    <PackageReference Include="System.IO.Hashing" Version="9.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
+    <PackageReference Include="System.Management" Version="10.0.11" />
+    <PackageReference Include="System.IO.Hashing" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>

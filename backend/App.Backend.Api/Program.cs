@@ -167,4 +167,7 @@ if (app.Environment.IsDevelopment())
 
 app.Run();
 
-public partial class Program { }
+namespace App.Backend.Api
+{
+    public partial class Program { }
+}

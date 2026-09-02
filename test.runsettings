@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <DotNetHostPath>/home/lufis/.dotnet/dotnet</DotNetHostPath>
+    <EnvironmentVariables>
+      <DOTNET_ROOT>/home/lufis/.dotnet</DOTNET_ROOT>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

@@ -6,5 +6,6 @@
     <Authors>Heimdall Team</Authors>
     <Company>Heimdall Industrial Systems</Company>
     <Product>Heimdall OT Asset Management Platform</Product>
+    <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
   </PropertyGroup>
 </Project>

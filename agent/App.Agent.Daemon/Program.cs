@@ -88,3 +88,8 @@ app.MapPost("/api/config", (ConfigurationService configService, AgentConfig newC
 });
 
 app.Run();
+
+namespace App.Agent.Daemon
+{
+    public partial class Program { }
+}
