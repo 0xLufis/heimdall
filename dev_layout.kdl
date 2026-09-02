@@ -1,26 +1,41 @@
 layout {
-    pane size=1 borderless=true {
-        plugin location="zellij:tab-bar"
-    }
-    pane split_direction="vertical" {
-        pane split_direction="horizontal" {
-            pane name="Backend API" command="bash" {
-                args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet run --project backend/App.Backend.Api"
-            }
-            pane name="Local Agent" command="bash" {
-                args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet run --project agent/App.Agent.Daemon"
-            }
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
         }
-        pane split_direction="horizontal" {
-            pane name="Web Frontend" command="bash" {
-                args "-c" "export PATH=\"$HOME/.bun/bin:$PATH\" && cd frontend/heimdall-web-frontend && bun run dev"
-            }
-            pane name="Fleet Simulator" command="bash" {
-                args "-c" "source venv/bin/activate && python simulators/edge-fleet-simulator/fleet_simulator.py"
-            }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
         }
     }
-    pane size=2 borderless=true {
-        plugin location="zellij:status-bar"
+
+    tab name="Services" focus=true {
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane name="Backend API (.NET 9 Hot-Reload)" command="bash" {
+                    args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet watch --project backend/App.Backend.Api run"
+                }
+                pane name="Local Agent (.NET 9 Hot-Reload)" command="bash" {
+                    args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet watch --project agent/App.Agent.Daemon run"
+                }
+            }
+            pane split_direction="horizontal" {
+                pane name="Web Frontend (Nuxt 4 Vite HMR)" command="bash" {
+                    args "-c" "export PATH=\"$HOME/.bun/bin:$PATH\" && cd frontend/heimdall-web-frontend && bun run dev"
+                }
+                pane name="Fleet Simulator" command="bash" {
+                    args "-c" "[ -f venv/bin/activate ] && source venv/bin/activate; python3 simulators/edge-fleet-simulator/fleet_simulator.py"
+                }
+            }
+        }
+    }
+
+    tab name="Monitor & Shell" {
+        pane split_direction="horizontal" {
+            pane name="Live Service Health Monitor" command="bash" {
+                args "-c" "python3 tools/dev_manager.py watch"
+            }
+            pane name="Developer Shell"
+        }
     }
 }

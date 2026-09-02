@@ -87,13 +87,30 @@ def run_tests():
     print("\n✅ Verification Suite Execution Finished.")
     return True
 
+def watch_status(interval=2.0):
+    """Continuously refresh service status in terminal."""
+    try:
+        while True:
+            # Clear terminal screen and reset cursor
+            sys.stdout.write("\033[2J\033[H")
+            sys.stdout.flush()
+            get_status()
+            current_time = time.strftime('%Y-%m-%d %H:%M:%S')
+            print(f"\n\033[90m[Live Updating] Last refreshed: {current_time} | Press Ctrl+C to exit monitor.\033[0m")
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\n\033[93mMonitor stopped.\033[0m")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Heimdall Dev Manager")
-    parser.add_argument("command", choices=["status", "check-health", "test"], help="Dev manager command")
+    parser.add_argument("command", choices=["status", "watch", "check-health", "test"], help="Dev manager command")
+    parser.add_argument("--interval", type=float, default=2.0, help="Refresh interval in seconds for watch mode")
     args = parser.parse_args()
 
     if args.command == "status":
         get_status()
+    elif args.command == "watch":
+        watch_status(interval=args.interval)
     elif args.command == "check-health":
         ok = get_status()
         sys.exit(0 if ok else 1)

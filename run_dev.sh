@@ -76,6 +76,29 @@ check_status() {
     fi
 }
 
+watch_status() {
+    if [ -f "tools/dev_manager.py" ]; then
+        python3 tools/dev_manager.py watch
+    else
+        while true; do
+            clear
+            check_status
+            echo ""
+            echo "[Live Updating] Refreshed at $(date +%T). Press Ctrl+C to exit."
+            sleep 2
+        done
+    fi
+}
+
+ensure_database() {
+    if [ -d "infra/database" ]; then
+        if ! check_tcp 127.0.0.1 5432 || ! check_tcp 127.0.0.1 6379; then
+            echo "Ensuring PostgreSQL & Redis are running via Docker Compose..."
+            (cd infra/database && docker compose up -d 2>/dev/null || true)
+        fi
+    fi
+}
+
 stop_services() {
     echo "========================================"
     echo " Stopping Heimdall Services..."
@@ -98,12 +121,15 @@ stop_services() {
         fi
     done
 
-    # 3. Clean up lingering development processes
+    # 3. Clean up development processes (including dotnet watch)
+    pkill -f "dotnet watch.*backend/App.Backend.Api" 2>/dev/null || true
+    pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
     pkill -f "dotnet run --project backend/App.Backend.Api" 2>/dev/null || true
     pkill -f "dotnet run --project agent/App.Agent.Daemon" 2>/dev/null || true
     pkill -f "bun.*heimdall-web-frontend" 2>/dev/null || true
     pkill -f "nuxt/bin/nuxt" 2>/dev/null || true
     pkill -f "fleet_simulator.py" 2>/dev/null || true
+    pkill -f "dev_manager.py watch" 2>/dev/null || true
 
     sleep 1
 
@@ -120,33 +146,27 @@ stop_services() {
 
 start_services() {
     echo "========================================"
-    echo " Starting Heimdall Development Environment"
+    echo " Starting Heimdall in Background Daemon Mode"
     echo "========================================"
 
-    # 1. Ensure Database is running
-    if [ -d "infra/database" ]; then
-        echo "Starting Database via Docker Compose..."
-        cd infra/database
-        docker compose up -d 2>/dev/null || true
-        cd "$SCRIPT_DIR"
-    fi
+    ensure_database
 
-    # 2. Start Backend API
+    # 2. Start Backend API with hot-reload watch
     if ! check_tcp 127.0.0.1 5099; then
-        echo "Starting Backend API (http://localhost:5099 & gRPC :5001)..."
-        (export DOTNET_ROOT="$HOME/.dotnet" && export PATH="$HOME/.dotnet:$PATH" && cd backend/App.Backend.Api && nohup dotnet run </dev/null > /tmp/heimdall-backend.log 2>&1 & echo $! > "$PID_DIR/backend.pid")
+        echo "Starting Backend API with hot-reload (http://localhost:5099 & gRPC :5001)..."
+        (export DOTNET_ROOT="$HOME/.dotnet" && export PATH="$HOME/.dotnet:$PATH" && cd backend/App.Backend.Api && nohup dotnet watch run </dev/null > /tmp/heimdall-backend.log 2>&1 & echo $! > "$PID_DIR/backend.pid")
     fi
 
-    # 3. Start Nuxt Frontend
+    # 3. Start Nuxt Frontend with Vite HMR
     if ! check_tcp 127.0.0.1 3000; then
         echo "Starting Heimdall Web Frontend on http://localhost:3000..."
-        (cd "$SCRIPT_DIR/frontend/heimdall-web-frontend" && nohup node ./node_modules/nuxt/bin/nuxt.mjs dev --host 0.0.0.0 --port 3000 </dev/null > /tmp/heimdall-nuxt.log 2>&1 & echo $! > "$PID_DIR/frontend.pid")
+        (cd "$SCRIPT_DIR/frontend/heimdall-web-frontend" && nohup bun run dev </dev/null > /tmp/heimdall-nuxt.log 2>&1 & echo $! > "$PID_DIR/frontend.pid")
     fi
 
-    # 4. Start Agent Daemon
+    # 4. Start Agent Daemon with hot-reload watch
     if ! is_running "$PID_DIR/agent.pid"; then
-        echo "Starting Agent Daemon..."
-        (export DOTNET_ROOT="$HOME/.dotnet" && export PATH="$HOME/.dotnet:$PATH" && cd agent/App.Agent.Daemon && nohup dotnet run </dev/null > /tmp/heimdall-agent.log 2>&1 & echo $! > "$PID_DIR/agent.pid")
+        echo "Starting Agent Daemon with hot-reload..."
+        (export DOTNET_ROOT="$HOME/.dotnet" && export PATH="$HOME/.dotnet:$PATH" && cd agent/App.Agent.Daemon && nohup dotnet watch run </dev/null > /tmp/heimdall-agent.log 2>&1 & echo $! > "$PID_DIR/agent.pid")
     fi
 
     # 5. Start Industrial Edge Fleet Simulator
@@ -157,7 +177,7 @@ start_services() {
         (nohup $python_bin simulators/edge-fleet-simulator/fleet_simulator.py </dev/null > /tmp/heimdall-simulator.log 2>&1 & echo $! > "$PID_DIR/simulator.pid")
     fi
 
-    echo "Services initialized. Use './run_dev.sh status' to monitor."
+    echo "Services initialized. Use './run_dev.sh status -w' or './run_dev.sh monitor' to view live status."
 }
 
 start_zellij() {
@@ -167,8 +187,39 @@ start_zellij() {
         return
     fi
 
-    echo "Launching Zellij session: $SESSION_NAME..."
-    zellij --session "$SESSION_NAME" --layout "$LAYOUT_FILE"
+    ensure_database
+
+    if zellij list-sessions 2>/dev/null | grep -q "^$SESSION_NAME"; then
+        echo "Attaching to existing Zellij session: $SESSION_NAME..."
+        exec zellij attach "$SESSION_NAME"
+    else
+        echo "Launching Zellij multiplexer session: $SESSION_NAME with live hot-reload layout..."
+        exec zellij --session "$SESSION_NAME" --layout "$LAYOUT_FILE"
+    fi
+}
+
+start_dev() {
+    local mode="$1"
+
+    # If background daemon mode requested or non-interactive terminal, run background services
+    if [ "$mode" = "--daemon" ] || [ "$mode" = "--no-zellij" ] || [ "$mode" = "--background" ] || [ "$mode" = "-d" ] || ! [ -t 0 ]; then
+        start_services
+        return
+    fi
+
+    # Zellij auto-detection: if installed and interactive, use Zellij
+    if command -v zellij >/dev/null 2>&1; then
+        start_zellij
+    else
+        echo "Zellij is not installed on this system. Starting background daemons..."
+        start_services
+        if [ -t 0 ]; then
+            echo ""
+            echo "Starting live health monitor (Press Ctrl+C to exit monitor while leaving services running)..."
+            sleep 1.5
+            watch_status
+        fi
+    fi
 }
 
 output_completion() {
@@ -186,19 +237,22 @@ show_help() {
     echo "Usage: ./run_dev.sh [COMMAND] [OPTIONS]"
     echo ""
     echo "Commands:"
-    echo "  start               Start all services in the background"
-    echo "  stop                Stop all running services and cleanup processes"
+    echo "  start [options]     Start development environment (defaults to Zellij if installed, or background daemons)"
+    echo "                      Options: --daemon, -d, --no-zellij (runs in background without multiplexer)"
+    echo "  stop                Stop all running services, Zellij sessions, and Docker database"
     echo "  restart [service]   Restart all or a specific service (backend, frontend, agent, simulator, db)"
-    echo "  status              Display live service health and port matrix"
+    echo "  status [-w|--watch] Display service health matrix (pass -w for live updating dashboard)"
+    echo "  monitor, watch      Launch continuous, live-updating service health dashboard"
     echo "  logs [service]      Stream logs for a service (backend, frontend, agent, simulator, db)"
-    echo "  zellij              Start development environment in Zellij multiplexer"
+    echo "  zellij              Explicitly launch or attach to Zellij session"
+    echo "  daemon              Explicitly start services in background daemon mode"
     echo "  completion [shell]  Output shell completion code (bash, zsh)"
     echo "  help, -h, --help    Show this help message"
 }
 
 case "$1" in
     start)
-        start_services
+        start_dev "$2"
         ;;
     stop)
         stop_services
@@ -206,16 +260,26 @@ case "$1" in
     restart)
         stop_services
         sleep 1
-        start_services
+        start_dev "$2"
         ;;
     status)
-        check_status
+        if [ "$2" = "-w" ] || [ "$2" = "--watch" ]; then
+            watch_status
+        else
+            check_status
+        fi
+        ;;
+    monitor|watch)
+        watch_status
         ;;
     logs)
         show_logs "$2"
         ;;
     zellij)
         start_zellij
+        ;;
+    daemon)
+        start_services
         ;;
     completion)
         output_completion "$2"
@@ -225,7 +289,7 @@ case "$1" in
         ;;
     *)
         if [ -z "$1" ]; then
-            start_services
+            start_dev
         else
             echo "Unknown command: $1"
             echo "Run './run_dev.sh help' for usage instructions."
