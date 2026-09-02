@@ -17,12 +17,13 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:17.9
+    image: postgres:18
     container_name: postgres_heimdall
     hostname: postgres
     ports:
       - "5432:5432"
     environment:
+      PGDATA: /var/lib/postgresql/data
       POSTGRES_USER_FILE: /run/secrets/pg_user
       POSTGRES_DB: heimdall_dev_db
       POSTGRES_PASSWORD_FILE: /run/secrets/pg_pw
