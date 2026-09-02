@@ -12,6 +12,7 @@
 # Ignore crash logs and test results
 # TestResults/
 *.log
+*.local.runsettings
 
 # ==========================================
 # Nuxt 4 / Node.js Frontend 

@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <UseAppHost>false</UseAppHost>
-    <RunSettingsFilePath>$(MSBuildThisFileDirectory)../../../test.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>
