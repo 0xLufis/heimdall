@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useAssetReferenceCache } from '../../../frontend/nuxt-app/app/composables/useAssetReferenceCache'
-import { useInventoryProvisioning } from '../../../frontend/nuxt-app/app/composables/useInventoryProvisioning'
+import { useAssetReferenceCache } from '../../../frontend/heimdall-web-frontend/app/composables/useAssetReferenceCache'
+import { useInventoryProvisioning } from '../../../frontend/heimdall-web-frontend/app/composables/useInventoryProvisioning'
 
 describe('Asset Reference Cache & Unified Search Source Suite', () => {
   const mockManufacturers = [

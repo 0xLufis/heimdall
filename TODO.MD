@@ -1,76 +1,58 @@
 # Heimdall Development Roadmap & Action Items
 
-> **Status:** Active Development (PoC / Architectural Refactoring Phase)
+> **Status:** Active Development (V1 Architecture & Enterprise Governance Implemented)
 
 ---
 
-## Milestone 1: Core Domain Graph Model & Database Schema
-- [x] Refactor domain model from rigid component tree to graph-relational architecture.
-- [x] Establish `StationController` junction table for M:N relationships between Production Stations and IPCs/Controllers.
-- [x] Separate `HardwareComponent` and `SoftwareAsset` entities with relational junction tables (`ControllerHardware`, `StationHardware`, `ControllerSoftware`).
-- [x] Add specialized controller classification (`IPC`, `PLC`, `SoftPLC`, `RobotController`, `Dispenser`, `VisionController`, `AutonomousDevice`).
-- [x] Implement `EquipmentInterconnect` entity for OT fieldbus topology (EtherCAT, PROFINET, OPC UA, Modbus TCP).
-- [ ] Generate EF Core migration for schema updates (`backend` & `shared` projects).
-- [ ] Update seed data scripts (`seed_data/inventory_seed.csv`, `incremental_seed.py`, `simulate_pcs.py`) to support M:N station-controller relationships.
+## Milestone 1: Monorepo Organization, Direct V1 API & Contracts
+- [x] Standardize repository structure (`frontend/heimdall-web-frontend`, `simulators/edge-fleet-simulator/`, `tools/cad/`, `tools/dev_manager.py`).
+- [x] Version REST API controllers directly under `api/v1/` (`[Route("api/v1/[controller]")]`) without legacy fallbacks.
+- [x] Version Protobuf gRPC contracts (`package heimdall.telemetry.v1;`).
+- [x] Add database schema version manifest tracking (`schema_version_manifest`).
 
 ---
 
-## Milestone 2: Industrial Edge Agent & System Telemetry
-- [x] Design WMI / P/Invoke telemetry contract for Beckhoff Real-Time Ethernet Drivers (`TcRTEthernet`, `TcEth`).
-- [x] Implement Registry uninstall key scanner for fast installed software detection on Windows IPCs.
-- [x] Add Beckhoff TwinCAT ADS System API integration and EtherCAT diagnostics (`DevState`, `ST_EcSlaveState`, `WcState`, CRC counters, SDO).
-- [x] Implement Declarative Recipe Engine with Multi-Recipe Runtime Merger (CSTK deduplication, strictest min-interval, deepest scope).
-- [x] Add 4-tier priority channels, Token Bucket network rate limiting, xxHash64 delta evaluation, and store-and-forward SQLite WAL spooling.
-- [x] Implement PII-safe filesystem scanner with strict directory pruning (Chrome, Edge, Firefox, cookies, user docs) and process secret scrubber.
-- [x] Hardware-bound configuration encryption (Windows DPAPI & Linux AES-256-GCM HKDF Machine-Binding).
+## Milestone 2: Enterprise Identity, Dynamic Security Groups & RBAC Governance
+- [x] Add fine-grained ASP.NET Core authorization policies (`SystemAdministration`, `EndpointConfigManagement`, `RemoteExecution`, `MaintenanceOperations`).
+- [x] Lock endpoint configuration updates and remote execution behind engineering and higher roles (`admin`, `system_admin`, `lead_engineer`, `engineer`, `controls_engineer`).
+- [x] Implement dynamic Active Directory and Microsoft Entra ID Security Group mapping (`SecurityGroupMapping`, `DynamicSecurityGroupClaimsTransformer`).
+- [x] Create Admin Security Groups Dashboard (`/dashboard/security-groups`) with interactive token claims evaluation sandbox.
 
 ---
 
-## Milestone 3: Industrial Integration APIs (OPC UA & Copia Automation)
-- [x] Architectural blueprint for Heimdall OPC UA Server & Gateway (`opc.tcp://0.0.0.0:4840/Heimdall`).
-- [x] Design Copia Automation Git integration blueprint for PLC/Soft-PLC project version tracking.
-- [ ] Implement Copia webhook receiver in .NET Web API (`/api/v1/integrations/copia/webhook`).
-- [ ] Implement OPC UA Information Model mapping aligned with OPC 10000-100 (Devices) and OPC IA specs.
+## Milestone 3: Master System Governance & Edge Agent Encryption Policies
+- [x] Create Master System Settings entity and backend management controllers (`SystemSetting`, `SystemSettingsController`).
+- [x] Create Master System Governance Admin UI (`/dashboard/admin/system-settings`) covering:
+  - Auth & Session Governance (Session TTL, MFA enforcement, failed login lockout).
+  - OT Integrations (OPC UA Gateway endpoints, security policies, Copia Automation Git webhooks).
+  - mTLS & X.509 Certificate Authority (`ClientCertificateRecord`, issuance & revocation).
+  - Agent Master Policy & Encryption Templates (Hardware-bound sealing, AES-256-GCM / DPAPI spool encryption, remote execution kill-switch, token-bucket egress throttles, fleet push).
+- [x] Update Daemon Agent `AgentConfig` and `Worker.cs` to enforce signed master policies and execution kill-switches.
 
 ---
 
-## Milestone 4: TISAX Security Compliance & Auditing
-- [x] TISAX (VDA ISA 6.0) security assessment framework mapping.
-- [x] Enforce EF Core Global Query Filters for multi-tenant isolation (`OrganizationId`).
-- [x] Command signature validation for queued agent operations.
-- [ ] Add automated security audit logging for configuration changes and user logins (`audit_logs`).
-- [ ] Implement mTLS support for gRPC Agent telemetry channel.
+## Milestone 4: Seed Data Pipeline & Industrial Simulator Suite
+- [x] Create unified transactional seed generator and referential integrity validator (`seed_data/seed_pipeline.py`).
+- [x] Build multi-device object-oriented Industrial Edge Fleet Simulator (`simulators/edge-fleet-simulator/fleet_simulator.py`) supporting TwinCAT ADS, SIMATIC, Linux edge terminals, sine-wave telemetry, anomaly injection, and live CLI monitoring.
+- [x] Build Dev Manager orchestrator & health checker (`tools/dev_manager.py`).
 
 ---
 
-## Milestone 5: Database Caching, Indexing & Performance Optimization
-- [x] Multi-tier caching strategy (L1 `IMemoryCache` for static references, L2 Redis for telemetry state).
-- [x] Data tiering specification (Instant Summary Payload vs. On-Demand Lazy Queries).
-- [x] PostgreSQL GIN indexing for JSONB columns (`system_metadata`, `metadata`).
-- [x] Configure Redis L2 cache provider in `App.Backend.Api`.
-- [ ] Add database ETag / Conditional GET middleware (`304 Not Modified`) in Nuxt Nitro BFF.
+## Milestone 5: Specialized Subagent Roster for Future Development
+The following subagents are defined for specialized execution of upcoming roadmap features:
+
+1. **`agent_system_governance`**: Oversees RBAC policies, mTLS certificate lifecycles, and configuration synchronization between the master backend and edge daemons.
+2. **`agent_ad_entra_identity`**: Implements Microsoft Graph API / SCIM group auto-sync, OIDC authentication hooks, and multi-tenant domain partitioning.
+3. **`agent_ot_integrations`**: Implements the full OPC UA Information Model (OPC 10000-100 Devices) and Copia Automation Git webhook change analyzer.
+4. **`agent_telemetry_ui`**: Builds high-frequency real-time telemetry dashboards (`/dashboard/telemetry`), live EtherCAT topology visualizers, and Structured Text DUT inspectors.
+5. **`agent_reporting_export`**: Builds streaming mass-data export pipelines for `.xlsx` (OpenXML) and `.xlsb` (Binary Excel), with automated email/Graph dispatching.
 
 ---
 
-## Milestone 6: Frontend Offloading & UI Refactoring
-- [x] Fix Nuxt 4 `shadcn-vue` component structure (`app/components/ui/searchable-select/`).
-- [x] Configure Vitest test runner with JSDOM environment and alias resolving.
-- [x] Modularize `AppSidebar.vue` and `useAppSettings.ts` composables.
-- [ ] Move client-side sorting, filtering, and aggregation to Nuxt Nitro server routes (`server/api/`).
-- [ ] Add spatial layout viewer component with interactive DXF handle selection.
+## Milestone 6: Upcoming Milestones
+- [ ] Implement live OPC UA server node manager in `backend/App.Backend.Api/Services/OpcUaGatewayService.cs`.
+- [ ] Implement Copia Git webhook handler in `backend/App.Backend.Api/Services/CopiaIntegrationService.cs`.
+- [ ] Build `/dashboard/telemetry` live SignalR gauge visualizer in Nuxt 4.
+- [ ] Build ClosedXML / EPPlus mass `.xlsx` and `.xlsb` streaming export endpoints.
 
----
-
-## Milestone 7: Telemetry Visualization & Remote Agent Configuration UI
-- [ ] Implement Live Telemetry Dashboard (`/dashboard/telemetry`) with real-time SignalR telemetry feeds, station cards, and spindle/metric gauges.
-- [ ] Create Over-the-Wire Agent Configuration UI (`/dashboard/agent-config`) to remotely manage recipes, update polling strategies, configure driver endpoints, inspect merged DAG execution graphs, and adjust token-bucket egress throttles.
-- [ ] Build EtherCAT Topology Visualizer (`/dashboard/fieldbus/ethercat`) rendering live slave states (`INIT`..`OP`), Working Counter (`WcState`) error counters, and CRC diagnostics.
-- [ ] Add TcOpen `_data` inspector component to live-browse Structured Text DUT values with Zod runtime validation.
-
----
-
-## Milestone 8: Automated Data Export & Reporting Engine (XLSX & XLSB)
-- [ ] Build streaming Excel export engine supporting `.xlsx` (OpenXML / ClosedXML / EPPlus) and `.xlsb` (Binary Excel format for ultra-compact high-speed mass data reporting).
-- [ ] Implement Automated Scheduled Report Dispatcher (Cron-scheduled telemetry reports with customizable templates via SMTP / SendGrid / Microsoft Graph API).
-- [ ] Add Frontend 1-Click Export UI to download telemetry history, ticket metrics, and inventory trees in `.xlsx`, `.xlsb`, and `.csv` formats.
 

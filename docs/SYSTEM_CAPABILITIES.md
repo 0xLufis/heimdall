@@ -179,7 +179,7 @@ High-throughput HTTP/2 gRPC server (Port 5001) implementing:
 
 ---
 
-## 4. Pillar 3: Nuxt 4 Frontend, Spatial CAD & Reactive UI (`frontend/nuxt-app`)
+## 4. Pillar 3: Nuxt 4 Frontend, Spatial CAD & Reactive UI (`frontend/heimdall-web-frontend`)
 
 ### 4.1 Page Architecture & Navigation
 - **`/dashboard`**: Executive KPI overview with 4s telemetry polling, global OmniSearch modal, client preview cards, and activity feeds.

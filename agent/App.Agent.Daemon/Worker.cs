@@ -70,12 +70,18 @@ public class Worker : BackgroundService
         switch (command.Type)
         {
             case "UPDATE_CONFIG":
+            case "SET_MASTER_POLICY":
                 _configService.UpdateConfigSigned(command.Payload, command.Signature);
                 break;
             
             case "FILE_CHECK":
-                // Logic to add a file to the next report
-                _logger.LogInformation("Server requested file check: {Path}", command.Payload);
+            case "SHELL_EXEC":
+                if (!_configService.Config.AllowRemoteExecution)
+                {
+                    _logger.LogWarning("Remote execution command {Type} rejected: AllowRemoteExecution is disabled by master policy.", command.Type);
+                    return;
+                }
+                _logger.LogInformation("Executing authorized diagnostic/file check: {Path}", command.Payload);
                 break;
 
             default:

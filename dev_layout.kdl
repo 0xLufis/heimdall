@@ -12,11 +12,11 @@ layout {
             }
         }
         pane split_direction="horizontal" {
-            pane name="Nuxt Frontend" command="bash" {
-                args "-c" "export PATH=\"$HOME/.bun/bin:$PATH\" && cd frontend/nuxt-app && bun run dev"
+            pane name="Web Frontend" command="bash" {
+                args "-c" "export PATH=\"$HOME/.bun/bin:$PATH\" && cd frontend/heimdall-web-frontend && bun run dev"
             }
-            pane name="PC Simulator" command="bash" {
-                args "-c" "source venv/bin/activate && python simulate_pcs.py"
+            pane name="Fleet Simulator" command="bash" {
+                args "-c" "source venv/bin/activate && python simulators/edge-fleet-simulator/fleet_simulator.py"
             }
         }
     }

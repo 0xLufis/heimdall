@@ -40,13 +40,13 @@ graph TD
 | VDA ISA 6.0 ID | Security Control Area | Heimdall Technical Implementation | Compliance Verification |
 |---|---|---|---|
 | **ISA 1.1** | **Identity & Access Management** | Authenticated session management powered by Better-Auth (`auth` schema). Enforces multi-factor authentication (MFA) and unique user identity. | `AuthSession` token validation on REST & gRPC API endpoints. |
-| **ISA 1.2** | **Tenant & Data Isolation** | Multi-tenancy enforced at DbContext level using EF Core Global Query Filters (`OrganizationId`). | Multi-tenant query isolation verified via unit tests (`App.Backend.Tests`). |
-| **ISA 1.3** | **Role-Based Access Control (RBAC)** | Fine-grained JSON privilege grants defined per user role (`UserRole.Privileges`). | Checked by API controller authorization attributes. |
-| **ISA 2.1** | **Cryptography & Key Management** | Cryptographic verification of queued remote agent commands via `Signature` validation (ECDSA/RSA). | `QueuedAgentCommand` payload verification in agent daemon. |
-| **ISA 2.2** | **Transport Security** | Mandatory HTTPS (TLS 1.3) for REST API; encrypted SSL connections to PostgreSQL 17; mTLS for gRPC telemetry streams. | Server SSL certificates in `infra/database/certs/server.crt`. |
-| **ISA 2.3** | **Secret Management** | Zero plain-text credentials stored in codebase. Database credentials and keys loaded from secret files (`infra/database/secrets/`). | Permitted 600 file permissions on keys; environment variable injection. |
-| **ISA 5.1** | **System Auditability & Logging** | Immutable logging of security events, configuration updates, and heartbeat failures in `agent_events`. | Centralized `AgentEvent` EF Core entity with UTC timestamps. |
-| **ISA 5.2** | **OT & IT Network Segmentation** | Clear separation between IT management network (HTTP/JSON API) and OT fieldbus/telemetry network (mTLS gRPC / OPC UA). | Purdue model alignment in architecture documentation. |
+| **ISA 1.2** | **Tenant & Data Isolation** | Multi-tenancy enforced at DbContext level using EF Core Global Query Filters (`OrganizationId`) across `BaseInventoryItem`, `ClientPc`, `MaintenanceTicket`, `AgentEvent`, and `AuditLog`. | Multi-tenant query isolation verified via unit tests (`MultiTenancyAndGovernanceTests`). |
+| **ISA 1.3** | **Role-Based Access Control (RBAC)** | Fine-grained JSON privilege grants defined per user role (`UserRole.Privileges`), dynamic claims transformation (`DynamicSecurityGroupClaimsTransformer`), and Entra ID / AD group mapping. | Checked by API controller authorization policies (`[Authorize(Policy = "...")]`). |
+| **ISA 2.1** | **Cryptography & Key Management** | Cryptographic verification of queued remote agent commands via RSA signatures; fail-secure command rejection on edge daemon; AES-256-GCM encryption for license keys and SVG floor plans. | `ConfigurationService.VerifySignature` and `EncryptedStringConverter` tests. |
+| **ISA 2.2** | **Transport Security** | Mandatory HTTPS (TLS 1.3) for REST API; encrypted SSL connections to PostgreSQL 17; mTLS for gRPC telemetry streams; Redis password authentication (`requirepass`). | Server SSL certificates in `infra/database/certs/server.crt`. |
+| **ISA 2.3** | **Secret Management & Least Privilege** | Least-privilege DML roles (`dotnet_backend`, `nuxt_frontend`) separated from DDL migrations (`ef_admin`); production environment validation for `HEIMDALL_ENCRYPTION_KEY` and `BETTER_AUTH_SECRET`. | Startup assertions in `Program.cs` and `AppDbContext.cs`. |
+| **ISA 5.1** | **System Auditability & Logging** | Immutable user change logging (`AuditLog`), telemetry logging (`AgentEvent`), and dead-letter quarantine (`MalformedTelemetryRecord`) for corrupted or rejected payloads. | Centralized EF Core entities with UTC timestamps; `SystemInfoCollectorService` quarantine. |
+| **ISA 5.2** | **OT & IT Network Segmentation** | Clear separation between IT management network (HTTP/JSON API) and OT fieldbus/telemetry network (mTLS gRPC / OPC UA); edge daemon offline spooler (`LocalTelemetrySpooler`) protects against network partitions. | Purdue model alignment and edge spooler unit tests. |
 
 ---
 

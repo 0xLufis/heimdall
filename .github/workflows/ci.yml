@@ -1,0 +1,50 @@
+name: Heimdall Continuous Integration
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  backend-test:
+    name: Backend CI (.NET 9)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Build Backend & Agent
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run Backend Unit & Integration Tests
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+  frontend-test:
+    name: Frontend CI (Nuxt 4 / Bun)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/heimdall-web-frontend
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun Runtime
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Frontend Vitest Suite
+        run: bun x vitest run

@@ -13,14 +13,16 @@ public class SystemInfoReporter
 {
     private readonly ILogger<SystemInfoReporter> _logger;
     private readonly ConfigurationService _configService;
+    private readonly Infrastructure.Spooling.LocalTelemetrySpooler? _spooler;
     private SystemInfoCollector.SystemInfoCollectorClient? _client;
     private string? _lastBackendUrl;
     private string? _lastAuthType;
 
-    public SystemInfoReporter(ILogger<SystemInfoReporter> logger, ConfigurationService configService)
+    public SystemInfoReporter(ILogger<SystemInfoReporter> logger, ConfigurationService configService, Infrastructure.Spooling.LocalTelemetrySpooler? spooler = null)
     {
         _logger = logger;
         _configService = configService;
+        _spooler = spooler;
     }
 
     private SystemInfoCollector.SystemInfoCollectorClient GetClient()
@@ -153,6 +155,26 @@ public class SystemInfoReporter
             if (response.Success)
             {
                 _logger.LogInformation("Successfully reported system info via gRPC: {Message}", response.Message);
+                if (_spooler != null)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _spooler.DrainSpoolAsync(async payload =>
+                            {
+                                var spooledData = System.Text.Json.JsonSerializer.Deserialize<SystemInfoData>(payload);
+                                if (spooledData == null) return true;
+                                var res = await ReportInfoAsync(spooledData);
+                                return res?.Success == true;
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Background spool draining encountered an issue.");
+                        }
+                    });
+                }
             }
             else
             {
@@ -163,7 +185,19 @@ public class SystemInfoReporter
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error while reporting system info via gRPC.");
+            _logger.LogError(ex, "Error while reporting system info via gRPC. Spooling to local buffer.");
+            if (_spooler != null)
+            {
+                try
+                {
+                    string json = System.Text.Json.JsonSerializer.Serialize(data);
+                    await _spooler.SpoolPayloadAsync(json);
+                }
+                catch (Exception spoolEx)
+                {
+                    _logger.LogError(spoolEx, "Failed to buffer payload into local spooler.");
+                }
+            }
             return null;
         }
     }

@@ -1,4 +1,4 @@
-using App.Backend.Api.Controllers;
+using App.Backend.Api.Controllers.V1;
 using App.Backend.Api.Dtos;
 using App.Infrastructure.Repositories;
 using App.Shared.Data;

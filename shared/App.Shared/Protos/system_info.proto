@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option csharp_namespace = "App.Shared.Protos";
 
-package system_info;
+package heimdall.telemetry.v1;
 
 import "google/protobuf/timestamp.proto";
 

@@ -89,7 +89,15 @@ public class EncryptedStringConverter : ValueConverter<string?, string?>
         {
             return SHA256.HashData(Encoding.UTF8.GetBytes(envKey));
         }
-        return SHA256.HashData(Encoding.UTF8.GetBytes("Heimdall_AES256_GCM_SecretKey_32B"));
+
+        string? env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("CRITICAL SECURITY ERROR: HEIMDALL_ENCRYPTION_KEY must be configured via environment in Production environments.");
+        }
+
+        // Development/Test fallback key with explicit security warning
+        return SHA256.HashData(Encoding.UTF8.GetBytes("Heimdall_AES256_GCM_DevSecretKey_32B"));
     }
 }
 
@@ -99,6 +107,12 @@ public class EncryptedStringConverter : ValueConverter<string?, string?>
 /// </summary>
 public class AppDbContext : DbContext
 {
+    /// <summary>
+    /// Active organization identifier for multi-tenant query filtering.
+    /// When populated, automatically filters tenant-scoped entities.
+    /// </summary>
+    public string? CurrentOrganizationId { get; set; }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="AppDbContext"/> class.
     /// </summary>
@@ -126,6 +140,14 @@ public class AppDbContext : DbContext
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<QueuedAgentCommand> QueuedAgentCommands { get; set; }
     public DbSet<AgentEvent> AgentEvents { get; set; }
+    
+    // System Governance, Identity & PKI Sets
+    public DbSet<SecurityGroupMapping> SecurityGroupMappings { get; set; }
+    public DbSet<SystemSetting> SystemSettings { get; set; }
+    public DbSet<ClientCertificateRecord> ClientCertificates { get; set; }
+    public DbSet<SchemaVersionManifest> SchemaVersionManifests { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<MalformedTelemetryRecord> MalformedTelemetryRecords { get; set; }
     
     // Auth Sets (Managed by Better-Auth, excluded from migrations)
     public DbSet<AuthUser> AuthUsers { get; set; }
@@ -302,6 +324,7 @@ public class AppDbContext : DbContext
 
             entity.HasIndex(e => e.MacAddress).IsUnique();
             entity.HasIndex(e => e.Hostname);
+            entity.HasIndex(e => e.OrganizationId);
 
             entity.HasMany(e => e.PendingCommands)
                   .WithOne()
@@ -335,32 +358,16 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<QueuedAgentCommand>(entity =>
         {
             entity.ToTable("queued_agent_commands");
+            entity.HasIndex(e => e.ClientPcId);
+            entity.HasIndex(e => e.OrganizationId);
         });
 
         modelBuilder.Entity<AgentEvent>(entity =>
         {
             entity.ToTable("agent_events");
-        });
-
-        modelBuilder.Entity<MaintenanceTicket>(entity =>
-        {
-            entity.ToTable("maintenance_tickets");
-            entity.HasKey(e => e.Id);
-
-            entity.HasOne(e => e.Machine)
-                  .WithMany()
-                  .HasForeignKey(e => e.MachineId)
-                  .OnDelete(DeleteBehavior.SetNull);
-
-            entity.HasOne(e => e.ClientPc)
-                  .WithMany()
-                  .HasForeignKey(e => e.ClientPcId)
-                  .OnDelete(DeleteBehavior.SetNull);
-
-            entity.HasOne(e => e.Equipment)
-                  .WithMany()
-                  .HasForeignKey(e => e.EquipmentId)
-                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => new { e.ClientPcId, e.Timestamp });
+            entity.HasIndex(e => e.Level);
+            entity.HasIndex(e => e.OrganizationId);
         });
 
         // Configure HardwareComponent
@@ -430,6 +437,12 @@ public class AppDbContext : DbContext
                 entity.HasIndex(e => e.Metadata).HasMethod("gin");
             }
 
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.Priority);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.AssignedTo);
+            entity.HasIndex(e => e.OrganizationId);
+
             entity.HasOne(e => e.Equipment)
                   .WithMany()
                   .HasForeignKey(e => e.EquipmentId)
@@ -498,5 +511,76 @@ public class AppDbContext : DbContext
         {
             entity.HasNoKey();
         });
+
+        // Configure System Governance & PKI Entities
+        modelBuilder.Entity<SecurityGroupMapping>(entity =>
+        {
+            entity.ToTable("security_group_mappings");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.GroupIdentifier);
+            entity.HasIndex(e => e.OrganizationId);
+        });
+
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.ToTable("system_settings");
+            entity.HasKey(e => e.Key);
+            entity.HasIndex(e => e.Category);
+        });
+
+        modelBuilder.Entity<ClientCertificateRecord>(entity =>
+        {
+            entity.ToTable("client_certificates");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Thumbprint);
+            entity.HasIndex(e => e.CommonName);
+            entity.HasIndex(e => e.ClientPcId);
+        });
+
+        modelBuilder.Entity<SchemaVersionManifest>(entity =>
+        {
+            entity.ToTable("schema_version_manifest");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.SchemaVersion);
+        });
+
+        // Configure Auditing & Dead-Letter Quarantine Entities
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("audit_logs");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.EntityType);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.OrganizationId);
+        });
+
+        modelBuilder.Entity<MalformedTelemetryRecord>(entity =>
+        {
+            entity.ToTable("malformed_telemetry_quarantine");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.IngestionChannel);
+            entity.HasIndex(e => e.QuarantinedAt);
+            entity.HasIndex(e => e.OrganizationId);
+        });
+
+        // Multi-Tenant Global Query Filters
+        modelBuilder.Entity<BaseInventoryItem>()
+            .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
+
+        modelBuilder.Entity<ClientPc>()
+            .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
+
+        modelBuilder.Entity<MaintenanceTicket>()
+            .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
+
+        modelBuilder.Entity<AgentEvent>()
+            .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
+
+        modelBuilder.Entity<QueuedAgentCommand>()
+            .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
+
+        modelBuilder.Entity<AuditLog>()
+            .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
     }
 }

@@ -41,10 +41,11 @@ services:
       -c ssl=on
       -c ssl_cert_file=/var/lib/postgresql/certs/server.crt
       -c ssl_key_file=/var/lib/postgresql/certs/server.key
+      -c max_connections=300
       -c logging_collector=on
       -c log_directory=/var/log/postgresql
       -c log_filename=postgresql.log
-      -c log_statement=all
+      -c log_statement=ddl
       -c log_connections=on
       -c log_disconnections=on
       -c log_destination=stderr,csvlog
@@ -61,13 +62,13 @@ services:
     hostname: redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --requirepass ${REDIS_PASSWORD:-heimdall_redis_dev_secret} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - ./redis_data:/data
     networks:
       - heimdall_net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "heimdall_redis_dev_secret", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5

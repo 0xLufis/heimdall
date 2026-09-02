@@ -14,28 +14,47 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Connection String and DataSource declaration ---
 var connectionString = builder.Configuration["DATABASE_URL"] 
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=ef_admin;Password=migrate";
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        connectionString = "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=dotnet_backend;Password=your_backend_pw";
+    }
+    else
+    {
+        throw new InvalidOperationException("CRITICAL SECURITY CONFIGURATION ERROR: DATABASE_URL or ConnectionStrings:DefaultConnection must be specified via environment variables.");
+    }
+}
+
 NpgsqlDataSource? dataSource = null;
 
-// Configure Kestrel for HTTP/2
+// Configure Kestrel protocols and interface bindings
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    // HTTP/1.1 and HTTP/2 (for TLS) on the main ports
+    // HTTP/1.1 and HTTP/2 on primary API port
     serverOptions.ListenAnyIP(5099, listenOptions =>
     {
         listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
     });
-    serverOptions.ListenAnyIP(7158, listenOptions =>
+
+    if (builder.Environment.IsDevelopment())
     {
-        listenOptions.UseHttps();
-        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
-    });
-    // Dedicated port for cleartext gRPC (HTTP/2 only)
-    serverOptions.ListenAnyIP(5001, listenOptions =>
+        // Dedicated port for local dev cleartext gRPC (restricted to localhost)
+        serverOptions.ListenLocalhost(5001, listenOptions =>
+        {
+            listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+        });
+    }
+    else
     {
-        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
-    });
+        serverOptions.ListenAnyIP(7158, listenOptions =>
+        {
+            listenOptions.UseHttps();
+            listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+        });
+    }
 });
 
 // Ensure Environment Variables are included in configuration
@@ -68,9 +87,10 @@ if (!builder.Environment.IsEnvironment("Test"))
 // --- 2. Repositories & Services & Caching ---
 builder.Services.AddMemoryCache();
 
+var redisPassword = builder.Configuration["REDIS_PASSWORD"] ?? "heimdall_redis_dev_secret";
 var redisConnectionStr = builder.Configuration["REDIS_CONNECTION_STRING"]
     ?? builder.Configuration.GetConnectionString("Redis")
-    ?? "localhost:6379,abortConnect=false,connectTimeout=2000";
+    ?? $"localhost:6379,password={redisPassword},abortConnect=false,connectTimeout=2000";
 
 builder.Services.AddStackExchangeRedisCache(options =>
 {
@@ -92,7 +112,22 @@ builder.Services.AddScoped<CopiaIntegrationService>();
 builder.Services.AddAuthentication("BetterAuth")
     .AddScheme<BetterAuthOptions, BetterAuthHandler>("BetterAuth", options => { });
 
-builder.Services.AddAuthorization();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, DynamicSecurityGroupClaimsTransformer>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("SystemAdministration", policy =>
+        policy.RequireRole("admin", "system_admin"));
+
+    options.AddPolicy("EndpointConfigManagement", policy =>
+        policy.RequireRole("admin", "system_admin", "lead_engineer", "engineer", "controls_engineer"));
+
+    options.AddPolicy("RemoteExecution", policy =>
+        policy.RequireRole("admin", "system_admin", "lead_engineer", "engineer"));
+
+    options.AddPolicy("MaintenanceOperations", policy =>
+        policy.RequireRole("admin", "system_admin", "lead_engineer", "engineer", "technician"));
+});
 
 // --- 4. Controllers & SignalR & gRPC & Swagger ---
 builder.Services.AddControllers()
@@ -101,7 +136,6 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
-builder.Services.AddSignalR();
 builder.Services.AddGrpc();
 builder.Services.AddGrpcReflection();
 builder.Services.AddSignalR();
@@ -125,7 +159,6 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<MaintenanceHub>("/hubs/maintenance");
 app.MapGrpcService<SystemInfoCollectorService>();
-app.MapHub<MaintenanceHub>("/hubs/maintenance");
 
 if (app.Environment.IsDevelopment())
 {

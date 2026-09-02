@@ -143,6 +143,10 @@ public partial class ClientPc
     /// <summary>The CAD/DXF object handle for mapping this PC to a spatial layout.</summary>
     public string? PinnedObjectHandle { get; set; }
 
+    /// <summary>Optional organization or plant floor assignment for multi-tenant scoping.</summary>
+    [MaxLength(128)]
+    public string? OrganizationId { get; set; }
+
     /// <summary>List of production stations controlled by this PC.</summary>
     public List<Machine> ControlledMachines { get; set; } = new();
 
@@ -235,6 +239,9 @@ public class AgentEvent
     public string Level { get; set; } = string.Empty;
     /// <summary>The UTC timestamp when the event occurred.</summary>
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    /// <summary>Optional organization or plant floor assignment for multi-tenant scoping.</summary>
+    [MaxLength(128)]
+    public string? OrganizationId { get; set; }
 }
 
 /// <summary>
@@ -247,6 +254,9 @@ public class QueuedAgentCommand
     public Guid Id { get; set; }
     /// <summary>The target Client PC for the command.</summary>
     public Guid ClientPcId { get; set; }
+    /// <summary>Optional organization or plant floor assignment for multi-tenant scoping.</summary>
+    [MaxLength(128)]
+    public string? OrganizationId { get; set; }
     /// <summary>The type of command (e.g., "UPDATE_CONFIG", "RESTART").</summary>
     public string Type { get; set; } = string.Empty;
     /// <summary>The command payload (usually a JSON string).</summary>
@@ -373,6 +383,10 @@ public partial class MaintenanceTicket
 
     /// <summary>Priority level (e.g., "Low", "Medium", "High", "Critical").</summary>
     public string Priority { get; set; } = "Medium";
+
+    /// <summary>Optional organization or plant floor assignment for multi-tenant scoping.</summary>
+    [MaxLength(128)]
+    public string? OrganizationId { get; set; }
 
     /// <summary>Optional reference to associated inventory item.</summary>
     public Guid? EquipmentId { get; set; }
@@ -679,3 +693,185 @@ public class AuthMember
     /// <summary>Navigation property for the user.</summary>
     public AuthUser User { get; set; } = null!;
 }
+
+// --- SYSTEM GOVERNANCE, RBAC & ENTERPRISE IDENTITY ENTITIES ---
+
+/// <summary>
+/// Maps Active Directory and Microsoft Entra ID Security Groups to Heimdall roles and tenant boundaries.
+/// </summary>
+[Table("security_group_mappings")]
+public class SecurityGroupMapping
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>Identity provider identifier (EntraID, ActiveDirectory, LDAP, OIDC).</summary>
+    [Required, MaxLength(100)]
+    public string IdentityProvider { get; set; } = "EntraID";
+    
+    /// <summary>Group Object ID, SID, or Distinguished Name.</summary>
+    [Required, MaxLength(255)]
+    public string GroupIdentifier { get; set; } = string.Empty;
+    
+    /// <summary>Human-readable display name (e.g., "OT Controls Engineers").</summary>
+    [Required, MaxLength(255)]
+    public string DisplayName { get; set; } = string.Empty;
+    
+    /// <summary>Mapped Heimdall role (admin, system_admin, lead_engineer, engineer, technician, operator).</summary>
+    [Required, MaxLength(100)]
+    public string MappedRole { get; set; } = "engineer";
+    
+    /// <summary>Optional organization/plant floor assignment.</summary>
+    public string? OrganizationId { get; set; }
+    
+    /// <summary>Whether this mapping rule is active.</summary>
+    public bool IsEnabled { get; set; } = true;
+    
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// System-wide master settings and governance parameters.
+/// </summary>
+[Table("system_settings")]
+public class SystemSetting
+{
+    [Key]
+    [MaxLength(100)]
+    public string Key { get; set; } = string.Empty; // e.g. "AgentMasterTemplate", "AuthPolicy", "OpcUaConfig"
+    
+    [Required]
+    public string ValueJson { get; set; } = "{}";
+    
+    [MaxLength(50)]
+    public string Category { get; set; } = "General"; // Auth, Integrations, Certificates, AgentMaster
+    
+    [MaxLength(100)]
+    public string UpdatedBy { get; set; } = "system";
+    
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Registry of issued X.509 client certificates for mTLS gRPC telemetry channels.
+/// </summary>
+[Table("client_certificates")]
+public class ClientCertificateRecord
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? ClientPcId { get; set; }
+    
+    [Required, MaxLength(255)]
+    public string CommonName { get; set; } = string.Empty;
+    
+    [Required, MaxLength(128)]
+    public string Thumbprint { get; set; } = string.Empty;
+    
+    public DateTimeOffset ValidFrom { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset ValidTo { get; set; } = DateTimeOffset.UtcNow.AddYears(1);
+    
+    [MaxLength(50)]
+    public string Status { get; set; } = "Active"; // Active, Revoked, Expired
+    
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Tracks database schema milestones and data definition versions.
+/// </summary>
+[Table("schema_version_manifest")]
+public class SchemaVersionManifest
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    
+    [Required, MaxLength(50)]
+    public string SchemaVersion { get; set; } = "1.0.0";
+    
+    [Required, MaxLength(255)]
+    public string MigrationName { get; set; } = string.Empty;
+    
+    public DateTimeOffset AppliedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string Description { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Immutable audit log capturing user mutations, administrative actions, and configuration changes.
+/// Satisfies TISAX ISA 5.1 and NIS2 Article 21 auditability requirements.
+/// </summary>
+[Table("audit_logs")]
+public class AuditLog
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    
+    /// <summary>User ID or system identity that performed the action.</summary>
+    [Required, MaxLength(128)]
+    public string UserId { get; set; } = "system";
+
+    /// <summary>Username or display name of the actor.</summary>
+    [MaxLength(255)]
+    public string? UserName { get; set; }
+
+    /// <summary>Action performed (e.g., "CREATE", "UPDATE", "DELETE", "CONFIG_CHANGE", "ROLE_ASSIGN").</summary>
+    [Required, MaxLength(64)]
+    public string Action { get; set; } = string.Empty;
+
+    /// <summary>Target entity type or domain module (e.g., "InventoryItem", "SystemSetting", "ClientCertificate").</summary>
+    [Required, MaxLength(128)]
+    public string EntityType { get; set; } = string.Empty;
+
+    /// <summary>Identifier of the targeted entity.</summary>
+    [MaxLength(128)]
+    public string? EntityId { get; set; }
+
+    /// <summary>Previous state or payload diff before mutation (JSON).</summary>
+    public string? OldValuesJson { get; set; }
+
+    /// <summary>New state or payload after mutation (JSON).</summary>
+    public string? NewValuesJson { get; set; }
+
+    /// <summary>Client IP address or network origin.</summary>
+    [MaxLength(64)]
+    public string? IpAddress { get; set; }
+
+    /// <summary>Optional organization or plant floor boundary.</summary>
+    [MaxLength(128)]
+    public string? OrganizationId { get; set; }
+
+    /// <summary>UTC timestamp when the change occurred.</summary>
+    public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Dead-letter quarantine storage for malformed telemetry packets, unparseable payloads, and schema validation failures.
+/// Satisfies AGENTS.MD Guideline 36.
+/// </summary>
+[Table("malformed_telemetry_quarantine")]
+public class MalformedTelemetryRecord
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>Source identifier (Hostname, MAC address, or IP).</summary>
+    [MaxLength(255)]
+    public string? SourceIdentifier { get; set; }
+
+    /// <summary>Protocol or ingestion channel (e.g., "gRPC_SystemInfo", "SignalR_Telemetry", "OPC_UA", "Modbus").</summary>
+    [Required, MaxLength(64)]
+    public string IngestionChannel { get; set; } = string.Empty;
+
+    /// <summary>Error reason or parsing failure message.</summary>
+    [Required]
+    public string ErrorReason { get; set; } = string.Empty;
+
+    /// <summary>Raw unparsed or corrupt payload string.</summary>
+    [Required]
+    public string RawPayload { get; set; } = string.Empty;
+
+    /// <summary>Optional organization ID if identifiable from metadata.</summary>
+    [MaxLength(128)]
+    public string? OrganizationId { get; set; }
+
+    /// <summary>UTC timestamp when the malformed payload was received and quarantined.</summary>
+    public DateTimeOffset QuarantinedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+

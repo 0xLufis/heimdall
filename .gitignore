@@ -27,11 +27,18 @@ yarn-error.log*
 
 # ==========================================
 # Infrastructure / Docker / PostgreSQL
-# ==========================================
 # NEVER commit database data or logs
 infra/database/data/
 infra/database/logs/
 infra/database/pgadmin/
+infra/database/redis_data/
+
+# Agent Offline Telemetry Spooler
+**/telemetry_spool/
+telemetry_spool/
+
+# Test Results
+[Tt]est[Rr]esults/
 
 infra/database/secrets/*.txt
 infra/database/certs/*.key

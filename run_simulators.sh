@@ -6,10 +6,12 @@
 # Activate virtual environment if it exists
 if [ -d "venv" ]; then
     source "venv/bin/activate"
-    echo "Python virtual environment activated."
+    if [ "$1" != "completion" ]; then
+        echo "Python virtual environment activated."
+    fi
 fi
 PYTHON_CMD="python"
-SIMULATOR_SCRIPT="simulate_pcs.py"
+SIMULATOR_SCRIPT="simulators/edge-fleet-simulator/fleet_simulator.py"
 PID_FILE_DIR="/tmp/heimdall_sims"
 CLIENTS=(
     "ROBOT-CELL-01"
@@ -122,6 +124,45 @@ status() {
     echo "$running_count of ${#CLIENTS[@]} simulators are running."
 }
 
+# --- Additional Functions ---
+logs() {
+    local client="${1:-ROBOT-CELL-01}"
+    local log_file="$PID_FILE_DIR/${client}.log"
+    if [ -f "$log_file" ]; then
+        echo "Streaming logs for $client ($log_file)..."
+        tail -n 50 -f "$log_file"
+    else
+        echo "Log file '$log_file' not found."
+        echo "Active log files in $PID_FILE_DIR:"
+        ls -l "$PID_FILE_DIR"/*.log 2>/dev/null || echo "  None"
+    fi
+}
+
+output_completion() {
+    local shell_type="${1:-bash}"
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ "$shell_type" = "zsh" ]; then
+        cat "$script_dir/tools/completions/heimdall_completion.zsh"
+    else
+        cat "$script_dir/tools/completions/heimdall_completion.bash"
+    fi
+}
+
+show_help() {
+    echo "Heimdall Multi-Process Edge Simulator Runner"
+    echo ""
+    echo "Usage: ./run_simulators.sh [COMMAND] [OPTIONS]"
+    echo ""
+    echo "Commands:"
+    echo "  start               Start all simulator background instances"
+    echo "  stop                Stop all running simulator instances"
+    echo "  restart             Restart all simulator instances"
+    echo "  status              Show running status of simulated client nodes"
+    echo "  logs [client]       Stream logs for a specific client (e.g. ROBOT-CELL-01)"
+    echo "  completion [shell]  Output shell completion code (bash, zsh)"
+    echo "  help, -h, --help    Show this help message"
+}
+
 # --- Main Logic ---
 case "$1" in
     start)
@@ -130,11 +171,25 @@ case "$1" in
     stop)
         stop
         ;;
+    restart)
+        stop
+        sleep 1
+        start
+        ;;
     status)
         status
         ;;
+    logs)
+        logs "$2"
+        ;;
+    completion)
+        output_completion "$2"
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
     *)
-        echo "Usage: $0 {start|stop|status}"
+        echo "Usage: $0 {start|stop|restart|status|logs|completion|help}"
         exit 1
         ;;
 esac

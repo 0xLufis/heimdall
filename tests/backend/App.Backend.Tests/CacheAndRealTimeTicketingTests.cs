@@ -1,4 +1,4 @@
-using App.Backend.Api.Controllers;
+using App.Backend.Api.Controllers.V1;
 using App.Backend.Api.Hubs;
 using App.Backend.Api.Services;
 using App.Infrastructure.Repositories;

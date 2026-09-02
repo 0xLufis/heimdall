@@ -16,7 +16,7 @@ namespace App.Backend.Api.Services;
 public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollectorBase
 {
     private readonly ILogger<SystemInfoCollectorService> _logger;
-    private readonly ClientPcRepository _repository;
+    private readonly IClientPcRepository _repository;
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
 
     /// <summary>
@@ -25,7 +25,7 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
     /// <param name="logger">The logger for the service.</param>
     /// <param name="repository">The repository for Client PC data operations.</param>
     /// <param name="dbContextFactory">The DB context factory for command handling.</param>
-    public SystemInfoCollectorService(ILogger<SystemInfoCollectorService> logger, ClientPcRepository repository, IDbContextFactory<AppDbContext> dbContextFactory)
+    public SystemInfoCollectorService(ILogger<SystemInfoCollectorService> logger, IClientPcRepository repository, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         _logger = logger;
         _repository = repository;
@@ -111,6 +111,7 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
                         {
                             e.ClientPcId = dbClientPc.Id;
                             e.Id = Guid.NewGuid();
+                            e.OrganizationId = dbClientPc.OrganizationId;
                         }
                         dbContext.AgentEvents.AddRange(agentEvents);
                         dataChanged = true;
@@ -119,7 +120,17 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse agent events for {Hostname}", request.Hostname);
+                    _logger.LogWarning(ex, "Failed to parse agent events for {Hostname}. Quarantining malformed payload.", request.Hostname);
+                    dbContext.MalformedTelemetryRecords.Add(new MalformedTelemetryRecord
+                    {
+                        SourceIdentifier = request.Hostname,
+                        IngestionChannel = "gRPC_SystemInfo_Events",
+                        ErrorReason = ex.Message,
+                        RawPayload = eventsJson ?? string.Empty,
+                        OrganizationId = dbClientPc.OrganizationId,
+                        QuarantinedAt = DateTimeOffset.UtcNow
+                    });
+                    dataChanged = true;
                 }
             }
 

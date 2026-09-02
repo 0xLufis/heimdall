@@ -47,6 +47,11 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("message");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasColumnType("text")
@@ -59,10 +64,91 @@ namespace App.Shared.Migrations
                     b.HasKey("Id")
                         .HasName("pk_agent_events");
 
-                    b.HasIndex("ClientPcId")
-                        .HasDatabaseName("ix_agent_events_client_pc_id");
+                    b.HasIndex("Level")
+                        .HasDatabaseName("ix_agent_events_level");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_agent_events_organization_id");
+
+                    b.HasIndex("ClientPcId", "Timestamp")
+                        .HasDatabaseName("ix_agent_events_client_pc_id_timestamp");
 
                     b.ToTable("agent_events", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<string>("NewValuesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("new_values_json");
+
+                    b.Property<string>("OldValuesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("old_values_json");
+
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("timestamp");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("user_name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_logs");
+
+                    b.HasIndex("EntityType")
+                        .HasDatabaseName("ix_audit_logs_entity_type");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_audit_logs_organization_id");
+
+                    b.HasIndex("Timestamp")
+                        .HasDatabaseName("ix_audit_logs_timestamp");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_audit_logs_user_id");
+
+                    b.ToTable("audit_logs", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.AuthMember", b =>
@@ -258,6 +344,62 @@ namespace App.Shared.Migrations
                     b.UseTptMappingStrategy();
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.ClientCertificateRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ClientPcId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("client_pc_id");
+
+                    b.Property<string>("CommonName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("common_name");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Thumbprint")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("thumbprint");
+
+                    b.Property<DateTimeOffset>("ValidFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_from");
+
+                    b.Property<DateTimeOffset>("ValidTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_to");
+
+                    b.HasKey("Id")
+                        .HasName("pk_client_certificates");
+
+                    b.HasIndex("ClientPcId")
+                        .HasDatabaseName("ix_client_certificates_client_pc_id");
+
+                    b.HasIndex("CommonName")
+                        .HasDatabaseName("ix_client_certificates_common_name");
+
+                    b.HasIndex("Thumbprint")
+                        .HasDatabaseName("ix_client_certificates_thumbprint");
+
+                    b.ToTable("client_certificates", "backend");
+                });
+
             modelBuilder.Entity("App.Shared.Entities.ClientPc", b =>
                 {
                     b.Property<Guid>("Id")
@@ -305,6 +447,11 @@ namespace App.Shared.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("PinnedObjectHandle")
                         .HasColumnType("text")
                         .HasColumnName("pinned_object_handle");
@@ -326,6 +473,9 @@ namespace App.Shared.Migrations
                     b.HasIndex("MacAddress")
                         .IsUnique()
                         .HasDatabaseName("ix_client_pcs_mac_address");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_client_pcs_organization_id");
 
                     b.HasIndex("SystemMetadata")
                         .HasDatabaseName("ix_client_pcs_system_metadata");
@@ -494,6 +644,11 @@ namespace App.Shared.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("metadata");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("Priority")
                         .IsRequired()
                         .HasColumnType("text")
@@ -517,8 +672,14 @@ namespace App.Shared.Migrations
                     b.HasKey("Id")
                         .HasName("pk_maintenance_tickets");
 
+                    b.HasIndex("AssignedTo")
+                        .HasDatabaseName("ix_maintenance_tickets_assigned_to");
+
                     b.HasIndex("ClientPcId")
                         .HasDatabaseName("ix_maintenance_tickets_client_pc_id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_maintenance_tickets_created_at");
 
                     b.HasIndex("EquipmentId")
                         .HasDatabaseName("ix_maintenance_tickets_equipment_id");
@@ -531,7 +692,68 @@ namespace App.Shared.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Metadata"), "gin");
 
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_maintenance_tickets_organization_id");
+
+                    b.HasIndex("Priority")
+                        .HasDatabaseName("ix_maintenance_tickets_priority");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_maintenance_tickets_status");
+
                     b.ToTable("maintenance_tickets", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.MalformedTelemetryRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ErrorReason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("error_reason");
+
+                    b.Property<string>("IngestionChannel")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ingestion_channel");
+
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("QuarantinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("quarantined_at");
+
+                    b.Property<string>("RawPayload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("raw_payload");
+
+                    b.Property<string>("SourceIdentifier")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("source_identifier");
+
+                    b.HasKey("Id")
+                        .HasName("pk_malformed_telemetry_quarantine");
+
+                    b.HasIndex("IngestionChannel")
+                        .HasDatabaseName("ix_malformed_telemetry_quarantine_ingestion_channel");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_malformed_telemetry_quarantine_organization_id");
+
+                    b.HasIndex("QuarantinedAt")
+                        .HasDatabaseName("ix_malformed_telemetry_quarantine_quarantined_at");
+
+                    b.ToTable("malformed_telemetry_quarantine", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.Manufacturer", b =>
@@ -584,6 +806,11 @@ namespace App.Shared.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_processed");
 
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("Payload")
                         .IsRequired()
                         .HasColumnType("text")
@@ -603,6 +830,9 @@ namespace App.Shared.Migrations
 
                     b.HasIndex("ClientPcId")
                         .HasDatabaseName("ix_queued_agent_commands_client_pc_id");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_queued_agent_commands_organization_id");
 
                     b.ToTable("queued_agent_commands", "backend");
                 });
@@ -632,6 +862,102 @@ namespace App.Shared.Migrations
                         .HasDatabaseName("ix_responsible_teams_name");
 
                     b.ToTable("responsible_teams", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.SchemaVersionManifest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AppliedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("applied_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("MigrationName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("migration_name");
+
+                    b.Property<string>("SchemaVersion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("schema_version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_schema_version_manifest");
+
+                    b.HasIndex("SchemaVersion")
+                        .HasDatabaseName("ix_schema_version_manifest_schema_version");
+
+                    b.ToTable("schema_version_manifest", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.SecurityGroupMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("GroupIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("group_identifier");
+
+                    b.Property<string>("IdentityProvider")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("identity_provider");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<string>("MappedRole")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("mapped_role");
+
+                    b.Property<string>("OrganizationId")
+                        .HasColumnType("text")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_security_group_mappings");
+
+                    b.HasIndex("GroupIdentifier")
+                        .HasDatabaseName("ix_security_group_mappings_group_identifier");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_security_group_mappings_organization_id");
+
+                    b.ToTable("security_group_mappings", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.StationController", b =>
@@ -712,6 +1038,43 @@ namespace App.Shared.Migrations
                         .HasDatabaseName("ix_suppliers_name");
 
                     b.ToTable("suppliers", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.SystemSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("ValueJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value_json");
+
+                    b.HasKey("Key")
+                        .HasName("pk_system_settings");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("ix_system_settings_category");
+
+                    b.ToTable("system_settings", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.TicketAttachment", b =>

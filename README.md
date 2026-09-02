@@ -29,23 +29,21 @@ heimdall/
 │   ├── App.Backend.Api/     # ASP.NET Core Web API Controllers & gRPC Endpoints
 │   └── App.Infrastructure/  # Data Repositories & External Service Integrations
 ├── docs/                    # Technical & Architecture Documentation
-│   ├── API.md               # REST, gRPC, and OPC UA API Specifications
-│   ├── ARCHITECTURE.md      # Data Model, Caching, Copia & WMI Telemetry Blueprints
-│   ├── DEV.md               # Developer Guide, DB Migrations & Simulator Handbook
-│   └── TISAX_COMPLIANCE.md  # VDA ISA 6.0 Security & Audit Compliance Mapping
 ├── frontend/
-│   └── nuxt-app/            # Nuxt 4 Web Dashboard & Nitro BFF
+│   └── heimdall-web-frontend/ # Nuxt 4 Web Dashboard & Nitro BFF
 ├── infra/
 │   └── database/            # PostgreSQL 17 Docker Compose, SSL, Init Scripts
-├── seed_data/               # Inventory CSV, Incremental SQL, and Generator Scripts
+├── seed_data/               # Inventory CSV, Incremental SQL, and Unified Pipeline
 ├── shared/
 │   └── App.Shared/          # Domain Entities, EF Core DbContext, Protobuf Definitions
+├── simulators/
+│   └── edge-fleet-simulator/# Multi-device industrial edge telemetry simulator
+├── tools/
+│   ├── cad/                 # Synthetic DXF CAD floor plan generator
+│   └── dev_manager.py       # Unified development service orchestrator & monitor
 ├── tests/                   # xUnit Backend tests & Vitest Frontend tests
-├── generate_dxf.py          # Synthetic DXF CAD floor plan generator
 ├── run_dev.sh               # Local development environment launcher script
-├── run_simulators.sh        # Multi-client Python PC simulator orchestrator script
-├── simulate_pcs.py          # gRPC multi-threaded client PC telemetry simulator
-└── simulate_windows_wmic.py # Windows WMIC hardware/software telemetry simulator
+└── run_simulators.sh        # Multi-client Python PC simulator orchestrator script
 ```
 
 ---
@@ -147,7 +145,7 @@ dotnet tool restore
 dotnet ef database update --project shared/App.Shared --startup-project backend/App.Backend.Api
 
 # Prepare Nuxt 4 frontend types
-cd frontend/nuxt-app
+cd frontend/heimdall-web-frontend
 bun run postinstall
 cd ../..
 ```
@@ -164,28 +162,49 @@ python3 -m venv venv
 
 # Activate and install dependencies
 source venv/bin/activate
-pip install -r requirements.simulator.txt
+pip install -r simulators/edge-fleet-simulator/requirements.txt
 deactivate
 
 # Generate synthetic DXF factory layout
-venv/bin/python generate_dxf.py
+venv/bin/python tools/cad/generate_plant_dxf.py
 ```
 
 ---
 
 ### 4. Running the Development Suite
 
-You can start all services concurrently using `run_dev.sh`:
+You can start and manage all services concurrently using `run_dev.sh`:
 
 ```bash
 # Start all Heimdall services
 ./run_dev.sh start
 
-# Check simulator status
-./run_simulators.sh status
+# Stream logs for a specific service (backend, frontend, agent, simulator, db)
+./run_dev.sh logs backend
+
+# Restart a specific service
+./run_dev.sh restart frontend
+
+# Check service health and port matrix
+./run_dev.sh status
 
 # Stop all Heimdall services
 ./run_dev.sh stop
+```
+
+---
+
+### 5. Shell Auto-Completion Setup
+
+Heimdall includes comprehensive tab-completion for `run_dev.sh`, `run_simulators.sh`, `tools/dev_manager.py`, `seed_data/seed_pipeline.py`, and `simulators/edge-fleet-simulator/fleet_simulator.py`.
+
+```bash
+# 1-Click Installation (Auto-detects Bash/Zsh and adds to ~/.bashrc or ~/.zshrc)
+./tools/completions/install_completions.sh
+
+# Or activate immediately in your current session:
+source <(./run_dev.sh completion bash)   # for Bash
+source <(./run_dev.sh completion zsh)    # for Zsh
 ```
 
 ---
@@ -197,7 +216,7 @@ You can start all services concurrently using `run_dev.sh`:
 dotnet test Heimdall.sln
 
 # 2. Run Nuxt frontend unit tests (Vitest)
-bun --cwd frontend/nuxt-app run test
+bun --cwd frontend/heimdall-web-frontend run test
 ```
 
 ---
@@ -222,4 +241,14 @@ Heimdall is designed in accordance with **VDA ISA 6.0 (TISAX High Protection Nee
 - [Live Maintenance Ticketing & Android PWA](file:///home/lufis/Projects/Heimdall/heimdall/docs/MAINTENANCE_TICKETING_PWA.md) - Maintenance ticketing domain model, SignalR push, offline PWA, camera QR scanner, and Android TWA build guide.
 - [Developer Guide & Handbook](file:///home/lufis/Projects/Heimdall/heimdall/docs/DEV.md) - Migration guides, simulator manual, and frontend server-side offloading.
 - [TISAX Security Compliance Mapping](file:///home/lufis/Projects/Heimdall/heimdall/docs/TISAX_COMPLIANCE.md) - VDA ISA 6.0 security controls mapping.
+
+---
+
+## License & Commercial Licensing
+
+Heimdall is dual-licensed:
+
+- **Free & Open Source Community Edition:** [GNU Affero General Public License v3.0 (AGPL-3.0-or-later)](LICENSE). Free for individual engineers, researchers, and open-source contributors. In accordance with Section 13 of the AGPLv3, if you run a modified version of Heimdall across a network, the corresponding source code must be made available under the AGPLv3.
+- **Commercial Enterprise License:** For industrial enterprises, manufacturing OEMs, and organizations that require deploying Heimdall on factory floor networks without AGPL-3.0 copyleft obligations, or who require closed-source proprietary extensions, dedicated support SLAs, and warranty indemnification, a Commercial Enterprise License is available. Inquire via the repository maintainer.
+
 

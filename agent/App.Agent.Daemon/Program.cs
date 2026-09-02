@@ -14,6 +14,7 @@ builder.Configuration.AddEnvironmentVariables();
 builder.WebHost.UseUrls("http://localhost:5998");
 
 builder.Services.AddSingleton<ConfigurationService>();
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler>();
 builder.Services.AddSingleton<SystemInfoService>();
 builder.Services.AddSingleton<SystemInfoReporter>();
 builder.Services.AddHostedService<Worker>();
