@@ -55,4 +55,40 @@ The following subagents are defined for specialized execution of upcoming roadma
 - [ ] Build `/dashboard/telemetry` live SignalR gauge visualizer in Nuxt 4.
 - [ ] Build ClosedXML / EPPlus mass `.xlsx` and `.xlsb` streaming export endpoints.
 
+---
+
+## Milestone 7: Security Audit Remediation & Hardening
+
+### Critical Priority (Immediate Action Required)
+- [ ] **SEC-001**: Remove hardcoded database credentials and connection strings from version-controlled configs (`appsettings.json`, `appsettings.Development.json`, `docker-compose.yml`, `Program.cs`, `db.ts`, `AppDbContextFactory.cs`).
+- [ ] **SEC-002**: Disallow hardcoded AES-256-GCM dev encryption key fallback across non-development environments and strictly enforce `HEIMDALL_ENCRYPTION_KEY` (`AppDbContext.cs`).
+- [ ] **SEC-003**: Enforce `[Authorize]` attributes on all unauthenticated GET API endpoints across `ClientPcController`, `MachineController`, `InventoryController`, `MaintenanceTicketController`, and `DashboardController`.
+- [ ] **SEC-004**: Restrict open CORS policy (`AllowAllLocalDev` with wildcard origins and credentials) to strictly verified development environments or explicit origin whitelists (`Program.cs`).
+- [ ] **SEC-005**: Secure gRPC `SystemInfoCollectorService` endpoint with authentication/mTLS and authorization to prevent unauthenticated telemetry injection and command interception.
+
+### High Priority
+- [ ] **SEC-006**: Deprecate or gate the HTTP dev seed endpoint (`seed-admin.get.ts`) behind authenticated administrative CLI tooling to prevent unauthorized mass account generation.
+- [ ] **SEC-007**: Restrict Swagger UI and OpenAPI documentation generation to `Development` environment only (`Program.cs`).
+- [ ] **SEC-008**: Implement ASP.NET Core rate limiting middleware (`Microsoft.AspNetCore.RateLimiting`) on sensitive API routes and authentication endpoints.
+- [ ] **SEC-009**: Enforce least-privilege non-root execution (`USER` directive) across all Dockerfiles (`backend/Dockerfile.dev`, `frontend/web/Dockerfile.dev`, `agent/Dockerfile.dev`).
+- [ ] **SEC-010**: Enforce `[Authorize]` policy on SignalR `MaintenanceHub` to prevent unauthenticated group subscription and event broadcasting.
+- [ ] **SEC-011**: Sanitize gRPC exception responses in `SystemInfoCollectorService` to prevent leaking internal database schema and exception details.
+- [ ] **SEC-012**: Parameterize PostgreSQL role initialization scripts (`01-init-roles.sql`) using secrets or environment variables instead of plaintext DDL passwords.
+
+### Medium Priority
+- [ ] **SEC-013**: Configure strict Content Security Policy (CSP) headers in Nuxt/Nitro server config.
+- [ ] **SEC-014**: Enable HTTP Strict Transport Security (HSTS) with `app.UseHsts()` in backend production pipelines.
+- [ ] **SEC-015**: Secure or disable pgAdmin container exposure on public port 5050 in default compose files.
+- [ ] **SEC-016**: Pass Redis authentication via configuration file or Docker secrets rather than plaintext CLI command flags.
+- [ ] **SEC-017**: Disable Nuxt devtools and debug source map exposure in production builds (`nuxt.config.ts`).
+- [ ] **SEC-018**: Pin Docker container base images to immutable SHA256 digests rather than mutable tags (`latest`, `18`, `10.0`).
+
+### Low Priority
+- [ ] **SEC-019**: Replace `Math.random()` with `crypto.randomUUID()` for organization and member ID generation (`seed-admin.get.ts`).
+- [ ] **SEC-020**: Restrict `AllowedHosts` in `appsettings.json` from `*` to specific production domains.
+- [ ] **SEC-021**: Evaluate encryption or session-scoped isolation for offline operational data stored in browser `localStorage`.
+- [ ] **SEC-022**: Integrate automated SAST, dependency auditing (`dotnet list package --vulnerable`, `bun audit`), and license compliance scanning into `.github/workflows/ci.yml`.
+- [ ] **SEC-023**: Enforce strict requirement for `BETTER_AUTH_SECRET` without fallback in production runtime configuration (`auth.ts`).
+
+
 

@@ -1,6 +1,12 @@
 > [!NOTE]
 > **Heimdall** is an industrial management system developed as a Bachelor of Science (BSc) Thesis project at the University of Pécs, Faculty of Engineering and Information Technology (PTE MIK).
 
+> [!WARNING]
+> ### ⚠️ Pre-Alpha Advisory: AI-Assisted Engineering, Security Notice & Breaking Changes
+> - **Early Development Phase:** This project is in an active, experimental pre-alpha stage. Core components, data contracts, and workflows are subject to **constant breaking changes** without backwards compatibility guarantees.
+> - **Heavily AI-Generated Codebase:** Substantial portions of this repository—including backend services, frontend logic, infrastructure definitions, and test suites—are engineered and iterated upon with autonomous AI agents and large language models.
+> - **High Likelihood of Security Vulnerabilities:** The code may contain unvetted implementations, hardcoded development defaults, or exploitable security flaws. **Do NOT deploy or expose this platform in production, internet-facing environments, or live operational technology (OT/ICS) networks** without exhaustive manual code review, hardening, and independent penetration testing.
+
 # Heimdall - Industrial Management & Telemetry System
 
 Heimdall is a multi-tenant industrial asset management, configuration tracking, and real-time monitoring platform tailored for manufacturing environments. It bridges the gap between **Information Technology (IT)** and **Operational Technology (OT)** by tracking client PCs, Industrial PCs (IPCs), Soft-PLCs (Beckhoff TwinCAT), hardware PLCs, robot controllers, specialized autonomous equipment, software assets, and spatial factory layouts.
