@@ -8,12 +8,13 @@ The Heimdall frontend provides operational dashboards, spatial CAD floor plans, 
 ## Core Capabilities
 - **Operational Dashboards**: Live telemetry gauges, client PC status tables, and KPI summaries.
 - **Interactive Plant Map**: Vector-based AutoCAD DXF floor plan viewer with spatial machine pinning.
-- **Maintenance Ticketing**: Real-time Kanban board with native drag-and-drop and camera QR barcode scanning.
+- **Maintenance Ticketing**: Real-time 8-stage Kanban board (`Open`, `In_Progress`, `Pending_Parts`, `Escalated`, `Escalated_External`, `Closure_Pending`, `Resolved`, `Closed_Unresolved`) with drag-and-drop, SFC tracking, and error template interpolation.
+- **Composable Action QR Generator**: Pure TypeScript zero-dependency SVG QR code generator (`qrSvgRenderer.ts`) for machine incident reporting and direct camera scanning.
 - **Dynamic Asset Editor**: 5-tab editor with customizable specs and template interpolation.
 - **Identity & Multi-Tenancy**: Organization switching, session forensics, and role-based access control.
 
 ## Administrative Capabilities
-The system provides a standalone dashboard for system administrators (`system_admin` role) with the following features:
+The system provides standalone governance dashboards for system administrators and engineers:
 
 ### 1. User Management
 - **Lifecycle Control**: Search, filter, and list all system users.
@@ -21,15 +22,20 @@ The system provides a standalone dashboard for system administrators (`system_ad
 - **Role Elevation**: Granular role assignment (Engineer, Manager, Technician, etc.).
 - **Impersonation**: Securely assume a user's identity for troubleshooting.
 
-### 2. Session Forensics
+### 2. Session Forensics & MFA Policy Governance
 - **Real-time Tracking**: View all active device sessions for any user.
 - **Remote Revocation**: Kill specific sessions (remote sign-out) to secure compromised accounts.
-- **Device Metadata**: Detection of OS and IP address for session identification.
+- **MFA Policy Thresholds**: Configurable re-authentication intervals per security group / role (`SystemAdministrator` always, `Engineer` weekly, `Technician` monthly).
+- **Interactive Session Evaluation**: Sandbox to verify whether an active session requires MFA challenge based on elapsed time.
 
-### 3. Organization Engine
-- **Multi-Tenancy**: Create and manage organizations (teams/departments).
-- **Member Grouping**: Group users within organizations with specific local roles.
-- **Slug Management**: Clean URL identifiers for organizational contexts.
+### 3. Organization & Security Group Mapping (`/dashboard/security-groups`)
+- **Directory Claims Transform**: Auto-provisions organizations and assigns roles based on Entra ID GUIDs and Active Directory Distinguished Names.
+- **Interactive Claims Sandbox**: Test presets for key engineering personas (Sally Vance, George Orwell, Alex Novak, Root Admin).
+
+### 4. Active Directory Discovery & PKI Root CA Governance (`/dashboard/admin/system-settings`)
+- **VLAN Host Discovery**: Inspects factory OUs partitioned across VLANs 10–60.
+- **Key-Value Import Templating**: Maps AD OU attributes (Location, Subnet, Machine Type, Purpose) directly to Heimdall host metadata.
+- **Root CA & OU Certificates**: Assigns X.509 certificates to hosts by OU with self-signed or custom CA import.
 
 ## Database Schema (Auth Layer)
 | Table | Description |

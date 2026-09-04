@@ -14,9 +14,13 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 - **Graph-Relational Domain Model:** Flexible many-to-many relationship topology linking Production Stations with one or more controlling IPCs/PLCs and equipment interconnects.
 - **Frontend:** Nuxt 4 (Nuxt 4 Directory Structure), Vue 3, Tailwind CSS v4, shadcn-vue, and Vitest.
 - **Client Offloading:** Server-side aggregation, filtering, and caching via Nuxt Nitro BFF (Backend-for-Frontend) routes.
+- **Enterprise Dataset & Simulated AD:** Canonical plant fixtures (`fixtures/enterprise_plant_dataset.json`), mock Microsoft Graph REST endpoints (`/api/ad-mock/v1.0/*`), and RFC 4511 LDAP search engine.
+- **Better-Auth & Entra ID Security Group Org Governance:** Dynamic tenant organization mapping and auto-provisioning driven by directory claims, with an interactive claims evaluation sandbox.
+- **Mock CMI / WMI Engine & Simulated PC Containers:** WMI / CIM hardware query runner (`wmic`, `Get-CimInstance`) and dedicated Docker containers running simulated Windows edge PCs with local diagnostics and telemetry streams.
+- **Industrial Maintenance & Zero-Dependency Action QR:** 8-column Kanban lifecycle, error template catalog, SFC serialization, technician delegation hierarchy, and pure SVG Galois Field $GF(256)$ QR generator.
+- **MFA Policy & PKI Certificate Governance:** Role-based MFA timeout threshold enforcement, AD OU VLAN host discovery, and automated X.509 certificate assignment.
 - **OT Integrations:** Copia Automation Git version control integration blueprint and native OPC UA Server API (`opc.tcp://`).
 - **Security & Compliance:** TISAX (VDA ISA 6.0 / High Protection) compliance framework, multi-tenant isolation, cryptographic command signing, and mTLS support.
-- **Hardware Telemetry:** Deep Windows System API / WMI / SetupAPI P/Invoke driver diagnostics (e.g., Beckhoff Real-Time Ethernet NIC driver detection and TwinCAT ADS state).
 
 ---
 
@@ -33,24 +37,25 @@ heimdall/
 │   ├── api/                 # API Reference, Contracts, Recipe Specification
 │   ├── guide/               # Developer Guide, User Guide
 │   └── plc/                 # TwinCAT 3 POU and Interface specifications
+├── fixtures/                # Canonical enterprise plant dataset (JSON)
 ├── frontend/
 │   └── web/                 # Nuxt 4 Web Dashboard & Nitro BFF
 ├── infra/
 │   └── database/            # PostgreSQL 18 Docker Compose, SSL, Init Scripts
-├── seed_data/               # Unified Seed Pipeline (CSV, SQL, Validator)
 ├── shared/
 │   ├── App.Contracts/       # Protobuf definitions, gRPC types, PLC TypeSystem (NO DB)
 │   └── App.Shared/          # Domain Entities, EF Core DbContext, Migrations
 ├── simulators/
-│   └── fleet/               # Multi-device industrial edge telemetry simulator
+│   ├── active_directory/    # Standalone mock Active Directory / Graph server (port 5088)
+│   └── fleet/               # Edge fleet simulator, mock CMI runner & simulated PC Docker containers
 ├── tools/
 │   ├── cad/                 # Synthetic DXF CAD floor plan generator
 │   ├── completions/         # Shell completions (bash/zsh)
 │   └── dev_manager.py       # Unified development service orchestrator & monitor
 ├── tests/                   # Unified Verification Suites
-│   ├── backend/             # xUnit integration & unit tests (60 tests)
-│   ├── frontend/unit/       # Vitest unit tests (13 suites, 67 tests)
-│   └── e2e/                 # Playwright browser automation tests (14 tests)
+│   ├── backend/             # xUnit integration & unit tests (67 tests)
+│   ├── frontend/unit/       # Vitest unit tests (18 suites, 126 tests)
+│   └── e2e/                 # Playwright browser automation tests
 ├── run_dev.sh               # Local development environment launcher script
 └── run_simulators.sh        # Multi-client fleet simulator orchestrator
 ```
@@ -111,7 +116,7 @@ graph TD
 ### Prerequisites
 
 Ensure you have the following installed on your machine:
-- **.NET 9 SDK** (`dotnet`)
+- **.NET 10 SDK** (`dotnet`)
 - **Node.js** (v20+) & **Bun** (`bun`)
 - **Python 3** (with `venv`)
 - **Docker & Docker Compose**
@@ -135,7 +140,7 @@ openssl req -new -x509 -days 365 -nodes -text -out certs/server.crt \
 # Enforce strict file permissions required by PostgreSQL
 chmod 600 certs/server.key
 
-# Start PostgreSQL 17 container
+# Start PostgreSQL 18 container
 docker compose up -d
 cd ../..
 ```
@@ -221,12 +226,29 @@ source <(./run_dev.sh completion zsh)    # for Zsh
 ## Running Verification Tests
 
 ```bash
-# 1. Run .NET backend unit tests (xUnit)
-dotnet test Heimdall.sln
+# 1. Run .NET backend unit & integration tests (xUnit, 67 tests)
+dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
 
-# 2. Run Nuxt frontend unit tests (Vitest)
-bun --cwd frontend/web run test
+# 2. Run Nuxt frontend unit test suites (Vitest, 18 suites, 126 tests)
+bun --cwd frontend/web run test:unit
+
+# 3. Run Python fleet simulator & mock CMI runner tests (9 tests)
+./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
+
+# 4. Run Playwright end-to-end browser tests
+cd frontend/web && bun x playwright test
 ```
+
+---
+
+## Enterprise Integrations & Governance
+
+Heimdall includes built-in enterprise tooling for manufacturing IT/OT environments:
+- **Canonical Plant Dataset:** Driven by `fixtures/enterprise_plant_dataset.json`, defining 4 tenant organizations, 6 directory security groups, 8 consolidated users, 6 VLAN-partitioned OUs (VLANs 10–60), and 12 edge client PCs.
+- **Simulated Active Directory & Mock Graph:** Emulates Microsoft Graph (`/api/ad-mock/v1.0/*`) and RFC 4511 LDAP directory search endpoints, plus a standalone Python server on port 5088 (`simulators/active_directory/mock_ad_server.py`).
+- **Mock CMI Runner & Edge PC Containers:** Emulates Windows WMI (`wmic`) and PowerShell (`Get-CimInstance`) queries on Linux edge containers (`simulators/fleet/docker-compose.simulated-pc.yml`), exposing hardware diagnostics on port 8080.
+- **Better-Auth Entra ID / AD Security Group Org Governance:** Evaluates directory claims to dynamically provision organizations and assign tenant roles (`owner`, `admin`, `member`) via `/dashboard/security-groups`.
+- **MFA Policy & PKI Certificate Assignment:** Enforces configurable MFA timeout rules per role (e.g., sys admin always, engineers weekly, technicians monthly) and assigns project root CA certificates to hosts by Active Directory OU.
 
 ---
 

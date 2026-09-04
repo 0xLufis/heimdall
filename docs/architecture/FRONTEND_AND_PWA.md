@@ -44,32 +44,59 @@ Browser clients do not connect directly to internal backend microservice ports. 
 
 ---
 
-## 2. Live Maintenance Ticketing & Kanban Board
+## 2. Live Maintenance Ticketing & 8-Stage Kanban Architecture
 
-The maintenance ticketing module (`/dashboard/tickets`) gives factory technicians real-time incident tracking, status transitions, and photographic attachment management.
+The maintenance ticketing module (`/dashboard/tickets`) coordinates real-time equipment incident handling, field telemetry snapshots, error template auto-fill, and photographic audit trails across an 8-column Kanban lifecycle.
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│      Open       │     │   In Progress   │     │  Pending Parts  │     │    Resolved     │
-├─────────────────┤     ├─────────────────┤     ├─────────────────┤     ├─────────────────┤
-│ [TKT-2026-0012] │     │ [TKT-2026-0008] │     │ [TKT-2026-0005] │     │ [TKT-2026-0001] │
-│ Spindle Overheat│────►│ Bearing Replace │────►│ Lead Screw On   │────►│ Calibration Done│
-│ Station: OP10   │     │ Station: OP30   │     │ Backorder       │     │ Station: OP20   │
-│ Priority: High  │     │ Priority: Med   │     │ Priority: Low   │     │ Priority: Med   │
-└─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
+┌──────────┐   ┌─────────────┐   ┌───────────────┐   ┌───────────┐
+│   Open   │──►│ In Progress │──►│ Pending Parts │──►│ Resolved  │
+└────┬─────┘   └──────┬──────┘   └───────────────┘   └─────▲─────┘
+     │                │                                    │
+     │                ├────────────────────────────────────┤
+     ▼                ▼                                    │
+┌──────────┐   ┌────────────────────┐            ┌─────────┴─────────┐
+│Escalated │   │ Escalated External │            │  Closure Pending  │
+│ (Safety) │   │  (Vendor / SAP)    │            │ (AOK Calibration) │
+└──────────┘   └────────────────────┘            └─────────┬─────────┘
+                                                           │
+                                                           ▼
+                                                 ┌───────────────────┐
+                                                 │ Closed Unresolved │
+                                                 └───────────────────┘
 ```
 
-### 2.1 Native HTML5 Drag-and-Drop Workflow
-The Kanban board implements smooth, native HTML5 drag-and-drop mechanics across status columns:
-* Dragging a ticket card initiates a drag data transfer carrying the ticket's UUID.
-* Dropping over a target column invokes `updateTicketStatus(ticketId, newStatus)`.
-* An optimistic UI update moves the ticket card immediately, while an asynchronous mutation request is dispatched via `useMaintenance`. If the server rejects the transition, the card rolls back to its prior column.
+### 2.1 Kanban Status Columns & Operational Roles
+* **`Open`**: Newly reported incidents awaiting review.
+* **`In Progress`**: Active diagnostics or repair by designated technician.
+* **`Pending Parts`**: Paused awaiting hardware components or seals.
+* **`Escalated`**: Safety-critical hardware lockouts (SIL desynchronization, light curtain muting faults).
+* **`Escalated External`**: Escalated to external enterprise teams or OEM vendors (e.g., SAP MES RFC dropout).
+* **`Closure Pending`**: Work complete, awaiting formal calibration verification or outside AOK sign-off.
+* **`Resolved`**: Verified operational, fully documented, and closed with MTTR metrics.
+* **`Closed Unresolved`**: Ticket retired without corrective action (e.g., duplicate, obsolete station).
 
-### 2.2 Camera QR Barcode Scanner (`QrScannerModal.vue`)
-Floor technicians often need to locate ticket histories while standing in front of physical equipment. The QR scanner component accesses the device camera via `navigator.mediaDevices.getUserMedia`:
-1. Scans equipment QR codes containing station URLs or hardware serial numbers.
-2. Extracts station identifiers or MAC addresses from the scanned payload.
-3. Automatically filters the active ticket view or navigates directly to the associated asset profile.
+### 2.2 Error Template Engine (`utils/errorTemplateEngine.ts`)
+Standardizes incident reporting across 4 industrial categories: `Prevention`, `Error`, `Improvement`, and `ETC`. Selecting a template automatically populates:
+- Incident title and detailed diagnostic description.
+- Standardized error codes (e.g., `E-MOT-01`, `E-SAFE-01`, `P-CAL-01`).
+- Function block states (e.g., `FB_AxisControl` in `ERROR_STOP`).
+- Telemetry keys to sample (e.g., `following_error_mm`, `motor_current_A`).
+- SFC serial tagging (`#SFC-...`).
+
+### 2.3 Zero-Dependency SVG Action QR Renderer (`utils/qrSvgRenderer.ts`)
+To prevent SSR container crashes from native Node/canvas QR dependencies, Heimdall implements an internal pure TypeScript QR generator:
+- Built-in Galois Field $GF(256)$ generator with Reed-Solomon Error Correction Level M.
+- Synchronously renders vector SVG data URLs (`data:image/svg+xml;utf8,...`) without native canvas or C++ bindings.
+- Fully compatible with browser, Bun, Node.js, and Nitro SSR.
+- Supports composable URI actions (`report-incident`, `inspect-machine`, `claim-ticket`) via `utils/qrActionGenerator.ts`.
+
+### 2.4 Technician Delegation & Attendance Engine (`utils/technicianInheritance.ts`)
+Resolves preferred technicians dynamically through a 4-tier hierarchy:
+1. **Machine Override**: Specific technician assigned directly to an individual machine.
+2. **Line / Group Rule**: Technician dedicated to an entire production cell or assembly line.
+3. **Technology Rule**: Engineer dedicated to a machine type (e.g., `Milling`, `AOI`, `Pressing`).
+4. **Shift Absence Fallback**: If the primary technician is marked absent (`Sick`, `Vacation`, `Emergency`) or out of office, tickets automatically route to designated backup personnel.
 
 ---
 

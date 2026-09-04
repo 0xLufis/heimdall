@@ -13,18 +13,20 @@ heimdall/
 ├── backend/                 # Backend API and services
 │   ├── App.Backend.Api/     # ASP.NET Core API controllers, gRPC collector, SignalR hubs
 │   └── App.Infrastructure/  # Repositories, Redis/Memory caching, external integrations
+├── fixtures/                # Canonical enterprise plant dataset (JSON)
 ├── shared/                  # Shared libraries
 │   ├── App.Contracts/       # Protobuf definitions, DTOs, PLC type sanitizer (No DB dependency)
 │   └── App.Shared/          # Domain entities, AppDbContext, EF Core migrations
 ├── frontend/
 │   └── web/                 # Nuxt 4 web dashboard & Nitro BFF proxy
 ├── simulators/
-│   └── fleet/               # Multi-client Python edge fleet simulator
+│   ├── active_directory/    # Standalone mock Active Directory / Graph server (port 5088)
+│   └── fleet/               # Edge fleet simulator, mock CMI runner & simulated PC Docker containers
 ├── infra/
 │   └── database/            # PostgreSQL 18, Redis 7.4, SSL certs, and seed data
 ├── tests/
-│   ├── backend/             # xUnit backend integration tests
-│   ├── frontend/unit/       # Vitest unit test suites
+│   ├── backend/             # xUnit backend integration tests (67 tests)
+│   ├── frontend/unit/       # Vitest unit test suites (18 suites, 126 tests)
 │   └── e2e/                 # Playwright browser end-to-end tests
 ├── docker-compose.yml       # Full stack local development compose file
 ├── run_dev.sh               # Local development launch script
@@ -138,19 +140,26 @@ docker compose down
 
 ### 5.1 Backend & Agent Unit Tests (xUnit)
 ```bash
-dotnet test
+dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
 ```
-Executes tests covering multi-tenancy global query filters, entity inheritance, AES-256-GCM encryption roundtrips, PII exclusion rules, and gRPC endpoints.
+Executes 67 tests covering multi-tenancy global query filters, MFA policy rules, Active Directory OU synchronization, entity inheritance, AES-256-GCM encryption roundtrips, PII exclusion rules, and gRPC endpoints.
 
 ### 5.2 Frontend Unit Tests (Vitest)
 ```bash
 cd frontend/web
 bun run test:unit
 ```
-Executes 13 test suites covering Kanban drag-and-drop, Zod schema validation, offline mutation queues, and OmniSearch fuzzy distance algorithms.
+Executes 18 test suites (126 tests) covering the 8-stage Kanban lifecycle, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, and mock Active Directory endpoints.
 
-### 5.3 End-to-End Browser Tests (Playwright)
+### 5.3 Python Fleet Simulator & Mock CMI Tests
+```bash
+./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
+```
+Executes 9 unit tests verifying `MockCmiEngine` queries (`wmic`, `Get-CimInstance`) and `SimulatedPcDaemon` edge diagnostics and telemetry generation.
+
+### 5.4 End-to-End Browser Tests (Playwright)
 ```bash
 cd frontend/web
 bun x playwright test
 ```
+Executes end-to-end browser automation validating MFA policy enforcement, Active Directory host discovery, and security group organization provisioning.

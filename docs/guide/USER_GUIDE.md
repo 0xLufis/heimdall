@@ -75,29 +75,36 @@ The Fleet view monitors all industrial PCs (IPCs), Soft-PLCs, and edge compute n
 
 ## 4. Maintenance Ticketing & Kanban Board (`/dashboard/tickets`)
 
-The maintenance module coordinates repairs, parts replacements, and equipment troubleshooting.
+The maintenance module coordinates repairs, parts replacements, safety escalations, and calibration sign-offs across the production floor.
 
-### 4.1 Kanban Status Columns
-* **`Open`**: Newly reported defects awaiting initial review and assignment.
+### 4.1 8-Stage Kanban Status Columns
+* **`Open`**: Newly reported incidents awaiting technician assignment.
 * **`In Progress`**: Active repair or diagnostics by a designated technician.
 * **`Pending Parts`**: Work paused awaiting replacement components from warehouse stock.
-* **`Resolved`**: Work completed and equipment verified operational.
+* **`Escalated`**: Safety-critical lockouts (e.g., dual-channel safety relay desynchronization, light curtain muting timeout).
+* **`Escalated External`**: Escalated to external tier-3 vendors or enterprise teams (e.g., SAP MES RFC dropout).
+* **`Closure Pending`**: Maintenance complete, awaiting formal calibration verification or outside AOK sign-off.
+* **`Resolved`**: Verified operational, fully documented, and cleared for production.
+* **`Closed Unresolved`**: Ticket retired without corrective action (e.g., duplicate, obsolete equipment).
 
-### 4.2 Creating a Ticket
-1. Click **New Ticket** in the upper right.
-2. Enter a descriptive title and detailed notes explaining the observed symptoms or error code.
-3. Select the **Priority Level** (`Low`, `Medium`, `High`, `Critical`).
-4. Select the affected **Station** or specific **Hardware Component**.
-5. Click **Submit Ticket**. The ticket appears immediately across all floor displays via real-time SignalR push.
+### 4.2 Error Template Catalog
+Operators can select from predefined error templates covering:
+- **Motion & Drive**: Axis position divergence, servo torque limit exceeded.
+- **Safety Systems**: Light curtain muting desync, E-stop dual channel violation.
+- **Fieldbus & Networks**: SAP MES RFC dropout, PROFINET bus fault.
+- **Vision & Optics**: AOI blob rejection spike, telecentric lens strobe lag.
+- **Dispensing & Joining**: Gap filler nozzle pressure sag, screwdriver torque-angle window violation, NC servo press envelope error.
 
-### 4.3 Drag-and-Drop Status Updates
-* Drag any ticket card from its current column and drop it into the destination status column.
-* An optimistic animation confirms the move, and the server status updates instantly.
+Selecting a template automatically populates the title, technical error code, default tags, sample function block state, and telemetry keys.
 
-### 4.4 Using the Camera QR Scanner (Mobile / PWA)
-1. On a mobile or tablet device, tap the **Scan QR** icon in the search bar.
-2. Point the device camera at the physical QR code label on the machine or control cabinet.
-3. The app decodes the station identifier and opens the station's active tickets automatically.
+### 4.3 Composable Action QR Codes & Camera Scanner
+- **QR Label Generation**: Click **Generate Machine QR** to create composable action QR codes (`report-incident`, `inspect-machine`, `claim-ticket`) for specific machines, lines, or tickets. Rendered as crisp, pure SVG graphics ready for printing.
+- **Mobile Camera Scanner**: Tap **Scan QR** in the navigation bar to scan physical equipment labels and instantly open the relevant machine's maintenance timeline.
+
+### 4.4 Technician Delegation & Shift Attendance
+- **Shift Attendance**: Shift leaders can mark technicians absent (`Sick`, `Emergency`, `Vacation`, `Training`) and designate backup personnel.
+- **Technician Dedication**: Group leaders and engineering managers dedicate engineers to specific technologies (`Milling`, `Pressing`, `AOI`), lines, or individual machines.
+- **Attendance Inheritance**: Tickets auto-assign to preferred technicians, seamlessly routing to backups when primary personnel are marked absent or out of office.
 
 ---
 
@@ -115,3 +122,26 @@ When adding or editing an asset, use the 5-tab editor:
 * **Commercial**: Record the procurement cost in Hungarian Forint (HUF) and vendor information.
 * **Specs**: Add dynamic technical attributes (voltage ratings, payload limits, cycle times).
 * **Templates**: Select from pre-configured equipment templates to auto-fill common specifications.
+
+---
+
+## 6. System Governance & Active Directory (`/dashboard/admin/system-settings`)
+
+### 6.1 Multi-Factor Authentication (MFA) Policies
+Configure re-authentication timeout thresholds per security role:
+- `SystemAdministrator`: Re-authenticate always (every session).
+- `Engineer`: Re-authenticate once a week (7 days).
+- `Technician`: Re-authenticate once a month (30 days).
+- Custom rules: Define enforcement thresholds for specialized security groups.
+
+### 6.2 Active Directory Host Discovery & VLAN Separation
+- Discover unmanaged factory edge hosts partitioned across industrial VLANs (VLAN 10 Robotics, VLAN 20 Vision, VLAN 30 Milling, VLAN 40 Dispensing, VLAN 50 Fastening, VLAN 60 Pressing).
+- Use **Mass Import Templating** to translate AD OU attributes (`Location`, `Subnet`, `MachineType`, `Purpose`) into structured Heimdall machine metadata.
+
+### 6.3 PKI Root CA & OU Certificate Rules
+- Import existing enterprise Root CA certificates or generate internal self-signed certificates.
+- Define automatic X.509 certificate enrollment rules based on host Active Directory OU membership.
+
+### 6.4 Security Group Organization Mapping (`/dashboard/security-groups`)
+- Map incoming directory claims (Entra ID GUIDs or on-prem AD Distinguished Names) to Heimdall tenant organizations.
+- Test claims mapping in the interactive evaluation sandbox with presets for engineering personas (Sally Vance, George Orwell, Alex Novak, Root Admin).

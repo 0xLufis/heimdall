@@ -243,3 +243,42 @@ The platform aligns with the **VDA Information Security Assessment (VDA ISA 6.0)
 3. **Dead-Letter Quarantine (`backend.malformed_telemetry_quarantine`)**:
    Corrupted, oversized, or unparseable telemetry payloads are routed into quarantine tables with raw payload bytes, source IP, channel, and parse error explanation for forensic analysis.
 4. **Retention Policy**: Audit logs and security events are preserved for a minimum of 12 months in compliance with automotive auditing guidelines.
+
+---
+
+## 8. Multi-Factor Authentication (MFA) Governance
+
+To balance stringent security compliance (TISAX ISA 1.1) with operator usability on the factory floor, Heimdall enforces role-based **MFA Timeout Thresholds**:
+
+| Role / Group | Re-Authentication Interval | Enforcement Rationale |
+| :--- | :--- | :--- |
+| **`SystemAdministrator`** | **Always (Every Session)** | Maximum privilege level. Full tenant access and impersonation authority requires continuous challenge. |
+| **`Engineer`** | **Once a week (7 days)** | Balances OT change management authority with daily engineering station workflows. |
+| **`Technician`** | **Once a month (30 days)** | Minimizes distraction during physical line interventions while ensuring periodic identity verification. |
+| **Custom Groups** | **Configurable** | Custom intervals defined per security group via `/dashboard/admin/system-settings`. |
+
+### 8.1 Live Session Evaluation Engine (`server/utils/mfaPolicyStore.ts`)
+The server validates session freshness on protected mutations by evaluating:
+$$\Delta t = t_{\text{current}} - t_{\text{last\_mfa}}$$
+If $\Delta t > \text{Threshold}_{\text{role}}$, the request is intercepted with HTTP 403 / `MFA_CHALLENGE_REQUIRED`.
+
+---
+
+## 9. Active Directory OU-Based PKI & Certificate Governance
+
+Edge PCs and Soft-PLCs participating in the industrial telemetry mesh require X.509 certificates:
+- **Root CA Management**: Administrators can import existing enterprise root certificates (`.crt` / `.pem`) or generate internal self-signed authority pairs (`/api/pki/root-ca`).
+- **OU-Partitioned Rules**: Automatic certificate enrollment rules map directly to Active Directory Organizational Units partitioned by VLAN:
+  - `OU=Robotics,OU=VLAN10-Production` $\to$ SAN: `*.robotics.vlan10.factory.corp`
+  - `OU=VisionInspection,OU=VLAN20-Quality` $\to$ SAN: `*.vision.vlan20.factory.corp`
+  - `OU=MillingMachining,OU=VLAN30-Machining` $\to$ SAN: `*.milling.vlan30.factory.corp`
+
+---
+
+## 10. Entra ID & Active Directory Security Group Claims Governance
+
+Heimdall integrates enterprise identity providers with Better-Auth multi-tenancy:
+- **Directory Claims Extraction**: Evaluates incoming Entra ID GUIDs and on-prem Active Directory Distinguished Names (`CN=...,OU=Groups,DC=factory,DC=corp`).
+- **Dynamic Organization Provisioning**: Auto-provisions tenant organizations in PostgreSQL (`auth.organization`) and enrolls users with calculated roles (`owner`, `admin`, `member`) via `server/utils/securityGroupOrgSync.ts`.
+- **Claims Evaluation Sandbox**: Allows administrators to simulate directory claim payloads and inspect resolved tenant memberships directly in the UI (`/dashboard/security-groups`).
+

@@ -3,8 +3,14 @@ name: Heimdall Continuous Integration
 on:
   push:
     branches: [ main, master, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
     branches: [ main, master, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 jobs:
   backend-test:
