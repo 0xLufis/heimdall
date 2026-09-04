@@ -6,30 +6,20 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-<ItemGroup>
-  <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-  <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
-    <PrivateAssets>all</PrivateAssets>
-    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  </PackageReference>
-  
-  <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
-  <PackageReference Include="Google.Protobuf" Version="3.36.1" />
-  <PackageReference Include="Grpc.Tools" Version="2.83.0">
-    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    <PrivateAssets>all</PrivateAssets>
-  </PackageReference>
-  <PackageReference Include="Grpc.Core" Version="2.46.6" />
-
-  <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
-  <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
-  <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.11" />
-  <PackageReference Include="System.IO.Hashing" Version="10.0.11" />
-</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.11" />
+  </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="Protos\system_info.proto" GrpcServices="Both" />
-    <Protobuf Include="Protos\telemetry.proto" GrpcServices="Both" />
+    <ProjectReference Include="..\App.Contracts\App.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

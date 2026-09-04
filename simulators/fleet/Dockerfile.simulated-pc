@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install curl for container health checks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+COPY simulators/fleet/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy dataset fixtures
+COPY fixtures/enterprise_plant_dataset.json /app/fixtures/enterprise_plant_dataset.json
+
+# Copy simulator & CMI runner scripts
+COPY simulators/fleet/proto/ /app/proto/
+COPY simulators/fleet/dataset_loader.py /app/
+COPY simulators/fleet/mock_cmi_runner.py /app/
+COPY simulators/fleet/simulated_pc_daemon.py /app/
+
+# Make mock CMI runner executable and symlink as wmic and Get-CimInstance
+RUN chmod +x /app/mock_cmi_runner.py \
+    && ln -s /app/mock_cmi_runner.py /usr/local/bin/wmic \
+    && ln -s /app/mock_cmi_runner.py /usr/local/bin/Get-CimInstance
+
+ENV PYTHONUNBUFFERED=1
+ENV SIMULATED_HOSTNAME=CPC-L06-ROB-01
+ENV BACKEND_GRPC_HOST=heimdall_backend:5001
+ENV AD_SERVICE_URL=http://heimdall_frontend:3000/api/ad-mock
+ENV DIAGNOSTIC_PORT=8080
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD curl -f http://localhost:8080/ || exit 1
+
+CMD ["python3", "simulated_pc_daemon.py"]

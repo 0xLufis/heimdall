@@ -119,4 +119,4 @@ compdef _heimdall_run_dev run_dev.sh ./run_dev.sh
 compdef _heimdall_run_simulators run_simulators.sh ./run_simulators.sh
 compdef _heimdall_dev_manager dev_manager.py ./tools/dev_manager.py
 compdef _heimdall_seed_pipeline seed_pipeline.py ./seed_data/seed_pipeline.py
-compdef _heimdall_fleet_simulator fleet_simulator.py ./simulators/edge-fleet-simulator/fleet_simulator.py
+compdef _heimdall_fleet_simulator fleet_simulator.py ./simulators/fleet/fleet_simulator.py

@@ -126,7 +126,7 @@ stop_services() {
     pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
     pkill -f "dotnet run --project backend/App.Backend.Api" 2>/dev/null || true
     pkill -f "dotnet run --project agent/App.Agent.Daemon" 2>/dev/null || true
-    pkill -f "bun.*heimdall-web-frontend" 2>/dev/null || true
+    pkill -f "bun.*frontend/web" 2>/dev/null || true
     pkill -f "nuxt/bin/nuxt" 2>/dev/null || true
     pkill -f "fleet_simulator.py" 2>/dev/null || true
     pkill -f "dev_manager.py watch" 2>/dev/null || true
@@ -178,7 +178,7 @@ start_services() {
     # 3. Start Nuxt Frontend with Vite HMR
     if ! check_tcp 127.0.0.1 3000; then
         echo "Starting Heimdall Web Frontend on http://localhost:3000..."
-        (cd "$SCRIPT_DIR/frontend/heimdall-web-frontend" && nohup bun run dev </dev/null > /tmp/heimdall-nuxt.log 2>&1 & echo $! > "$PID_DIR/frontend.pid")
+        (cd "$SCRIPT_DIR/frontend/web" && nohup bun run dev </dev/null > /tmp/heimdall-nuxt.log 2>&1 & echo $! > "$PID_DIR/frontend.pid")
     fi
 
     # 4. Start Agent Daemon with hot-reload watch
@@ -192,7 +192,7 @@ start_services() {
         echo "Starting Edge Fleet Simulator..."
         python_bin="./venv/bin/python"
         [ ! -f "$python_bin" ] && python_bin="python3"
-        (nohup $python_bin simulators/edge-fleet-simulator/fleet_simulator.py </dev/null > /tmp/heimdall-simulator.log 2>&1 & echo $! > "$PID_DIR/simulator.pid")
+        (nohup $python_bin simulators/fleet/fleet_simulator.py </dev/null > /tmp/heimdall-simulator.log 2>&1 & echo $! > "$PID_DIR/simulator.pid")
     fi
 
     echo "Services initialized. Use './run_dev.sh status -w' or './run_dev.sh monitor' to view live status."

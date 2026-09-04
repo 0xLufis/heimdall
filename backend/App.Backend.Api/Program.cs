@@ -4,6 +4,7 @@ using App.Backend.Api.Services;
 using App.Infrastructure.Repositories;
 using App.Shared.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 using DotNetEnv;
 using Npgsql;
 
@@ -41,8 +42,8 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
     if (builder.Environment.IsDevelopment())
     {
-        // Dedicated port for local dev cleartext gRPC (restricted to localhost)
-        serverOptions.ListenLocalhost(5001, listenOptions =>
+        // Dedicated port for local dev cleartext gRPC (accessible inside container network)
+        serverOptions.ListenAnyIP(5001, listenOptions =>
         {
             listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
         });
@@ -129,7 +130,18 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("admin", "system_admin", "lead_engineer", "engineer", "technician"));
 });
 
-// --- 4. Controllers & SignalR & gRPC & Swagger ---
+// --- 4. Controllers & SignalR & gRPC & Swagger & CORS ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllLocalDev", policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -140,9 +152,36 @@ builder.Services.AddGrpc();
 builder.Services.AddGrpcReflection();
 builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Heimdall API",
+        Version = "v1",
+        Description = "Industrial PC and Fleet Monitoring Backend API"
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Enter 'Bearer {token}' or your Better-Auth session token.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecuritySchemeReference("Bearer"),
+            new List<string>()
+        }
+    });
+});
 
 var app = builder.Build();
+
+app.UseCors("AllowAllLocalDev");
 
 // Enable middleware to serve generated Swagger as a JSON endpoint.
 app.UseSwagger();
@@ -150,8 +189,13 @@ app.UseSwagger();
 app.UseSwaggerUI(c => 
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Heimdall API V1");
-    c.RoutePrefix = "api-docs";
+    c.RoutePrefix = "swagger";
 });
+
+// Swagger route redirects
+app.MapGet("/", () => Results.Redirect("/swagger"));
+app.MapGet("/api-docs", () => Results.Redirect("/swagger"));
+app.MapGet("/api-docs/{**catchall}", () => Results.Redirect("/swagger"));
 
 app.UseAuthentication();
 app.UseAuthorization();

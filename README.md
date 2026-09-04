@@ -9,8 +9,8 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 
 ## Technical Highlights
 
-- **Backend:** .NET 9 Web API & gRPC Collector Service (.NET 9 / C# 13).
-- **Data Access & Schema Strategy:** Entity Framework Core 9 with Npgsql, PostgreSQL 17 JSONB columns, GIN indexing, and dual-schema separation (`auth` for Better-Auth, `backend` for Heimdall domain).
+- **Backend:** .NET 10 Web API & gRPC Collector Service (.NET 10 / C# 14).
+- **Data Access & Schema Strategy:** Entity Framework Core 10 with Npgsql, PostgreSQL 18 JSONB columns, GIN indexing, and dual-schema separation (`auth` for Better-Auth, `backend` for Heimdall domain).
 - **Graph-Relational Domain Model:** Flexible many-to-many relationship topology linking Production Stations with one or more controlling IPCs/PLCs and equipment interconnects.
 - **Frontend:** Nuxt 4 (Nuxt 4 Directory Structure), Vue 3, Tailwind CSS v4, shadcn-vue, and Vitest.
 - **Client Offloading:** Server-side aggregation, filtering, and caching via Nuxt Nitro BFF (Backend-for-Frontend) routes.
@@ -24,26 +24,35 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 
 ```
 heimdall/
-├── agent/                   # .NET 9 Worker Service Daemon for Client PCs/IPCs
+├── agent/                   # .NET 10 Worker Service Daemon (References App.Contracts only)
 ├── backend/                 # Backend API and Infrastructure layers
 │   ├── App.Backend.Api/     # ASP.NET Core Web API Controllers & gRPC Endpoints
 │   └── App.Infrastructure/  # Data Repositories & External Service Integrations
-├── docs/                    # Technical & Architecture Documentation
+├── docs/                    # Structured Documentation Hub
+│   ├── architecture/        # System, Agent, Encryption, Compliance, Protocols
+│   ├── api/                 # API Reference, Contracts, Recipe Specification
+│   ├── guide/               # Developer Guide, User Guide
+│   └── plc/                 # TwinCAT 3 POU and Interface specifications
 ├── frontend/
-│   └── heimdall-web-frontend/ # Nuxt 4 Web Dashboard & Nitro BFF
+│   └── web/                 # Nuxt 4 Web Dashboard & Nitro BFF
 ├── infra/
-│   └── database/            # PostgreSQL 17 Docker Compose, SSL, Init Scripts
-├── seed_data/               # Inventory CSV, Incremental SQL, and Unified Pipeline
+│   └── database/            # PostgreSQL 18 Docker Compose, SSL, Init Scripts
+├── seed_data/               # Unified Seed Pipeline (CSV, SQL, Validator)
 ├── shared/
-│   └── App.Shared/          # Domain Entities, EF Core DbContext, Protobuf Definitions
+│   ├── App.Contracts/       # Protobuf definitions, gRPC types, PLC TypeSystem (NO DB)
+│   └── App.Shared/          # Domain Entities, EF Core DbContext, Migrations
 ├── simulators/
-│   └── edge-fleet-simulator/# Multi-device industrial edge telemetry simulator
+│   └── fleet/               # Multi-device industrial edge telemetry simulator
 ├── tools/
 │   ├── cad/                 # Synthetic DXF CAD floor plan generator
+│   ├── completions/         # Shell completions (bash/zsh)
 │   └── dev_manager.py       # Unified development service orchestrator & monitor
-├── tests/                   # xUnit Backend tests & Vitest Frontend tests
+├── tests/                   # Unified Verification Suites
+│   ├── backend/             # xUnit integration & unit tests (60 tests)
+│   ├── frontend/unit/       # Vitest unit tests (13 suites, 67 tests)
+│   └── e2e/                 # Playwright browser automation tests (14 tests)
 ├── run_dev.sh               # Local development environment launcher script
-└── run_simulators.sh        # Multi-client Python PC simulator orchestrator script
+└── run_simulators.sh        # Multi-client fleet simulator orchestrator
 ```
 
 ---
@@ -60,17 +69,17 @@ graph TD
     end
 
     subgraph Edge_Telemetry ["Edge Telemetry Layer"]
-        Agent[".NET 9 Agent Daemon"]
-        Simulators["Python PC Simulators"]
+        Agent["Industrial Edge Daemon"]
+        Simulators["Edge Fleet Simulators"]
     end
 
     subgraph Management_Layer ["Heimdall Core Platform"]
         gRPC["gRPC Telemetry Server"]
-        WebAPI[".NET 9 Web API"]
+        WebAPI["Core Web API"]
         OpcUa["OPC UA Gateway (opc.tcp)"]
-        Postgres[(PostgreSQL 17 DB)]
-        NitroBFF["Nuxt 4 Nitro BFF"]
-        WebDashboard["Vue 3 Dashboard"]
+        Postgres[(PostgreSQL Database)]
+        NitroBFF["Nitro BFF Proxy"]
+        WebDashboard["Web Dashboard"]
     end
 
     subgraph Integrations ["External Integrations"]
@@ -145,7 +154,7 @@ dotnet tool restore
 dotnet ef database update --project shared/App.Shared --startup-project backend/App.Backend.Api
 
 # Prepare Nuxt 4 frontend types
-cd frontend/heimdall-web-frontend
+cd frontend/web
 bun run postinstall
 cd ../..
 ```
@@ -162,7 +171,7 @@ python3 -m venv venv
 
 # Activate and install dependencies
 source venv/bin/activate
-pip install -r simulators/edge-fleet-simulator/requirements.txt
+pip install -r simulators/fleet/requirements.txt
 deactivate
 
 # Generate synthetic DXF factory layout
@@ -196,7 +205,7 @@ You can start and manage all services concurrently using `run_dev.sh`:
 
 ### 5. Shell Auto-Completion Setup
 
-Heimdall includes comprehensive tab-completion for `run_dev.sh`, `run_simulators.sh`, `tools/dev_manager.py`, `seed_data/seed_pipeline.py`, and `simulators/edge-fleet-simulator/fleet_simulator.py`.
+Heimdall includes comprehensive tab-completion for `run_dev.sh`, `run_simulators.sh`, `tools/dev_manager.py`, `seed_data/seed_pipeline.py`, and `simulators/fleet/fleet_simulator.py`.
 
 ```bash
 # 1-Click Installation (Auto-detects Bash/Zsh and adds to ~/.bashrc or ~/.zshrc)
@@ -216,7 +225,7 @@ source <(./run_dev.sh completion zsh)    # for Zsh
 dotnet test Heimdall.sln
 
 # 2. Run Nuxt frontend unit tests (Vitest)
-bun --cwd frontend/heimdall-web-frontend run test
+bun --cwd frontend/web run test
 ```
 
 ---
@@ -232,15 +241,18 @@ Heimdall is designed in accordance with **VDA ISA 6.0 (TISAX High Protection Nee
 
 ---
 
-## Documentation Sitemap
+## Documentation Index
 
-- [API Specifications](file:///home/lufis/Projects/Heimdall/heimdall/docs/API.md) - Complete REST, gRPC, and OPC UA documentation.
-- [Architecture & Data Model Blueprint](file:///home/lufis/Projects/Heimdall/heimdall/docs/ARCHITECTURE.md) - Graph data model, caching, indexing, Copia, and Windows API driver telemetry.
-- [Code Review & Interface Blueprint](file:///home/lufis/Projects/Heimdall/heimdall/docs/CODE_REVIEW.md) - Codebase audit, anti-pattern breakdown, required C# interfaces, and refactoring plan.
-- [Confidential Data & Encryption Specification](file:///home/lufis/Projects/Heimdall/heimdall/docs/ENCRYPTION_AND_SECURITY.md) - AES-256-GCM field-level encryption for floor plans, license keys, and secrets.
-- [Live Maintenance Ticketing & Android PWA](file:///home/lufis/Projects/Heimdall/heimdall/docs/MAINTENANCE_TICKETING_PWA.md) - Maintenance ticketing domain model, SignalR push, offline PWA, camera QR scanner, and Android TWA build guide.
-- [Developer Guide & Handbook](file:///home/lufis/Projects/Heimdall/heimdall/docs/DEV.md) - Migration guides, simulator manual, and frontend server-side offloading.
-- [TISAX Security Compliance Mapping](file:///home/lufis/Projects/Heimdall/heimdall/docs/TISAX_COMPLIANCE.md) - VDA ISA 6.0 security controls mapping.
+Comprehensive technical documentation is maintained in the [`docs/`](docs/Home.md) directory:
+
+- [Documentation Index](docs/Home.md) - Master documentation directory and overview.
+- [System Architecture & Data Model](docs/architecture/SYSTEM_ARCHITECTURE.md) - Graph-relational $M:N$ domain model, database schemas, and caching architecture.
+- [Edge Agent & Protocols](docs/architecture/EDGE_AGENT_AND_PROTOCOLS.md) - Edge daemon lifecycle, DAG recipe merger, 4-tier bandwidth throttling, offline SQLite spooling, and industrial protocol drivers (TwinCAT ADS, EtherCAT, OPC UA, Modbus TCP).
+- [Security, Encryption & Compliance](docs/architecture/SECURITY_AND_COMPLIANCE.md) - AES-256-GCM field-level encryption, signed remote command execution, PII exclusion engine, and TISAX (VDA ISA 6.0) / GDPR mappings.
+- [Frontend, Real-Time PWA & Spatial UI](docs/architecture/FRONTEND_AND_PWA.md) - Nuxt architecture, Nitro BFF proxying, SignalR live Kanban ticketing, offline IndexedDB sync, AutoCAD DXF floor plan engine, and dynamic asset templating.
+- [API & Interface Reference](docs/api/API_REFERENCE.md) - Complete REST API endpoints, gRPC telemetry collector protobufs, SignalR hub events, DTOs, and OPC UA address space.
+- [Developer & Operations Guide](docs/guide/DEV_GUIDE.md) - Local setup, environment prerequisites, building, testing, database migrations, and Docker workflows.
+- [User & Operator Guide](docs/guide/USER_GUIDE.md) - Plant floor operator guide for dashboard monitoring, spatial CAD inspection, and mobile maintenance ticketing.
 
 ---
 

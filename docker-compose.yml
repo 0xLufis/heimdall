@@ -74,7 +74,7 @@ services:
       - heimdall_dev_net
     restart: unless-stopped
 
-  # 4. Backend REST API & gRPC Telemetry Collector (.NET 9 Hot-Reload)
+  # 4. Backend REST API & gRPC Telemetry Collector (.NET 10 Hot-Reload)
   backend:
     build:
       context: .
@@ -93,6 +93,14 @@ services:
     volumes:
       - ./shared:/workspace/shared
       - ./backend:/workspace/backend
+      - /workspace/shared/App.Contracts/obj
+      - /workspace/shared/App.Contracts/bin
+      - /workspace/shared/App.Shared/obj
+      - /workspace/shared/App.Shared/bin
+      - /workspace/backend/App.Infrastructure/obj
+      - /workspace/backend/App.Infrastructure/bin
+      - /workspace/backend/App.Backend.Api/obj
+      - /workspace/backend/App.Backend.Api/bin
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,7 +113,7 @@ services:
   # 5. Nuxt 4 Web Frontend & Nitro BFF (Vite HMR)
   frontend:
     build:
-      context: ./frontend/heimdall-web-frontend
+      context: ./frontend/web
       dockerfile: Dockerfile.dev
     container_name: heimdall_frontend
     hostname: frontend
@@ -117,8 +125,9 @@ services:
       - HOST=0.0.0.0
       - DATABASE_URL=postgresql://dotnet_backend:your_backend_pw@postgres:5432/heimdall_dev_db
       - BACKEND_API_URL=http://backend:5099
+      - BETTER_AUTH_SECRET=heimdall-dev-secret-key-32-chars-min-security
     volumes:
-      - ./frontend/heimdall-web-frontend:/app
+      - ./frontend/web:/app
       - /app/node_modules
       - /app/.nuxt
     depends_on:
@@ -128,7 +137,7 @@ services:
       - heimdall_dev_net
     restart: unless-stopped
 
-  # 6. Industrial Edge Agent Daemon (.NET 9 Hot-Reload)
+  # 6. Industrial Edge Agent Daemon (.NET 10 Hot-Reload)
   agent:
     build:
       context: .
@@ -141,6 +150,10 @@ services:
     volumes:
       - ./shared:/workspace/shared
       - ./agent:/workspace/agent
+      - /workspace/shared/App.Contracts/obj
+      - /workspace/shared/App.Contracts/bin
+      - /workspace/agent/App.Agent.Daemon/obj
+      - /workspace/agent/App.Agent.Daemon/bin
     depends_on:
       - backend
     networks:
@@ -150,11 +163,13 @@ services:
   # 7. Industrial Edge Fleet Simulator
   simulator:
     build:
-      context: ./simulators/edge-fleet-simulator
+      context: ./simulators/fleet
     container_name: heimdall_simulator
-    command: ["--client", "ROBOT-CELL-01", "--count", "100"]
+    ports:
+      - "5055:5055"
     environment:
       - GRPC_HOST=backend:5001
+      - HTTP_PORT=5055
     depends_on:
       - backend
     networks:

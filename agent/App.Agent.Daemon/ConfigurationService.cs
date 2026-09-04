@@ -77,22 +77,38 @@ public class ConfigurationService
 
     private AgentConfig LoadConfig()
     {
+        AgentConfig config;
         if (File.Exists(_configPath))
         {
             try
             {
                 var json = File.ReadAllText(_configPath);
-                return JsonSerializer.Deserialize<AgentConfig>(json) ?? new AgentConfig();
+                config = JsonSerializer.Deserialize<AgentConfig>(json) ?? new AgentConfig();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading config from {Path}", _configPath);
+                config = new AgentConfig();
             }
         }
-        
-        var defaultConfig = new AgentConfig();
-        SaveConfig(defaultConfig);
-        return defaultConfig;
+        else
+        {
+            config = new AgentConfig();
+            var envBackendUrl = Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL");
+            if (!string.IsNullOrEmpty(envBackendUrl))
+            {
+                config.BackendUrl = envBackendUrl;
+            }
+            SaveConfig(config);
+        }
+
+        var envUrl = Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL");
+        if (!string.IsNullOrEmpty(envUrl) && config.BackendUrl == "http://localhost:5001")
+        {
+            config.BackendUrl = envUrl;
+        }
+
+        return config;
     }
 
     public void SaveConfig(AgentConfig config)

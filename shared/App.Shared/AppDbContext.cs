@@ -145,6 +145,7 @@ public class AppDbContext : DbContext
     public DbSet<SecurityGroupMapping> SecurityGroupMappings { get; set; }
     public DbSet<SystemSetting> SystemSettings { get; set; }
     public DbSet<ClientCertificateRecord> ClientCertificates { get; set; }
+    public DbSet<OuCertificateRule> OuCertificateRules { get; set; }
     public DbSet<SchemaVersionManifest> SchemaVersionManifests { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<MalformedTelemetryRecord> MalformedTelemetryRecords { get; set; }
@@ -168,6 +169,9 @@ public class AppDbContext : DbContext
 
         bool isInMemory = Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
         var encryptedConverter = new EncryptedStringConverter();
+        var nonNullEncryptedConverter = new ValueConverter<string, string>(
+            v => EncryptedStringConverter.Encrypt(v) ?? string.Empty,
+            v => EncryptedStringConverter.Decrypt(v) ?? string.Empty);
 
         if (isInMemory)
         {
@@ -187,6 +191,10 @@ public class AppDbContext : DbContext
 
             modelBuilder.Entity<ClientPc>()
                 .Property(e => e.SystemMetadata)
+                .HasConversion(jsonConverter);
+
+            modelBuilder.Entity<ClientPc>()
+                .Property(e => e.OuTags)
                 .HasConversion(jsonConverter);
 
             // Converters for ClientPc POCOs
@@ -307,6 +315,7 @@ public class AppDbContext : DbContext
                 entity.Property(e => e.ResourceAverages).HasColumnType("jsonb");
                 entity.Property(e => e.AlertingLimits).HasColumnType("jsonb");
                 entity.Property(e => e.SystemMetadata).HasColumnType("jsonb");
+                entity.Property(e => e.OuTags).HasColumnType("jsonb");
                 entity.HasIndex(e => e.SystemMetadata).HasMethod("gin");
             }
 
@@ -504,7 +513,7 @@ public class AppDbContext : DbContext
 
             // Encrypted string property for FloorPlan.SvgContent
             entity.Property(e => e.SvgContent)
-                  .HasConversion(encryptedConverter);
+                  .HasConversion(nonNullEncryptedConverter);
         });
 
         modelBuilder.Entity<FloorPlanAnchor>(entity =>
@@ -535,6 +544,13 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Thumbprint);
             entity.HasIndex(e => e.CommonName);
             entity.HasIndex(e => e.ClientPcId);
+        });
+
+        modelBuilder.Entity<OuCertificateRule>(entity =>
+        {
+            entity.ToTable("ou_certificate_rules");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.OuPath);
         });
 
         modelBuilder.Entity<SchemaVersionManifest>(entity =>

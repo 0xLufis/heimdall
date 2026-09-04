@@ -27,6 +27,20 @@ public class ClientPcDto
     public string? PinnedObjectHandle { get; set; }
     /// <summary>Timestamp of the last heartbeat.</summary>
     public DateTimeOffset? LastSeen { get; set; }
+    /// <summary>VLAN identifier to which this host interface belongs.</summary>
+    public int? VlanId { get; set; }
+    /// <summary>VLAN network name.</summary>
+    public string? VlanName { get; set; }
+    /// <summary>Network subnet CIDR.</summary>
+    public string? Subnet { get; set; }
+    /// <summary>Active Directory Organizational Unit Distinguished Name path.</summary>
+    public string? AdOuPath { get; set; }
+    /// <summary>Extracted or templated OU tags (JSON string or object).</summary>
+    public string? OuTagsJson { get; set; }
+    /// <summary>Active mTLS client certificate thumbprint bound to this host.</summary>
+    public string? CertificateThumbprint { get; set; }
+    /// <summary>Name of the PKI certificate profile assigned via AD OU.</summary>
+    public string? CertificateProfileName { get; set; }
     /// <summary>Summary of production stations controlled by this PC.</summary>
     public List<MachineSummaryDto> Machines { get; set; } = new();
     /// <summary>List of teams responsible for this node.</summary>
@@ -65,6 +79,14 @@ public class MachineDto
     public string? OrganizationId { get; set; }
     /// <summary>Custom identifier (e.g., OP10).</summary>
     public string CustomIdentifier { get; set; } = string.Empty;
+    /// <summary>Machine technology type (e.g. "Milling", "Screwing Station", "Automatic Optical Inspection").</summary>
+    public string? MachineType { get; set; }
+    /// <summary>Hierarchical group / line identifier.</summary>
+    public string? GroupId { get; set; }
+    /// <summary>Preferred dedicated technician identifier.</summary>
+    public string? PreferredTechnicianId { get; set; }
+    /// <summary>Preferred dedicated technician display name.</summary>
+    public string? PreferredTechnicianName { get; set; }
     /// <summary>CAD object handle for spatial mapping.</summary>
     public string? PinnedObjectHandle { get; set; }
     /// <summary>Summary of Client PCs controlling this station.</summary>

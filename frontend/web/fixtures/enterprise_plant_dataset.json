@@ -1,0 +1,1215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "metadata": {
+    "version": "1.0.0",
+    "plantName": "Smart Factory Giga-01",
+    "plantCode": "SF-GIGA-01",
+    "domain": "factory.corp",
+    "entraTenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+    "createdAt": "2026-09-04T00:00:00Z",
+    "description": "Canonical consolidated enterprise dataset for Heimdall edge devices, simulated controllers, directory users, and security groups."
+  },
+  "organizations": [
+    {
+      "id": "org-plant-ops",
+      "name": "Factory Operations",
+      "slug": "factory-operations",
+      "description": "Central plant operational boundary and administration"
+    },
+    {
+      "id": "org-line06",
+      "name": "Line 06 – Battery Module Line",
+      "slug": "line-06-battery-module-line",
+      "description": "Battery module assembly line: dispensing, fastening, and robotic handling"
+    },
+    {
+      "id": "org-line09",
+      "name": "Line 09 – Optical Quality Inspection",
+      "slug": "line-09-optical-quality-inspection",
+      "description": "High-speed AOI camera inspection, metrology, and defect classification"
+    },
+    {
+      "id": "org-line05",
+      "name": "Line 05 – Powertrain Sub-Assembly",
+      "slug": "line-05-powertrain-sub-assembly",
+      "description": "Powertrain mechanical pressing, servo joining, and component sub-assembly"
+    }
+  ],
+  "securityGroups": [
+    {
+      "id": "sg-1",
+      "groupIdentifier": "9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c",
+      "displayName": "OT Plant Administrators",
+      "identityProvider": "EntraID",
+      "mappedRole": "system_admin",
+      "mappedOrganizationName": "Factory Operations",
+      "mappedOrgRole": "owner",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-admin-01"]
+    },
+    {
+      "id": "sg-2",
+      "groupIdentifier": "CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp",
+      "displayName": "On-Prem Controls Engineers",
+      "identityProvider": "ActiveDirectory",
+      "mappedRole": "controls_engineer",
+      "mappedOrganizationName": "Line 06 – Battery Module Line",
+      "mappedOrgRole": "admin",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-sally-01", "usr-marcus-01"]
+    },
+    {
+      "id": "sg-3",
+      "groupIdentifier": "CN=OT-Maintenance-Technicians,OU=Groups,DC=factory,DC=corp",
+      "displayName": "Plant Maintenance Technicians",
+      "identityProvider": "ActiveDirectory",
+      "mappedRole": "technician",
+      "mappedOrganizationName": "Line 06 – Battery Module Line",
+      "mappedOrgRole": "member",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-orwell-01", "usr-dave-01"]
+    },
+    {
+      "id": "sg-4",
+      "groupIdentifier": "b3f81e22-9c1a-4d72-b883-4a11f2c90e55",
+      "displayName": "Line 09 Quality Vision Leads",
+      "identityProvider": "EntraID",
+      "mappedRole": "lead_engineer",
+      "mappedOrganizationName": "Line 09 – Optical Quality Inspection",
+      "mappedOrgRole": "admin",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-alex-01"]
+    },
+    {
+      "id": "sg-5",
+      "groupIdentifier": "CN=Facility-Shift-Leaders,OU=Groups,DC=factory,DC=corp",
+      "displayName": "Facility Shift Supervisors",
+      "identityProvider": "ActiveDirectory",
+      "mappedRole": "shift_leader",
+      "mappedOrganizationName": "Factory Operations",
+      "mappedOrgRole": "admin",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-elena-01"]
+    },
+    {
+      "id": "sg-6",
+      "groupIdentifier": "f1a2b3c4-d5e6-7f80-1234-56789abcdef0",
+      "displayName": "Compliance & Audit Observers",
+      "identityProvider": "EntraID",
+      "mappedRole": "operator",
+      "mappedOrganizationName": "Factory Operations",
+      "mappedOrgRole": "member",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-auditor-01"]
+    }
+  ],
+  "users": [
+    {
+      "id": "usr-admin-01",
+      "name": "Root Administrator",
+      "email": "admin@factory.corp",
+      "username": "sysadmin",
+      "primaryRole": "system_admin",
+      "jobTitle": "Head of OT Systems Infrastructure",
+      "department": "Plant Infrastructure IT",
+      "securityGroupIds": ["9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "always"
+    },
+    {
+      "id": "usr-sally-01",
+      "name": "Sally Vance",
+      "email": "sally.vance@factory.corp",
+      "username": "svance",
+      "primaryRole": "lead_engineer",
+      "jobTitle": "Lead Controls & Milling Specialist",
+      "department": "Automation & Robotics",
+      "securityGroupIds": ["CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "weekly",
+      "dedication": {
+        "scopeType": "technology",
+        "targetId": "Milling",
+        "role": "group_leader"
+      }
+    },
+    {
+      "id": "usr-orwell-01",
+      "name": "George Orwell",
+      "email": "george.orwell@factory.corp",
+      "username": "gorwell",
+      "primaryRole": "technician",
+      "jobTitle": "Senior Mechanical Technician",
+      "department": "Line Maintenance",
+      "securityGroupIds": ["CN=OT-Maintenance-Technicians,OU=Groups,DC=factory,DC=corp"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "monthly",
+      "dedication": {
+        "scopeType": "group",
+        "targetId": "grp-line06",
+        "categoryFilter": "Mechanical",
+        "role": "shift_leader"
+      }
+    },
+    {
+      "id": "usr-alex-01",
+      "name": "Alex Novak",
+      "email": "alex.novak@factory.corp",
+      "username": "anovak",
+      "primaryRole": "lead_engineer",
+      "jobTitle": "Senior Optical Inspection Engineer",
+      "department": "Quality Assurance",
+      "securityGroupIds": ["b3f81e22-9c1a-4d72-b883-4a11f2c90e55"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "weekly",
+      "dedication": {
+        "scopeType": "technology",
+        "targetId": "Automatic Optical Inspection",
+        "role": "group_leader"
+      }
+    },
+    {
+      "id": "usr-elena-01",
+      "name": "Elena Rostova",
+      "email": "elena.rostova@factory.corp",
+      "username": "erostova",
+      "primaryRole": "shift_leader",
+      "jobTitle": "Shift Supervisor – Alpha Shift",
+      "department": "Plant Operations",
+      "securityGroupIds": ["CN=Facility-Shift-Leaders,OU=Groups,DC=factory,DC=corp"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "weekly"
+    },
+    {
+      "id": "usr-marcus-01",
+      "name": "Marcus Vance",
+      "email": "marcus.vance@factory.corp",
+      "username": "mvance",
+      "primaryRole": "controls_engineer",
+      "jobTitle": "TwinCAT PLC Automation Engineer",
+      "department": "Automation & Robotics",
+      "securityGroupIds": ["CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "weekly"
+    },
+    {
+      "id": "usr-dave-01",
+      "name": "Dave Kester",
+      "email": "dave.kester@factory.corp",
+      "username": "dkester",
+      "primaryRole": "technician",
+      "jobTitle": "Torque Fastening Tool Technician",
+      "department": "Line Maintenance",
+      "securityGroupIds": ["CN=OT-Maintenance-Technicians,OU=Groups,DC=factory,DC=corp"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "monthly"
+    },
+    {
+      "id": "usr-auditor-01",
+      "name": "Clara Oswald",
+      "email": "clara.oswald@factory.corp",
+      "username": "coswald",
+      "primaryRole": "operator",
+      "jobTitle": "External Quality Auditor",
+      "department": "Audit & Safety Compliance",
+      "securityGroupIds": ["f1a2b3c4-d5e6-7f80-1234-56789abcdef0"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "monthly"
+    }
+  ],
+  "activeDirectoryOUs": [
+    {
+      "ouPath": "OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp",
+      "name": "Robotics",
+      "vlanId": 10,
+      "vlanName": "VLAN 10 - Production Line",
+      "subnet": "10.10.10.0/24",
+      "location": "Line 06 - Hall A",
+      "purpose": "Robotic Pick & Place / Handling",
+      "machineType": "Manipulator",
+      "hostCount": 2,
+      "candidateHostnames": ["CPC-L06-ROB-01", "CPC-L06-ROB-02"]
+    },
+    {
+      "ouPath": "OU=VisionInspection,OU=VLAN20-Quality,DC=factory,DC=corp",
+      "name": "VisionInspection",
+      "vlanId": 20,
+      "vlanName": "VLAN 20 - Optical Quality Inspection",
+      "subnet": "10.10.20.0/24",
+      "location": "Line 09 - Hall B",
+      "purpose": "AOI Defect Classification & Inspection",
+      "machineType": "Automatic Optical Inspection",
+      "hostCount": 2,
+      "candidateHostnames": ["CPC-L09-VIS-01", "CPC-L09-VIS-02"]
+    },
+    {
+      "ouPath": "OU=MillingMachining,OU=VLAN30-Machining,DC=factory,DC=corp",
+      "name": "MillingMachining",
+      "vlanId": 30,
+      "vlanName": "VLAN 30 - CNC Milling & Machining",
+      "subnet": "10.10.30.0/24",
+      "location": "OP10 Machining Cell - Hall C",
+      "purpose": "5-Axis High Precision CNC Milling",
+      "machineType": "Milling",
+      "hostCount": 2,
+      "candidateHostnames": ["CPC-L03-MIL-01", "CPC-L03-MIL-02"]
+    },
+    {
+      "ouPath": "OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp",
+      "name": "Dispensing",
+      "vlanId": 40,
+      "vlanName": "VLAN 40 - Gap Filler Dispensing",
+      "subnet": "10.10.40.0/24",
+      "location": "Line 06 - Cell A",
+      "purpose": "2K Thermal Paste Dispensing",
+      "machineType": "Gap Filler",
+      "hostCount": 1,
+      "candidateHostnames": ["CPC-L06-DIS-01"]
+    },
+    {
+      "ouPath": "OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp",
+      "name": "Fastening",
+      "vlanId": 50,
+      "vlanName": "VLAN 50 - Joining & Fastening",
+      "subnet": "10.10.50.0/24",
+      "location": "Line 06 - Cell A",
+      "purpose": "Automated Nutrunning & Screwing",
+      "machineType": "Screwing Station",
+      "hostCount": 3,
+      "candidateHostnames": ["CPC-L06-SCR-01", "CPC-L06-SCR-02", "CPC-L06-FIT-01"]
+    },
+    {
+      "ouPath": "OU=Pressing,OU=VLAN60-Forming,DC=factory,DC=corp",
+      "name": "Pressing",
+      "vlanId": 60,
+      "vlanName": "VLAN 60 - Servo Pressing & Stamping",
+      "subnet": "10.10.60.0/24",
+      "location": "Line 05 - Hall A",
+      "purpose": "Precision NC Servo Press Fit",
+      "machineType": "Pressing",
+      "hostCount": 2,
+      "candidateHostnames": ["CPC-L05-PRS-01", "CPC-L05-PRS-02"]
+    }
+  ],
+  "clientPcs": [
+    {
+      "hostname": "CPC-L06-ROB-01",
+      "name": "Kuka Robot Controller 01",
+      "machineIdentifier": "HW-ROB-901",
+      "ipAddress": "10.10.10.11",
+      "macAddress": "00:1A:2B:3C:4D:11",
+      "vlanId": 10,
+      "adOuPath": "OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp",
+      "machineType": "Manipulator",
+      "groupId": "grp-line06",
+      "osVersion": "Windows 10 IoT Enterprise LTSC",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Xeon(R) E-2278G CPU @ 3.40GHz",
+          "NumberOfCores": 8,
+          "NumberOfLogicalProcessors": 16,
+          "MaxClockSpeed": 3400
+        },
+        "memory": {
+          "Capacity": 34359738368,
+          "Speed": 2666,
+          "Manufacturer": "Micron Technology",
+          "PartNumber": "MTA18ASF4G72AZ-2G6E1"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 512110190592,
+            "FreeSpace": 342110190592,
+            "FileSystem": "NTFS"
+          },
+          {
+            "Caption": "D:",
+            "Size": 1024220381184,
+            "FreeSpace": 780220381184,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "American Megatrends Inc.",
+          "SMBIOSBIOSVersion": "V2.14",
+          "SerialNumber": "BIOS-L06-ROB-01"
+        },
+        "computerSystem": {
+          "Name": "CPC-L06-ROB-01",
+          "Manufacturer": "Beckhoff Automation GmbH",
+          "Model": "C6030-0060 Ultra-Compact IPC",
+          "TotalPhysicalMemory": 34359738368,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) I210 Gigabit Network Connection",
+          "IPAddress": "10.10.10.11",
+          "MACAddress": "00:1A:2B:3C:4D:11",
+          "DefaultIPGateway": "10.10.10.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 10 IoT Enterprise LTSC",
+          "Version": "10.0.19045",
+          "BuildNumber": "19045",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240115083000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Beckhoff TwinCAT 3.1.4024.56",
+        "Kuka WorkVisual 6.0",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L06-ROB-02",
+      "name": "Fanuc Handling Robot 02",
+      "machineIdentifier": "HW-ROB-902",
+      "ipAddress": "10.10.10.12",
+      "macAddress": "00:1A:2B:3C:4D:12",
+      "vlanId": 10,
+      "adOuPath": "OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp",
+      "machineType": "Manipulator",
+      "groupId": "grp-line06",
+      "osVersion": "Windows 10 IoT Enterprise LTSC",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i7-11700E CPU @ 2.80GHz",
+          "NumberOfCores": 8,
+          "NumberOfLogicalProcessors": 16,
+          "MaxClockSpeed": 2800
+        },
+        "memory": {
+          "Capacity": 34359738368,
+          "Speed": 3200,
+          "Manufacturer": "Samsung",
+          "PartNumber": "M378A4G43AB2-CWE"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 512110190592,
+            "FreeSpace": 290110190592,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Fanuc Corporation",
+          "SMBIOSBIOSVersion": "R-30iB Plus Rev 3",
+          "SerialNumber": "BIOS-L06-ROB-02"
+        },
+        "computerSystem": {
+          "Name": "CPC-L06-ROB-02",
+          "Manufacturer": "Fanuc Robotics",
+          "Model": "R-30iB Plus Controller Unit",
+          "TotalPhysicalMemory": 34359738368,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Broadcom NetXtreme Gigabit Ethernet",
+          "IPAddress": "10.10.10.12",
+          "MACAddress": "00:1A:2B:3C:4D:12",
+          "DefaultIPGateway": "10.10.10.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 10 IoT Enterprise LTSC",
+          "Version": "10.0.19045",
+          "BuildNumber": "19045",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240210091500.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Fanuc ROBOGUIDE V9.4",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L09-VIS-01",
+      "name": "Cognex Surface Vision IPC 01",
+      "machineIdentifier": "HW-VIS-701",
+      "ipAddress": "10.10.20.15",
+      "macAddress": "00:1A:2B:3C:4D:15",
+      "vlanId": 20,
+      "adOuPath": "OU=VisionInspection,OU=VLAN20-Quality,DC=factory,DC=corp",
+      "machineType": "Automatic Optical Inspection",
+      "groupId": "grp-line09",
+      "osVersion": "Windows 11 IoT Enterprise",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i9-13900E CPU @ 3.00GHz",
+          "NumberOfCores": 24,
+          "NumberOfLogicalProcessors": 32,
+          "MaxClockSpeed": 3000
+        },
+        "memory": {
+          "Capacity": 68719476736,
+          "Speed": 4800,
+          "Manufacturer": "Kingston",
+          "PartNumber": "KVR48E40BD8KM-32"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 1024220381184,
+            "FreeSpace": 620220381184,
+            "FileSystem": "NTFS"
+          },
+          {
+            "Caption": "E:",
+            "Size": 2048440762368,
+            "FreeSpace": 1450440762368,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Advantech Co., Ltd.",
+          "SMBIOSBIOSVersion": "AIMB-788 BIOS V1.22",
+          "SerialNumber": "BIOS-L09-VIS-01"
+        },
+        "computerSystem": {
+          "Name": "CPC-L09-VIS-01",
+          "Manufacturer": "Advantech",
+          "Model": "MIC-770 V2 Modular IPC",
+          "TotalPhysicalMemory": 68719476736,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) Ethernet Connection I219-LM",
+          "IPAddress": "10.10.20.15",
+          "MACAddress": "00:1A:2B:3C:4D:15",
+          "DefaultIPGateway": "10.10.20.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 11 IoT Enterprise",
+          "Version": "10.0.22631",
+          "BuildNumber": "22631",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240401112000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Cognex VisionPro 9.8",
+        "Cognex In-Sight Explorer 6.5",
+        "NVIDIA TensorRT 8.6",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L09-VIS-02",
+      "name": "Keyence 3D Profilometer 02",
+      "machineIdentifier": "HW-VIS-702",
+      "ipAddress": "10.10.20.16",
+      "macAddress": "00:1A:2B:3C:4D:16",
+      "vlanId": 20,
+      "adOuPath": "OU=VisionInspection,OU=VLAN20-Quality,DC=factory,DC=corp",
+      "machineType": "Automatic Optical Inspection",
+      "groupId": "grp-line09",
+      "osVersion": "Windows 11 IoT Enterprise",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i7-12700E CPU @ 2.10GHz",
+          "NumberOfCores": 12,
+          "NumberOfLogicalProcessors": 20,
+          "MaxClockSpeed": 2100
+        },
+        "memory": {
+          "Capacity": 34359738368,
+          "Speed": 3200,
+          "Manufacturer": "Crucial",
+          "PartNumber": "CT32G4DFD832A"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 1024220381184,
+            "FreeSpace": 710220381184,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Keyence Corporation",
+          "SMBIOSBIOSVersion": "LJ-X8000 Series BIOS 3.1",
+          "SerialNumber": "BIOS-L09-VIS-02"
+        },
+        "computerSystem": {
+          "Name": "CPC-L09-VIS-02",
+          "Manufacturer": "Keyence Corporation",
+          "Model": "LJ-X8000A Controller Unit",
+          "TotalPhysicalMemory": 34359738368,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Realtek PCIe 2.5GbE Family Controller",
+          "IPAddress": "10.10.20.16",
+          "MACAddress": "00:1A:2B:3C:4D:16",
+          "DefaultIPGateway": "10.10.20.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 11 IoT Enterprise",
+          "Version": "10.0.22631",
+          "BuildNumber": "22631",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240410140000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Keyence LJ-X Navigator",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L03-MIL-01",
+      "name": "DMG Mori 5-Axis CNC Mill 01",
+      "machineIdentifier": "HW-MIL-301",
+      "ipAddress": "10.10.30.31",
+      "macAddress": "00:1A:2B:3C:4D:31",
+      "vlanId": 30,
+      "adOuPath": "OU=MillingMachining,OU=VLAN30-Machining,DC=factory,DC=corp",
+      "machineType": "Milling",
+      "groupId": "grp-plant",
+      "osVersion": "Windows 10 IoT Enterprise",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i5-9500E CPU @ 3.00GHz",
+          "NumberOfCores": 6,
+          "NumberOfLogicalProcessors": 6,
+          "MaxClockSpeed": 3000
+        },
+        "memory": {
+          "Capacity": 17179869184,
+          "Speed": 2666,
+          "Manufacturer": "Innodisk",
+          "PartNumber": "M4D0-AGM1Q50K"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 256060514304,
+            "FreeSpace": 140060514304,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Siemens AG",
+          "SMBIOSBIOSVersion": "SINUMERIK ONE V6.20",
+          "SerialNumber": "BIOS-L03-MIL-01"
+        },
+        "computerSystem": {
+          "Name": "CPC-L03-MIL-01",
+          "Manufacturer": "Siemens AG",
+          "Model": "SINUMERIK ONE NCU 1760",
+          "TotalPhysicalMemory": 17179869184,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) Ethernet Server Adapter I350",
+          "IPAddress": "10.10.30.31",
+          "MACAddress": "00:1A:2B:3C:4D:31",
+          "DefaultIPGateway": "10.10.30.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 10 IoT Enterprise",
+          "Version": "10.0.17763",
+          "BuildNumber": "17763",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20231105100000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "SINUMERIK Operate V6.20",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L03-MIL-02",
+      "name": "Hermle Precision Milling Center 02",
+      "machineIdentifier": "HW-MIL-302",
+      "ipAddress": "10.10.30.32",
+      "macAddress": "00:1A:2B:3C:4D:32",
+      "vlanId": 30,
+      "adOuPath": "OU=MillingMachining,OU=VLAN30-Machining,DC=factory,DC=corp",
+      "machineType": "Milling",
+      "groupId": "grp-plant",
+      "osVersion": "Windows 10 IoT Enterprise",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i5-9500E CPU @ 3.00GHz",
+          "NumberOfCores": 6,
+          "NumberOfLogicalProcessors": 6,
+          "MaxClockSpeed": 3000
+        },
+        "memory": {
+          "Capacity": 17179869184,
+          "Speed": 2666,
+          "Manufacturer": "Innodisk",
+          "PartNumber": "M4D0-AGM1Q50K"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 256060514304,
+            "FreeSpace": 135060514304,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Heidenhain GmbH",
+          "SMBIOSBIOSVersion": "TNC 640 Service Pack 9",
+          "SerialNumber": "BIOS-L03-MIL-02"
+        },
+        "computerSystem": {
+          "Name": "CPC-L03-MIL-02",
+          "Manufacturer": "Heidenhain GmbH",
+          "Model": "TNC 640 Industrial MC",
+          "TotalPhysicalMemory": 17179869184,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) Ethernet Server Adapter I350",
+          "IPAddress": "10.10.30.32",
+          "MACAddress": "00:1A:2B:3C:4D:32",
+          "DefaultIPGateway": "10.10.30.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 10 IoT Enterprise",
+          "Version": "10.0.17763",
+          "BuildNumber": "17763",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20231110120000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Heidenhain TNCremo",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L06-DIS-01",
+      "name": "Scheugenpflug Dispenser IPC 01",
+      "machineIdentifier": "HW-DIS-401",
+      "ipAddress": "10.10.40.41",
+      "macAddress": "00:1A:2B:3C:4D:41",
+      "vlanId": 40,
+      "adOuPath": "OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp",
+      "machineType": "Gap Filler",
+      "groupId": "grp-cell-a",
+      "osVersion": "Windows 10 IoT Enterprise LTSC",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Celeron(R) 3965U CPU @ 2.20GHz",
+          "NumberOfCores": 2,
+          "NumberOfLogicalProcessors": 2,
+          "MaxClockSpeed": 2200
+        },
+        "memory": {
+          "Capacity": 8589934592,
+          "Speed": 2133,
+          "Manufacturer": "Transcend",
+          "PartNumber": "TS1GSH64V1H"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 128030257152,
+            "FreeSpace": 78030257152,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Beckhoff Automation GmbH",
+          "SMBIOSBIOSVersion": "C6920 BIOS V1.08",
+          "SerialNumber": "BIOS-L06-DIS-01"
+        },
+        "computerSystem": {
+          "Name": "CPC-L06-DIS-01",
+          "Manufacturer": "Beckhoff Automation GmbH",
+          "Model": "C6920 Control Cabinet Industrial PC",
+          "TotalPhysicalMemory": 8589934592,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) Ethernet Connection I219-V",
+          "IPAddress": "10.10.40.41",
+          "MACAddress": "00:1A:2B:3C:4D:41",
+          "DefaultIPGateway": "10.10.40.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 10 IoT Enterprise LTSC",
+          "Version": "10.0.19045",
+          "BuildNumber": "19045",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240315103000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Scheugenpflug DosControl V4",
+        "TwinCAT 3.1.4024.35",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L06-SCR-01",
+      "name": "Atlas Copco Fastening Controller 01",
+      "machineIdentifier": "HW-SCR-801",
+      "ipAddress": "10.10.50.21",
+      "macAddress": "00:1A:2B:3C:4D:21",
+      "vlanId": 50,
+      "adOuPath": "OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp",
+      "machineType": "Screwing Station",
+      "groupId": "grp-cell-a",
+      "osVersion": "Windows 11 IoT Enterprise",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i5-11500E CPU @ 2.70GHz",
+          "NumberOfCores": 6,
+          "NumberOfLogicalProcessors": 12,
+          "MaxClockSpeed": 2700
+        },
+        "memory": {
+          "Capacity": 17179869184,
+          "Speed": 3200,
+          "Manufacturer": "SK Hynix",
+          "PartNumber": "HMA82GU6DJR8N-XN"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 256060514304,
+            "FreeSpace": 160060514304,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Atlas Copco AB",
+          "SMBIOSBIOSVersion": "Power Focus 6000 Firmware 3.8",
+          "SerialNumber": "BIOS-L06-SCR-01"
+        },
+        "computerSystem": {
+          "Name": "CPC-L06-SCR-01",
+          "Manufacturer": "Atlas Copco Industrial Technique",
+          "Model": "Power Focus 6000 Controller IPC",
+          "TotalPhysicalMemory": 17179869184,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) I210 Gigabit Network Connection",
+          "IPAddress": "10.10.50.21",
+          "MACAddress": "00:1A:2B:3C:4D:21",
+          "DefaultIPGateway": "10.10.50.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 11 IoT Enterprise",
+          "Version": "10.0.22631",
+          "BuildNumber": "22631",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240501090000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Atlas Copco ToolsTalk 2",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L06-SCR-02",
+      "name": "Desoutter Intelligent Tightening IPC 02",
+      "machineIdentifier": "HW-SCR-802",
+      "ipAddress": "10.10.50.22",
+      "macAddress": "00:1A:2B:3C:4D:22",
+      "vlanId": 50,
+      "adOuPath": "OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp",
+      "machineType": "Screwing Station",
+      "groupId": "grp-cell-a",
+      "osVersion": "Windows 11 IoT Enterprise",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i5-11500E CPU @ 2.70GHz",
+          "NumberOfCores": 6,
+          "NumberOfLogicalProcessors": 12,
+          "MaxClockSpeed": 2700
+        },
+        "memory": {
+          "Capacity": 17179869184,
+          "Speed": 3200,
+          "Manufacturer": "SK Hynix",
+          "PartNumber": "HMA82GU6DJR8N-XN"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 256060514304,
+            "FreeSpace": 175060514304,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Desoutter Industrial Tools",
+          "SMBIOSBIOSVersion": "CONNECT-HUB V2.4",
+          "SerialNumber": "BIOS-L06-SCR-02"
+        },
+        "computerSystem": {
+          "Name": "CPC-L06-SCR-02",
+          "Manufacturer": "Desoutter",
+          "Model": "CONNECT Smart Industrial Hub",
+          "TotalPhysicalMemory": 17179869184,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) I210 Gigabit Network Connection",
+          "IPAddress": "10.10.50.22",
+          "MACAddress": "00:1A:2B:3C:4D:22",
+          "DefaultIPGateway": "10.10.50.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 11 IoT Enterprise",
+          "Version": "10.0.22631",
+          "BuildNumber": "22631",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240505140000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Desoutter C-VIC",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L05-PRS-01",
+      "name": "Tox Pressotechnik Servo Press 01",
+      "machineIdentifier": "HW-PRS-501",
+      "ipAddress": "10.10.60.51",
+      "macAddress": "00:1A:2B:3C:4D:51",
+      "vlanId": 60,
+      "adOuPath": "OU=Pressing,OU=VLAN60-Forming,DC=factory,DC=corp",
+      "machineType": "Pressing",
+      "groupId": "grp-line05",
+      "osVersion": "Windows 10 IoT Enterprise LTSC",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i3-9100E CPU @ 3.10GHz",
+          "NumberOfCores": 4,
+          "NumberOfLogicalProcessors": 4,
+          "MaxClockSpeed": 3100
+        },
+        "memory": {
+          "Capacity": 17179869184,
+          "Speed": 2400,
+          "Manufacturer": "ATP Electronics",
+          "PartNumber": "AF16GU04-8BBXP"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 256060514304,
+            "FreeSpace": 150060514304,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Siemens AG",
+          "SMBIOSBIOSVersion": "SIMATIC IPC427E V21.01.04",
+          "SerialNumber": "BIOS-L05-PRS-01"
+        },
+        "computerSystem": {
+          "Name": "CPC-L05-PRS-01",
+          "Manufacturer": "Siemens AG",
+          "Model": "SIMATIC IPC427E Microbox PC",
+          "TotalPhysicalMemory": 17179869184,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) Ethernet Connection I219-LM",
+          "IPAddress": "10.10.60.51",
+          "MACAddress": "00:1A:2B:3C:4D:51",
+          "DefaultIPGateway": "10.10.60.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 10 IoT Enterprise LTSC",
+          "Version": "10.0.19045",
+          "BuildNumber": "19045",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240220130000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "TOX-SoftWare EPW 500",
+        "TIA Portal V18 Openness",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L05-PRS-02",
+      "name": "Kistler Electromechanical NC Press 02",
+      "machineIdentifier": "HW-PRS-502",
+      "ipAddress": "10.10.60.52",
+      "macAddress": "00:1A:2B:3C:4D:52",
+      "vlanId": 60,
+      "adOuPath": "OU=Pressing,OU=VLAN60-Forming,DC=factory,DC=corp",
+      "machineType": "Pressing",
+      "groupId": "grp-line05",
+      "osVersion": "Windows 10 IoT Enterprise LTSC",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i3-9100E CPU @ 3.10GHz",
+          "NumberOfCores": 4,
+          "NumberOfLogicalProcessors": 4,
+          "MaxClockSpeed": 3100
+        },
+        "memory": {
+          "Capacity": 17179869184,
+          "Speed": 2400,
+          "Manufacturer": "ATP Electronics",
+          "PartNumber": "AF16GU04-8BBXP"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 256060514304,
+            "FreeSpace": 162060514304,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Kistler Group",
+          "SMBIOSBIOSVersion": "maXYmos NC V2.4",
+          "SerialNumber": "BIOS-L05-PRS-02"
+        },
+        "computerSystem": {
+          "Name": "CPC-L05-PRS-02",
+          "Manufacturer": "Kistler Group",
+          "Model": "maXYmos NC 5847B0 Evaluation Unit",
+          "TotalPhysicalMemory": 17179869184,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) Ethernet Connection I219-LM",
+          "IPAddress": "10.10.60.52",
+          "MACAddress": "00:1A:2B:3C:4D:52",
+          "DefaultIPGateway": "10.10.60.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 10 IoT Enterprise LTSC",
+          "Version": "10.0.19045",
+          "BuildNumber": "19045",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240222160000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "Kistler maXYmos PC-Software",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    },
+    {
+      "hostname": "CPC-L06-FIT-01",
+      "name": "Bosch Rexroth Automated Fitting Rig 01",
+      "machineIdentifier": "HW-FIT-601",
+      "ipAddress": "10.10.50.23",
+      "macAddress": "00:1A:2B:3C:4D:23",
+      "vlanId": 50,
+      "adOuPath": "OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp",
+      "machineType": "Fitting",
+      "groupId": "grp-cell-a",
+      "osVersion": "Windows 10 IoT Enterprise",
+      "cmiHardware": {
+        "cpu": {
+          "Name": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+          "NumberOfCores": 6,
+          "NumberOfLogicalProcessors": 6,
+          "MaxClockSpeed": 3000
+        },
+        "memory": {
+          "Capacity": 17179869184,
+          "Speed": 2666,
+          "Manufacturer": "Samsung",
+          "PartNumber": "M378A2K43CB1-CTD"
+        },
+        "disks": [
+          {
+            "Caption": "C:",
+            "Size": 512110190592,
+            "FreeSpace": 310110190592,
+            "FileSystem": "NTFS"
+          }
+        ],
+        "bios": {
+          "Manufacturer": "Bosch Rexroth AG",
+          "SMBIOSBIOSVersion": "ctrlX CORE OS V1.20",
+          "SerialNumber": "BIOS-L06-FIT-01"
+        },
+        "computerSystem": {
+          "Name": "CPC-L06-FIT-01",
+          "Manufacturer": "Bosch Rexroth",
+          "Model": "ctrlX CORE Virtual & Industrial IPC",
+          "TotalPhysicalMemory": 17179869184,
+          "Domain": "factory.corp"
+        },
+        "network": {
+          "Description": "Intel(R) I210 Gigabit Network Connection",
+          "IPAddress": "10.10.50.23",
+          "MACAddress": "00:1A:2B:3C:4D:23",
+          "DefaultIPGateway": "10.10.50.1",
+          "DNSServerSearchOrder": ["10.10.1.10", "10.10.1.11"]
+        },
+        "os": {
+          "Caption": "Microsoft Windows 10 IoT Enterprise",
+          "Version": "10.0.19045",
+          "BuildNumber": "19045",
+          "OSArchitecture": "64-bit",
+          "InstallDate": "20240301100000.000000+000"
+        }
+      },
+      "installedPackages": [
+        "ctrlX WORKS 1.20",
+        "Heimdall Edge Agent 1.2.0"
+      ]
+    }
+  ],
+  "machineGroups": [
+    {
+      "id": "grp-plant",
+      "name": "Battery Assembly Plant",
+      "description": "Top-level industrial manufacturing plant facility",
+      "parentId": null,
+      "machineIds": [],
+      "machineTypes": [],
+      "color": "blue"
+    },
+    {
+      "id": "grp-line06",
+      "name": "Line 06 — Module Assembly",
+      "description": "Battery module assembly line: cell sorting, dispensing, and laser welding",
+      "parentId": "grp-plant",
+      "machineIds": [],
+      "machineTypes": ["Gap Filler", "Screwing Station", "Pressing", "Automatic Optical Inspection", "Manipulator"],
+      "color": "indigo"
+    },
+    {
+      "id": "grp-cell-a",
+      "name": "Cell A — Dispensing & Fastening",
+      "description": "High-speed precision automated dispensing and nutrunning cell",
+      "parentId": "grp-line06",
+      "machineIds": [],
+      "machineTypes": ["Gap Filler", "Screwing Station", "Fitting"],
+      "color": "purple"
+    },
+    {
+      "id": "grp-line09",
+      "name": "Line 09 — Pack Assembly & Vision",
+      "description": "Battery pack assembly line with optical quality metrology",
+      "parentId": "grp-plant",
+      "machineIds": [],
+      "machineTypes": ["Pressing", "Tester Cell", "Automatic Optical Inspection"],
+      "color": "emerald"
+    },
+    {
+      "id": "grp-line05",
+      "name": "Line 05 — Powertrain Sub-Assembly",
+      "description": "Powertrain mechanical pressing and component joining cell",
+      "parentId": "grp-plant",
+      "machineIds": [],
+      "machineTypes": ["Pressing", "Fitting"],
+      "color": "amber"
+    }
+  ],
+  "technicianRules": [
+    {
+      "id": "rule-sally-milling",
+      "name": "Sally Vance -> All Milling Machines",
+      "technicianId": "usr-sally-01",
+      "technicianName": "Sally Vance",
+      "technicianEmail": "sally.vance@factory.corp",
+      "scopeType": "technology",
+      "targetId": "Milling",
+      "assignedByRole": "group_leader"
+    },
+    {
+      "id": "rule-orwell-line06",
+      "name": "George Orwell -> Line 06 Mechanical",
+      "technicianId": "usr-orwell-01",
+      "technicianName": "George Orwell",
+      "technicianEmail": "george.orwell@factory.corp",
+      "scopeType": "group",
+      "targetId": "grp-line06",
+      "categoryFilter": "Mechanical",
+      "assignedByRole": "shift_leader"
+    },
+    {
+      "id": "rule-alex-aoi",
+      "name": "Alex Novak -> Automatic Optical Inspection",
+      "technicianId": "usr-alex-01",
+      "technicianName": "Alex Novak",
+      "technicianEmail": "alex.novak@factory.corp",
+      "scopeType": "technology",
+      "targetId": "Automatic Optical Inspection",
+      "assignedByRole": "group_leader"
+    }
+  ],
+  "shiftAbsences": [],
+  "mfaPolicies": {
+    "roleThresholds": {
+      "system_admin": { "enforce": true, "timeoutHours": 0 },
+      "engineer": { "enforce": true, "timeoutHours": 168 },
+      "lead_engineer": { "enforce": true, "timeoutHours": 168 },
+      "controls_engineer": { "enforce": true, "timeoutHours": 168 },
+      "technician": { "enforce": true, "timeoutHours": 720 },
+      "shift_leader": { "enforce": true, "timeoutHours": 168 },
+      "operator": { "enforce": false, "timeoutHours": 720 }
+    },
+    "groupOverrides": [
+      {
+        "groupId": "CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp",
+        "forceMfa": true,
+        "timeoutHours": 168
+      },
+      {
+        "groupId": "9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c",
+        "forceMfa": true,
+        "timeoutHours": 0
+      }
+    ]
+  }
+}

@@ -12,19 +12,19 @@ layout {
     tab name="Services" focus=true {
         pane split_direction="vertical" {
             pane split_direction="horizontal" {
-                pane name="Backend API (.NET 9 Hot-Reload)" command="bash" {
+                pane name="Backend API (.NET 10 Hot-Reload)" command="bash" {
                     args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet watch --project backend/App.Backend.Api run"
                 }
-                pane name="Local Agent (.NET 9 Hot-Reload)" command="bash" {
+                pane name="Local Agent (.NET 10 Hot-Reload)" command="bash" {
                     args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet watch --project agent/App.Agent.Daemon run"
                 }
             }
             pane split_direction="horizontal" {
                 pane name="Web Frontend (Nuxt 4 Vite HMR)" command="bash" {
-                    args "-c" "export PATH=\"$HOME/.bun/bin:$PATH\" && cd frontend/heimdall-web-frontend && bun run dev"
+                    args "-c" "export PATH=\"$HOME/.bun/bin:$PATH\" && cd frontend/web && bun run dev"
                 }
                 pane name="Fleet Simulator" command="bash" {
-                    args "-c" "[ -f venv/bin/activate ] && source venv/bin/activate; python3 simulators/edge-fleet-simulator/fleet_simulator.py"
+                    args "-c" "[ -f venv/bin/activate ] && source venv/bin/activate; python3 simulators/fleet/fleet_simulator.py"
                 }
             }
         }

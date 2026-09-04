@@ -6,7 +6,7 @@ test.describe('Maintenance Incident Dispatching & Kanban Board E2E', () => {
       { name: 'heimdall_test_session', value: 'true', domain: 'localhost', path: '/' }
     ])
     await page.goto('/dashboard/tickets')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('displays maintenance metrics cards overview', async ({ page }) => {
@@ -28,8 +28,10 @@ test.describe('Maintenance Incident Dispatching & Kanban Board E2E', () => {
   test('opens report incident modal and shows form fields', async ({ page }) => {
     const reportBtn = page.getByRole('button', { name: /report incident/i }).first()
     await expect(reportBtn).toBeVisible({ timeout: 10000 })
+    await page.waitForTimeout(2000)
     await reportBtn.click()
 
+    await expect(page.locator('[role="dialog"]').first()).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('Report Maintenance Ticket')).toBeVisible({ timeout: 5000 })
   })
 })

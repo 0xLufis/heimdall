@@ -1,0 +1,53 @@
+services:
+  sim-pc-robotics:
+    build:
+      context: ../..
+      dockerfile: simulators/fleet/Dockerfile.simulated-pc
+    container_name: heimdall_sim_pc_robotics
+    environment:
+      - SIMULATED_HOSTNAME=CPC-L06-ROB-01
+      - BACKEND_GRPC_HOST=heimdall_backend:5001
+      - AD_SERVICE_URL=http://heimdall_frontend:3000/api/ad-mock
+      - REPORT_INTERVAL_SEC=10
+    ports:
+      - "8081:8080"
+    networks:
+      - heimdall_dev_net
+    restart: unless-stopped
+
+  sim-pc-fastening:
+    build:
+      context: ../..
+      dockerfile: simulators/fleet/Dockerfile.simulated-pc
+    container_name: heimdall_sim_pc_fastening
+    environment:
+      - SIMULATED_HOSTNAME=CPC-L06-SCR-01
+      - BACKEND_GRPC_HOST=heimdall_backend:5001
+      - AD_SERVICE_URL=http://heimdall_frontend:3000/api/ad-mock
+      - REPORT_INTERVAL_SEC=10
+    ports:
+      - "8082:8080"
+    networks:
+      - heimdall_dev_net
+    restart: unless-stopped
+
+  sim-pc-vision:
+    build:
+      context: ../..
+      dockerfile: simulators/fleet/Dockerfile.simulated-pc
+    container_name: heimdall_sim_pc_vision
+    environment:
+      - SIMULATED_HOSTNAME=CPC-L09-VIS-01
+      - BACKEND_GRPC_HOST=heimdall_backend:5001
+      - AD_SERVICE_URL=http://heimdall_frontend:3000/api/ad-mock
+      - REPORT_INTERVAL_SEC=10
+    ports:
+      - "8083:8080"
+    networks:
+      - heimdall_dev_net
+    restart: unless-stopped
+
+networks:
+  heimdall_dev_net:
+    name: heimdall_heimdall_dev_net
+    external: true

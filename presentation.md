@@ -27,9 +27,9 @@ transition: slide
 ### A Unified "Omni-Lens"
 Heimdall is a multi-tier ecosystem designed to bridge the gap between physical industrial operations and high-level management.
 
-1.  **The Agent**: Lightweight C# probe for edge telemetry.
-2.  **The Core**: .NET 9 API with Table-per-Type (TPT) inheritance.
-3.  **The Lens**: Nuxt 3 Dashboard with integrated DXF spatial engine.
+1.  **The Agent**: Lightweight C# probe for edge telemetry and fieldbus diagnostics.
+2.  **The Core**: Web API with Table-per-Type (TPT) inheritance and hybrid caching.
+3.  **The Lens**: Web Dashboard with integrated DXF spatial engine and live Kanban ticketing.
 
 ---
 

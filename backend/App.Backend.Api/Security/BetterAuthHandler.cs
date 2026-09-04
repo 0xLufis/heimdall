@@ -38,6 +38,14 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
             return AuthenticateResult.NoResult();
         }
 
+        // Better-Auth signed cookies are formatted as "<token>.<signature>"
+        // The PostgreSQL auth.session table stores only the raw 32-character token.
+        token = token.Trim();
+        if (token.Contains('.'))
+        {
+            token = token.Split('.')[0];
+        }
+
         try
         {
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();

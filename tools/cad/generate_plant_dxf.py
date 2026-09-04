@@ -105,6 +105,6 @@ for floor_x, floor_y in [(50, 520), (50, 650), (650, 520), (650, 650), (50, 150)
         ref.dxf.handle = f"ST-{int(floor_x/100)}-{int(floor_y/100)}-{col+1}"
 
 # Ensure output directory exists
-os.makedirs('frontend/heimdall-web-frontend/public/sample', exist_ok=True)
-doc.saveas('frontend/heimdall-web-frontend/public/sample/assembly_line.dxf')
+os.makedirs('frontend/web/public/sample', exist_ok=True)
+doc.saveas('frontend/web/public/sample/assembly_line.dxf')
 print("Multi-floor Enterprise Plant DXF generated successfully with realistic conveyor lines, tanks, and stations!")

@@ -46,6 +46,15 @@ GRANT USAGE, SELECT
 ON ALL SEQUENCES IN SCHEMA heimdall_dev_db TO dotnet_backend,
    nuxt_frontend;
 
+-- 4b. Auth Schema Permissions
+CREATE SCHEMA IF NOT EXISTS auth;
+GRANT ALL PRIVILEGES ON SCHEMA auth TO ef_admin, drizzle_admin;
+GRANT USAGE, CREATE ON SCHEMA auth TO dotnet_backend, nuxt_frontend;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA auth TO ef_admin, drizzle_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO dotnet_backend, nuxt_frontend;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA auth TO ef_admin, drizzle_admin;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO dotnet_backend, nuxt_frontend;
+
 -- 5. Set Default Privileges (Crucial for future tables)
 -- This ensures that when an admin creates a table, the app roles can actually see it automatically
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE 
@@ -61,3 +70,11 @@ ON TABLES TO dotnet_backend,
 ALTER DEFAULT PRIVILEGES IN SCHEMA heimdall_dev_db GRANT USAGE, SELECT 
 ON SEQUENCES TO dotnet_backend,
    nuxt_frontend;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT SELECT, INSERT, UPDATE, DELETE 
+ON TABLES TO dotnet_backend,
+   nuxt_frontend;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT USAGE, SELECT 
+ON SEQUENCES TO dotnet_backend,
+   nuxt_frontend;
+

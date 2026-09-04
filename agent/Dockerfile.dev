@@ -4,7 +4,7 @@ WORKDIR /workspace
 
 # Copy Directory.Build.props and project files for layer caching
 COPY Directory.Build.props ./
-COPY shared/App.Shared/App.Shared.csproj ./shared/App.Shared/
+COPY shared/App.Contracts/App.Contracts.csproj ./shared/App.Contracts/
 COPY agent/App.Agent.Daemon/App.Agent.Daemon.csproj ./agent/App.Agent.Daemon/
 
 # Restore dependencies

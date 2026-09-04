@@ -73,13 +73,13 @@ def run_tests():
         return False
 
     print("\n>>> 3. Running Frontend Test Suite (Vitest)...")
-    res = subprocess.run(["bun", "run", "test"], cwd="frontend/heimdall-web-frontend")
+    res = subprocess.run(["bun", "run", "test"], cwd="frontend/web")
     if res.returncode != 0:
         print("❌ Frontend tests failed.")
         return False
 
     print("\n>>> 4. Running Fleet Simulator Smoke Test...")
-    res = subprocess.run([python_bin, "simulators/edge-fleet-simulator/fleet_simulator.py", "--smoke-test", "--count", "5"])
+    res = subprocess.run([python_bin, "simulators/fleet/fleet_simulator.py", "--smoke-test", "--count", "5"])
     # If simulator target is not running in local test environment, note it
     if res.returncode != 0:
         print("ℹ️ Note: Fleet simulator smoke test requires active local gRPC service on port 5001.")

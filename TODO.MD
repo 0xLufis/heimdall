@@ -5,7 +5,7 @@
 ---
 
 ## Milestone 1: Monorepo Organization, Direct V1 API & Contracts
-- [x] Standardize repository structure (`frontend/heimdall-web-frontend`, `simulators/edge-fleet-simulator/`, `tools/cad/`, `tools/dev_manager.py`).
+- [x] Standardize repository structure (`frontend/web`, `simulators/fleet/`, `shared/App.Contracts/`, `tools/cad/`, `tools/dev_manager.py`).
 - [x] Version REST API controllers directly under `api/v1/` (`[Route("api/v1/[controller]")]`) without legacy fallbacks.
 - [x] Version Protobuf gRPC contracts (`package heimdall.telemetry.v1;`).
 - [x] Add database schema version manifest tracking (`schema_version_manifest`).
@@ -33,7 +33,7 @@
 
 ## Milestone 4: Seed Data Pipeline & Industrial Simulator Suite
 - [x] Create unified transactional seed generator and referential integrity validator (`seed_data/seed_pipeline.py`).
-- [x] Build multi-device object-oriented Industrial Edge Fleet Simulator (`simulators/edge-fleet-simulator/fleet_simulator.py`) supporting TwinCAT ADS, SIMATIC, Linux edge terminals, sine-wave telemetry, anomaly injection, and live CLI monitoring.
+- [x] Build multi-device object-oriented Industrial Edge Fleet Simulator (`simulators/fleet/fleet_simulator.py`) supporting TwinCAT ADS, SIMATIC, Linux edge terminals, sine-wave telemetry, anomaly injection, and live CLI monitoring.
 - [x] Build Dev Manager orchestrator & health checker (`tools/dev_manager.py`).
 
 ---

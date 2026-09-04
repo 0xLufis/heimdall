@@ -11,7 +11,7 @@ if [ -d "venv" ]; then
     fi
 fi
 PYTHON_CMD="python"
-SIMULATOR_SCRIPT="simulators/edge-fleet-simulator/fleet_simulator.py"
+SIMULATOR_SCRIPT="simulators/fleet/fleet_simulator.py"
 PID_FILE_DIR="/tmp/heimdall_sims"
 CLIENTS=(
     "ROBOT-CELL-01"

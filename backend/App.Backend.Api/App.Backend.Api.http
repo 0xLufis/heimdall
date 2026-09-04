@@ -1,6 +1,29 @@
 @App.Backend.Api_HostAddress = http://localhost:5099
 
-GET {{App.Backend.Api_HostAddress}}/weatherforecast/
+### 1. Dashboard Overview
+GET {{App.Backend.Api_HostAddress}}/api/v1/Dashboard
 Accept: application/json
 
-###
+### 2. Client PCs / Industrial Controllers List
+GET {{App.Backend.Api_HostAddress}}/api/v1/ClientPc
+Accept: application/json
+
+### 3. Production Machines / Stations List
+GET {{App.Backend.Api_HostAddress}}/api/v1/Machine
+Accept: application/json
+
+### 4. Inventory Hardware Components
+GET {{App.Backend.Api_HostAddress}}/api/v1/Inventory/hardware
+Accept: application/json
+
+### 5. Inventory Software Components
+GET {{App.Backend.Api_HostAddress}}/api/v1/Inventory/software
+Accept: application/json
+
+### 6. Maintenance Tickets
+GET {{App.Backend.Api_HostAddress}}/api/v1/MaintenanceTicket
+Accept: application/json
+
+### 7. System Settings Governance
+GET {{App.Backend.Api_HostAddress}}/api/v1/SystemSettings
+Accept: application/json

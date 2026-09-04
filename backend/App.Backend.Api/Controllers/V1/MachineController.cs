@@ -30,6 +30,10 @@ public class MachineController : ControllerBase
             DisplayName = m.DisplayName,
             OrganizationId = m.OrganizationId ?? "Heimdall Root",
             CustomIdentifier = m.CustomIdentifier,
+            MachineType = m.MachineType,
+            GroupId = m.GroupId,
+            PreferredTechnicianId = m.PreferredTechnicianId,
+            PreferredTechnicianName = m.PreferredTechnicianName,
             PinnedObjectHandle = m.PinnedObjectHandle,
             Controllers = m.Controllers.Select(c => new App.Backend.Api.Dtos.ClientPcSummaryDto
             {

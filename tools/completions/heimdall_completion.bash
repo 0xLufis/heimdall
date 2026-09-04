@@ -128,4 +128,4 @@ complete -F _heimdall_run_dev_completion ./run_dev.sh run_dev.sh run_dev
 complete -F _heimdall_run_simulators_completion ./run_simulators.sh run_simulators.sh run_simulators
 complete -F _heimdall_dev_manager_completion ./tools/dev_manager.py tools/dev_manager.py dev_manager.py
 complete -F _heimdall_seed_pipeline_completion ./seed_data/seed_pipeline.py seed_data/seed_pipeline.py seed_pipeline.py
-complete -F _heimdall_fleet_simulator_completion ./simulators/edge-fleet-simulator/fleet_simulator.py fleet_simulator.py
+complete -F _heimdall_fleet_simulator_completion ./simulators/fleet/fleet_simulator.py fleet_simulator.py

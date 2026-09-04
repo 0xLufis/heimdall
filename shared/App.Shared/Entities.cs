@@ -100,6 +100,18 @@ public partial class Machine : BaseInventoryItem
     [Required, MaxLength(255)]
     public string CustomIdentifier { get; set; } = string.Empty;
 
+    /// <summary>The functional technology / machine type (e.g. "Automatic Optical Inspection", "Gap Filler", "Screwing Station", "Soldering", "Milling", "Fitting", "Pressing", "Manipulator", "Tester Cell", "Painting").</summary>
+    public string? MachineType { get; set; }
+
+    /// <summary>Hierarchical group / line envelope identifier.</summary>
+    public string? GroupId { get; set; }
+
+    /// <summary>Optional identifier for dedicated preferred technician.</summary>
+    public string? PreferredTechnicianId { get; set; }
+
+    /// <summary>Optional name of dedicated preferred technician.</summary>
+    public string? PreferredTechnicianName { get; set; }
+
     /// <summary>The CAD/DXF object handle for mapping this station to a spatial layout.</summary>
     public string? PinnedObjectHandle { get; set; }
     
@@ -179,6 +191,32 @@ public partial class ClientPc
 
     /// <summary>Thresholds for system health alerting (JSONB).</summary>
     public AlertingLimits? AlertingLimits { get; set; }
+
+    /// <summary>VLAN identifier to which this host interface belongs.</summary>
+    public int? VlanId { get; set; }
+
+    /// <summary>VLAN network name (e.g. VLAN 10 - Production Line).</summary>
+    [MaxLength(128)]
+    public string? VlanName { get; set; }
+
+    /// <summary>Network subnet CIDR (e.g. 10.10.10.0/24).</summary>
+    [MaxLength(64)]
+    public string? Subnet { get; set; }
+
+    /// <summary>Active Directory Organizational Unit Distinguished Name path.</summary>
+    [MaxLength(500)]
+    public string? AdOuPath { get; set; }
+
+    /// <summary>Extracted or templated OU tags (e.g. {"location": "Line 06", "purpose": "Fastening"}).</summary>
+    public JsonDocument? OuTags { get; set; }
+
+    /// <summary>Active mTLS client certificate thumbprint bound to this host.</summary>
+    [MaxLength(128)]
+    public string? CertificateThumbprint { get; set; }
+
+    /// <summary>Name of the PKI certificate profile assigned via AD OU.</summary>
+    [MaxLength(128)]
+    public string? CertificateProfileName { get; set; }
 }
 
 /// <summary>
@@ -469,6 +507,9 @@ public partial class TicketAttachment
     public Guid MaintenanceTicketId { get; set; }
     /// <summary>Navigation property for the maintenance ticket.</summary>
     public MaintenanceTicket? MaintenanceTicket { get; set; }
+
+    /// <summary>Optional associated comment ID if attachment belongs to a specific comment.</summary>
+    public Guid? CommentId { get; set; }
 
     /// <summary>Original filename of the attachment.</summary>
     [Required, MaxLength(255)]
@@ -774,6 +815,51 @@ public class ClientCertificateRecord
     public string Status { get; set; } = "Active"; // Active, Revoked, Expired
     
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    [MaxLength(500)]
+    public string? AdOuPath { get; set; }
+
+    [MaxLength(128)]
+    public string? ProfileName { get; set; }
+
+    public bool IsRootCa { get; set; } = false;
+
+    public string? RawPem { get; set; }
+
+    [MaxLength(255)]
+    public string? Issuer { get; set; }
+
+    [MaxLength(64)]
+    public string? KeyAlgorithm { get; set; }
+
+    [MaxLength(128)]
+    public string? SerialNumber { get; set; }
+}
+
+/// <summary>
+/// Rule governing automated certificate issuance and profile assignment based on Active Directory OU paths.
+/// </summary>
+[Table("ou_certificate_rules")]
+public class OuCertificateRule
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required, MaxLength(500)]
+    public string OuPath { get; set; } = string.Empty;
+
+    [Required, MaxLength(255)]
+    public string ProfileName { get; set; } = string.Empty;
+
+    public int ValidityYears { get; set; } = 2;
+
+    public bool AutoEnroll { get; set; } = true;
+
+    [MaxLength(50)]
+    public string KeyAlgorithm { get; set; } = "RSA-2048";
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 /// <summary>
