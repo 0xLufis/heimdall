@@ -1,4 +1,4 @@
-import { defineEventHandler, getQuery } from 'h3'
+import { defineEventHandler, getQuery, getHeader } from 'h3'
 
 // Rich seed datasets for offline/local dev fallback
 const SEED_MACHINES = [
@@ -213,29 +213,51 @@ export default defineEventHandler(async (event) => {
   let rawList: any[] = []
 
   const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
+  const forwardHeaders: Record<string, string> = {}
+  const cookie = getHeader(event, 'cookie')
+  if (cookie) forwardHeaders.cookie = cookie
+  const authorization = getHeader(event, 'authorization')
+  if (authorization) forwardHeaders.authorization = authorization
+
   try {
     if (primaryKey === 'client') {
-      const pcs = await $fetch<any[]>(`${backendBase}/api/ClientPc`, {
-        headers: event.headers as any
+      const pcs = await $fetch<any[]>(`${backendBase}/api/v1/ClientPc`, {
+        headers: forwardHeaders
       })
       if (pcs && Array.isArray(pcs) && pcs.length > 0) {
-        rawList = pcs.map(p => ({
-          id: p.id || p.Id,
-          name: p.hostname || p.name || p.Name,
-          hostname: p.hostname || p.Hostname,
-          customIdentifier: p.machineIdentifier || p.customIdentifier,
-          displayName: p.hostname || p.displayName,
-          organizationId: p.organizationId || 'Production Floor',
-          lastOnline: p.lastSeen || p.lastOnline,
-          responsibleTeams: p.responsibleTeams || [],
-          controlledMachines: p.controlledMachines || [],
-          children: p.inventoryItems || p.children || [],
-          inventoryItems: []
-        }))
+        rawList = pcs.map(p => {
+          const isOnline = p.lastSeen ? (Date.now() - new Date(p.lastSeen).getTime() < 5 * 60 * 1000) : false
+          return {
+            id: p.id || p.Id,
+            name: p.hostname || p.name || p.Name,
+            hostname: p.hostname || p.Hostname,
+            customIdentifier: p.machineIdentifier || p.customIdentifier || p.hostname,
+            displayName: p.hostname || p.displayName,
+            organizationId: p.organizationId || 'Production Floor',
+            lastOnline: p.lastSeen || p.lastOnline,
+            responsibleTeams: p.responsibleTeams || [],
+            controlledMachines: p.controlledMachines || p.machines || [],
+            children: (p.inventoryItems || p.children || []).map((c: any) => ({
+              ...c,
+              itemType: c.itemType || 'hardware',
+              metadata: { ...(c.metadata || {}), HostPC: p.hostname }
+            })),
+            inventoryItems: [],
+            telemetry: {
+              cpuUsagePercent: p.resourceAverages?.cpuUsageAverage ?? (isOnline ? 15 : 0),
+              ramUsagePercent: p.resourceAverages?.ramUsageAverage ?? (isOnline ? 38 : 0),
+              freeDiskSpace: p.freeDiskSpace,
+              isOnline,
+              lastSeen: p.lastSeen || p.lastOnline
+            },
+            resourceAverages: p.resourceAverages,
+            freeDiskSpace: p.freeDiskSpace
+          }
+        })
       }
     } else {
-      const machines = await $fetch<any[]>(`${backendBase}/api/inventory/machines`, {
-        headers: event.headers as any
+      const machines = await $fetch<any[]>(`${backendBase}/api/v1/inventory/machines`, {
+        headers: forwardHeaders
       })
       if (machines && Array.isArray(machines) && machines.length > 0) {
         rawList = machines.map(m => ({
@@ -298,9 +320,23 @@ export default defineEventHandler(async (event) => {
   const totalHardware = filtered.reduce((acc, curr) => acc + (curr.aggregatedMetrics?.hardwareCount || 0), 0)
   const totalSoftware = filtered.reduce((acc, curr) => acc + (curr.aggregatedMetrics?.softwareCount || 0), 0)
 
+  let pageNum = parseInt(query.page as string, 10)
+  let pageSizeNum = parseInt(query.pageSize as string, 10)
+
+  let pagedTree = filtered
+  if (pageSizeNum > 0) {
+    if (!pageNum || pageNum < 1) pageNum = 1
+    const offset = (pageNum - 1) * pageSizeNum
+    pagedTree = filtered.slice(offset, offset + pageSizeNum)
+  }
+
   return {
     primaryKey,
-    tree: filtered,
+    tree: pagedTree,
+    totalCount: totalNodes,
+    totalPages: pageSizeNum > 0 ? Math.ceil(totalNodes / pageSizeNum) : 1,
+    page: pageNum || 1,
+    pageSize: pageSizeNum || totalNodes,
     summary: {
       totalNodes,
       totalCost,

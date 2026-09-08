@@ -19,10 +19,13 @@ import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
 import { Popover, PopoverTrigger, PopoverContent } from '~/components/ui/popover'
 import { useInventoryKeys } from '~/composables/useInventoryKeys'
+import { useInventoryLive } from '~/composables/useInventoryLive'
 
 const props = defineProps<{
   primaryKey: 'machine' | 'client'
 }>()
+
+const { onInventoryUpdate } = useInventoryLive()
 
 const loading = ref(false)
 const items = ref<any[]>([])
@@ -112,7 +115,42 @@ watch([searchQuery, responsibilityFilter, () => props.primaryKey], () => {
   fetchData()
 })
 
+onInventoryUpdate(() => {
+  fetchData()
+})
+
 const filteredItems = computed(() => items.value)
+
+// Pagination State (supports 5, 10, 50, 100, 1000, and custom)
+const currentPage = ref(1)
+const pageSize = ref<number | 'custom'>(10)
+const customPageSize = ref(100)
+
+const effectivePageSize = computed(() => {
+  if (pageSize.value === 'custom') {
+    return Math.max(1, Number(customPageSize.value) || 10)
+  }
+  return Number(pageSize.value)
+})
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredItems.value.length / effectivePageSize.value))
+})
+
+const paginatedTree = computed(() => {
+  const start = (currentPage.value - 1) * effectivePageSize.value
+  return filteredItems.value.slice(start, start + effectivePageSize.value)
+})
+
+const setPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+watch([searchQuery, responsibilityFilter, () => props.primaryKey, pageSize, customPageSize], () => {
+  currentPage.value = 1
+})
 
 const isOnline = (lastOnline: string | null): boolean => {
   if (!lastOnline) return false
@@ -291,7 +329,7 @@ const toggleGroup = (group: string) => {
             </TableRow>
           </template>
           <template v-else>
-            <template v-for="item in filteredItems" :key="item.id">
+            <template v-for="item in paginatedTree" :key="item.id">
               <TableRow class="border-b border-slate-800 hover:bg-slate-900/30 transition-colors group">
                 <TableCell class="text-center">
                   <Button @click="toggleExpand(item.id)" variant="ghost" size="icon" class="h-8 w-8 text-slate-600 hover:bg-slate-800 rounded-lg">
@@ -381,6 +419,106 @@ const toggleGroup = (group: string) => {
           </template>
         </TableBody>
       </Table>
+    </div>
+
+    <!-- Pagination Controls Bar -->
+    <div v-if="filteredItems.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs">
+      <div class="flex items-center gap-3 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+        <span>
+          Showing 
+          <span class="font-mono text-slate-200">{{ Math.min((currentPage - 1) * effectivePageSize + 1, filteredItems.length) }}</span> 
+          to 
+          <span class="font-mono text-slate-200">{{ Math.min(currentPage * effectivePageSize, filteredItems.length) }}</span> 
+          of 
+          <span class="font-mono text-slate-200">{{ filteredItems.length }}</span> 
+          {{ primaryKey === 'client' ? 'controllers' : 'stations' }}
+        </span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-4">
+        <!-- Page Size Selector -->
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Per Page:</span>
+          <div class="flex p-0.5 bg-slate-950 rounded-xl border border-slate-800 gap-1">
+            <Button 
+              v-for="size in [5, 10, 50, 100, 1000]" 
+              :key="size"
+              variant="ghost" 
+              size="sm"
+              @click="pageSize = size"
+              :class="pageSize === size ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+              class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase font-mono"
+            >
+              {{ size }}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              @click="pageSize = 'custom'"
+              :class="pageSize === 'custom' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+              class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase"
+            >
+              Custom
+            </Button>
+          </div>
+
+          <div v-if="pageSize === 'custom'" class="flex items-center gap-1">
+            <input 
+              v-model.number="customPageSize"
+              type="number"
+              min="1"
+              max="10000"
+              placeholder="Count"
+              class="w-20 h-7 px-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <div class="flex items-center gap-1.5">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            :disabled="currentPage === 1" 
+            @click="setPage(1)"
+            class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+          >
+            First
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            :disabled="currentPage === 1" 
+            @click="setPage(currentPage - 1)"
+            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+          >
+            Prev
+          </Button>
+
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 font-mono">
+            {{ currentPage }} / {{ totalPages }}
+          </span>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            :disabled="currentPage >= totalPages" 
+            @click="setPage(currentPage + 1)"
+            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+          >
+            Next
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            :disabled="currentPage >= totalPages" 
+            @click="setPage(totalPages)"
+            class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+          >
+            Last
+          </Button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

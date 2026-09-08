@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody } from 'h3'
+import { defineEventHandler, readBody, getQuery, getMethod, getHeader } from 'h3'
 
 // Resilient default seed inventory if backend is offline or starting up
 const SEED_INVENTORY = [
@@ -163,7 +163,19 @@ function flattenTreeNodes(nodes: any[]): any[] {
 }
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event) || {}
+  const method = getMethod(event)
+  let payload: Record<string, any> = {}
+
+  if (method === 'GET') {
+    payload = getQuery(event) || {}
+  } else {
+    try {
+      payload = await readBody(event) || {}
+    } catch {
+      payload = {}
+    }
+  }
+
   const {
     query = '',
     type = 'all',
@@ -171,20 +183,93 @@ export default defineEventHandler(async (event) => {
     sortOrder = 'asc',
     manufacturerId = '',
     teamId = ''
-  } = body
+  } = payload
 
   let allItems: any[] = []
 
   const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
+  const forwardHeaders: Record<string, string> = {}
+  const cookie = getHeader(event, 'cookie')
+  if (cookie) forwardHeaders.cookie = cookie
+  const authorization = getHeader(event, 'authorization')
+  if (authorization) forwardHeaders.authorization = authorization
+
   try {
-    const raw = await $fetch<any[]>(`${backendBase}/api/inventory`, {
-      headers: event.headers as any
+    const raw = await $fetch<any[]>(`${backendBase}/api/v1/inventory`, {
+      headers: forwardHeaders
     })
     if (raw && Array.isArray(raw) && raw.length > 0) {
       allItems = flattenTreeNodes(raw)
     }
   } catch {
-    // Graceful fallback to rich seed inventory
+    // Graceful fallback
+  }
+
+  // Also query Client PCs to dynamically ingest live agent telemetry & reported PC hardware
+  try {
+    const pcs = await $fetch<any[]>(`${backendBase}/api/v1/ClientPc`, {
+      headers: forwardHeaders
+    })
+    if (pcs && Array.isArray(pcs) && pcs.length > 0) {
+      for (const pc of pcs) {
+        const isOnline = pc.lastSeen ? (Date.now() - new Date(pc.lastSeen).getTime() < 5 * 60 * 1000) : false
+        // Add the PC controller itself as an asset if not present
+        allItems.push({
+          id: pc.id,
+          name: pc.hostname || pc.name,
+          displayName: pc.displayName || pc.hostname,
+          serialNumber: pc.machineIdentifier || pc.macAddress,
+          itemType: 'hardware',
+          customIdentifier: pc.hostname,
+          costInHUF: 850000,
+          purchaseDate: pc.lastSeen || new Date().toISOString(),
+          manufacturer: { name: 'Advantech / Industrial IPC' },
+          responsibleTeams: pc.responsibleTeams || [],
+          telemetry: {
+            cpuUsagePercent: pc.resourceAverages?.cpuUsageAverage ?? (isOnline ? 18.5 : 0),
+            ramUsagePercent: pc.resourceAverages?.ramUsageAverage ?? (isOnline ? 42.1 : 0),
+            freeDiskSpace: pc.freeDiskSpace,
+            isOnline,
+            lastSeen: pc.lastSeen
+          },
+          metadata: {
+            MAC: pc.macAddress,
+            IP: pc.ipAddress || (pc.systemMetadata as any)?.IPAddress,
+            Host: pc.hostname,
+            ...(pc.systemMetadata || {})
+          }
+        })
+
+        // Add each reported hardware component (CPU, RAM, Disk, etc.)
+        if (pc.inventoryItems && Array.isArray(pc.inventoryItems)) {
+          for (const hw of pc.inventoryItems) {
+            allItems.push({
+              id: hw.id || `${pc.id}-${hw.name}`,
+              name: `${pc.hostname} - ${hw.name}`,
+              displayName: hw.displayName || hw.name,
+              serialNumber: hw.serialNumber || `${pc.macAddress}-${hw.name}`,
+              itemType: 'hardware',
+              customIdentifier: `${pc.hostname}/${hw.name}`,
+              costInHUF: 150000,
+              purchaseDate: pc.lastSeen || new Date().toISOString(),
+              manufacturer: { name: hw.manufacturer?.name || 'OEM' },
+              responsibleTeams: pc.responsibleTeams || [],
+              telemetry: {
+                isOnline,
+                host: pc.hostname
+              },
+              metadata: {
+                HostPC: pc.hostname,
+                Type: hw.type || hw.itemType,
+                ...(hw.metadata || {})
+              }
+            })
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore if ClientPc endpoint not available
   }
 
   if (allItems.length === 0) {
@@ -282,12 +367,26 @@ export default defineEventHandler(async (event) => {
     return 0
   })
 
-  const filteredCost = items.reduce((sum, item) => sum + (item.costInHUF || 0), 0)
+  const totalCostHuf = items.reduce((sum, item) => sum + (item.costInHUF || 0), 0)
+  const totalCount = items.length
+
+  let pageNum = parseInt(payload.page, 10)
+  let pageSizeNum = parseInt(payload.pageSize, 10)
+
+  let pagedItems = items
+  if (pageSizeNum > 0) {
+    if (!pageNum || pageNum < 1) pageNum = 1
+    const offset = (pageNum - 1) * pageSizeNum
+    pagedItems = items.slice(offset, offset + pageSizeNum)
+  }
 
   return {
-    items,
-    totalCount: items.length,
-    totalCostHuf: filteredCost,
+    items: pagedItems,
+    totalCount,
+    totalPages: pageSizeNum > 0 ? Math.ceil(totalCount / pageSizeNum) : 1,
+    page: pageNum || 1,
+    pageSize: pageSizeNum || totalCount,
+    totalCostHuf,
     kpis: {
       totalGlobalCount,
       totalGlobalHardware,

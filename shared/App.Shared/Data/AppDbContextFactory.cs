@@ -19,11 +19,28 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .AddEnvironmentVariables()
             .Build();
 
-        // 2. Get the connection string, with a fallback for local Docker dev
-        //var connectionString = configuration.GetConnectionString("DefaultConnection")
-        //    ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=admin;Password=admin";
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-           ?? "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=ef_admin;Password=migrate";
+        // 2. Get the connection string with environment parameterization
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            connectionString = configuration["DATABASE_URL"] ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+        }
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            var efUser = Environment.GetEnvironmentVariable("EF_ADMIN_USER") ?? "ef_admin";
+            var efPw = Environment.GetEnvironmentVariable("EF_ADMIN_PASSWORD");
+            if (string.IsNullOrEmpty(efPw))
+            {
+                var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
+                if (!env.Equals("Development", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("CRITICAL CONFIGURATION ERROR: ConnectionStrings:DefaultConnection or DATABASE_URL must be specified for design-time DbContext.");
+                }
+                efPw = "migrate"; // Local development fallback for CLI tooling
+            }
+            connectionString = $"Host=localhost;Port=5432;Database=heimdall_dev_db;Username={efUser};Password={efPw}";
+        }
 
         // 3. Configure the DbContext Options
         var builder = new DbContextOptionsBuilder<AppDbContext>();

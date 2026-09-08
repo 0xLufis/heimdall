@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
-import { PlusIcon, SlidersHorizontal, Check, RefreshCw, Layers, HardDrive, Cpu, DollarSign } from 'lucide-vue-next'
+import { PlusIcon, SlidersHorizontal, Check, RefreshCw, Layers, HardDrive, Cpu, DollarSign, Activity, Wifi } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
 import DashboardInventoryEditModal from '~/components/dashboard/InventoryEditModal.vue'
+import { useInventoryLive } from '~/composables/useInventoryLive'
 import type { SearchInstanceConfig } from '~/types/search'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
+
+const { isLiveConnected, lastSyncedAt, onInventoryUpdate } = useInventoryLive()
 
 const activeTab = ref<'hardware' | 'software' | 'hierarchy'>('hardware')
 const hierarchyKey = ref<'machine' | 'client'>('machine')
@@ -26,6 +29,37 @@ const kpis = ref({
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const selectedEditItem = ref<any | null>(null)
+
+// Pagination State (supports 5, 10, 50, 100, 1000, and custom)
+const currentPage = ref(1)
+const pageSize = ref<number | 'custom'>(10)
+const customPageSize = ref(100)
+
+const effectivePageSize = computed(() => {
+  if (pageSize.value === 'custom') {
+    return Math.max(1, Number(customPageSize.value) || 10)
+  }
+  return Number(pageSize.value)
+})
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(items.value.length / effectivePageSize.value))
+})
+
+const paginatedItems = computed(() => {
+  const start = (currentPage.value - 1) * effectivePageSize.value
+  return items.value.slice(start, start + effectivePageSize.value)
+})
+
+const setPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+watch([pageSize, customPageSize, activeTab], () => {
+  currentPage.value = 1
+})
 
 const inventorySearchConfig = computed<SearchInstanceConfig>(() => ({
   instanceId: 'inventory',
@@ -68,6 +102,12 @@ const resetColumns = () => {
 }
 
 const onSearch = (q: string) => {
+  // Prevent single-character queries from triggering lookup
+  const hasTags = q.includes(':')
+  const freeText = q.replace(/(\w+):"[^"]*"|(\w+):\S+/g, '').trim()
+  if (!hasTags && freeText.length === 1) {
+    return
+  }
   currentQuery.value = q
   fetchData(q)
 }
@@ -77,8 +117,8 @@ const fetchData = async (q: string = currentQuery.value) => {
   loading.value = true
   try {
     const res = await $fetch<any>('/api/inventory/filter', {
-      method: 'POST',
-      body: {
+      method: 'GET',
+      params: {
         query: q,
         type: activeTab.value
       }
@@ -142,6 +182,12 @@ watch(activeTab, () => {
 onMounted(() => {
   fetchData('')
 })
+
+onInventoryUpdate(() => {
+  if (activeTab.value !== 'hierarchy') {
+    fetchData(currentQuery.value)
+  }
+})
 </script>
 
 <template>
@@ -179,6 +225,12 @@ onMounted(() => {
             <DollarSign class="w-3.5 h-3.5 text-amber-400" />
             <span class="text-[10px] font-bold text-slate-500 uppercase">Valuation:</span>
             <span class="font-mono font-black text-slate-200">{{ formatCurrency(kpis.totalGlobalCost) }} HUF</span>
+          </div>
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+            <span class="size-2 rounded-full" :class="isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500'" />
+            <span class="text-[10px] font-bold uppercase tracking-widest" :class="isLiveConnected ? 'text-emerald-400' : 'text-emerald-500'">
+              {{ isLiveConnected ? 'Live Telemetry Sync: Connected' : 'Live Sync: Active' }}
+            </span>
           </div>
         </div>
       </div>
@@ -307,12 +359,112 @@ onMounted(() => {
     <!-- Repository Content Views -->
     <template v-if="activeTab !== 'hierarchy'">
       <DashboardInventoryTable 
-        :items="items" 
+        :items="paginatedItems" 
         :type="activeTab" 
         :loading="loading"
         :columns="columns"
         @edit="handleEditItem"
       />
+
+      <!-- Pagination Controls Bar -->
+      <div v-if="items.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs">
+        <div class="flex items-center gap-3 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+          <span>
+            Showing 
+            <span class="font-mono text-slate-200">{{ Math.min((currentPage - 1) * effectivePageSize + 1, items.length) }}</span> 
+            to 
+            <span class="font-mono text-slate-200">{{ Math.min(currentPage * effectivePageSize, items.length) }}</span> 
+            of 
+            <span class="font-mono text-slate-200">{{ items.length }}</span> 
+            assets
+          </span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-4">
+          <!-- Page Size Selector -->
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Per Page:</span>
+            <div class="flex p-0.5 bg-slate-950 rounded-xl border border-slate-800 gap-1">
+              <Button 
+                v-for="size in [5, 10, 50, 100, 1000]" 
+                :key="size"
+                variant="ghost" 
+                size="sm"
+                @click="pageSize = size"
+                :class="pageSize === size ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase font-mono"
+              >
+                {{ size }}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                @click="pageSize = 'custom'"
+                :class="pageSize === 'custom' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase"
+              >
+                Custom
+              </Button>
+            </div>
+
+            <div v-if="pageSize === 'custom'" class="flex items-center gap-1">
+              <input 
+                v-model.number="customPageSize"
+                type="number"
+                min="1"
+                max="10000"
+                placeholder="Count"
+                class="w-20 h-7 px-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          <!-- Navigation Controls -->
+          <div class="flex items-center gap-1.5">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              :disabled="currentPage === 1" 
+              @click="setPage(1)"
+              class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+            >
+              First
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              :disabled="currentPage === 1" 
+              @click="setPage(currentPage - 1)"
+              class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+            >
+              Prev
+            </Button>
+
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 font-mono">
+              {{ currentPage }} / {{ totalPages }}
+            </span>
+
+            <Button 
+              variant="outline" 
+              size="sm" 
+              :disabled="currentPage >= totalPages" 
+              @click="setPage(currentPage + 1)"
+              class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+            >
+              Next
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              :disabled="currentPage >= totalPages" 
+              @click="setPage(totalPages)"
+              class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+            >
+              Last
+            </Button>
+          </div>
+        </div>
+      </div>
     </template>
 
     <template v-else>

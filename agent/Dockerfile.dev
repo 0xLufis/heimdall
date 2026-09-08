@@ -2,6 +2,11 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 WORKDIR /workspace
 
+# Create non-root user and setup directories
+RUN groupadd -g 10002 agentuser && \
+    useradd -u 10002 -g agentuser -m -s /bin/bash agentuser && \
+    chown -R agentuser:agentuser /workspace /home/agentuser
+
 # Copy Directory.Build.props and project files for layer caching
 COPY Directory.Build.props ./
 COPY shared/App.Contracts/App.Contracts.csproj ./shared/App.Contracts/
@@ -13,6 +18,10 @@ RUN dotnet restore agent/App.Agent.Daemon/App.Agent.Daemon.csproj
 # Copy source code
 COPY shared/ ./shared/
 COPY agent/ ./agent/
+
+RUN chown -R agentuser:agentuser /workspace
+
+USER agentuser
 
 WORKDIR /workspace/agent/App.Agent.Daemon
 

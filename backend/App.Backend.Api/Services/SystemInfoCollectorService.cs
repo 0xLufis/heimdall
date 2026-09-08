@@ -5,6 +5,8 @@ using Google.Protobuf.WellKnownTypes;
 using App.Infrastructure.Repositories;
 using App.Shared.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using App.Backend.Api.Hubs;
 using static App.Shared.Protos.SystemInfoCollector;
 
 namespace App.Backend.Api.Services;
@@ -18,6 +20,10 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
     private readonly ILogger<SystemInfoCollectorService> _logger;
     private readonly IClientPcRepository _repository;
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
+    private readonly IHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
+    private readonly IHubContext<MaintenanceHub, IMaintenanceClient>? _hubContext;
+    private readonly ICacheService? _cache;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SystemInfoCollectorService"/> class.
@@ -25,11 +31,81 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
     /// <param name="logger">The logger for the service.</param>
     /// <param name="repository">The repository for Client PC data operations.</param>
     /// <param name="dbContextFactory">The DB context factory for command handling.</param>
-    public SystemInfoCollectorService(ILogger<SystemInfoCollectorService> logger, IClientPcRepository repository, IDbContextFactory<AppDbContext> dbContextFactory)
+    /// <param name="environment">The hosting environment.</param>
+    /// <param name="configuration">The configuration provider.</param>
+    /// <param name="hubContext">Optional SignalR hub context for real-time notifications.</param>
+    /// <param name="cache">Optional cache service for invalidating cached inventory trees.</param>
+    public SystemInfoCollectorService(
+        ILogger<SystemInfoCollectorService> logger,
+        IClientPcRepository repository,
+        IDbContextFactory<AppDbContext> dbContextFactory,
+        IHostEnvironment environment,
+        IConfiguration configuration,
+        IHubContext<MaintenanceHub, IMaintenanceClient>? hubContext = null,
+        ICacheService? cache = null)
     {
         _logger = logger;
         _repository = repository;
         _dbContextFactory = dbContextFactory;
+        _environment = environment;
+        _configuration = configuration;
+        _hubContext = hubContext;
+        _cache = cache;
+    }
+
+    private async Task<bool> ValidateCallerAuthenticationAsync(ServerCallContext context)
+    {
+        // 1. Check mTLS Client Certificate if available
+        var httpContext = context.GetHttpContext();
+        var clientCert = httpContext?.Connection?.ClientCertificate;
+        if (clientCert != null)
+        {
+            try
+            {
+                await using var db = await _dbContextFactory.CreateDbContextAsync();
+                var activeCert = await db.ClientCertificates
+                    .AnyAsync(c => c.Thumbprint == clientCert.Thumbprint && c.Status == "Active");
+                if (activeCert)
+                {
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to validate client certificate against PKI database.");
+            }
+        }
+
+        // 2. Check Agent Key header (x-agent-key or Authorization)
+        var agentKey = context.RequestHeaders.GetValue("x-agent-key");
+        if (string.IsNullOrEmpty(agentKey))
+        {
+            var authHeader = context.RequestHeaders.GetValue("authorization");
+            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                agentKey = authHeader.Substring("Bearer ".Length).Trim();
+            }
+        }
+
+        var configuredKey = _configuration["HEIMDALL_AGENT_KEY"];
+        if (!string.IsNullOrEmpty(configuredKey) && !string.IsNullOrEmpty(agentKey))
+        {
+            if (string.Equals(agentKey, configuredKey, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        // 3. Fallback for Development or Test environments
+        if (_environment.IsDevelopment() || _environment.IsEnvironment("Test"))
+        {
+            if (string.IsNullOrEmpty(configuredKey) || string.Equals(agentKey, "heimdall-dev-agent-key", StringComparison.Ordinal) || string.IsNullOrEmpty(agentKey))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -40,6 +116,12 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
     /// <returns>A <see cref="SystemInfoResponse"/> indicating the success or failure of the operation.</returns>
     public override async Task<SystemInfoResponse> ReportSystemInfo(SystemInfoRequest request, ServerCallContext context)
     {
+        if (!await ValidateCallerAuthenticationAsync(context))
+        {
+            _logger.LogWarning("Rejecting unauthenticated gRPC telemetry report from {Hostname}", request.Hostname);
+            throw new RpcException(new Status(StatusCode.Unauthenticated, "Authentication required to submit telemetry."));
+        }
+
         _logger.LogInformation("Received system info from {Hostname} ({MachineIdentifier})", 
             request.Hostname, request.MachineIdentifier);
 
@@ -76,16 +158,81 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
                 clientPc.SystemMetadata = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonDocument>(osComp.DataJson);
             }
 
-            var telemetryComp = request.Components.FirstOrDefault(c => c.Name == "Live Telemetry");
+            var telemetryComp = request.Components.FirstOrDefault(c => c.Name == "Live Telemetry" || c.Name == "Real-Time Metrics");
             if (telemetryComp != null && !string.IsNullOrEmpty(telemetryComp.DataJson))
             {
-                // We'll store live telemetry in SystemMetadata for now, or specifically map to ResourceAverages if needed
-                // For this refactor, let's merge or store telemetry separately
-                clientPc.ResourceAverages = new ResourceAverages(); // Just initializing for now
+                clientPc.ResourceAverages = new ResourceAverages();
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(telemetryComp.DataJson);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("CpuLoad", out var cpuProp))
+                    {
+                        var str = cpuProp.GetString()?.Replace("%", "").Trim();
+                        if (double.TryParse(str, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var cpu))
+                            clientPc.ResourceAverages.CpuUsageAverage = cpu;
+                    }
+                    else if (root.TryGetProperty("CpuUsagePercent", out var cpuPct) && cpuPct.TryGetDouble(out var cpuVal))
+                    {
+                        clientPc.ResourceAverages.CpuUsageAverage = cpuVal;
+                    }
+
+                    if (root.TryGetProperty("RamUsage", out var ramProp))
+                    {
+                        var str = ramProp.GetString()?.Replace("%", "").Trim();
+                        if (double.TryParse(str, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var ram))
+                            clientPc.ResourceAverages.RamUsageAverage = ram;
+                    }
+                    else if (root.TryGetProperty("RamUsagePercent", out var ramPct) && ramPct.TryGetDouble(out var ramVal))
+                    {
+                        clientPc.ResourceAverages.RamUsageAverage = ramVal;
+                    }
+                }
+                catch
+                {
+                    // Fallback to initialized empty averages
+                }
             }
 
             // 2. Perform Upsert
             var dbClientPc = await _repository.UpsertByMacAddressAsync(clientPc);
+
+            // Invalidate Redis inventory caches so client requests fetch fresh data
+            if (_cache != null)
+            {
+                try
+                {
+                    await _cache.RemoveAsync("inventory:tree");
+                    await _cache.RemoveAsync("inventory:metadata_keys");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to evict inventory cache on telemetry ingestion");
+                }
+            }
+
+            // Broadcast real-time inventory and telemetry event via SignalR
+            if (_hubContext != null)
+            {
+                try
+                {
+                    await _hubContext.Clients.All.InventoryUpdated("gRPC_Telemetry", request.Hostname, request.MacAddress);
+                    await _hubContext.Clients.All.TelemetryReceived(request.Hostname, request.MacAddress, new
+                    {
+                        hostname = request.Hostname,
+                        macAddress = request.MacAddress,
+                        machineIdentifier = request.MachineIdentifier,
+                        lastOnline = clientPc.LastOnline,
+                        freeDiskSpace = clientPc.FreeDiskSpace,
+                        resourceAverages = clientPc.ResourceAverages,
+                        componentsCount = request.Components.Count
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to broadcast telemetry update to SignalR clients");
+                }
+            }
 
             // 3. Handle Events and Commands in a single additional context scope if needed
             var response = new SystemInfoResponse
@@ -162,13 +309,17 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
 
             return response;
         }
+        catch (RpcException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error while processing system info report from {Hostname}", request.Hostname);
+            _logger.LogError(ex, "Internal error processing system info report from {Hostname}", request.Hostname);
             return new SystemInfoResponse
             {
                 Success = false,
-                Message = $"Error while saving reported data: {ex.Message} -> {ex.InnerException?.Message}"
+                Message = "An internal error occurred while processing the telemetry report."
             };
         }
     }

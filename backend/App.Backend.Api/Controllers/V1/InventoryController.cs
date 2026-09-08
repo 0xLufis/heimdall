@@ -15,6 +15,7 @@ namespace App.Backend.Api.Controllers.V1;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize]
 public class InventoryController : ControllerBase
 {
     private readonly IAssetRepository _assetRepository;
@@ -37,8 +38,43 @@ public class InventoryController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetInventory()
     {
-        var tree = await _cache.GetOrSetAsync("inventory:tree", () => _assetRepository.GetInventoryTreeAsync(), TimeSpan.FromMinutes(15));
+        var tree = await _assetRepository.GetInventoryTreeAsync();
         return Ok(tree);
+    }
+
+    [HttpGet("machines")]
+    public async Task<ActionResult<IEnumerable<Machine>>> GetMachines()
+    {
+        var machines = await _assetRepository.GetMachinesAsync();
+        return Ok(machines);
+    }
+
+    [HttpGet("teams")]
+    public async Task<ActionResult<IEnumerable<ResponsibleTeam>>> GetTeams()
+    {
+        var teams = await _assetRepository.GetTeamsAsync();
+        return Ok(teams);
+    }
+
+    [HttpGet("manufacturers")]
+    public async Task<ActionResult<IEnumerable<Manufacturer>>> GetManufacturers()
+    {
+        var manufacturers = await _assetRepository.GetManufacturersAsync();
+        return Ok(manufacturers);
+    }
+
+    [HttpGet("suppliers")]
+    public async Task<ActionResult<IEnumerable<Supplier>>> GetSuppliers()
+    {
+        var suppliers = await _assetRepository.GetSuppliersAsync();
+        return Ok(suppliers);
+    }
+
+    [HttpGet("client-pcs")]
+    public async Task<ActionResult<IEnumerable<ClientPc>>> GetClientPcs()
+    {
+        var pcs = await _assetRepository.GetClientPcsAsync();
+        return Ok(pcs);
     }
 
     [HttpGet("keys")]

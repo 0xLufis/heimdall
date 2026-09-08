@@ -12,6 +12,7 @@ namespace App.Backend.Api.Controllers.V1;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize]
 public class MaintenanceTicketController : ControllerBase
 {
     private readonly IMaintenanceTicketRepository _repository;

@@ -238,13 +238,26 @@ export interface TicketMetrics {
 }
 
 export interface MaintenanceEvent {
-  type: 'TicketCreated' | 'TicketUpdated' | 'StatusChanged' | 'NewComment' | 'CriticalAlert'
+  type:
+    | 'TicketCreated'
+    | 'TicketUpdated'
+    | 'TicketDeleted'
+    | 'StatusChanged'
+    | 'NewComment'
+    | 'CriticalAlert'
+    | 'ReceiveNotification'
+    | 'InventoryUpdated'
+    | 'TelemetryReceived'
   ticketId?: string
   ticket?: MaintenanceTicket
   status?: TicketStatus
   comment?: TicketComment
   stationName?: string
   message?: string
+  hostname?: string
+  mac?: string
+  source?: string
+  summary?: any
   timestamp: string
 }
 

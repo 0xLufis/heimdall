@@ -350,9 +350,7 @@ export class AutoTagEngine {
     const tags: TagPill[] = []
     if (!input) return { tags, remainingText: '' }
 
-    // Match patterns like key:"quoted value" or key:value
     const tagRegex = /(\b[a-zA-Z0-9_-]+):(?:"([^"]+)"|([^\s]+))/g
-    let remainingText = input
     let match: RegExpExecArray | null
 
     while ((match = tagRegex.exec(input)) !== null) {
@@ -365,12 +363,13 @@ export class AutoTagEngine {
         label: `${key}: ${value}`,
         removable: true
       })
-      remainingText = remainingText.replace(match[0], ' ')
     }
+
+    const remainingText = input.replace(tagRegex, ' ').replace(/\s+/g, ' ').trim()
 
     return {
       tags,
-      remainingText: remainingText.replace(/\s+/g, ' ').trim()
+      remainingText
     }
   }
 }

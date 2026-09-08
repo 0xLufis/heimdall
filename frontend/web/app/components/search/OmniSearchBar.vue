@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import type { SearchInstanceConfig, SearchResultItem, AutoTagResult } from '~/types/search'
 import { useOmniSearch } from '~/composables/useOmniSearch'
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const containerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 
 const {
@@ -43,15 +45,25 @@ const {
 } = useOmniSearch(props.config)
 
 const isFocused = ref(false)
+const isMenuExplicitlyClosed = ref(false)
 
 const showDropdown = computed(() => {
-  return (isFocused.value || rawInput.value.length > 0) && (autoSuggestions.value.length > 0 || results.value.length > 0 || searchKeyGroups.value.length > 0)
+  if (isMenuExplicitlyClosed.value || !isFocused.value) return false
+  return autoSuggestions.value.length > 0 || results.value.length > 0 || searchKeyGroups.value.length > 0
 })
 
-// Emit live search queries to parent components whenever tags or input change
-watch(effectiveQueryString, (newVal) => {
-  emit('search', newVal)
-})
+// Emit debounced live search queries to parent components
+// Ensures typing 1 character does not prematurely trigger search operations unless cleared or tags exist
+watchDebounced(
+  effectiveQueryString,
+  (newVal) => {
+    const minChars = props.config?.minCharsForSuggestions ?? 2
+    if (tags.value.length > 0 || rawInput.value.trim().length >= minChars || rawInput.value.trim().length === 0) {
+      emit('search', newVal)
+    }
+  },
+  { debounce: props.config?.debounceMs ?? 250 }
+)
 
 const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
@@ -59,14 +71,19 @@ const handleKeydown = (e: KeyboardEvent) => {
     if (autoSuggestions.value.length > 0) {
       addTag(autoSuggestions.value[0].tag)
       rawInput.value = ''
+      isMenuExplicitlyClosed.value = false
     } else {
       executeSearch()
       emit('search', effectiveQueryString.value)
+      isMenuExplicitlyClosed.value = true
+      isFocused.value = false
+      inputRef.value?.blur()
     }
   } else if (e.key === 'Backspace' && rawInput.value === '' && tags.value.length > 0) {
     removeTag(tags.value[tags.value.length - 1].id)
     emit('search', effectiveQueryString.value)
   } else if (e.key === 'Escape') {
+    isMenuExplicitlyClosed.value = true
     isFocused.value = false
     inputRef.value?.blur()
   }
@@ -81,6 +98,7 @@ const handleTagSuggestionSelect = (suggestion: AutoTagResult) => {
 const handleResultSelect = (item: SearchResultItem) => {
   emit('select-result', item)
   isFocused.value = false
+  isMenuExplicitlyClosed.value = true
   if (item.link) {
     router.push(item.link)
   } else if (item.itemType === 'ClientPc') {
@@ -92,11 +110,15 @@ const handleResultSelect = (item: SearchResultItem) => {
 
 const handleKeySelect = (key: string) => {
   rawInput.value = `${key}:`
+  isMenuExplicitlyClosed.value = false
   inputRef.value?.focus()
+  isFocused.value = true
 }
 
 const handleClear = () => {
   clearAllTags()
+  isMenuExplicitlyClosed.value = true
+  isFocused.value = false
   emit('search', '')
 }
 
@@ -105,6 +127,14 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
     e.preventDefault()
     inputRef.value?.focus()
     isFocused.value = true
+    isMenuExplicitlyClosed.value = false
+  }
+}
+
+function handleClickOutside(e: MouseEvent) {
+  if (containerRef.value && e.target instanceof Node && !containerRef.value.contains(e.target)) {
+    isMenuExplicitlyClosed.value = true
+    isFocused.value = false
   }
 }
 
@@ -115,23 +145,25 @@ onMounted(() => {
   }
   if (typeof window !== 'undefined') {
     window.addEventListener('keydown', handleGlobalKeydown)
+    window.addEventListener('click', handleClickOutside)
   }
 })
 
 onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('keydown', handleGlobalKeydown)
+    window.removeEventListener('click', handleClickOutside)
   }
 })
 </script>
 
 <template>
-  <div class="relative w-full">
+  <div ref="containerRef" class="relative w-full">
     <!-- Main Search Input Container -->
     <div
       class="flex flex-wrap items-center gap-2 p-2 bg-slate-900 border rounded-2xl transition-all shadow-lg"
       :class="isFocused ? 'border-indigo-500 ring-4 ring-indigo-500/10' : 'border-slate-800 hover:border-slate-700'"
-      @click="inputRef?.focus()"
+      @click="inputRef?.focus(); isFocused = true; isMenuExplicitlyClosed = false"
     >
       <div class="pl-2 text-slate-500">
         <SearchIcon class="w-4 h-4" />
@@ -147,8 +179,8 @@ onUnmounted(() => {
         type="text"
         :placeholder="tags.length === 0 ? (props.config?.placeholder || 'Search everything (e.g. Siemens, OP10, 15kW)...') : 'Type to add more filters...'"
         class="flex-1 min-w-[160px] bg-transparent border-0 text-sm font-bold text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:ring-0 py-1"
-        @input="handleInputChange(($event.target as HTMLInputElement).value)"
-        @focus="isFocused = true"
+        @input="isMenuExplicitlyClosed = false; handleInputChange(($event.target as HTMLInputElement).value)"
+        @focus="isFocused = true; isMenuExplicitlyClosed = false"
         @blur="setTimeout(() => isFocused = false, 250)"
         @keydown="handleKeydown"
       />

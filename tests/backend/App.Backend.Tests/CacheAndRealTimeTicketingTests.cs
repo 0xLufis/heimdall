@@ -47,6 +47,8 @@ public class TestMaintenanceClient : IMaintenanceClient
     }
 
     public Task ReceiveNotification(string message) => Task.CompletedTask;
+    public Task InventoryUpdated(string source, string hostname, string macAddress) => Task.CompletedTask;
+    public Task TelemetryReceived(string hostname, string macAddress, object telemetrySummary) => Task.CompletedTask;
 }
 
 public class TestHubClients : IHubClients<IMaintenanceClient>

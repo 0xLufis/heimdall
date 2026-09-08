@@ -1,4 +1,4 @@
-FROM oven/bun:latest
+FROM oven/bun:1.4
 
 WORKDIR /app
 
@@ -13,6 +13,10 @@ COPY . .
 
 # Generate Nuxt types and runtime artifacts
 RUN bun x nuxt prepare
+
+RUN chown -R bun:bun /app
+
+USER bun
 
 EXPOSE 3000
 

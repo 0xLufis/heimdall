@@ -63,22 +63,9 @@ export function useActionQr(options: UseActionQrOptions = {}) {
         darkColor: qrDarkColor.value,
         lightColor: qrLightColor.value
       })
-    } catch (svgErr) {
-      try {
-        const qrcodeMod = await import('qrcode')
-        const qrcode = (qrcodeMod as any).default || qrcodeMod
-        qrDataUrl.value = await qrcode.toDataURL(activeUri.value, {
-          width: qrWidth.value,
-          margin: 2,
-          color: {
-            dark: qrDarkColor.value,
-            light: qrLightColor.value
-          }
-        })
-      } catch (err: any) {
-        console.error('Failed to render action QR code:', err)
-        renderError.value = err?.message || 'QR render error'
-      }
+    } catch (err: any) {
+      console.error('Failed to render action QR code:', err)
+      renderError.value = err?.message || 'QR render error'
     } finally {
       isRendering.value = false
     }

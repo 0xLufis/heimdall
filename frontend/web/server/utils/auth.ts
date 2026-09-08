@@ -28,7 +28,16 @@ if (process.env.MICROSOFT_ENTRA_ID_CLIENT_ID && process.env.MICROSOFT_ENTRA_ID_C
    };
 }
 
-const authSecret = process.env.BETTER_AUTH_SECRET || "heimdall-default-dev-secret-key-32-chars-min-security";
+const isProduction = process.env.NODE_ENV === 'production';
+const rawAuthSecret = process.env.BETTER_AUTH_SECRET;
+
+if (isProduction) {
+   if (!rawAuthSecret || rawAuthSecret.trim() === '' || rawAuthSecret === "heimdall-default-dev-secret-key-32-chars-min-security" || rawAuthSecret === "heimdall-dev-secret-key-32-chars-min-security") {
+      throw new Error("CRITICAL SECURITY CONFIGURATION ERROR: BETTER_AUTH_SECRET must be configured via environment variables in production and cannot match default development keys.");
+   }
+}
+
+const authSecret = rawAuthSecret || "heimdall-default-dev-secret-key-32-chars-min-security";
 
 export const auth = betterAuth({
    secret: authSecret,

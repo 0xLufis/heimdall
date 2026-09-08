@@ -23,17 +23,9 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
       try {
         const config = useRuntimeConfig?.()
         const configuredUrl = config?.public?.signalrHubUrl as string | undefined
-        if (configuredUrl) {
-          this.hubUrl = configuredUrl
-        } else if (window.location.port === '3000') {
-          this.hubUrl = `${window.location.protocol}//${window.location.hostname}:5099/hubs/maintenance`
-        } else {
-          this.hubUrl = '/hubs/maintenance'
-        }
+        this.hubUrl = configuredUrl || '/hubs/maintenance'
       } catch {
-        if (window.location.port === '3000') {
-          this.hubUrl = `${window.location.protocol}//${window.location.hostname}:5099/hubs/maintenance`
-        }
+        this.hubUrl = '/hubs/maintenance'
       }
     }
     this.initSignalR()
@@ -93,6 +85,42 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
           type: 'CriticalAlert',
           stationName,
           message,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      this.hubConnection.on('TicketDeleted', (ticketId: string) => {
+        this.notifyListeners({
+          type: 'TicketDeleted',
+          ticketId,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      this.hubConnection.on('ReceiveNotification', (message: string) => {
+        this.notifyListeners({
+          type: 'ReceiveNotification',
+          message,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      this.hubConnection.on('InventoryUpdated', (source: string, hostname: string, mac: string) => {
+        this.notifyListeners({
+          type: 'InventoryUpdated',
+          source,
+          hostname,
+          mac,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      this.hubConnection.on('TelemetryReceived', (hostname: string, mac: string, summary: any) => {
+        this.notifyListeners({
+          type: 'TelemetryReceived',
+          hostname,
+          mac,
+          summary,
           timestamp: new Date().toISOString()
         })
       })

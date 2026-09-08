@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Search, Cpu, Factory, X, Check, ChevronsUpDown } from 'lucide-vue-next'
 
 export interface FoundMachine {
@@ -100,6 +100,7 @@ async function loadMachines() {
       const data = await fetchFn('/api/proxy/v1/Machine')
       if (data && Array.isArray(data) && data.length > 0) {
         machines.value = data
+        loading.value = false
         return
       }
     }
@@ -122,23 +123,32 @@ onUnmounted(() => {
 })
 
 function handleClickOutside(event: MouseEvent) {
-  if (rootRef.value && !rootRef.value.contains(event.target as Node)) {
+  if (rootRef.value && event.target instanceof Node && !rootRef.value.contains(event.target)) {
     isOpen.value = false
+    isEditing.value = false
+    searchQuery.value = props.modelValue || ''
   }
 }
 
-const inputValue = computed({
-  get: () => props.modelValue,
-  set: (val: string) => {
-    emit('update:modelValue', val)
-    emit('update:stationName', val)
-    isOpen.value = true
-    highlightedIndex.value = 0
+const searchQuery = ref(props.modelValue || '')
+const isEditing = ref(false)
+
+watch(() => props.modelValue, (newVal) => {
+  if (!isEditing.value) {
+    searchQuery.value = newVal || ''
   }
 })
 
+function handleInput(e: Event) {
+  const val = (e.target as HTMLInputElement).value
+  searchQuery.value = val
+  isEditing.value = true
+  isOpen.value = true
+  highlightedIndex.value = 0
+}
+
 const filteredMachines = computed(() => {
-  const query = (props.modelValue || '').trim().toLowerCase()
+  const query = (searchQuery.value || '').trim().toLowerCase()
   if (!query) {
     return machines.value.slice(0, 8)
   }
@@ -157,6 +167,8 @@ const filteredMachines = computed(() => {
 function selectMachine(machine: FoundMachine) {
   const identifier = machine.customIdentifier || machine.name || machine.id
   const name = machine.displayName || machine.name || identifier
+  searchQuery.value = identifier
+  isEditing.value = false
   emit('update:modelValue', identifier)
   emit('update:stationName', name)
   emit('select', machine)
@@ -164,6 +176,12 @@ function selectMachine(machine: FoundMachine) {
 }
 
 function selectCustomText() {
+  const customStr = (searchQuery.value || '').trim()
+  if (customStr) {
+    emit('update:modelValue', customStr)
+    emit('update:stationName', customStr)
+  }
+  isEditing.value = false
   isOpen.value = false
 }
 
@@ -190,15 +208,24 @@ function onKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     if (highlightedIndex.value >= 0 && highlightedIndex.value < filteredMachines.value.length) {
       selectMachine(filteredMachines.value[highlightedIndex.value])
+    } else if (filteredMachines.value.length > 0) {
+      selectMachine(filteredMachines.value[0])
+    } else if (searchQuery.value.trim()) {
+      selectCustomText()
     } else {
       isOpen.value = false
+      isEditing.value = false
     }
   } else if (e.key === 'Escape') {
     isOpen.value = false
+    isEditing.value = false
+    searchQuery.value = props.modelValue || ''
   }
 }
 
 function clear() {
+  searchQuery.value = ''
+  isEditing.value = false
   emit('update:modelValue', '')
   emit('update:stationName', '')
 }
@@ -210,10 +237,11 @@ function clear() {
       <Search class="absolute left-3 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
       
       <input
-        v-model="inputValue"
+        :value="isEditing ? searchQuery : (modelValue || '')"
         type="text"
         :placeholder="placeholder"
         :disabled="disabled"
+        @input="handleInput"
         @focus="isOpen = true; loadMachines()"
         @keydown="onKeyDown"
         class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-14 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
@@ -261,7 +289,7 @@ function clear() {
           @click="selectCustomText"
           class="mt-1 px-3 py-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg text-xs font-semibold"
         >
-          Use "{{ modelValue }}"
+          Use "{{ searchQuery }}"
         </button>
       </div>
 

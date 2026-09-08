@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using App.Shared.Entities;
 
@@ -10,8 +11,11 @@ public interface IMaintenanceClient
     Task TicketDeleted(Guid ticketId);
     Task StatusChanged(Guid ticketId, string newStatus);
     Task ReceiveNotification(string message);
+    Task InventoryUpdated(string source, string hostname, string macAddress);
+    Task TelemetryReceived(string hostname, string macAddress, object telemetrySummary);
 }
 
+[Authorize(Policy = "MaintenanceOperations")]
 public class MaintenanceHub : Hub<IMaintenanceClient>
 {
     public async Task JoinTicketGroup(string ticketId)
@@ -24,6 +28,7 @@ public class MaintenanceHub : Hub<IMaintenanceClient>
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"Ticket_{ticketId}");
     }
 
+    [Authorize(Policy = "MaintenanceOperations")]
     public async Task SendTicketUpdate(MaintenanceTicket ticket)
     {
         await Clients.All.TicketUpdated(ticket);

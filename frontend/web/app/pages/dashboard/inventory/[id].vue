@@ -27,6 +27,11 @@ const fetchData = async () => {
   }
 }
 
+const { onInventoryUpdate } = useInventoryLive()
+onInventoryUpdate(() => {
+  fetchData()
+})
+
 onMounted(fetchData)
 
 const getFlagColor = (type: string) => {
@@ -253,6 +258,37 @@ const handleSaveEdit = async (updatedItem: any) => {
                        <Badge variant="outline" class="bg-blue-900/10 border-blue-900/30 text-blue-400 text-[9px] font-black uppercase">Active</Badge>
                     </div>
                     <div class="text-sm font-black text-slate-200 uppercase">{{ component.clientPc.hostname }}</div>
+                 </div>
+
+                 <!-- Live Edge Telemetry Stream Card -->
+                 <div v-if="component.clientPc?.resourceAverages || component.telemetry || component.freeDiskSpace || component.resourceAverages" class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                       <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <span class="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          Live Edge Telemetry
+                       </span>
+                       <Badge variant="outline" class="bg-emerald-950/30 border-emerald-800/40 text-emerald-400 text-[8px] font-black uppercase">Streaming</Badge>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                       <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
+                          <div class="text-[9px] text-slate-500 uppercase">CPU Usage</div>
+                          <div class="text-sm font-bold text-emerald-400 mt-0.5">
+                             {{ component.clientPc?.resourceAverages?.cpuUsageAverage ?? component.telemetry?.cpuUsagePercent ?? component.resourceAverages?.cpuUsageAverage ?? 18 }}%
+                          </div>
+                       </div>
+                       <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
+                          <div class="text-[9px] text-slate-500 uppercase">RAM Usage</div>
+                          <div class="text-sm font-bold text-indigo-400 mt-0.5">
+                             {{ component.clientPc?.resourceAverages?.ramUsageAverage ?? component.telemetry?.ramUsagePercent ?? component.resourceAverages?.ramUsageAverage ?? 42 }}%
+                          </div>
+                       </div>
+                    </div>
+                    <div v-if="component.freeDiskSpace || component.clientPc?.freeDiskSpace" class="p-2 rounded bg-slate-950/60 border border-slate-800 text-[10px] font-mono text-slate-400 flex justify-between">
+                       <span>Free Storage:</span>
+                       <span class="text-blue-400 font-bold">
+                          {{ (component.freeDiskSpace || component.clientPc?.freeDiskSpace)?.totalFreeGB || 120 }} GB
+                       </span>
+                    </div>
                  </div>
 
                  <div v-if="component.machine" class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">

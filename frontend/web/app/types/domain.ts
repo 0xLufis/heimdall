@@ -136,6 +136,8 @@ export interface IndustrialController {
   telemetry?: ControllerTelemetry
   freeDiskSpace?: DiskSpaceInfo
   systemMetadata?: Record<string, any>
+  adOuPath?: string
+  ouTags?: Record<string, any>
 }
 
 export interface BaseInventoryItem {

@@ -35,16 +35,20 @@ public class SystemInfoReporter
         {
             _logger.LogInformation("Creating gRPC client for {Url} with Auth={Auth}", currentUrl, currentAuth);
             
-            var handler = new HttpClientHandler();
+            var handler = new SocketsHttpHandler
+            {
+                EnableMultipleHttp2Connections = true
+            };
             
             if (currentAuth == "HeimdallCert" || currentAuth == "UserCert")
             {
+                var clientCerts = new X509CertificateCollection();
                 if (!string.IsNullOrEmpty(config.ClientCertificatePath))
                 {
                     try
                     {
                         var cert = X509CertificateLoader.LoadCertificateFromFile(config.ClientCertificatePath);
-                        handler.ClientCertificates.Add(cert);
+                        clientCerts.Add(cert);
                     }
                     catch (Exception ex)
                     {
@@ -59,15 +63,26 @@ public class SystemInfoReporter
                     var certs = store.Certificates.Find(X509FindType.FindByTimeValid, DateTime.Now, true);
                     if (certs.Count > 0)
                     {
-                         handler.ClientCertificates.Add(certs[0]);
+                         clientCerts.Add(certs[0]);
                          _logger.LogInformation("Loaded certificate from Windows Machine Store: {Subject}", certs[0].Subject);
                     }
                 }
+
+                if (clientCerts.Count > 0)
+                {
+                    handler.SslOptions.ClientCertificates = clientCerts;
+                }
             }
+
+            var httpClient = new HttpClient(handler)
+            {
+                DefaultRequestVersion = System.Net.HttpVersion.Version20,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact
+            };
 
             var channel = GrpcChannel.ForAddress(currentUrl, new GrpcChannelOptions
             {
-                HttpHandler = handler
+                HttpClient = httpClient
             });
             _client = new SystemInfoCollector.SystemInfoCollectorClient(channel);
             _lastBackendUrl = currentUrl;
@@ -150,7 +165,10 @@ public class SystemInfoReporter
             }
 
             var client = GetClient();
-            var response = await client.ReportSystemInfoAsync(request);
+            var headers = new Grpc.Core.Metadata();
+            var agentKey = Environment.GetEnvironmentVariable("HEIMDALL_AGENT_KEY") ?? "heimdall-dev-agent-key";
+            headers.Add("x-agent-key", agentKey);
+            var response = await client.ReportSystemInfoAsync(request, headers);
 
             if (response.Success)
             {

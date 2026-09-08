@@ -7,6 +7,9 @@ using Microsoft.Extensions.Hosting;
 // Load .env file
 Env.Load();
 
+// Enable cleartext HTTP/2 (h2c) support for gRPC client connections to backend
+AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 

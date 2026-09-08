@@ -319,7 +319,8 @@ class IndustrialFleetSimulator:
     def send_node_heartbeat(self, stub, node: IndustrialDeviceNode):
         try:
             req = node.generate_telemetry(self.fault_rate)
-            resp = stub.ReportSystemInfo(req, timeout=5.0)
+            agent_key = os.environ.get("HEIMDALL_AGENT_KEY", "heimdall-dev-agent-key")
+            resp = stub.ReportSystemInfo(req, timeout=5.0, metadata=[('x-agent-key', agent_key)])
             self.total_dispatched += 1
             return resp.success
         except Exception:

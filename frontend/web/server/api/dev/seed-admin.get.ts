@@ -4,10 +4,10 @@ import { user, organization, member, account } from "../../database/drizzle/sche
 import { auth } from "../../utils/auth"
 
 export default defineEventHandler(async (event) => {
-   if (process.env.NODE_ENV !== 'development') {
+   if (process.env.NODE_ENV !== 'development' || process.env.ENABLE_DEV_HTTP_SEED !== 'true') {
       throw createError({
          statusCode: 403,
-         statusMessage: 'Forbidden in production'
+         statusMessage: 'Forbidden: HTTP dev seed endpoint is disabled. Set ENABLE_DEV_HTTP_SEED=true in development to enable.'
       });
    }
 
@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
       for (const org of mockOrgs) {
          const existingOrg = await db.select().from(organization).where(eq(organization.slug, org.slug));
          if (existingOrg.length === 0) {
-            const orgId = Math.random().toString(36).substring(2, 15);
+            const orgId = crypto.randomUUID();
             await db.insert(organization).values({
                id: orgId,
                name: org.name,
@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
             });
             
             await db.insert(member).values({
-               id: Math.random().toString(36).substring(2, 15),
+               id: crypto.randomUUID(),
                organizationId: orgId,
                userId: adminId,
                role: "admin",

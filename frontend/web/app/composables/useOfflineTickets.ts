@@ -16,16 +16,17 @@ export interface OfflineTicketPayload {
   createdAt?: string
 }
 
-const STORAGE_KEY = 'heimdall_pending_tickets'
+const BASE_STORAGE_KEY = 'heimdall_pending_tickets'
 
-export function useOfflineTickets() {
+export function useOfflineTickets(tenantScope?: string) {
   const pendingTickets = ref<OfflineTicketPayload[]>([])
   const isSyncing = ref(false)
+  const storageKey = tenantScope ? `heimdall:${tenantScope}:pending_tickets` : BASE_STORAGE_KEY
 
   const loadPendingTickets = () => {
     if (typeof localStorage === 'undefined') return
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
+      const stored = localStorage.getItem(storageKey) || localStorage.getItem(BASE_STORAGE_KEY)
       if (stored) {
         pendingTickets.value = JSON.parse(stored)
       }
@@ -37,7 +38,7 @@ export function useOfflineTickets() {
   const savePendingTickets = () => {
     if (typeof localStorage === 'undefined') return
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingTickets.value))
+      localStorage.setItem(storageKey, JSON.stringify(pendingTickets.value))
     } catch (e) {
       console.error('Error writing pending tickets to storage:', e)
     }
@@ -45,9 +46,12 @@ export function useOfflineTickets() {
 
   const queueOfflineTicket = async (ticketData: OfflineTicketPayload) => {
     const timestamp = new Date().toISOString()
+    const uuidSuffix = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID().substring(0, 8) 
+      : Math.floor(Math.random() * 1000).toString()
     const payload: OfflineTicketPayload = {
       ...ticketData,
-      id: `offline-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `offline-${Date.now()}-${uuidSuffix}`,
       createdAt: timestamp
     }
 

@@ -71,15 +71,24 @@ onMounted(() => {
 })
 
 watchDebounced(query, (newQuery) => {
-  if (newQuery) {
-    performSearch(newQuery)
-    emit('search', newQuery)
+  const trimmed = (newQuery || '').trim()
+  if (trimmed.length >= 2 || trimmed.includes(':')) {
+    performSearch(trimmed)
+    emit('search', trimmed)
     openDropdown.value = true
-  } else {
+  } else if (trimmed.length === 0) {
     results.value = []
     emit('search', '')
   }
 }, { debounce: 300 })
+
+function handleEnter() {
+  const trimmed = (query.value || '').trim()
+  performSearch(trimmed, true)
+  emit('search', trimmed)
+  openDropdown.value = false
+  inputRef.value?.blur()
+}
 
 function handleSelectLink(link: string) {
   router.push(link)
@@ -155,7 +164,7 @@ function clearSearch() {
                   :placeholder="tags.length === 0 ? (placeholder || 'Search infrastructure...') : ''"
                   class="flex-1 min-w-[120px] bg-transparent border-none py-1 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
                   @focus="openDropdown = query.length > 0"
-                  @keydown.enter.prevent="performSearch(query, true); openDropdown = true"
+                  @keydown.enter.prevent="handleEnter"
                 />
               </div>
             </ScrollArea>

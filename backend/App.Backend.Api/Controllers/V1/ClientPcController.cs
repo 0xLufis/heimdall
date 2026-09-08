@@ -10,6 +10,7 @@ namespace App.Backend.Api.Controllers.V1;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize]
 public class ClientPcController : ControllerBase
 {
     private readonly IControllerRepository _repository;
@@ -48,7 +49,10 @@ public class ClientPcController : ControllerBase
                 Id = t.Id,
                 Name = t.Name
             }).ToList(),
-            InventoryItems = c.InventoryItems.Select(MapToInventoryItemDto).ToList()
+            InventoryItems = c.InventoryItems.Select(MapToInventoryItemDto).ToList(),
+            FreeDiskSpace = c.FreeDiskSpace,
+            SystemMetadata = c.SystemMetadata,
+            ResourceAverages = c.ResourceAverages
         }).ToList();
 
         return Ok(dtos);

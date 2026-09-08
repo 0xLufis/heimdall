@@ -77,6 +77,18 @@ public class ControllerRepository : IControllerRepository
             changed = true;
         }
 
+        if (pc.SystemMetadata != null)
+        {
+            existingByMac.SystemMetadata = pc.SystemMetadata;
+            changed = true;
+        }
+
+        if (pc.ResourceAverages != null)
+        {
+            existingByMac.ResourceAverages = pc.ResourceAverages;
+            changed = true;
+        }
+
         if (pc.InventoryItems != null)
         {
             var reportedHardwares = pc.InventoryItems.OfType<PcHardware>().ToList();

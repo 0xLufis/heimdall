@@ -2,6 +2,11 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 WORKDIR /workspace
 
+# Create non-root user and setup directories
+RUN groupadd -g 10001 appuser && \
+    useradd -u 10001 -g appuser -m -s /bin/bash appuser && \
+    chown -R appuser:appuser /workspace /home/appuser
+
 # Copy Directory.Build.props and project files for layer caching
 COPY Directory.Build.props ./
 COPY shared/App.Contracts/App.Contracts.csproj ./shared/App.Contracts/
@@ -15,6 +20,10 @@ RUN dotnet restore backend/App.Backend.Api/App.Backend.Api.csproj
 # Copy source code
 COPY shared/ ./shared/
 COPY backend/ ./backend/
+
+RUN chown -R appuser:appuser /workspace
+
+USER appuser
 
 WORKDIR /workspace/backend/App.Backend.Api
 

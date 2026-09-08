@@ -10,6 +10,7 @@ namespace App.Backend.Api.Controllers.V1;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize]
 public class MachineController : ControllerBase
 {
     private readonly IStationRepository _stationRepository;

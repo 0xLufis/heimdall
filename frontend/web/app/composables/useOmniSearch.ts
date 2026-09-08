@@ -94,7 +94,9 @@ export const useOmniSearch = (customConfig: Partial<SearchInstanceConfig> = {}) 
 
   // Process input for auto-tagging
   const handleInputChange = (value: string) => {
-    rawInput.value = value
+    if (rawInput.value !== value) {
+      rawInput.value = value
+    }
 
     if (!config.enableAutoTagging || value.length < (config.minCharsForSuggestions || 2)) {
       autoSuggestions.value = []
@@ -107,7 +109,9 @@ export const useOmniSearch = (customConfig: Partial<SearchInstanceConfig> = {}) 
       for (const t of extractedTags) {
         addTag(t)
       }
-      rawInput.value = remainingText
+      if (rawInput.value !== remainingText) {
+        rawInput.value = remainingText
+      }
       return
     }
 
@@ -120,9 +124,11 @@ export const useOmniSearch = (customConfig: Partial<SearchInstanceConfig> = {}) 
     )
   }
 
-  // React to rawInput changes
+  // React to programmatic or external rawInput changes
   watch(rawInput, (newVal) => {
-    handleInputChange(newVal)
+    if (newVal !== undefined) {
+      handleInputChange(newVal)
+    }
   })
 
   const addTag = (tag: Partial<TagPill>) => {

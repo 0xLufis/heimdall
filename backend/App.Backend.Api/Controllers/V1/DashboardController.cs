@@ -8,6 +8,7 @@ namespace App.Backend.Api.Controllers.V1;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize]
 public class DashboardController : ControllerBase
 {
     private readonly IControllerRepository _controllerRepository;

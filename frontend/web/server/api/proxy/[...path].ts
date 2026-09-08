@@ -28,21 +28,27 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const headers = {
+    Authorization: sessionToken ? `Bearer ${sessionToken}` : undefined,
+    'X-Organization-Id': activeOrgId || undefined
+  }
+
   try {
-    return await proxyRequest(event, target, {
-      headers: {
-        Authorization: sessionToken ? `Bearer ${sessionToken}` : undefined,
-        'X-Organization-Id': activeOrgId || undefined
-      }
-    })
+    return await proxyRequest(event, target, { headers })
   } catch (err: any) {
-    console.warn(`[Proxy] Target ${target} unreachable or connection reset:`, err?.message || err)
-    setResponseStatus(event, 502)
-    return {
-      statusCode: 502,
-      error: 'Bad Gateway',
-      message: `Heimdall backend at ${target} is currently unavailable.`,
-      timestamp: new Date().toISOString()
+    // Retry once with 250ms delay for transient backend restarts/hot-reloads
+    await new Promise(resolve => setTimeout(resolve, 250))
+    try {
+      return await proxyRequest(event, target, { headers })
+    } catch (retryErr: any) {
+      console.warn(`[Proxy] Target ${target} unreachable after retry:`, retryErr?.message || retryErr)
+      setResponseStatus(event, 502)
+      return {
+        statusCode: 502,
+        error: 'Bad Gateway',
+        message: `Heimdall backend at ${target} is currently unavailable.`,
+        timestamp: new Date().toISOString()
+      }
     }
   }
 })

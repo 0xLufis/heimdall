@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using DotNetEnv;
 using Npgsql;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 // Load .env file
 Env.Load();
@@ -19,7 +21,7 @@ var connectionString = builder.Configuration["DATABASE_URL"]
 
 if (string.IsNullOrEmpty(connectionString))
 {
-    if (builder.Environment.IsDevelopment())
+    if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Test"))
     {
         connectionString = "Host=localhost;Port=5432;Database=heimdall_dev_db;Username=dotnet_backend;Password=your_backend_pw";
     }
@@ -130,15 +132,58 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("admin", "system_admin", "lead_engineer", "engineer", "technician"));
 });
 
-// --- 4. Controllers & SignalR & gRPC & Swagger & CORS ---
+// --- 4. Controllers & SignalR & gRPC & Swagger & CORS & RateLimiting ---
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("ApiLimiter", opt =>
+    {
+        opt.PermitLimit = 120;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 20;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+    options.AddFixedWindowLimiter("StrictLimiter", opt =>
+    {
+        opt.PermitLimit = 30;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 5;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+});
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAllLocalDev", policy =>
+    options.AddPolicy("HeimdallCorsPolicy", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Test"))
+        {
+            policy.WithOrigins(
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000",
+                    "http://localhost:5099",
+                    "http://127.0.0.1:5099",
+                    "http://localhost:5173",
+                    "http://127.0.0.1:5173"
+                  )
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            var configuredOrigins = builder.Configuration["ALLOWED_ORIGINS"]
+                ?.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                ?? Array.Empty<string>();
+
+            if (configuredOrigins.Length > 0)
+            {
+                policy.WithOrigins(configuredOrigins)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+        }
     });
 });
 
@@ -181,22 +226,30 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-app.UseCors("AllowAllLocalDev");
+app.UseCors("HeimdallCorsPolicy");
 
-// Enable middleware to serve generated Swagger as a JSON endpoint.
-app.UseSwagger();
-
-app.UseSwaggerUI(c => 
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Heimdall API V1");
-    c.RoutePrefix = "swagger";
-});
+    // Enable middleware to serve generated Swagger as a JSON endpoint.
+    app.UseSwagger();
 
-// Swagger route redirects
-app.MapGet("/", () => Results.Redirect("/swagger"));
-app.MapGet("/api-docs", () => Results.Redirect("/swagger"));
-app.MapGet("/api-docs/{**catchall}", () => Results.Redirect("/swagger"));
+    app.UseSwaggerUI(c => 
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Heimdall API V1");
+        c.RoutePrefix = "swagger";
+    });
 
+    // Swagger route redirects
+    app.MapGet("/", () => Results.Redirect("/swagger"));
+    app.MapGet("/api-docs", () => Results.Redirect("/swagger"));
+    app.MapGet("/api-docs/{**catchall}", () => Results.Redirect("/swagger"));
+}
+else
+{
+    app.UseHsts();
+}
+
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

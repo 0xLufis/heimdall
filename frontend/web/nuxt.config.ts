@@ -6,7 +6,11 @@ export default defineNuxtConfig({
   future: {
     compatibilityVersion: 4
   },
-  devtools: { enabled: true },
+  devtools: { enabled: process.env.NODE_ENV === 'development' },
+  sourcemap: {
+    server: process.env.NODE_ENV === 'development',
+    client: process.env.NODE_ENV === 'development'
+  },
   ssr: true,
   css: ['~/assets/css/tailwind.css'],
   vite: {
@@ -26,7 +30,14 @@ export default defineNuxtConfig({
       allowedHosts: [
         'localhost',
         '127.0.0.1'
-      ]
+      ],
+      proxy: {
+        '/hubs': {
+          target: process.env.BACKEND_API_URL || 'http://localhost:5099',
+          ws: true,
+          changeOrigin: true
+        }
+      }
     }
   },
   experimental: {
@@ -64,8 +75,13 @@ export default defineNuxtConfig({
       external: ['pg']
     },
     routeRules: {
-      '/hubs/**': {
-        proxy: `${process.env.BACKEND_API_URL || 'http://localhost:5099'}/hubs/**`
+      '/**': {
+        headers: {
+          'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss: http: https:;",
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'SAMEORIGIN',
+          'Referrer-Policy': 'strict-origin-when-cross-origin'
+        }
       }
     }
   },

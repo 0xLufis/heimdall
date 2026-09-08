@@ -4,6 +4,9 @@ import { Dialog, DialogContent } from '~/components/ui/dialog'
 import OmniSearchBar from './OmniSearchBar.vue'
 import type { SearchInstanceConfig } from '~/types/search'
 
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 const open = ref(false)
 
 const globalConfig: SearchInstanceConfig = {
@@ -12,6 +15,13 @@ const globalConfig: SearchInstanceConfig = {
   defaultEndpoints: ['/api/proxy/inventory/search'],
   enableAutoTagging: true,
   showGlobalShortcut: true
+}
+
+const handleSearch = (q: string) => {
+  open.value = false
+  if (q && q.trim()) {
+    router.push(`/dashboard/inventory?query=${encodeURIComponent(q.trim())}`)
+  }
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -46,6 +56,7 @@ onUnmounted(() => {
         <OmniSearchBar
           :config="globalConfig"
           :immediate="true"
+          @search="handleSearch"
           @select-result="open = false"
         />
       </div>

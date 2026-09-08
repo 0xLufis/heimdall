@@ -34,6 +34,9 @@ jobs:
       - name: Run Backend Unit & Integration Tests
         run: dotnet test --no-build --configuration Release --verbosity normal
 
+      - name: Dependency Vulnerability Audit (.NET)
+        run: dotnet list package --vulnerable --include-transitive
+
   frontend-test:
     name: Frontend CI (Nuxt 4 / Bun)
     runs-on: ubuntu-latest
@@ -51,6 +54,9 @@ jobs:
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: Dependency Vulnerability Audit (Bun)
+        run: bun audit || true
 
       - name: Generate Nuxt Types & Tsconfig
         run: bun x nuxt prepare

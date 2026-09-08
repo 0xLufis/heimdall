@@ -273,8 +273,13 @@ describe('Action QR Composable & Role Dedication Governance Suite', () => {
       expect(input.exists()).toBe(true)
       expect(input.element.value).toBe('Custom CNC Station')
 
-      // User types free-text
+      // User types free-text to look it up
       await input.setValue('Custom Prototype Line 99')
+      // Typing does not emit or save update:modelValue prematurely
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+
+      // Pressing Enter confirms the custom free-text selection
+      await input.trigger('keydown', { key: 'Enter' })
       expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['Custom Prototype Line 99'])
     })
 

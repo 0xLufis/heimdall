@@ -47,6 +47,12 @@ public class ClientPcDto
     public List<TeamSummaryDto> ResponsibleTeams { get; set; } = new();
     /// <summary>Tree of hardware and software components assigned to this PC.</summary>
     public List<InventoryItemDto> InventoryItems { get; set; } = new();
+    /// <summary>Real-time disk space telemetry.</summary>
+    public App.Shared.Entities.DiskSpaceInfo? FreeDiskSpace { get; set; }
+    /// <summary>Abstract system metadata (OS, IP, etc.).</summary>
+    public System.Text.Json.JsonDocument? SystemMetadata { get; set; }
+    /// <summary>Aggregated CPU and RAM usage averages.</summary>
+    public App.Shared.Entities.ResourceAverages? ResourceAverages { get; set; }
 }
 
 /// <summary>

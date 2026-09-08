@@ -85,22 +85,32 @@ onUnmounted(() => {
 })
 
 function handleClickOutside(event: MouseEvent) {
-  if (rootRef.value && !rootRef.value.contains(event.target as Node)) {
+  if (rootRef.value && event.target instanceof Node && !rootRef.value.contains(event.target)) {
     isOpen.value = false
+    isEditing.value = false
+    searchQuery.value = props.modelValue || ''
   }
 }
 
-const inputValue = computed({
-  get: () => props.modelValue || '',
-  set: (val: string) => {
-    emit('update:modelValue', val)
-    if (!isOpen.value) isOpen.value = true
-    highlightedIndex.value = 0
-    if (props.queryFn) {
-      runQuery(val)
-    }
+const searchQuery = ref(props.modelValue || '')
+const isEditing = ref(false)
+
+watch(() => props.modelValue, (newVal) => {
+  if (!isEditing.value) {
+    searchQuery.value = newVal || ''
   }
 })
+
+function handleInput(e: Event) {
+  const val = (e.target as HTMLInputElement).value
+  searchQuery.value = val
+  isEditing.value = true
+  if (!isOpen.value) isOpen.value = true
+  highlightedIndex.value = 0
+  if (props.queryFn) {
+    runQuery(val)
+  }
+}
 
 function normalizeText(text: string): string {
   return (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -108,7 +118,7 @@ function normalizeText(text: string): string {
 
 // Filtered options based on query
 const filteredOptions = computed(() => {
-  const rawQuery = (props.modelValue || '').trim()
+  const rawQuery = (searchQuery.value || '').trim()
   if (!rawQuery) {
     return internalOptions.value.slice(0, 12)
   }
@@ -123,11 +133,11 @@ const filteredOptions = computed(() => {
   }).slice(0, 15)
 })
 
-// Can show custom option if user typed something
+// Can show custom option if user typed something that doesn't match exactly
 const showCustomOption = computed(() => {
   if (!props.allowCustom) return false
-  const query = (props.modelValue || '').trim()
-  return query.length > 0
+  const query = (searchQuery.value || '').trim()
+  return query.length > 0 && !filteredOptions.value.some(o => o.label.toLowerCase() === query.toLowerCase() || o.id.toLowerCase() === query.toLowerCase())
 })
 
 // Total items in dropdown including custom option if shown
@@ -136,20 +146,24 @@ const totalSelectableCount = computed(() => {
 })
 
 function selectItem(item: TargetItem) {
+  searchQuery.value = item.label
+  isEditing.value = false
   emit('update:modelValue', item.label)
   emit('select', item)
   isOpen.value = false
 }
 
 function selectCustomText() {
-  const customStr = (props.modelValue || '').trim()
+  const customStr = (searchQuery.value || '').trim()
   if (customStr) {
+    emit('update:modelValue', customStr)
     emit('select', {
       id: customStr,
       label: customStr,
       isCustom: true
     })
   }
+  isEditing.value = false
   isOpen.value = false
 }
 
@@ -157,7 +171,7 @@ function handleInputFocus() {
   if (!props.disabled) {
     isOpen.value = true
     if (props.queryFn && internalOptions.value.length === 0) {
-      runQuery(props.modelValue || '')
+      runQuery(searchQuery.value)
     }
   }
 }
@@ -187,18 +201,24 @@ function onKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     if (highlightedIndex.value >= 0 && highlightedIndex.value < filteredOptions.value.length) {
       selectItem(filteredOptions.value[highlightedIndex.value])
-    } else if (highlightedIndex.value === filteredOptions.value.length && showCustomOption.value) {
+    } else if (showCustomOption.value) {
       selectCustomText()
+    } else if (filteredOptions.value.length > 0) {
+      selectItem(filteredOptions.value[0])
     } else {
-      // Free text is kept
       isOpen.value = false
+      isEditing.value = false
     }
   } else if (e.key === 'Escape') {
     isOpen.value = false
+    isEditing.value = false
+    searchQuery.value = props.modelValue || ''
   }
 }
 
 function clear() {
+  searchQuery.value = ''
+  isEditing.value = false
   emit('update:modelValue', '')
   emit('clear')
   if (props.queryFn) runQuery('')
@@ -221,10 +241,11 @@ function clear() {
 
       <!-- Free-text Editable Input -->
       <input
-        v-model="inputValue"
+        :value="isEditing ? searchQuery : (modelValue || '')"
         type="text"
         :placeholder="placeholder"
         :disabled="disabled"
+        @input="handleInput"
         @focus="handleInputFocus"
         @keydown="onKeyDown"
         class="w-full bg-slate-950 border rounded-xl pl-9 pr-14 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-colors"
@@ -371,7 +392,7 @@ function clear() {
         <div class="flex items-center gap-2 min-w-0">
           <PlusCircle class="h-3.5 w-3.5 text-cyan-400 shrink-0" />
           <span class="text-xs truncate">
-            Use custom: <strong class="text-cyan-300 font-bold">"{{ modelValue }}"</strong>
+            Use custom: <strong class="text-cyan-300 font-bold">"{{ searchQuery }}"</strong>
           </span>
         </div>
         <span class="text-[9px] uppercase tracking-wider font-bold text-slate-500 border border-slate-800 bg-slate-900 px-2 py-0.5 rounded-md shrink-0">

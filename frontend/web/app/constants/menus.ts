@@ -30,6 +30,16 @@ export const navMenu: NavMenu[] = [
         link: '/dashboard/inventory',
       },
       {
+        title: 'Telemetry Templates',
+        icon: 'i-lucide-file-code',
+        link: '/dashboard/telemetry/templates',
+      },
+      {
+        title: 'Telemetry Config',
+        icon: 'i-lucide-sliders',
+        link: '/dashboard/telemetry/configure',
+      },
+      {
         title: 'Tickets',
         icon: 'i-lucide-wrench',
         link: '/dashboard/tickets',

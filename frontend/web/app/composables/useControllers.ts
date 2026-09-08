@@ -37,8 +37,9 @@ export const useControllers = () => {
         controlledMachines: c.machines || c.controlledMachines || [],
         machines: c.machines || c.controlledMachines || [],
         responsibleTeams: c.responsibleTeams || [],
-        freeDiskSpace: c.freeDiskSpace,
-        systemMetadata: c.systemMetadata,
+        inventoryItems: c.inventoryItems || c.InventoryItems || [],
+        adOuPath: c.adOuPath || c.AdOuPath || c.systemMetadata?.AdOuPath || '',
+        ouTags: c.ouTags || c.OuTags || (typeof c.ouTagsJson === 'string' ? (() => { try { return JSON.parse(c.ouTagsJson) } catch { return {} } })() : (c.ouTagsJson || {})),
         telemetry: {
           cpuUsagePercent: c.resourceAverages?.cpuUsageAverage ?? (Math.floor(Math.random() * 30) + 10),
           ramUsagePercent: c.resourceAverages?.ramUsageAverage ?? (Math.floor(Math.random() * 40) + 30),

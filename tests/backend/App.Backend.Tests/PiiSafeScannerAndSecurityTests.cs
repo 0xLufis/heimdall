@@ -74,4 +74,53 @@ public class PiiSafeScannerAndSecurityTests
             }
         }
     }
+
+    [Theory]
+    [InlineData(typeof(App.Backend.Api.Controllers.V1.ClientPcController))]
+    [InlineData(typeof(App.Backend.Api.Controllers.V1.MachineController))]
+    [InlineData(typeof(App.Backend.Api.Controllers.V1.InventoryController))]
+    [InlineData(typeof(App.Backend.Api.Controllers.V1.MaintenanceTicketController))]
+    [InlineData(typeof(App.Backend.Api.Controllers.V1.DashboardController))]
+    public void SensitiveControllers_MustHaveAuthorizeAttribute(Type controllerType)
+    {
+        var authAttr = controllerType.GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true);
+        Assert.NotEmpty(authAttr);
+    }
+
+    [Fact]
+    public void MaintenanceHub_MustHaveAuthorizeAttributeWithMaintenancePolicy()
+    {
+        var hubType = typeof(App.Backend.Api.Hubs.MaintenanceHub);
+        var authAttrs = hubType.GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true)
+            .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()
+            .ToList();
+
+        Assert.NotEmpty(authAttrs);
+        Assert.Contains(authAttrs, a => a.Policy == "MaintenanceOperations");
+    }
+
+    [Fact]
+    public void AppDbContext_RejectsShortOrMissingEncryptionKeyInNonDev()
+    {
+        var previousEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        var previousKey = Environment.GetEnvironmentVariable("HEIMDALL_ENCRYPTION_KEY");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+            Environment.SetEnvironmentVariable("HEIMDALL_ENCRYPTION_KEY", null);
+
+            // Must throw InvalidOperationException when in Production without key
+            Assert.Throws<InvalidOperationException>(() => App.Shared.Data.EncryptedStringConverter.Encrypt("test_text"));
+
+            // Must throw when key is shorter than 32 chars
+            Environment.SetEnvironmentVariable("HEIMDALL_ENCRYPTION_KEY", "short_key_under_32_bytes");
+            Assert.Throws<InvalidOperationException>(() => App.Shared.Data.EncryptedStringConverter.Encrypt("test_text"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", previousEnv);
+            Environment.SetEnvironmentVariable("HEIMDALL_ENCRYPTION_KEY", previousKey);
+        }
+    }
 }

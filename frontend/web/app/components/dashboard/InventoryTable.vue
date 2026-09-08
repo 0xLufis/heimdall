@@ -118,6 +118,15 @@ const formatCurrency = (val: any) => {
                         >
                           {{ item.itemType || type }}
                         </Badge>
+                        <Badge 
+                          v-if="item.telemetry?.isOnline !== undefined"
+                          variant="outline"
+                          class="text-[7.5px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-flex items-center gap-1 border-0 leading-none shadow-sm"
+                          :class="item.telemetry.isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'"
+                        >
+                          <span class="size-1.5 rounded-full" :class="item.telemetry.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'" />
+                          {{ item.telemetry.isOnline ? 'Live Agent' : 'Offline' }}
+                        </Badge>
                       </div>
                       <div class="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-wider">
                         {{ item.displayName || item.customIdentifier || item.hostname || '' }}
@@ -154,6 +163,15 @@ const formatCurrency = (val: any) => {
                 <!-- Specs -->
                 <TableCell v-if="columns.specs" class="px-6 py-4">
                   <div class="flex flex-wrap gap-1.5 max-w-xs">
+                    <span v-if="item.telemetry?.cpuUsagePercent !== undefined" class="text-[8px] font-mono font-black uppercase tracking-wider border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 rounded-full text-emerald-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
+                      CPU: {{ item.telemetry.cpuUsagePercent }}%
+                    </span>
+                    <span v-if="item.telemetry?.ramUsagePercent !== undefined" class="text-[8px] font-mono font-black uppercase tracking-wider border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 rounded-full text-indigo-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
+                      RAM: {{ item.telemetry.ramUsagePercent }}%
+                    </span>
+                    <span v-if="item.telemetry?.freeDiskSpace?.totalFreeGB !== undefined" class="text-[8px] font-mono font-black uppercase tracking-wider border border-blue-500/30 bg-blue-500/10 px-3 py-1 rounded-full text-blue-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
+                      {{ item.telemetry.freeDiskSpace.totalFreeGB }}GB Free
+                    </span>
                     <span v-if="item.metadata?.Power" class="text-[8px] font-black uppercase tracking-wider border border-amber-900/30 bg-amber-900/10 px-3 py-1 rounded-full text-amber-400 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
                       {{ item.metadata.Power }}
                     </span>

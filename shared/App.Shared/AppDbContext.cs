@@ -24,9 +24,9 @@ public class EncryptedStringConverter : ValueConverter<string?, string?>
     public static string? Encrypt(string? plainText)
     {
         if (string.IsNullOrEmpty(plainText)) return plainText;
+        byte[] key = GetEncryptionKey();
         try
         {
-            byte[] key = GetEncryptionKey();
             byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
             byte[] nonce = new byte[12];
             RandomNumberGenerator.Fill(nonce);
@@ -43,7 +43,7 @@ public class EncryptedStringConverter : ValueConverter<string?, string?>
 
             return Convert.ToBase64String(result);
         }
-        catch
+        catch (CryptographicException)
         {
             return plainText;
         }
@@ -56,12 +56,12 @@ public class EncryptedStringConverter : ValueConverter<string?, string?>
     public static string? Decrypt(string? encryptedText)
     {
         if (string.IsNullOrEmpty(encryptedText)) return encryptedText;
+        byte[] key = GetEncryptionKey();
         try
         {
             byte[] encryptedBytes = Convert.FromBase64String(encryptedText);
             if (encryptedBytes.Length < 28) return encryptedText; // 12 nonce + 16 tag minimum
 
-            byte[] key = GetEncryptionKey();
             byte[] nonce = new byte[12];
             byte[] tag = new byte[16];
             byte[] cipherText = new byte[encryptedBytes.Length - 28];
@@ -87,13 +87,22 @@ public class EncryptedStringConverter : ValueConverter<string?, string?>
         string? envKey = Environment.GetEnvironmentVariable("HEIMDALL_ENCRYPTION_KEY");
         if (!string.IsNullOrEmpty(envKey))
         {
+            if (envKey.Length < 32)
+            {
+                throw new InvalidOperationException("CRITICAL SECURITY ERROR: HEIMDALL_ENCRYPTION_KEY must be at least 32 characters long.");
+            }
             return SHA256.HashData(Encoding.UTF8.GetBytes(envKey));
         }
 
         string? env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        if (string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
+        bool isExplicitProdOrStaging = string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase) ||
+                                      string.Equals(env, "Staging", StringComparison.OrdinalIgnoreCase);
+
+        bool isTestHost = AppDomain.CurrentDomain.FriendlyName.Contains("testhost", StringComparison.OrdinalIgnoreCase);
+
+        if (isExplicitProdOrStaging || (!isTestHost && !string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase) && !string.Equals(env, "Test", StringComparison.OrdinalIgnoreCase)))
         {
-            throw new InvalidOperationException("CRITICAL SECURITY ERROR: HEIMDALL_ENCRYPTION_KEY must be configured via environment in Production environments.");
+            throw new InvalidOperationException("CRITICAL SECURITY ERROR: HEIMDALL_ENCRYPTION_KEY must be configured via environment in non-development environments.");
         }
 
         // Development/Test fallback key with explicit security warning

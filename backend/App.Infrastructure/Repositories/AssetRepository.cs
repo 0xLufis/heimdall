@@ -17,14 +17,12 @@ public class AssetRepository : IAssetRepository
     public async Task<List<BaseInventoryItem>> GetInventoryTreeAsync()
     {
         return await _context.InventoryItems
+            .AsNoTracking()
             .Include(c => c.Manufacturer)
             .Include(c => c.Supplier)
             .Include(c => c.ResponsibleTeams)
             .Include(c => c.Children)
                 .ThenInclude(c => c.Children)
-                    .ThenInclude(c => c.Children)
-                        .ThenInclude(c => c.Children)
-                            .ThenInclude(c => c.Children)
             .Where(c => c.ParentId == null)
             .ToListAsync();
     }
