@@ -91,4 +91,14 @@ The following subagents are defined for specialized execution of upcoming roadma
 - [x] **SEC-023**: Enforce strict requirement for `BETTER_AUTH_SECRET` without fallback in production runtime configuration (`auth.ts`).
 
 
+## Better UI for Telemetry, SignalR fixes, Fix the broken organizations tab
+###UI
+- [x] **Look abd feel**: General UI/UX experience for configuring
+- [x] **Backend for the templating**: Make sure templating works for sane use cases (test for edge cases and bugs later)
+- [] **Fix the org tab**: Make sure the org tag actually uses the OU based org structure if any exists
 
+
+##Decouple from Current AD specific feature
+- [] **Make user mgmt an interfaced function for use with non AD deployments**
+- [] **Look into alternative computer mgmt systems**
+- [] **Look into how much the day to day operation relies on AD in case of downtimes or migration away from AD**
