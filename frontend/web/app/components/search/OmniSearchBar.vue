@@ -160,6 +160,12 @@ function handleClickOutside(e: MouseEvent) {
   }
 }
 
+const handleBlur = () => {
+  setTimeout(() => {
+    isFocused.value = false
+  }, 250)
+}
+
 onMounted(() => {
   fetchSearchKeys()
   if (props.immediate) {
@@ -203,7 +209,7 @@ onUnmounted(() => {
         class="flex-1 min-w-[160px] bg-transparent border-0 text-sm font-bold text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:ring-0 py-1"
         @input="isMenuExplicitlyClosed = false; handleInputChange(($event.target as HTMLInputElement).value)"
         @focus="isFocused = true; isMenuExplicitlyClosed = false"
-        @blur="setTimeout(() => isFocused = false, 250)"
+        @blur="handleBlur"
         @keydown="handleKeydown"
       />
 
