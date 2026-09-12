@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Telemetry Policy Engine Drag-and-Drop**: Visual rule priority reordering for Organizational Unit (OU) and Tag recipe assignments in `/dashboard/telemetry/configure` with `GripVertical` drag handles, real-time 1-based (`#1`, `#2`, ...) priority re-indexing, drop indicators, and automatic policy persistence.
+- **Point-of-Click Drag Anchoring (`reorderList.ts`)**: `setDragImageAtClickPoint` utility with global `pointerdown` tracking to overcome Linux Chromium's `clientX = 0` dragstart bug, using offscreen DOM clone rendering to force Blink engines to honor exact click offsets. Applied across telemetry rule cards and Kanban incident ticket cards.
+- **FMFD ("Find My Field Data") Search & Shortcuts**:
+  - Rebranded OmniSearch to FMFD (Find My Field Data / internal Find My Fucking Data).
+  - Exported `useFmfd` composable alias alongside `useOmniSearch`.
+  - Added keyboard triggers: `Ctrl+Space` for IntelliSense tag suggestions, `/` global search focus, `Ctrl+P` modal quick open, `ArrowDown` to reopen recommendations, and `Tab` tag autocompletion.
+- **CAD Map Auto-Scroll & Spatial Anchor Selection**: Clicking any entity on the interactive factory floor plan (`/dashboard/map`) automatically and smoothly scrolls the Spatial Anchors sidebar to center and highlight the matching controlling Client PC card.
+- **Admin User Auto-Provisioning**: Nuxt server lifecycle plugin (`ensureAdminUser.ts`) and dev endpoint (`/api/dev/seed-admin`) automatically initializing default credentials (`admin@heimdall.dev` / `admin:AdminPassword123!`) on startup.
+- **Windows Edge Agent Launch Utility**: Added `tools/launch_agent_win.py` helper script for launching the Windows edge agent daemon with environment configuration.
+- **Frontend Unit Test Suite Expansion**: Added unit test suites `RuleReorderingAndDragDrop.test.ts`, `AllPagesAndRouting.test.ts`, and `SearchLookupBehavior.test.ts`, bringing total coverage to 30 test files and 223 passing unit tests.
 - Multi-tenancy global query filters (`HasQueryFilter`) in `AppDbContext` for `ClientPc`, `BaseInventoryItem`, `MaintenanceTicket`, `AgentEvent`, and `AuditLog`.
 - `AuditLog` entity for immutable tracking of user actions, role assignments, and configuration changes (TISAX ISA 5.1 / NIS2 compliance).
 - `MalformedTelemetryRecord` dead-letter quarantine table storing unparseable or rejected telemetry events (Guideline 36).
@@ -19,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit tests for multi-tenant query filters, fail-secure signature verification, and offline telemetry spooler.
 
 ### Changed
+- **UI/UX Design System Unification**: Standardized color palette, header typography, card styling, and status badge color conventions across all dashboard pages (`system-settings.vue`, `security-groups.vue`, `tickets.vue`, `users.vue`, `machines.vue`, `inventory.vue`, `organizations.vue`, `help.vue`, `telemetry/configure.vue`, `telemetry/templates.vue`, etc.).
+- **Incident Kanban Drag Mechanics**: Upgraded `TicketKanbanBoard.vue` drag-and-drop handling using `setDragImageAtClickPoint` to preserve exact cursor anchor positions during status transitions.
+- **Repository SQL Tracking & Gitignore**: Configured `.gitignore` to ignore generated `*.sql` database dumps while strictly preserving EF Core and Drizzle schema migrations. Untracked `seed_data/incremental_seed.sql` from git history while preserving local disk copy.
 - Switched backend runtime (`Program.cs`, `appsettings.json`) and frontend BFF (`server/utils/db.ts`) connection defaults from `ef_admin` to least-privilege DML accounts (`dotnet_backend`, `nuxt_frontend`).
 - Hardened agent command signature verification to fail-secure mode when `ServerPublicKey` is absent, unless `AllowUnsignedCommands` is explicitly enabled.
 - Reconciled table names and column definitions between Python seed pipeline (`seed_pipeline.py`) and EF Core entities (`client_certificates`, `schema_version_manifest`).

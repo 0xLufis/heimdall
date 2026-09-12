@@ -19,8 +19,8 @@ if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtim
     builder.Host.UseWindowsService();
 }
 
-// Configurable binding address (defaults to localhost:5998; can be set to http://0.0.0.0:5998 for container/endpoint testing)
-var agentUrls = Environment.GetEnvironmentVariable("AGENT_URLS") ?? "http://localhost:5998";
+// Configurable binding address (defaults to 0.0.0.0:5998 for container/endpoint reachability)
+var agentUrls = Environment.GetEnvironmentVariable("AGENT_URLS") ?? "http://0.0.0.0:5998";
 builder.WebHost.UseUrls(agentUrls);
 
 builder.Services.AddSingleton<ConfigurationService>();

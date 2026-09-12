@@ -131,6 +131,7 @@ services:
       - SIGNALR_HUB_URL=http://localhost:5099/hubs/maintenance
       - REDIS_URL=redis://:heimdall_redis_dev_secret@redis:6379
       - BETTER_AUTH_SECRET=heimdall-dev-secret-key-32-chars-min-security
+      - ENABLE_DEV_HTTP_SEED=true
     volumes:
       - ./frontend/web:/app
       - /app/node_modules
@@ -202,6 +203,7 @@ services:
       PASSWORD: "Password123!"
     devices:
       - /dev/kvm
+      - /dev/net/tun
     cap_add:
       - NET_ADMIN
     ports:

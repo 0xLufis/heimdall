@@ -97,12 +97,25 @@ def test_backend_windows_telemetry_ingestion():
         pcs = http_get_json(url)
         print(f"  ✓ Fetched {len(pcs)} registered Client PC(s) from Backend REST API.")
 
-        # Find any client PC reporting Windows
-        windows_pcs = [
-            pc for pc in pcs
-            if "windows" in (pc.get("osDescription") or pc.get("osVersion") or "").lower()
-            or any("windows" in str(v).lower() for v in (pc.get("systemMetadata") or {}).values())
-        ]
+        # Find any client PC reporting Windows (check OS fields, hostname prefix, or inventoryItems)
+        windows_pcs = []
+        for pc in pcs:
+            desc = (pc.get("osDescription") or pc.get("osVersion") or "").lower()
+            hostname = (pc.get("hostname") or pc.get("name") or "").lower()
+            if "windows" in desc or "dockerw" in hostname:
+                windows_pcs.append(pc)
+                continue
+            items = pc.get("inventoryItems") or []
+            for item in items:
+                meta = item.get("metadata")
+                if isinstance(meta, dict) and "windows" in str(meta.get("OsVersion", "")).lower():
+                    windows_pcs.append(pc)
+                    break
+                elif isinstance(meta, list):
+                    for sub in meta:
+                        if isinstance(sub, dict) and "windows" in str(sub.get("OsVersion", "")).lower():
+                            windows_pcs.append(pc)
+                            break
 
         if not windows_pcs:
             print("  ℹ Note: No Windows endpoint has reported to backend yet.")

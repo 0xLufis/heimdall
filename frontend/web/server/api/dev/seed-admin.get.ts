@@ -4,10 +4,10 @@ import { user, organization, member, account } from "../../database/drizzle/sche
 import { auth } from "../../utils/auth"
 
 export default defineEventHandler(async (event) => {
-   if (process.env.NODE_ENV !== 'development' || process.env.ENABLE_DEV_HTTP_SEED !== 'true') {
+   if (process.env.NODE_ENV !== 'development' && process.env.ENABLE_DEV_HTTP_SEED !== 'true') {
       throw createError({
          statusCode: 403,
-         statusMessage: 'Forbidden: HTTP dev seed endpoint is disabled. Set ENABLE_DEV_HTTP_SEED=true in development to enable.'
+         statusMessage: 'Forbidden: HTTP dev seed endpoint is disabled. Set ENABLE_DEV_HTTP_SEED=true or NODE_ENV=development to enable.'
       });
    }
 

@@ -214,7 +214,7 @@ async function handleRevokeOtherSessions() {
 const roleDescription = computed(() => {
   switch (userRole.value.toLowerCase()) {
     case 'system_admin':
-      return 'God User: Full superuser authority across all modules, IT directory approvals, engineering telemetry, and user management.'
+      return 'System Administrator: Full platform superuser authority across all modules, IT directory approvals, engineering telemetry, and user management.'
     case 'heimdall_admin':
     case 'admin':
       return 'Platform Administrator: Master system governance, plant organizations, audit logs, and Identity Studio console access.'
@@ -278,20 +278,24 @@ onMounted(() => {
 <template>
   <div class="space-y-6 max-w-6xl mx-auto">
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <UserIcon class="h-7 w-7 text-primary" />
-          User Settings & Preferences
-        </h1>
-        <p class="text-sm text-muted-foreground mt-1">
-          Manage your account profile, role capabilities, security credentials, and workspace appearance.
-        </p>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+          <UserIcon class="size-6" />
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+            User Settings & Preferences
+          </h1>
+          <p class="text-sm text-slate-400 mt-0.5">
+            Manage your account profile, role capabilities, security credentials, and workspace appearance
+          </p>
+        </div>
       </div>
 
       <div class="flex items-center gap-2">
         <RoleBadge :role="userRole" />
-        <Badge variant="outline" class="font-mono text-xs">
+        <Badge variant="outline" class="font-mono text-xs bg-slate-900 border-slate-800 text-slate-300">
           Org: {{ activeOrg?.name || 'Heimdall Engineering' }}
         </Badge>
       </div>
@@ -299,25 +303,25 @@ onMounted(() => {
 
     <!-- Tabs Container -->
     <Tabs v-model="activeTab" class="w-full space-y-6">
-      <TabsList class="grid grid-cols-2 md:grid-cols-5 w-full bg-muted/60 p-1 rounded-lg">
-        <TabsTrigger value="profile" class="flex items-center gap-2 text-xs font-semibold">
-          <UserIcon class="h-4 w-4" />
+      <TabsList class="grid grid-cols-2 md:grid-cols-5 w-full bg-slate-900 p-1 rounded-xl border border-slate-800 h-auto">
+        <TabsTrigger value="profile" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
+          <UserIcon class="size-4" />
           <span>Profile</span>
         </TabsTrigger>
-        <TabsTrigger value="roles" class="flex items-center gap-2 text-xs font-semibold">
-          <ShieldIcon class="h-4 w-4" />
+        <TabsTrigger value="roles" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
+          <ShieldIcon class="size-4" />
           <span>Role & Access</span>
         </TabsTrigger>
-        <TabsTrigger value="security" class="flex items-center gap-2 text-xs font-semibold">
-          <KeyIcon class="h-4 w-4" />
+        <TabsTrigger value="security" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
+          <KeyIcon class="size-4" />
           <span>Security & MFA</span>
         </TabsTrigger>
-        <TabsTrigger value="appearance" class="flex items-center gap-2 text-xs font-semibold">
-          <PaletteIcon class="h-4 w-4" />
+        <TabsTrigger value="appearance" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
+          <PaletteIcon class="size-4" />
           <span>Appearance</span>
         </TabsTrigger>
-        <TabsTrigger value="personas" class="flex items-center gap-2 text-xs font-semibold">
-          <UserCheckIcon class="h-4 w-4 text-cyan-400" />
+        <TabsTrigger value="personas" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
+          <UserCheckIcon class="size-4 text-cyan-400" />
           <span>Persona Sandbox</span>
         </TabsTrigger>
       </TabsList>

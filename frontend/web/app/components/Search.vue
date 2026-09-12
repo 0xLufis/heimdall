@@ -61,12 +61,53 @@ defineShortcuts({
     inputRef.value?.focus()
     openDropdown.value = true
   },
+  Meta_P: () => {
+    inputRef.value?.focus()
+    openDropdown.value = true
+  }
 })
+
+function handleKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar')) {
+    e.preventDefault()
+    openDropdown.value = true
+    return
+  }
+  if (e.key === 'ArrowDown' && !openDropdown.value) {
+    e.preventDefault()
+    openDropdown.value = true
+    return
+  }
+}
+
+const handleGlobalSlash = (e: KeyboardEvent) => {
+  const target = e.target as HTMLElement | null
+  const isInputTarget = target && (
+    target.tagName === 'INPUT' || 
+    target.tagName === 'TEXTAREA' || 
+    target.isContentEditable
+  )
+
+  if (e.key === '/' && !isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey && !openDropdown.value) {
+    e.preventDefault()
+    inputRef.value?.focus()
+    openDropdown.value = true
+  }
+}
 
 onMounted(() => {
   fetchKeys()
   if (props.immediate && query.value) {
     performSearch(query.value)
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('keydown', handleGlobalSlash)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('keydown', handleGlobalSlash)
   }
 })
 
@@ -165,6 +206,7 @@ function clearSearch() {
                   class="flex-1 min-w-[120px] bg-transparent border-none py-1 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
                   @focus="openDropdown = query.length > 0"
                   @keydown.enter.prevent="handleEnter"
+                  @keydown="handleKeydown"
                 />
               </div>
             </ScrollArea>

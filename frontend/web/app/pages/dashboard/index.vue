@@ -14,7 +14,7 @@ const { stats, recentClients, securityEvents } = useDashboard()
 
 const dashboardSearchConfig: SearchInstanceConfig = {
   instanceId: 'dashboard',
-  placeholder: 'OmniSearch: Search stations, IPCs, assets, telemetry, or incident numbers...',
+  placeholder: 'FMFD: Search stations, IPCs, assets, telemetry, or incident numbers...',
   defaultEndpoints: ['/api/proxy/inventory/search'],
   enableAutoTagging: true,
   showGlobalShortcut: true

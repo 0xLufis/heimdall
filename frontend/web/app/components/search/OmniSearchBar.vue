@@ -77,6 +77,47 @@ watchDebounced(
 )
 
 const handleKeydown = (e: KeyboardEvent) => {
+  // 1. Ctrl+Space / Cmd+Space: IntelliSense autocomplete trigger
+  if ((e.ctrlKey || e.metaKey) && (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar')) {
+    e.preventDefault()
+    isMenuExplicitlyClosed.value = false
+    isFocused.value = true
+    handleInputChange(rawInput.value)
+    return
+  }
+
+  // 2. ArrowDown: Open dropdown if closed
+  if (e.key === 'ArrowDown') {
+    if (isMenuExplicitlyClosed.value || !showDropdown.value) {
+      e.preventDefault()
+      isMenuExplicitlyClosed.value = false
+      isFocused.value = true
+      handleInputChange(rawInput.value)
+      return
+    }
+  }
+
+  // 3. Tab: Complete top suggestion if dropdown is open
+  if (e.key === 'Tab' && showDropdown.value) {
+    if (activePendingKey.value && valueSuggestions.value.length > 0) {
+      e.preventDefault()
+      selectValueSuggestion(valueSuggestions.value[0].value)
+      emit('search', effectiveQueryString.value)
+      return
+    } else if (autoSuggestions.value.length > 0) {
+      e.preventDefault()
+      addTag(autoSuggestions.value[0].tag)
+      rawInput.value = ''
+      isMenuExplicitlyClosed.value = false
+      return
+    } else if (matchingKeys.value.length > 0 && !activePendingKey.value) {
+      e.preventDefault()
+      selectKeySuggestion(matchingKeys.value[0].key)
+      inputRef.value?.focus()
+      return
+    }
+  }
+
   if (e.key === 'Enter') {
     e.preventDefault()
     if (activePendingKey.value && valueSuggestions.value.length > 0) {
@@ -145,11 +186,31 @@ const handleClear = () => {
 }
 
 const handleGlobalKeydown = (e: KeyboardEvent) => {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+  const target = e.target as HTMLElement | null
+  const isInputTarget = target && (
+    target.tagName === 'INPUT' || 
+    target.tagName === 'TEXTAREA' || 
+    target.isContentEditable
+  )
+
+  // 1. Ctrl+K, Cmd+K, Ctrl+P, or Cmd+P: Focus search input
+  if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'p')) {
     e.preventDefault()
     inputRef.value?.focus()
     isFocused.value = true
     isMenuExplicitlyClosed.value = false
+    handleInputChange(rawInput.value)
+    return
+  }
+
+  // 2. / (Slash) global search trigger when not inside an input
+  if (e.key === '/' && !isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault()
+    inputRef.value?.focus()
+    isFocused.value = true
+    isMenuExplicitlyClosed.value = false
+    handleInputChange(rawInput.value)
+    return
   }
 }
 
@@ -168,6 +229,7 @@ const handleBlur = () => {
 
 onMounted(() => {
   fetchSearchKeys()
+  handleInputChange(rawInput.value)
   if (props.immediate) {
     executeSearch()
   }
@@ -225,9 +287,13 @@ onUnmounted(() => {
           <X class="w-4 h-4" />
         </button>
 
-        <div v-if="props.config?.showGlobalShortcut !== false" class="hidden sm:flex items-center gap-1 px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-lg text-[10px] font-mono text-slate-400">
-          <Command class="w-3 h-3" />
-          <span>K</span>
+        <div v-if="props.config?.showGlobalShortcut !== false" class="hidden sm:flex items-center gap-1.5 px-2 py-0.5 bg-slate-800/80 border border-slate-700/80 rounded-lg text-[10px] font-mono text-slate-400 select-none">
+          <div class="flex items-center gap-0.5">
+            <Command class="w-3 h-3" />
+            <span>K</span>
+          </div>
+          <span class="text-slate-600 font-sans">•</span>
+          <span class="text-indigo-400 font-sans tracking-tight" title="Press Ctrl+Space for autocomplete suggestions">^Space</span>
         </div>
       </div>
     </div>

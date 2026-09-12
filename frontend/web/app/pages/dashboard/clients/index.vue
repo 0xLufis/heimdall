@@ -252,24 +252,30 @@ const onSearch = (q: string) => {
 </script>
 
 <template>
-  <div class="space-y-8 pb-12">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
-      <div>
-        <h3 class="text-3xl font-black text-slate-100 tracking-tight uppercase">Industrial Controllers</h3>
-        <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
-          Edge IPC Telemetry, Multi-Runtime Software Diagnostics, AutoCAD DXF Tag Linking & Signed Commands
-        </p>
+  <div class="space-y-6 pb-12">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+          <Monitor class="h-6 w-6" />
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-slate-100">Industrial Controller Fleet</h1>
+          <p class="text-sm text-slate-400 mt-0.5">
+            Edge IPC telemetry, multi-runtime diagnostics, AutoCAD DXF tag linking, and signed commands
+          </p>
+        </div>
       </div>
 
       <div class="flex items-center gap-3">
         <!-- View Mode Switcher -->
-        <div class="bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-sm flex gap-1">
+        <div class="bg-slate-900 p-1 rounded-lg border border-slate-800 shadow-sm flex gap-1">
           <Button
             variant="ghost"
+            size="sm"
             @click="activeViewMode = 'grid'"
-            :class="activeViewMode === 'grid' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
-            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest h-auto"
+            :class="activeViewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="h-8 px-3 rounded-md text-xs font-medium"
           >
             <Grid class="w-3.5 h-3.5 mr-1.5" />
             Grid View
@@ -277,9 +283,10 @@ const onSearch = (q: string) => {
 
           <Button
             variant="ghost"
+            size="sm"
             @click="activeViewMode = 'map'"
-            :class="activeViewMode === 'map' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
-            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest h-auto"
+            :class="activeViewMode === 'map' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="h-8 px-3 rounded-md text-xs font-medium"
           >
             <Map class="w-3.5 h-3.5 mr-1.5" />
             Plant CAD Map
@@ -288,9 +295,10 @@ const onSearch = (q: string) => {
 
         <Button
           variant="outline"
+          size="sm"
           @click="handleManualSync"
           :disabled="isLoading"
-          class="bg-slate-900 border-slate-800 text-slate-300 rounded-2xl px-5 h-11 hover:bg-slate-800 text-xs font-bold uppercase tracking-wider transition-all"
+          class="h-8 bg-slate-900 border-slate-800 text-slate-300 rounded-lg px-3.5 hover:bg-slate-800 text-xs font-medium transition-all"
         >
           <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5 mr-2 text-indigo-400" />
           <span>{{ isLoading ? 'Syncing Fleet...' : 'Sync Telemetry' }}</span>
@@ -318,7 +326,7 @@ const onSearch = (q: string) => {
       <button
         type="button"
         @click="handleCloseTelemetry"
-        class="absolute top-4 right-4 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] font-black text-slate-400 hover:text-white hover:border-slate-700 transition-all uppercase tracking-wider shadow-lg"
+        class="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs font-medium text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all shadow-md"
       >
         <X class="w-3.5 h-3.5" />
         <span>Close Telemetry</span>
@@ -342,41 +350,41 @@ const onSearch = (q: string) => {
       <div class="space-y-4 animate-in fade-in duration-200">
         
         <!-- Floor Plan CAD Switcher Toolbar -->
-        <div class="p-4 bg-slate-900/90 border border-slate-800 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+        <div class="p-3.5 bg-slate-900 border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
           <div class="flex items-center gap-3">
-            <div class="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+            <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               <Layers class="size-4" />
             </div>
             <div>
-              <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 block">Active Plant CAD Layout:</span>
-              <h4 class="text-xs font-black text-slate-200 uppercase tracking-wide">{{ currentPlan.name }}</h4>
+              <span class="text-xs text-slate-400 block">Active Plant CAD Layout</span>
+              <h4 class="text-sm font-semibold text-slate-200">{{ currentPlan.name }}</h4>
             </div>
           </div>
 
-          <div class="flex items-center gap-2.5">
+          <div class="flex items-center gap-2">
             <!-- Floor Plan Switcher Popover -->
             <Popover>
               <PopoverTrigger as-child>
-                <Button variant="outline" class="bg-slate-950 border-slate-800 text-slate-200 rounded-xl h-10 px-4 text-xs font-black uppercase tracking-wider flex items-center gap-2 hover:bg-slate-900">
+                <Button variant="outline" size="sm" class="bg-slate-950 border-slate-800 text-slate-200 rounded-lg h-8 px-3 text-xs font-medium flex items-center gap-2 hover:bg-slate-900">
                   <Layers class="w-3.5 h-3.5 text-indigo-400" />
                   <span>{{ currentPlan.name }}</span>
-                  <ChevronDown class="w-3 h-3 text-slate-500 ml-1" />
+                  <ChevronDown class="w-3 h-3 text-slate-400 ml-1" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" class="w-80 p-2 bg-slate-950 border-slate-800 shadow-2xl text-slate-200 max-h-96 overflow-y-auto custom-scrollbar">
-                <div class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-900 mb-1">
+              <PopoverContent align="end" class="w-80 p-2 bg-slate-950 border-slate-800 shadow-xl text-slate-200 max-h-96 overflow-y-auto custom-scrollbar">
+                <div class="px-3 py-1.5 text-xs font-semibold text-slate-400 border-b border-slate-800/80 mb-1">
                   Select Plant CAD Drawing
                 </div>
                 <div
                   v-for="plan in availableFloorPlans"
                   :key="plan.id"
                   @click="currentPlanId = plan.id"
-                  class="p-2.5 rounded-xl cursor-pointer transition-colors flex items-center justify-between group"
+                  class="p-2 rounded-lg cursor-pointer transition-colors flex items-center justify-between group"
                   :class="currentPlanId === plan.id ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'hover:bg-slate-900 text-slate-400'"
                 >
                   <div class="flex flex-col">
-                    <span class="text-xs font-bold group-hover:text-white" :class="{ 'text-white': currentPlanId === plan.id }">{{ plan.name }}</span>
-                    <span class="text-[9px] text-slate-600 font-mono">{{ plan.badge }}</span>
+                    <span class="text-xs font-medium group-hover:text-white" :class="{ 'text-white': currentPlanId === plan.id }">{{ plan.name }}</span>
+                    <span class="text-[11px] text-slate-500 font-mono">{{ plan.badge }}</span>
                   </div>
                   <CheckCircle2 v-if="currentPlanId === plan.id" class="w-3.5 h-3.5 text-indigo-400" />
                 </div>
@@ -385,19 +393,18 @@ const onSearch = (q: string) => {
 
             <!-- Manual Pin Button -->
             <Button
-              variant="outline"
               size="sm"
               @click="handleMapObjectDblClick('', 'Custom CAD Coordinate')"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-10 px-4 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 border-0"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg h-8 px-3 text-xs font-medium flex items-center gap-1.5 shadow-sm"
             >
               <MapPin class="size-3.5" />
-              <span>+ Pin Controller</span>
+              <span>Pin Controller</span>
             </Button>
           </div>
         </div>
 
         <!-- Interactive Map Canvas Container -->
-        <div class="h-[620px] rounded-3xl overflow-hidden border border-slate-800 shadow-2xl relative bg-slate-950">
+        <div class="h-[620px] rounded-xl overflow-hidden border border-slate-800 shadow-sm relative bg-slate-950">
           <InteractiveMapCanvas
             :dxf-url="currentPlan.url"
             :highlighted-handles="searchedHandles"
@@ -407,9 +414,9 @@ const onSearch = (q: string) => {
           />
 
           <!-- Map Usage Helper Overlay Pill -->
-          <div class="absolute bottom-4 left-4 pointer-events-none bg-slate-950/90 border border-slate-800/80 px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-[10px] text-slate-400 font-medium backdrop-blur-sm">
-            <Sparkles class="size-3 text-indigo-400 shrink-0" />
-            <span>Click any DXF tag block to open its telemetry, or double-click to link/re-pin to a Controller PC.</span>
+          <div class="absolute bottom-4 left-4 pointer-events-none bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg shadow-md flex items-center gap-2 text-xs text-slate-300 backdrop-blur-sm">
+            <Sparkles class="size-3.5 text-indigo-400 shrink-0" />
+            <span>Click any DXF tag block to open telemetry, or double-click to link a controller.</span>
           </div>
         </div>
       </div>

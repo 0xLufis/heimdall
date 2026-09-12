@@ -256,19 +256,19 @@ function handleImportJson(event: Event) {
 </script>
 
 <template>
-  <div class="space-y-8 animate-in fade-in duration-300">
+  <div class="space-y-6 animate-in fade-in duration-300">
     <!-- Header Section -->
-    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-slate-900">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800">
       <div>
         <div class="flex items-center gap-3">
-          <div class="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+          <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
             <FileCode2 class="size-6" />
           </div>
           <div>
-            <h1 class="text-2xl font-black text-slate-100 tracking-tight uppercase">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
               Agent Telemetry Templating Studio
             </h1>
-            <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
+            <p class="text-sm text-slate-400 mt-0.5">
               Declarative data point recipes, sampling schedules, deadband filters, and live JSON payload preview
             </p>
           </div>
@@ -276,22 +276,22 @@ function handleImportJson(event: Event) {
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex flex-wrap items-center gap-3 shrink-0">
+      <div class="flex flex-wrap items-center gap-2.5 shrink-0">
         <label class="cursor-pointer">
           <input type="file" accept=".json" class="hidden" @change="handleImportJson" />
-          <Button variant="outline" class="border-slate-800 bg-slate-900 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4">
-            <Upload class="size-4 mr-2 text-slate-400" />
+          <Button variant="outline" size="sm" class="border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 rounded-lg text-xs font-medium h-8 px-3">
+            <Upload class="size-3.5 mr-1.5 text-slate-400" />
             Import JSON
           </Button>
         </label>
 
-        <Button variant="outline" @click="exportJson" class="border-slate-800 bg-slate-900 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4">
-          <Download class="size-4 mr-2 text-slate-400" />
+        <Button variant="outline" size="sm" @click="exportJson" class="border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 rounded-lg text-xs font-medium h-8 px-3">
+          <Download class="size-3.5 mr-1.5 text-slate-400" />
           Export
         </Button>
 
-        <Button @click="handleCreateNew" class="bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-5 shadow-lg shadow-purple-600/20 transition-all border-0">
-          <Plus class="size-4 mr-2" />
+        <Button size="sm" @click="handleCreateNew" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium h-8 px-3.5 shadow-sm transition-all border-0">
+          <Plus class="size-3.5 mr-1.5" />
           New Template
         </Button>
       </div>
@@ -303,43 +303,43 @@ function handleImportJson(event: Event) {
         v-for="tpl in allTemplates"
         :key="tpl.recipeId"
         @click="loadTemplateIntoEditor(tpl)"
-        class="cursor-pointer border transition-all duration-200"
+        class="cursor-pointer border rounded-xl transition-all duration-200"
         :class="selectedTemplateId === tpl.recipeId 
-          ? 'bg-purple-950/20 border-purple-500/50 shadow-lg shadow-purple-500/10' 
-          : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'"
+          ? 'bg-indigo-950/20 border-indigo-500/50 shadow-sm' 
+          : 'bg-slate-900 border-slate-800 hover:border-slate-700 hover:bg-slate-850/60'"
       >
-        <CardHeader class="p-5 pb-3">
+        <CardHeader class="p-4 sm:p-5 pb-2">
           <div class="flex items-start justify-between gap-3">
             <div>
               <div class="flex items-center gap-2">
                 <Badge
                   variant="outline"
-                  class="text-[9px] uppercase font-bold tracking-widest"
+                  class="text-xs font-medium px-2 py-0.5 rounded-md"
                   :class="tpl.isBuiltin ? 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10' : 'border-purple-500/30 text-purple-400 bg-purple-500/10'"
                 >
                   {{ tpl.isBuiltin ? 'Built-in Standard' : 'Custom Recipe' }}
                 </Badge>
-                <span class="text-[10px] font-mono text-slate-500">v{{ tpl.version }}</span>
+                <span class="text-xs font-mono text-slate-500">v{{ tpl.version }}</span>
               </div>
-              <CardTitle class="text-sm font-black text-slate-200 mt-2 line-clamp-1">
+              <CardTitle class="text-sm font-semibold text-slate-200 mt-1.5 line-clamp-1">
                 {{ tpl.name }}
               </CardTitle>
             </div>
-            <div class="size-8 rounded-lg bg-slate-800/80 border border-slate-700/50 flex items-center justify-center shrink-0">
-              <Radio class="size-4" :class="selectedTemplateId === tpl.recipeId ? 'text-purple-400' : 'text-slate-500'" />
+            <div class="size-7 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+              <Radio class="size-3.5" :class="selectedTemplateId === tpl.recipeId ? 'text-indigo-400' : 'text-slate-600'" />
             </div>
           </div>
           <CardDescription class="text-xs text-slate-400 mt-1 line-clamp-2">
             {{ tpl.description || 'No description provided' }}
           </CardDescription>
         </CardHeader>
-        <CardContent class="p-5 pt-0">
-          <div class="flex items-center justify-between text-[11px] font-mono text-slate-500 pt-3 border-t border-slate-800/60 mt-2">
+        <CardContent class="p-4 sm:p-5 pt-0">
+          <div class="flex items-center justify-between text-xs font-mono text-slate-400 pt-2.5 border-t border-slate-800/80 mt-2">
             <span class="flex items-center gap-1.5 text-slate-400">
-              <Layers class="size-3 text-purple-400" />
+              <Layers class="size-3 text-indigo-400" />
               {{ tpl.dataPoints.length }} Probes
             </span>
-            <span class="text-slate-400 uppercase">
+            <span class="text-slate-400">
               OS: {{ tpl.targetSelector.osPlatform }}
             </span>
           </div>
@@ -348,16 +348,16 @@ function handleImportJson(event: Event) {
     </div>
 
     <!-- Main Workspace: Split Tabs for Designer, JSON Recipe, and Live Simulator -->
-    <Card class="bg-slate-900/60 border-slate-800">
-      <CardHeader class="p-6 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <Card class="bg-slate-900 border-slate-800 rounded-xl shadow-sm">
+      <CardHeader class="p-4 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-          <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex gap-1">
+          <div class="bg-slate-950 p-1 rounded-lg border border-slate-800 flex gap-1">
             <Button
               variant="ghost"
               size="sm"
               @click="activeTab = 'designer'"
-              :class="activeTab === 'designer' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'"
-              class="rounded-lg text-xs uppercase px-4 h-8"
+              :class="activeTab === 'designer' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+              class="rounded-md text-xs font-medium px-3 h-8"
             >
               <Sliders class="size-3.5 mr-1.5" />
               Recipe Designer
@@ -366,8 +366,8 @@ function handleImportJson(event: Event) {
               variant="ghost"
               size="sm"
               @click="activeTab = 'json'"
-              :class="activeTab === 'json' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'"
-              class="rounded-lg text-xs uppercase px-4 h-8"
+              :class="activeTab === 'json' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+              class="rounded-md text-xs font-medium px-3 h-8"
             >
               <Code class="size-3.5 mr-1.5" />
               JSON Schema
@@ -376,8 +376,8 @@ function handleImportJson(event: Event) {
               variant="ghost"
               size="sm"
               @click="activeTab = 'simulator'; if (!simulationOutput) runSimulation()"
-              :class="activeTab === 'simulator' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'"
-              class="rounded-lg text-xs uppercase px-4 h-8"
+              :class="activeTab === 'simulator' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+              class="rounded-md text-xs font-medium px-3 h-8"
             >
               <Play class="size-3.5 mr-1.5" />
               Live Simulator
@@ -386,40 +386,41 @@ function handleImportJson(event: Event) {
         </div>
 
         <div class="flex items-center gap-2">
-          <span v-if="saveSuccess" class="text-xs text-emerald-400 font-bold flex items-center gap-1">
-            <CheckCircle2 class="size-4" /> Saved!
+          <span v-if="saveSuccess" class="text-xs text-emerald-400 font-medium flex items-center gap-1">
+            <CheckCircle2 class="size-4" /> Saved
           </span>
           <Button
+            size="sm"
             @click="handleSave"
             :disabled="isSaving"
-            class="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest h-9 px-5 border-0"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium h-8 px-3.5 border-0 shadow-sm"
           >
-            <Check class="size-4 mr-1.5" />
+            <Check class="size-3.5 mr-1.5" />
             Save Recipe
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent class="p-6">
+      <CardContent class="p-5 sm:p-6">
         <!-- TAB 1: DESIGNER -->
-        <div v-if="activeTab === 'designer'" class="space-y-8">
+        <div v-if="activeTab === 'designer'" class="space-y-6">
           <!-- Metadata Form -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-5 rounded-2xl bg-slate-950/60 border border-slate-800">
-            <div class="space-y-2 md:col-span-2">
-              <Label class="text-xs uppercase font-bold text-slate-400">Recipe Name</Label>
-              <Input v-model="editorForm.name" class="bg-slate-900 border-slate-800 text-slate-100 font-bold" />
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+            <div class="space-y-1.5 md:col-span-2">
+              <Label class="text-xs font-medium text-slate-400">Recipe Name</Label>
+              <Input v-model="editorForm.name" class="bg-slate-900 border-slate-800 text-slate-100 text-xs font-semibold h-9 rounded-lg" />
             </div>
-            <div class="space-y-2">
-              <Label class="text-xs uppercase font-bold text-slate-400">Recipe Version</Label>
-              <Input v-model="editorForm.version" class="bg-slate-900 border-slate-800 text-slate-100 font-mono" />
+            <div class="space-y-1.5">
+              <Label class="text-xs font-medium text-slate-400">Recipe Version</Label>
+              <Input v-model="editorForm.version" class="bg-slate-900 border-slate-800 text-slate-100 font-mono text-xs h-9 rounded-lg" />
             </div>
-            <div class="space-y-2 md:col-span-2">
-              <Label class="text-xs uppercase font-bold text-slate-400">Description</Label>
-              <Input v-model="editorForm.description" class="bg-slate-900 border-slate-800 text-slate-300" />
+            <div class="space-y-1.5 md:col-span-2">
+              <Label class="text-xs font-medium text-slate-400">Description</Label>
+              <Input v-model="editorForm.description" class="bg-slate-900 border-slate-800 text-slate-300 text-xs h-9 rounded-lg" />
             </div>
-            <div class="space-y-2">
-              <Label class="text-xs uppercase font-bold text-slate-400">Target OS Platform</Label>
-              <select v-model="editorForm.targetSelector.osPlatform" class="w-full h-10 px-3 rounded-md bg-slate-900 border border-slate-800 text-slate-200 text-sm font-bold">
+            <div class="space-y-1.5">
+              <Label class="text-xs font-medium text-slate-400">Target OS Platform</Label>
+              <select v-model="editorForm.targetSelector.osPlatform" class="w-full h-9 px-3 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs font-medium">
                 <option value="All">All Platforms (Cross-Platform)</option>
                 <option value="Windows">Windows (TwinCAT & WMI)</option>
                 <option value="Linux">Linux (Embedded IPC / ARM64)</option>
@@ -428,17 +429,17 @@ function handleImportJson(event: Event) {
           </div>
 
           <!-- Data Points Probes Table -->
-          <div class="space-y-4">
+          <div class="space-y-3">
             <div class="flex items-center justify-between">
               <div>
-                <h3 class="text-sm font-black text-slate-200 uppercase tracking-wide">
+                <h3 class="text-sm font-semibold text-slate-200">
                   Configured Probes ({{ editorForm.dataPoints.length }})
                 </h3>
-                <p class="text-xs text-slate-500 uppercase tracking-widest">
+                <p class="text-xs text-slate-400 mt-0.5">
                   Signal drivers, sampling strategies, and bandwidth deadbands
                 </p>
               </div>
-              <Button size="sm" @click="addProbe" class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-lg text-xs font-bold">
+              <Button size="sm" @click="addProbe" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium h-8 px-3 shadow-sm border-0">
                 <Plus class="size-3.5 mr-1" />
                 Add Probe
               </Button>
@@ -448,38 +449,38 @@ function handleImportJson(event: Event) {
               <div
                 v-for="(dp, idx) in editorForm.dataPoints"
                 :key="dp.pointId || idx"
-                class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-slate-700 transition-colors space-y-4"
+                class="p-3.5 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition-colors space-y-3"
               >
-                <div class="flex items-center justify-between gap-4">
-                  <div class="flex items-center gap-3">
-                    <span class="size-6 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xs font-mono font-bold">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="flex flex-wrap items-center gap-2.5 flex-1">
+                    <span class="size-6 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-mono font-medium">
                       {{ idx + 1 }}
                     </span>
-                    <Input v-model="dp.name" placeholder="Probe Name" class="bg-slate-900 border-slate-800 text-slate-200 font-bold h-9 w-64" />
-                    <Input v-model="dp.pathOrSymbol" placeholder="Path / Symbol / WMI Query" class="bg-slate-900 border-slate-800 text-slate-300 font-mono text-xs h-9 w-72" />
+                    <Input v-model="dp.name" placeholder="Probe Name" class="bg-slate-900 border-slate-800 text-slate-200 font-medium h-8 w-56 text-xs rounded-md" />
+                    <Input v-model="dp.pathOrSymbol" placeholder="Path / Symbol / WMI Query" class="bg-slate-900 border-slate-800 text-slate-300 font-mono text-xs h-8 flex-1 min-w-[200px] rounded-md" />
                   </div>
-                  <Button variant="ghost" size="icon" @click="removeProbe(idx)" class="text-slate-500 hover:text-red-400 hover:bg-red-500/10 h-8 w-8">
-                    <Trash2 class="size-4" />
+                  <Button variant="ghost" size="icon" @click="removeProbe(idx)" class="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-7 w-7 rounded-md">
+                    <Trash2 class="size-3.5" />
                   </Button>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-900 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2.5 border-t border-slate-800/80 text-xs">
                   <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Driver / Source</label>
-                    <select v-model="dp.sourceType" class="mt-1 w-full h-8 px-2 rounded bg-slate-900 border border-slate-800 text-slate-200 text-xs">
+                    <label class="text-xs font-medium text-slate-400">Driver / Source</label>
+                    <select v-model="dp.sourceType" class="mt-1 w-full h-8 px-2 rounded-md bg-slate-900 border border-slate-800 text-slate-200 text-xs">
                       <option v-for="opt in availableSourceTypes" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                     </select>
                   </div>
                   <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Data Category</label>
-                    <select v-model="dp.dataCategory" class="mt-1 w-full h-8 px-2 rounded bg-slate-900 border border-slate-800 text-slate-200 text-xs">
+                    <label class="text-xs font-medium text-slate-400">Data Category</label>
+                    <select v-model="dp.dataCategory" class="mt-1 w-full h-8 px-2 rounded-md bg-slate-900 border border-slate-800 text-slate-200 text-xs">
                       <option v-for="opt in availableCategories" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                     </select>
                   </div>
                   <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Deadband Filtering</label>
+                    <label class="text-xs font-medium text-slate-400">Deadband Filtering</label>
                     <div class="flex items-center gap-1.5 mt-1">
-                      <select v-model="dp.deadband.deadbandType" class="h-8 px-2 rounded bg-slate-900 border border-slate-800 text-slate-200 text-xs flex-1">
+                      <select v-model="dp.deadband.deadbandType" class="h-8 px-2 rounded-md bg-slate-900 border border-slate-800 text-slate-200 text-xs flex-1">
                         <option v-for="opt in availableDeadbands" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                       </select>
                       <Input 
@@ -487,13 +488,13 @@ function handleImportJson(event: Event) {
                         v-model.number="dp.deadband.deadbandValue" 
                         type="number" 
                         step="0.1" 
-                        class="h-8 w-16 bg-slate-900 border-slate-800 text-slate-200 text-xs text-center" 
+                        class="h-8 w-16 bg-slate-900 border-slate-800 text-slate-200 text-xs text-center rounded-md" 
                       />
                     </div>
                   </div>
                   <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Egress Priority</label>
-                    <select v-model="dp.egressPriority" class="mt-1 w-full h-8 px-2 rounded bg-slate-900 border border-slate-800 text-slate-200 text-xs">
+                    <label class="text-xs font-medium text-slate-400">Egress Priority</label>
+                    <select v-model="dp.egressPriority" class="mt-1 w-full h-8 px-2 rounded-md bg-slate-900 border border-slate-800 text-slate-200 text-xs">
                       <option v-for="opt in availablePriorities" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                     </select>
                   </div>
@@ -504,50 +505,50 @@ function handleImportJson(event: Event) {
         </div>
 
         <!-- TAB 2: JSON SCHEMA -->
-        <div v-if="activeTab === 'json'" class="space-y-4">
+        <div v-if="activeTab === 'json'" class="space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-mono">Declarative RecipeDocument Model Representation</span>
-            <Button size="sm" variant="outline" @click="copyJson" class="h-8 border-slate-800 text-xs font-bold text-slate-300">
+            <span class="text-xs text-slate-400 font-mono">Declarative RecipeDocument Model Representation</span>
+            <Button size="sm" variant="outline" @click="copyJson" class="h-8 border-slate-800 text-xs font-medium text-slate-300 rounded-lg">
               <Check v-if="copied" class="size-3.5 mr-1 text-emerald-400" />
               <Copy v-else class="size-3.5 mr-1 text-slate-400" />
               {{ copied ? 'Copied' : 'Copy JSON' }}
             </Button>
           </div>
-          <pre class="p-5 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-purple-300 overflow-x-auto max-h-[600px]">{{ JSON.stringify(editorForm, null, 2) }}</pre>
+          <pre class="p-4 rounded-lg bg-slate-950 border border-slate-800 font-mono text-xs text-indigo-300 overflow-x-auto max-h-[550px]">{{ JSON.stringify(editorForm, null, 2) }}</pre>
         </div>
 
         <!-- TAB 3: LIVE SIMULATOR -->
-        <div v-if="activeTab === 'simulator'" class="space-y-6">
-          <div class="flex items-center justify-between p-4 rounded-xl bg-slate-950 border border-slate-800">
+        <div v-if="activeTab === 'simulator'" class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-slate-950 border border-slate-800 gap-3">
             <div>
-              <h4 class="text-sm font-bold text-slate-200 uppercase">Telemetry Simulation Engine</h4>
-              <p class="text-xs text-slate-500 mt-0.5">Executes recipe probes against mock edge environment and evaluates deadbands</p>
+              <h4 class="text-sm font-semibold text-slate-200">Telemetry Simulation Engine</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Executes recipe probes against mock edge environment and evaluates deadbands</p>
             </div>
-            <Button @click="runSimulation" :disabled="isSimulating" class="bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider h-9 px-4">
+            <Button size="sm" @click="runSimulation" :disabled="isSimulating" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium h-8 px-3.5 shadow-sm border-0">
               <RefreshCw class="size-3.5 mr-1.5" :class="{'animate-spin': isSimulating}" />
               Run Probe Simulation
             </Button>
           </div>
 
           <div v-if="simulationOutput" class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
-                <span class="text-[10px] font-bold text-slate-500 uppercase">Probes Evaluated</span>
-                <div class="text-xl font-mono font-black text-slate-100 mt-1">{{ simulationOutput.probesExecuted }}</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="p-3.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-xs font-medium text-slate-400">Probes Evaluated</span>
+                <div class="text-xl font-mono font-semibold text-slate-100 mt-0.5">{{ simulationOutput.probesExecuted }}</div>
               </div>
-              <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
-                <span class="text-[10px] font-bold text-slate-500 uppercase">Target Platform</span>
-                <div class="text-xl font-mono font-black text-purple-400 mt-1">{{ simulationOutput.targetPlatform }}</div>
+              <div class="p-3.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-xs font-medium text-slate-400">Target Platform</span>
+                <div class="text-xl font-mono font-semibold text-indigo-400 mt-0.5">{{ simulationOutput.targetPlatform }}</div>
               </div>
-              <div class="p-4 rounded-xl bg-slate-950 border border-slate-800">
-                <span class="text-[10px] font-bold text-slate-500 uppercase">Timestamp</span>
-                <div class="text-xs font-mono font-black text-slate-300 mt-2">{{ simulationOutput.evaluatedAt }}</div>
+              <div class="p-3.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-xs font-medium text-slate-400">Timestamp</span>
+                <div class="text-xs font-mono font-medium text-slate-300 mt-1.5">{{ simulationOutput.evaluatedAt }}</div>
               </div>
             </div>
 
-            <div class="p-5 rounded-xl bg-slate-950 border border-slate-800">
-              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Simulated Telemetry Ingestion Payload:</span>
-              <pre class="mt-3 font-mono text-xs text-emerald-400 overflow-x-auto max-h-[450px]">{{ JSON.stringify(simulationOutput.payload, null, 2) }}</pre>
+            <div class="p-4 rounded-lg bg-slate-950 border border-slate-800">
+              <span class="text-xs font-medium text-slate-400">Simulated Telemetry Ingestion Payload:</span>
+              <pre class="mt-2 font-mono text-xs text-emerald-400 overflow-x-auto max-h-[400px]">{{ JSON.stringify(simulationOutput.payload, null, 2) }}</pre>
             </div>
           </div>
         </div>

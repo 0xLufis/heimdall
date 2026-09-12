@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { MaintenanceTicket, TicketStatus } from '~/types/maintenance'
+import { setDragImageAtClickPoint } from '~/utils/reorderList'
 import { Badge } from '~/components/ui/badge'
 import {
   Clock, User, ArrowRight, CheckCircle, Wrench, AlertCircle,
@@ -54,10 +55,19 @@ const getPriorityClass = (priority: string) => {
 }
 
 function onDragStart(event: DragEvent, ticketId: string) {
-  draggedTicketId.value = ticketId
+  setDragImageAtClickPoint(event)
+
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', ticketId)
+  }
+
+  if (typeof requestAnimationFrame !== 'undefined') {
+    requestAnimationFrame(() => {
+      draggedTicketId.value = ticketId
+    })
+  } else {
+    draggedTicketId.value = ticketId
   }
 }
 
@@ -137,8 +147,10 @@ function getLatestTransition(ticket: MaintenanceTicket) {
           :key="ticket.id"
           draggable="true"
           @dragstart="onDragStart($event, ticket.id)"
+          @dragend="draggedTicketId = null"
           @click="emit('selectTicket', ticket)"
           class="p-4 bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl cursor-grab active:cursor-grabbing transition-all shadow-md group flex flex-col justify-between gap-3 select-none"
+          :class="draggedTicketId === ticket.id ? 'opacity-40 border-dashed border-indigo-500/70 scale-[0.99]' : ''"
         >
           <div>
             <div class="flex items-center justify-between gap-2 mb-2">

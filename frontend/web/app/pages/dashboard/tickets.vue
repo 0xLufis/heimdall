@@ -2,7 +2,7 @@
 import { ref, computed, defineAsyncComponent } from 'vue'
 import {
   Plus, Camera, RefreshCw, WifiOff, LayoutList, Columns,
-  Activity, QrCode, Users, FolderTree, History, CheckCircle2
+  Activity, QrCode, Users, FolderTree, History, CheckCircle2, Wrench
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -122,35 +122,40 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
 <template>
   <div class="space-y-6 pb-12">
     <!-- Header -->
-    <div class="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
-      <div>
-        <div class="flex items-center gap-3">
-          <h3 class="text-3xl font-black text-slate-100 tracking-tight uppercase">
-            Maintenance & Floor Incidents
-          </h3>
-          <Badge
-            v-if="pendingOfflineCount > 0"
-            variant="outline"
-            class="border-amber-500/40 text-amber-400 bg-amber-500/10 text-xs font-black uppercase tracking-widest flex items-center gap-1.5 px-3 py-1"
-          >
-            <WifiOff class="h-3.5 w-3.5" />
-            <span>{{ pendingOfflineCount }} Offline Queued</span>
-          </Badge>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+          <Wrench class="size-6" />
         </div>
-        <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
-          Live Floor Incident Lifecycle, 4-Tier Templates, Teams OOO Exclusion & Recursive Groups
-        </p>
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+              Maintenance & Incident Management
+            </h1>
+            <Badge
+              v-if="pendingOfflineCount > 0"
+              variant="outline"
+              class="border-amber-500/40 text-amber-400 bg-amber-500/10 text-xs font-medium flex items-center gap-1.5 px-2 py-0.5 rounded-md"
+            >
+              <WifiOff class="size-3" />
+              <span>{{ pendingOfflineCount }} Offline Queued</span>
+            </Badge>
+          </div>
+          <p class="text-sm text-slate-400 mt-0.5">
+            Plant floor incident lifecycle, 4-tier templates, technician delegation, and machine groups
+          </p>
+        </div>
       </div>
 
       <!-- Action Toolbar -->
-      <div class="flex flex-wrap items-center gap-2.5">
+      <div class="flex flex-wrap items-center gap-2">
         <!-- 3-Way View Switch -->
-        <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex gap-1">
+        <div class="bg-slate-900 p-0.5 rounded-lg border border-slate-800 flex gap-0.5">
           <Button
             variant="ghost"
             @click="activeViewMode = 'list'"
-            :class="activeViewMode === 'list' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
-            class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest h-auto"
+            :class="activeViewMode === 'list' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
           >
             <LayoutList class="w-3.5 h-3.5 mr-1" />
             List
@@ -159,18 +164,18 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           <Button
             variant="ghost"
             @click="activeViewMode = 'kanban'"
-            :class="activeViewMode === 'kanban' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
-            class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest h-auto"
+            :class="activeViewMode === 'kanban' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
           >
             <Columns class="w-3.5 h-3.5 mr-1" />
-            Kanban (8)
+            Kanban
           </Button>
 
           <Button
             variant="ghost"
             @click="activeViewMode = 'resolved'"
-            :class="activeViewMode === 'resolved' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
-            class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest h-auto"
+            :class="activeViewMode === 'resolved' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
           >
             <History class="w-3.5 h-3.5 mr-1" />
             Resolved Log
@@ -180,60 +185,65 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
         <!-- Management Modals Buttons -->
         <Button
           variant="outline"
+          size="sm"
           @click="showGroupManagerModal = true"
-          class="border-slate-800 bg-slate-900/80 text-slate-300 hover:bg-slate-800 rounded-2xl px-3.5 h-10 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
           title="Manage recursive machine groups and technology clusters"
         >
-          <FolderTree class="h-4 w-4 text-indigo-400" />
+          <FolderTree class="h-3.5 w-3.5 text-indigo-400" />
           <span>Machine Groups</span>
         </Button>
 
         <Button
           variant="outline"
+          size="sm"
           @click="showDelegationModal = true"
-          class="border-slate-800 bg-slate-900/80 text-slate-300 hover:bg-slate-800 rounded-2xl px-3.5 h-10 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
           title="Manage shift attendance, engineer dedication, and Teams OOO state"
         >
-          <Users class="h-4 w-4 text-cyan-400" />
+          <Users class="h-3.5 w-3.5 text-cyan-400" />
           <span>Delegation & OOO</span>
         </Button>
 
         <Button
           variant="outline"
+          size="sm"
           @click="showQrGeneratorModal = true"
-          class="border-slate-800 bg-slate-900/80 text-slate-300 hover:bg-slate-800 rounded-2xl px-3.5 h-10 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
           title="Generate Actionable QR Code URIs"
         >
-          <QrCode class="h-4 w-4 text-purple-400" />
+          <QrCode class="h-3.5 w-3.5 text-indigo-400" />
           <span>Action QR</span>
         </Button>
 
         <Button
           variant="outline"
+          size="sm"
           @click="showSimulatorModal = true"
-          class="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 rounded-2xl px-3.5 h-10 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+          class="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
         >
-          <Activity class="h-4 w-4 text-indigo-400" />
+          <Activity class="h-3.5 w-3.5 text-indigo-400" />
           <span>Fleet Sim</span>
         </Button>
 
         <Button
           variant="outline"
+          size="sm"
           @click="showQrScanner = true"
-          class="border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 rounded-2xl px-4 h-10 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
         >
-          <Camera class="h-4 w-4 text-indigo-400" />
+          <Camera class="h-3.5 w-3.5 text-indigo-400" />
           <span>Scan QR</span>
         </Button>
 
-        <button
-          type="button"
+        <Button
+          size="sm"
           @click="showCreateModal = true"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl px-5 h-10 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-0 shadow-lg cursor-pointer transition-colors"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3.5 h-8 text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
         >
-          <Plus class="h-4 w-4" />
+          <Plus class="h-3.5 w-3.5" />
           <span>Report Incident</span>
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -246,7 +256,7 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
     <TicketMetricsOverview :metrics="metrics || undefined" />
 
     <!-- Tag Cloud Filter Bar -->
-    <div v-if="availableTags.length > 0" class="p-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
+    <div v-if="availableTags.length > 0" class="p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-sm">
       <TagFilterBar
         :available-tags="availableTags"
         :selected-tags="selectedTags"

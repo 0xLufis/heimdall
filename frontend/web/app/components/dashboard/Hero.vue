@@ -9,21 +9,21 @@ defineProps<{
 </script>
 
 <template>
-  <Card class="bg-card border-border p-6 text-card-foreground shadow-sm rounded-xl">
+  <Card class="bg-slate-900 border-slate-800 p-6 shadow-sm rounded-xl">
     <CardContent class="p-0">
       <div class="flex items-center gap-5">
-        <Avatar class="w-14 h-14 border border-border bg-muted">
-          <AvatarFallback class="text-2xl font-bold text-foreground bg-transparent">
+        <Avatar class="w-14 h-14 border border-slate-800 bg-slate-950">
+          <AvatarFallback class="text-2xl font-bold text-slate-100 bg-transparent">
             {{ userName?.charAt(0) || 'U' }}
           </AvatarFallback>
         </Avatar>
         <div>
-          <h3 class="text-2xl font-bold tracking-tight text-foreground">Welcome back, {{ userName }}</h3>
-          <div class="flex items-center gap-3 mt-1">
+          <h3 class="text-2xl font-bold tracking-tight text-slate-100">Welcome back, {{ userName }}</h3>
+          <div class="flex items-center gap-3 mt-1.5">
             <DashboardRoleBadge :role="userRole" />
-            <div class="flex items-center gap-2 px-2.5 py-0.5 rounded border border-border bg-muted/50 text-xs font-mono">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span class="text-muted-foreground uppercase tracking-wider text-[11px]">System Nominal</span>
+            <div class="flex items-center gap-2 px-2.5 py-0.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-mono text-emerald-300">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="font-medium text-xs">System Nominal</span>
             </div>
           </div>
         </div>
@@ -31,3 +31,4 @@ defineProps<{
     </CardContent>
   </Card>
 </template>
+

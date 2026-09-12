@@ -10,7 +10,7 @@ test.describe('OmniSearch & Auto-Tagging Intelligence E2E', () => {
   })
 
   test('activates global search input and accepts free text typing', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="OmniSearch"]').first()
+    const searchInput = page.locator('input[placeholder*="FMFD"], input[placeholder*="OmniSearch"]').first()
     await expect(searchInput).toBeVisible({ timeout: 10000 })
     await searchInput.focus()
     await searchInput.pressSequentially('siemns', { delay: 50 })
@@ -21,7 +21,7 @@ test.describe('OmniSearch & Auto-Tagging Intelligence E2E', () => {
   })
 
   test('clicking auto-detected tag suggestion transforms it into an interactive tag pill', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="OmniSearch"]').first()
+    const searchInput = page.locator('input[placeholder*="FMFD"], input[placeholder*="OmniSearch"]').first()
     await expect(searchInput).toBeVisible({ timeout: 10000 })
     await searchInput.focus()
     await searchInput.pressSequentially('15kW', { delay: 50 })
@@ -37,7 +37,7 @@ test.describe('OmniSearch & Auto-Tagging Intelligence E2E', () => {
   })
 
   test('removes active tag pill when clicking the remove button', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="OmniSearch"]').first()
+    const searchInput = page.locator('input[placeholder*="FMFD"], input[placeholder*="OmniSearch"]').first()
     await expect(searchInput).toBeVisible({ timeout: 10000 })
     await searchInput.focus()
     await searchInput.pressSequentially('OP10', { delay: 50 })

@@ -8,7 +8,9 @@ This guide describes the user interface, operational workflows, and features ava
 
 ### 1.1 Authentication & Session
 1. Navigate to the web application URL (e.g., `http://localhost:3000` or production URL).
-2. Enter your credentials or authenticate via configured identity providers (Active Directory, Entra ID, or local account).
+2. Enter your credentials or authenticate via configured identity providers (Active Directory, Entra ID, or local account). For fresh local development environments, a default administrator is automatically provisioned:
+   * **Username / Email**: `admin@heimdall.dev` (or `admin`)
+   * **Password**: `AdminPassword123!`
 3. Upon login, the active organization is loaded based on your assigned permissions (`admin`, `engineer`, `technician`, `operator`).
 4. To switch organizations (if you belong to multiple plants or production floors), click your organization name in the top navigation bar and choose from the dropdown menu.
 
@@ -20,9 +22,19 @@ This guide describes the user interface, operational workflows, and features ava
   * **Plant Map**: Interactive CAD floor plan with machine status pins.
   * **Inventory**: Differentiated serialized parts and bulk stock items with on-demand tree visualization.
   * **Tickets**: Real-time maintenance Kanban board.
+  * **Telemetry**: Telemetry collection recipes, templates, and policy prioritization rules.
   * **Settings / Governance**: Users, system settings, security group mappings, and account profile.
 * To change theme preferences (Light / Dark / System), open the user profile card at the bottom-left of the sidebar.
 * Clicking **Account Settings** in the user card navigates to `/dashboard/settings` to manage profile attributes, MFA policies, and presence.
+
+### 1.3 Universal Keyboard Shortcuts (FMFD)
+Heimdall includes global keyboard shortcuts accessible from any dashboard screen:
+* **`/`**: Immediately focuses the top FMFD search bar.
+* **`Ctrl+Space`**: Opens the IntelliSense directive recommendation menu (`@`, `#`, `!`).
+* **`Ctrl+P`**: Launches the Global OmniSearch dialog popup.
+* **`Tab`**: Autocompletes the selected token or search candidate.
+* **`ArrowDown` / `ArrowUp`**: Navigates active suggestion lists.
+* **`Escape`**: Closes active search dialogs or resets input focus.
 
 ---
 
@@ -42,10 +54,11 @@ The Plant Map enables operators to visually locate production equipment and insp
    * **Amber / Yellow**: Warning status (e.g., high memory load, low free disk).
    * **Red**: Critical alarm or open high-priority maintenance ticket.
    * **Gray**: Edge controller offline.
-2. Click any station block to open its summary card:
+2. Click any station block or CAD entity to open its summary card:
    * Displays the station code (e.g., `LINE-01-OP10`).
    * Lists controlling edge PCs and their current IP addresses.
    * Shows active maintenance tickets and cycle time targets.
+   * **Spatial Anchor Auto-Scroll**: Selecting an entity automatically scrolls the right-hand **Spatial Anchors** sidebar directly to center the matching Client PC card with visual ring highlighting.
    * Provides quick links to open the full asset inspector or file a ticket.
 
 ### 2.3 Pinning New Stations to Drawings
@@ -79,7 +92,8 @@ The Fleet view monitors all industrial PCs (IPCs), Soft-PLCs, and edge compute n
 
 The maintenance module coordinates repairs, parts replacements, safety escalations, and calibration sign-offs across the production floor.
 
-### 4.1 8-Stage Kanban Status Columns
+### 4.1 8-Stage Kanban Status Columns & Drag-and-Drop
+* **Point-of-Click Drag-and-Drop**: Operators can pick up ticket cards from anywhere on the card surface without sudden jumping or corner snapping. Dragging tickets across status columns updates their operational status in real time.
 * **`Open`**: Newly reported incidents awaiting technician assignment.
 * **`In Progress`**: Active repair or diagnostics by a designated technician.
 * **`Pending Parts`**: Work paused awaiting replacement components from warehouse stock.
@@ -151,35 +165,59 @@ The dedicated Machines module provides multi-dimensional visualization of the fa
 
 ---
 
-## 7. OmniSearch 2.0 (`nvim-coc` Style Auto-Tag Engine)
+## 7. FMFD: Find My Field Data (OmniSearch 2.0)
 
-The top navigation search bar is powered by an intelligent tokenizer modeled after developer IDE autocompletion:
-* **Tag Directives**:
-  * `@` for Technology (`@Assembly`, `@Test`, `@SMT`, `@Welding`, `@Fastening`, `@Dispensing`, `@Robotics`)
-  * `#` for Equipment Status (`#inmachine`, `#instorage`, `#underrepair`, `#online`, `#offline`)
-  * `!` for Urgency/Priority (`!critical`, `!high`, `!medium`)
-* **Autocomplete Dropdown**: Typing `@`, `#`, or `!` summons a floating suggestion dropdown with description hints.
-* **Keyboard Navigation**: Use `Up`/`Down` arrow keys, `Tab`, or `Enter` to auto-insert tags without leaving the keyboard.
-* **Fuzzy Ranking**: Sub-millisecond instant matching across stations, serial numbers, models, and parts.
+The top navigation search bar is powered by FMFD ("Find My Field Data" / internal "Find My Fucking Data"), an intelligent tokenizer modeled after developer IDE autocompletion (`nvim-coc` style):
+
+### 7.1 Directives & Tag Syntax
+* **`@` for Technology**: Filters by discipline (`@Assembly`, `@Test`, `@SMT`, `@Welding`, `@Fastening`, `@Dispensing`, `@Robotics`).
+* **`#` for Equipment Status**: Filters by operational state (`#inmachine`, `#instorage`, `#underrepair`, `#online`, `#offline`).
+* **`!` for Urgency/Priority**: Filters by incident criticality (`!critical`, `!high`, `!medium`, `!low`).
+
+### 7.2 Keyboard Triggers & Navigation
+* **`/` Shortcut**: Focuses the FMFD bar from anywhere in the app without clicking.
+* **`Ctrl+Space` IntelliSense**: Forces the recommendation popup open at any cursor position.
+* **`Ctrl+P` Global Modal**: Opens the centralized FMFD search modal across all plant assets.
+* **`Tab` Autocomplete**: Instantly expands the currently selected directive token into the search box.
+* **`ArrowDown` / `ArrowUp`**: Navigates the dropdown items; `ArrowDown` also re-summons recommendations if closed while input is empty.
+* **Fuzzy Ranking**: Instant sub-millisecond matching across station names, serial numbers, IP addresses, models, and parts.
 
 ---
 
-## 8. Governance, System Roles & User Settings
+## 8. Telemetry Recipe Configuration & Policy Engine (`/dashboard/telemetry/configure`)
 
-### 8.1 System Administration Roles
+The Telemetry Policy Engine governs which telemetry collection recipes are automatically assigned to Edge PCs across factory Organizational Units (OUs) and tags:
+
+### 8.1 Rule Structure
+* **OU Rules**: Target PCs residing in specific Active Directory / plant OUs (e.g., `OU=Welding,OU=Plant01`).
+* **Tag Rules**: Target PCs tagged with specific operational labels (e.g., `CriticalAxis`, `VisionStrobe`).
+* **Target Recipe**: The JSON telemetry recipe pushed to matched Edge daemons (specifying metric sampling rates, PLC adapters, and spooler quotas).
+
+### 8.2 Drag-and-Drop Priority Reordering
+* Each rule card features a dedicated **`GripVertical`** handle on its left edge.
+* **Point-of-Click Anchoring**: Dragging cards anchors smoothly to the click point without jumping to the corner.
+* **Real-Time Priority Indexing**: Dropping a card recalculates priorities into a strict 1-based sequential ordering (`#1`, `#2`, `#3`...).
+* **Policy Persistence**: Reordered policies are automatically persisted to the database and pushed to connected edge nodes.
+* **Deterministic Conflict Resolution**: Higher priority rules (`#1` evaluated first) supersede lower priority rules when a controller satisfies multiple conditions.
+
+---
+
+## 9. Governance, System Roles & User Settings
+
+### 9.1 System Administration Roles
 * **`SystemAdmin`**: Complete platform god user; bypasses all permission constraints and can configure pseudo-IT admin role inheritance.
 * **`HeimdallAdmin`**: OT platform administrator managing platform settings, telemetry pipelines, and security mappings.
 * **`ITAdmin`**: IT infrastructure administrator authoritative for Active Directory / Entra ID OU approvals and PKI certificate authorities.
 * **`EngineeringAdmin`**: Engineering technical administrator managing users, functional engineering configurations, recipes, and machine profiles from the application UI (strictly segregated from production management).
 
-### 8.2 Plant Engineering Roles
+### 9.2 Plant Engineering Roles
 * **`PlantDirector`**: Executive plant read access and final sign-off authority for line stops and capital allocation.
 * **`PlantEngineeringManager` & `SeniorEngineeringManager`**: Engineering department leadership.
 * **`GroupLeader`**: Technology or line group supervisor managing technician dedication and schedules.
 * **`Engineer` & `Technician`**: Automation, controls, and maintenance professionals executing work orders and repairs.
 * **`OperativePlanner`**: Line planning managers responsible for requesting and authorizing scheduled line stops.
 
-### 8.3 User Profile Card & Account Settings (`/dashboard/settings`)
+### 9.3 User Profile Card & Account Settings (`/dashboard/settings`)
 * View assigned roles, job title, department, and active organization in the persistent sidebar user card.
 * Navigate to `/dashboard/settings` to update MFA verification preferences, presence indicators, and personal interface settings.
 * Manage Active Directory OU approvals (`/dashboard/security-groups`) to safely onboard edge controllers.

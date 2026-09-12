@@ -90,6 +90,9 @@ bun run dev
 ```
 Access the application at `http://localhost:3000`.
 
+> [!NOTE]
+> On startup, the Nitro server plugin (`server/plugins/ensureAdminUser.ts`) checks if a platform administrator exists. If not, it automatically seeds `admin@heimdall.dev` (password: `AdminPassword123!`). You can also manually trigger this via `GET /api/dev/seed-admin`.
+
 ### 3.5 Running the Edge Fleet Simulator
 To simulate edge controllers generating real-time telemetry:
 ```bash
@@ -99,6 +102,17 @@ python3 simulators/fleet/fleet_simulator.py --client ROBOT-CELL-01 --smoke-test 
 # Continuous background simulation
 python3 simulators/fleet/fleet_simulator.py --client ROBOT-CELL-01 --count 100
 ```
+
+### 3.6 Frontend Architecture & Key Utilities
+* **FMFD / OmniSearch Engine (`useOmniSearch.ts`)**:
+  * Composable exported as both `useOmniSearch` and `useFmfd`.
+  * Provides parameterized search indexing across clients, machines, tickets, and inventory with tag directives (`@`, `#`, `!`), fuzzy matching, and GDPR data diagnostics.
+* **Drag-and-Drop Reordering (`reorderList.ts`)**:
+  * `reorderAndPrioritize<T>(items, fromIndex, toIndex, options)`: Moves items between indices and recalculates sequential 1-based priority fields (`priority: 1, 2, 3...`).
+  * `setDragImageAtClickPoint(event, element)`: Ensures HTML5 drag ghost images stay anchored to the exact cursor click point. Incorporates global `pointerdown` tracking to work around the Linux Chromium bug where `DragEvent.clientX/Y` reports `0` during `dragstart`, rendering temporary clones to force Blink to honor custom offsets.
+* **Database Migrations vs. SQL Dumps**:
+  * `.gitignore` excludes all `*.sql` database dumps to avoid committing large seed files.
+  * Schema migrations in `shared/App.Shared/Migrations/` (EF Core) and `frontend/web/server/db/migrations/` (Drizzle) are strictly whitelisted and tracked in git.
 
 ---
 
@@ -149,7 +163,7 @@ Executes 67 tests covering multi-tenancy global query filters, MFA policy rules,
 cd frontend/web
 bun run test:unit
 ```
-Executes 18 test suites (126 tests) covering the 8-stage Kanban lifecycle, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, and mock Active Directory endpoints.
+Executes 30 test suites (223 tests) covering rule reordering with drag-and-drop point-of-click anchoring, FMFD search keyboard shortcuts, 8-stage Kanban lifecycle, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, and all page routing.
 
 ### 5.3 Python Fleet Simulator & Mock CMI Tests
 ```bash

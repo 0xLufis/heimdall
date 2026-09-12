@@ -197,5 +197,108 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
       const dropdown = wrapper.findComponent({ name: 'AutoTagSuggestionDropdown' })
       expect(dropdown.exists()).toBe(false)
     })
+
+    it('opens the suggestion dropdown on Ctrl+Space', async () => {
+      const wrapper = mount(OmniSearchBar, {
+        props: {
+          config: {
+            minCharsForSuggestions: 2,
+            debounceMs: 50
+          }
+        }
+      })
+
+      const input = wrapper.find('input')
+      await input.trigger('focus')
+      // Close menu first with Escape
+      await input.trigger('keydown', { key: 'Escape' })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.findComponent({ name: 'AutoTagSuggestionDropdown' }).exists()).toBe(false)
+
+      // Press Ctrl+Space to trigger suggestions
+      await input.trigger('keydown', { key: ' ', ctrlKey: true })
+      await wrapper.vm.$nextTick()
+
+      // Dropdown must now be open!
+      const dropdown = wrapper.findComponent({ name: 'AutoTagSuggestionDropdown' })
+      expect(dropdown.exists()).toBe(true)
+    })
+
+    it('re-opens the suggestion dropdown on ArrowDown when closed', async () => {
+      const wrapper = mount(OmniSearchBar, {
+        props: {
+          config: {
+            minCharsForSuggestions: 2,
+            debounceMs: 50
+          }
+        }
+      })
+
+      const input = wrapper.find('input')
+      await input.trigger('focus')
+      await input.trigger('keydown', { key: 'Escape' })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.findComponent({ name: 'AutoTagSuggestionDropdown' }).exists()).toBe(false)
+
+      // Press ArrowDown to re-open
+      await input.trigger('keydown', { key: 'ArrowDown' })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.findComponent({ name: 'AutoTagSuggestionDropdown' }).exists()).toBe(true)
+    })
+
+    it('completes top key suggestion on Tab when suggestions are visible', async () => {
+      const wrapper = mount(OmniSearchBar, {
+        props: {
+          config: {
+            minCharsForSuggestions: 2,
+            debounceMs: 50
+          }
+        }
+      })
+
+      const input = wrapper.find('input')
+      await input.trigger('focus')
+      await input.setValue('line')
+      await wrapper.vm.$nextTick()
+
+      // Press Tab to complete suggestion
+      await input.trigger('keydown', { key: 'Tab' })
+      await wrapper.vm.$nextTick()
+
+      // When line: key is completed, rawInput becomes line:
+      expect((input.element as HTMLInputElement).value).toContain('line:')
+    })
+
+    it('focuses search input when global / or Ctrl+P is pressed', async () => {
+      const wrapper = mount(OmniSearchBar, {
+        attachTo: document.body,
+        props: {
+          config: {
+            showGlobalShortcut: true,
+            minCharsForSuggestions: 2,
+            debounceMs: 50
+          }
+        }
+      })
+
+      // Simulate global / keydown
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: '/' }))
+      await wrapper.vm.$nextTick()
+
+      const input = wrapper.find('input')
+      expect(document.activeElement).toBe(input.element)
+
+      // Blur input
+      ;(input.element as HTMLInputElement).blur()
+      await wrapper.vm.$nextTick()
+
+      // Simulate global Ctrl+P keydown
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', ctrlKey: true }))
+      await wrapper.vm.$nextTick()
+
+      expect(document.activeElement).toBe(input.element)
+      wrapper.unmount()
+    })
   })
 })

@@ -30,9 +30,14 @@ import {
   type SearchDiagnosticsRecord 
 } from '~/utils/search/searchDiagnostics'
 
+/**
+ * FMFD - Find My Fucking Data (User-facing: "Find My Field Data")
+ * Universal high-throughput multi-tier fuzzy indexing engine for industrial assets,
+ * client PCs, telemetry, and enterprise field inventory.
+ */
 const DEFAULT_CONFIG: SearchInstanceConfig = {
   instanceId: 'dashboard',
-  placeholder: 'Search stations, controllers, inventory, specs... (Cmd+K)',
+  placeholder: 'FMFD: Search stations, controllers, inventory, specs... (Cmd+K)',
   defaultEndpoints: ['/api/proxy/inventory/search'],
   allowedTagKeys: ['line', 'tech', 'status', 'mfr', 'manufacturer', 'serial', 'location', 'category', 'station', 'type', 'isstock', 'ip', 'mac', 'spec', 'cost', 'role', 'quality', 'unit'],
   minCharsForSuggestions: 2,
@@ -662,3 +667,8 @@ export const useOmniSearch = (
     searchDiagnostics: diagnosticsService
   }
 }
+
+/**
+ * FMFD alias for composable ingestion
+ */
+export const useFmfd = useOmniSearch

@@ -396,24 +396,24 @@ const getStatusColor = (status?: string) => {
 </script>
 
 <template>
-  <div class="p-6 bg-slate-950 border border-slate-800 rounded-3xl space-y-6 shadow-2xl">
+  <div class="p-6 bg-slate-900 border border-slate-800 rounded-xl space-y-6 shadow-sm">
     <!-- Controller Identity Banner -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
       <div class="flex items-center gap-3.5">
-        <div class="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-indigo-400">
+        <div class="p-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-400">
           <Monitor class="w-6 h-6" />
         </div>
         <div>
           <div class="flex items-center gap-2.5">
-            <h3 class="text-lg font-black text-white uppercase tracking-tight">{{ controller.hostname || controller.name }}</h3>
+            <h3 class="text-lg font-bold text-slate-100 tracking-tight">{{ controller.hostname || controller.name }}</h3>
             <span class="w-2 h-2 rounded-full" :class="controller.telemetry?.isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-slate-600'"></span>
           </div>
-          <p class="text-xs font-mono text-slate-500 flex items-center gap-2 mt-0.5">
+          <p class="text-xs font-mono text-slate-400 flex items-center gap-2 mt-0.5">
             <span>MAC: {{ controller.macAddress }}</span>
-            <span class="text-slate-700">•</span>
+            <span class="text-slate-600">•</span>
             <span>IP: {{ controller.ipAddress || '192.168.1.100' }}</span>
-            <span class="text-slate-700">•</span>
-            <span class="text-indigo-400 font-bold">UUID: {{ controller.id.substring(0, 8) }}</span>
+            <span class="text-slate-600">•</span>
+            <span class="text-indigo-400 font-medium">UUID: {{ controller.id.substring(0, 8) }}</span>
           </p>
         </div>
       </div>
@@ -421,8 +421,8 @@ const getStatusColor = (status?: string) => {
       <div class="flex items-center gap-3">
         <Badge
           variant="outline"
-          class="text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1"
-          :class="controller.telemetry?.isOnline ? 'border-emerald-500/30 text-emerald-400 bg-emerald-950/20' : 'border-slate-800 text-slate-500 bg-slate-900'"
+          class="text-xs font-mono font-medium px-2.5 py-0.5 rounded-md"
+          :class="controller.telemetry?.isOnline ? 'border-emerald-500/30 text-emerald-400 bg-emerald-950/20' : 'border-slate-800 text-slate-400 bg-slate-950'"
         >
           {{ controller.telemetry?.isOnline ? 'Live Telemetry Active' : 'Offline' }}
         </Badge>
@@ -430,22 +430,22 @@ const getStatusColor = (status?: string) => {
     </div>
 
     <!-- Spatial CAD / DXF Tag Link Banner -->
-    <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
+    <div class="p-3 bg-slate-950/60 border border-slate-800 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+        <div class="p-2 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
           <MapPin class="size-4" />
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">AutoCAD (DXF) Spatial Tag:</span>
-            <span v-if="controller.pinnedObjectHandle" class="text-xs font-mono font-black text-indigo-300 bg-indigo-950/60 border border-indigo-500/40 px-3 py-1 rounded-full">
+            <span class="text-xs text-slate-400">AutoCAD (DXF) Spatial Tag:</span>
+            <span v-if="controller.pinnedObjectHandle" class="text-xs font-mono font-medium text-indigo-300 bg-indigo-950/60 border border-indigo-500/40 px-2.5 py-0.5 rounded-md">
               {{ controller.pinnedObjectHandle }}
             </span>
-            <span v-else class="text-[10px] font-mono text-amber-400/80 bg-amber-950/30 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
+            <span v-else class="text-xs font-mono text-amber-400/90 bg-amber-950/30 border border-amber-500/30 px-2 py-0.5 rounded-md">
               Unpinned (No CAD Coordinate Linked)
             </span>
           </div>
-          <p class="text-[10px] text-slate-500 mt-0.5">Physical equipment coordinate mapping on the factory floor plan.</p>
+          <p class="text-xs text-slate-500 mt-0.5">Physical equipment coordinate mapping on the factory floor plan.</p>
         </div>
       </div>
 
@@ -455,7 +455,7 @@ const getStatusColor = (status?: string) => {
           variant="outline"
           size="sm"
           @click="emit('locate-map', controller.pinnedObjectHandle)"
-          class="h-8 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/60 border-indigo-500/30 text-indigo-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5"
+          class="h-8 rounded-lg bg-indigo-950/40 hover:bg-indigo-900/60 border-indigo-500/30 text-indigo-300 text-xs font-medium flex items-center gap-1.5"
         >
           <MapPin class="size-3" />
           <span>Locate on CAD Map</span>
@@ -464,7 +464,7 @@ const getStatusColor = (status?: string) => {
           variant="outline"
           size="sm"
           @click="emit('link-dxf', controller)"
-          class="h-8 rounded-xl bg-slate-950 hover:bg-slate-900 border-slate-800 text-slate-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5"
+          class="h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-200 text-xs font-medium flex items-center gap-1.5"
         >
           <Link class="size-3" />
           <span>{{ controller.pinnedObjectHandle ? 'Edit DXF Link' : '+ Link DXF Tag' }}</span>
@@ -477,25 +477,25 @@ const getStatusColor = (status?: string) => {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <Pin class="w-3.5 h-3.5 text-indigo-400" />
-          <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <span class="text-xs font-semibold text-slate-300">
             Pinned Quick Metrics ({{ pinnedProperties.length }})
           </span>
         </div>
-        <span class="text-[9px] text-slate-600 font-medium">Click the pin icon on any property below to watch here</span>
+        <span class="text-xs text-slate-500">Click the pin icon on any property below to watch here</span>
       </div>
 
-      <div v-if="pinnedProperties.length === 0" class="p-6 bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl text-center">
-        <p class="text-xs text-slate-500 font-medium">No properties pinned yet. Browse categories below and click <Pin class="w-3 h-3 inline mx-1 text-slate-400" /> to pin key metrics here.</p>
+      <div v-if="pinnedProperties.length === 0" class="p-6 bg-slate-950/40 border border-dashed border-slate-800 rounded-lg text-center">
+        <p class="text-xs text-slate-400">No properties pinned yet. Browse categories below and click <Pin class="w-3 h-3 inline mx-1 text-slate-400" /> to pin key metrics here.</p>
       </div>
 
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div
           v-for="prop in pinnedProperties"
           :key="`pinned-${prop.id}`"
-          class="p-4 bg-slate-900/80 border border-slate-800 hover:border-indigo-500/30 rounded-2xl flex flex-col justify-between transition-all group"
+          class="p-3.5 bg-slate-950/50 border border-slate-800 hover:border-slate-700 rounded-lg flex flex-col justify-between transition-all group"
         >
           <div class="flex items-start justify-between gap-2">
-            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 truncate">{{ prop.name }}</span>
+            <span class="text-xs font-medium text-slate-400 truncate">{{ prop.name }}</span>
             <button
               type="button"
               @click="togglePin(prop.id)"
@@ -507,14 +507,14 @@ const getStatusColor = (status?: string) => {
           </div>
 
           <div class="my-2">
-            <div class="text-sm font-black font-mono text-slate-100 group-hover:text-white transition-colors truncate">
+            <div class="text-sm font-semibold font-mono text-slate-100 group-hover:text-white transition-colors truncate">
               {{ prop.value }}
             </div>
           </div>
 
           <div class="flex items-center justify-between pt-1 border-t border-slate-800/60">
-            <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">{{ prop.category }}</span>
-            <Badge v-if="prop.badge" variant="outline" class="text-[8px] font-mono font-bold uppercase px-1.5 py-0.5" :class="getStatusColor(prop.status)">
+            <span class="text-xs text-slate-500">{{ prop.category }}</span>
+            <Badge v-if="prop.badge" variant="outline" class="text-xs font-mono font-medium px-1.5 py-0.5 rounded-md" :class="getStatusColor(prop.status)">
               {{ prop.badge }}
             </Badge>
           </div>
@@ -533,8 +533,8 @@ const getStatusColor = (status?: string) => {
             :key="cat"
             type="button"
             @click="selectedCategory = cat"
-            class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border"
-            :class="selectedCategory === cat ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+            :class="selectedCategory === cat ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm' : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'"
           >
             {{ cat }}
           </button>
@@ -545,17 +545,17 @@ const getStatusColor = (status?: string) => {
           <Search class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <Input
             v-model="propertySearchQuery"
-            placeholder="Search properties (e.g. MES, TwinCAT, EtherCAT)..."
-            class="pl-9 pr-4 h-9 bg-slate-900 border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+            placeholder="Search properties (e.g. MES, TwinCAT)..."
+            class="pl-9 pr-4 h-9 bg-slate-950 border-slate-800 rounded-lg text-xs text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
           />
         </div>
       </div>
 
       <!-- Properties Grid Table -->
-      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-800/60">
+      <div class="bg-slate-950/40 border border-slate-800 rounded-lg overflow-hidden divide-y divide-slate-800/60">
         <template v-if="filteredProperties.length === 0">
           <div class="p-12 text-center text-slate-500">
-            <p class="text-xs font-bold uppercase tracking-widest">No properties match your filter</p>
+            <p class="text-xs font-medium">No properties match your filter</p>
           </div>
         </template>
 
@@ -563,27 +563,27 @@ const getStatusColor = (status?: string) => {
           <div
             v-for="prop in filteredProperties"
             :key="prop.id"
-            class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-850/60 transition-colors group"
+            class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-800/40 transition-colors group"
           >
             <!-- Name & Category -->
             <div class="sm:w-1/3 min-w-0">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-black text-slate-200 group-hover:text-white transition-colors truncate">
+                <span class="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors truncate">
                   {{ prop.name }}
                 </span>
-                <Badge v-if="prop.badge" variant="outline" class="text-[8px] font-mono uppercase px-1.5 py-0.2" :class="getStatusColor(prop.status)">
+                <Badge v-if="prop.badge" variant="outline" class="text-xs font-mono px-1.5 py-0.5 rounded-md" :class="getStatusColor(prop.status)">
                   {{ prop.badge }}
                 </Badge>
               </div>
-              <p v-if="prop.description" class="text-[10px] text-slate-500 truncate mt-0.5">{{ prop.description }}</p>
+              <p v-if="prop.description" class="text-xs text-slate-400 truncate mt-0.5">{{ prop.description }}</p>
             </div>
 
             <!-- Value Display -->
             <div class="sm:w-1/2 min-w-0">
-              <div class="text-xs font-mono font-bold text-slate-300 group-hover:text-indigo-200 transition-colors break-words">
+              <div class="text-xs font-mono font-medium text-slate-300 group-hover:text-indigo-200 transition-colors break-words">
                 {{ prop.value }}
               </div>
-              <span class="text-[9px] font-mono text-slate-500 uppercase tracking-wider block mt-0.5">{{ prop.category }}</span>
+              <span class="text-xs font-mono text-slate-500 block mt-0.5">{{ prop.category }}</span>
             </div>
 
             <!-- Action Buttons: Copy & Pin -->
@@ -592,7 +592,7 @@ const getStatusColor = (status?: string) => {
               <button
                 type="button"
                 @click="copyValue(prop.id, prop.value)"
-                class="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+                class="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
                 :title="copiedPropertyId === prop.id ? 'Copied!' : 'Copy value'"
               >
                 <Check v-if="copiedPropertyId === prop.id" class="w-3.5 h-3.5 text-emerald-400" />
@@ -603,10 +603,10 @@ const getStatusColor = (status?: string) => {
               <button
                 type="button"
                 @click="togglePin(prop.id)"
-                class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border"
+                class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border"
                 :class="isPinned(prop.id) 
                   ? 'bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60' 
-                  : 'bg-slate-950/60 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'"
+                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'"
                 :title="isPinned(prop.id) ? 'Unpin from quick metrics' : 'Pin to quick metrics'"
               >
                 <Pin class="w-3 h-3" :class="{ 'fill-indigo-400 text-indigo-400': isPinned(prop.id) }" />

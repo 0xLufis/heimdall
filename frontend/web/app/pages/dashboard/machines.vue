@@ -52,7 +52,7 @@ const openTreeForStation = (stationId: string) => {
 
 const machinesSearchConfig: SearchInstanceConfig = {
   instanceId: 'machines',
-  placeholder: 'OmniSearch machines: Type station ID, line:Line-1, tech:Assembly, or status:online...',
+  placeholder: 'FMFD machines: Type station ID, line:Line-1, tech:Assembly, or status:online...',
   enableAutoTagging: true,
   allowedTagKeys: ['station', 'line', 'tech', 'status', 'mfr']
 }
@@ -259,44 +259,44 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-8 animate-in fade-in duration-300">
+  <div class="space-y-6 animate-in fade-in duration-300">
     <!-- Header Area with View Mode Switchers -->
-    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-slate-900">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800">
       <div>
         <div class="flex items-center gap-3">
-          <div class="p-2 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
-            <Factory class="w-6 h-6" />
+          <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <Factory class="h-6 w-6" />
           </div>
           <div>
-            <h1 class="text-2xl font-black text-slate-100 tracking-tight uppercase">
-              Production Machines & Lines
+            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+              Production Machinery & Lines
             </h1>
-            <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
+            <p class="text-sm text-slate-400 mt-0.5">
               Stations, manufacturing cells, production lines, and engineering discipline technologies
             </p>
           </div>
         </div>
 
         <!-- Global Summary Badges -->
-        <div class="flex flex-wrap items-center gap-3 mt-4">
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+        <div class="flex flex-wrap items-center gap-2 mt-4">
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
             <Factory class="w-3.5 h-3.5 text-indigo-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Stations:</span>
-            <span class="font-mono font-black text-slate-200">{{ machines.length }}</span>
+            <span class="text-slate-400">Stations:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ machines.length }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
             <Layers class="w-3.5 h-3.5 text-blue-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Lines:</span>
-            <span class="font-mono font-black text-slate-200">{{ lines.length }}</span>
+            <span class="text-slate-400">Lines:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ lines.length }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
             <Cpu class="w-3.5 h-3.5 text-teal-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Technologies:</span>
-            <span class="font-mono font-black text-slate-200">{{ technologies.length }}</span>
+            <span class="text-slate-400">Technologies:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ technologies.length }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
             <span class="size-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+            <span class="text-emerald-400">
               Topology Live Sync Active
             </span>
           </div>
@@ -304,13 +304,14 @@ onMounted(() => {
       </div>
 
       <!-- 3 View Mode Switcher -->
-      <div class="flex flex-wrap items-center gap-3 shrink-0">
-        <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex gap-1">
+      <div class="flex flex-wrap items-center gap-2 shrink-0">
+        <div class="bg-slate-900 p-1 rounded-lg border border-slate-800 shadow-sm flex gap-1">
           <Button
             variant="ghost"
+            size="sm"
             @click="activeView = 'machines'"
-            :class="activeView === 'machines' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9 flex items-center gap-2"
+            :class="activeView === 'machines' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
           >
             <Factory class="w-3.5 h-3.5" />
             <span>Machines</span>
@@ -318,9 +319,10 @@ onMounted(() => {
 
           <Button
             variant="ghost"
+            size="sm"
             @click="activeView = 'lines'"
-            :class="activeView === 'lines' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9 flex items-center gap-2"
+            :class="activeView === 'lines' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
           >
             <Layers class="w-3.5 h-3.5" />
             <span>Lines</span>
@@ -328,9 +330,10 @@ onMounted(() => {
 
           <Button
             variant="ghost"
+            size="sm"
             @click="activeView = 'technologies'"
-            :class="activeView === 'technologies' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9 flex items-center gap-2"
+            :class="activeView === 'technologies' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
           >
             <Cpu class="w-3.5 h-3.5" />
             <span>Technologies</span>
@@ -339,8 +342,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Unified OmniSearch Bar across all 3 views -->
-    <div class="max-w-4xl mx-auto w-full">
+    <!-- Unified FMFD (Find My Field Data) Bar across all 3 views -->
+    <div class="max-w-5xl mx-auto w-full">
       <OmniSearchBar
         :config="machinesSearchConfig"
         :immediate="true"
@@ -350,7 +353,7 @@ onMounted(() => {
 
     <!-- VIEW 1: Cards of Machines -->
     <div v-if="activeView === 'machines'" class="space-y-4">
-      <div class="flex items-center justify-between text-xs font-black uppercase tracking-widest text-slate-400 px-1">
+      <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400 px-1">
         <span>Station Machinery Inventory ({{ filteredMachines.length }})</span>
       </div>
 
@@ -358,36 +361,36 @@ onMounted(() => {
         <Card
           v-for="mach in filteredMachines"
           :key="mach.id"
-          class="bg-slate-900/60 border-slate-800 hover:border-indigo-500/40 transition-all rounded-2xl shadow-md overflow-hidden group flex flex-col justify-between"
+          class="bg-slate-900 border-slate-800 hover:border-slate-700 transition-all rounded-xl shadow-sm overflow-hidden group flex flex-col justify-between"
         >
-          <CardHeader class="p-5 border-b border-slate-850">
+          <CardHeader class="p-4 sm:p-5 border-b border-slate-800">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-center gap-2.5">
-                <div class="p-2 rounded-xl bg-indigo-950/50 text-indigo-400 border border-indigo-800/40">
+                <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   <Factory class="w-4 h-4" />
                 </div>
                 <div>
-                  <CardTitle class="text-sm font-black text-slate-100 uppercase tracking-tight group-hover:text-indigo-300 transition-colors">
+                  <CardTitle class="text-sm font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors">
                     {{ mach.name }}
                   </CardTitle>
-                  <CardDescription class="text-[10px] text-slate-400 font-mono mt-0.5">
+                  <CardDescription class="text-xs text-slate-400 font-mono mt-0.5">
                     {{ mach.customIdentifier || 'CELL-ID' }}
                   </CardDescription>
                 </div>
               </div>
 
-              <div class="flex flex-col items-end gap-1.5">
-                <Badge variant="outline" class="text-[8px] uppercase tracking-wider font-mono text-emerald-400 border-emerald-500/30 bg-emerald-950/20">
+              <div class="flex flex-col items-end gap-1">
+                <Badge variant="outline" class="text-xs font-medium font-mono text-emerald-400 border-emerald-500/30 bg-emerald-950/20 px-2 py-0.5 rounded-md">
                   {{ mach.machineType || 'Assembly' }}
                 </Badge>
-                <span class="text-[8px] font-mono text-slate-500 uppercase">
-                  Line: <span class="text-slate-300 font-bold">{{ mach.groupId || 'Line 1' }}</span>
+                <span class="text-xs font-mono text-slate-400">
+                  Line: <span class="text-slate-200 font-medium">{{ mach.groupId || 'Line 1' }}</span>
                 </span>
               </div>
             </div>
           </CardHeader>
 
-          <CardContent class="p-5 space-y-4 flex-1 flex flex-col justify-between">
+          <CardContent class="p-4 sm:p-5 space-y-4 flex-1 flex flex-col justify-between">
             <div class="space-y-3">
               <div class="text-xs text-slate-300 font-medium">
                 {{ mach.displayName || 'Industrial Automation Station' }}
@@ -395,8 +398,8 @@ onMounted(() => {
 
               <!-- Controller PCs associated -->
               <div class="space-y-1.5">
-                <div class="text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1">
-                  <Monitor class="w-3 h-3 text-blue-400" />
+                <div class="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                  <Monitor class="w-3.5 h-3.5 text-blue-400" />
                   <span>Host Controller IPCs ({{ mach.controllers?.length || 0 }})</span>
                 </div>
 
@@ -404,26 +407,26 @@ onMounted(() => {
                   <div
                     v-for="c in mach.controllers"
                     :key="c.id || c.hostname"
-                    class="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-[9px] font-mono text-slate-300 flex items-center gap-2"
+                    class="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 flex items-center gap-1.5"
                   >
                     <span class="size-1.5 rounded-full bg-emerald-400" />
                     <span>{{ c.hostname }}</span>
                     <span v-if="c.ipAddress" class="text-slate-500">({{ c.ipAddress }})</span>
                   </div>
                 </div>
-                <div v-else class="text-[9px] text-slate-600 font-mono italic">
+                <div v-else class="text-xs text-slate-500 italic">
                   No dedicated IPC assigned
                 </div>
               </div>
             </div>
 
             <!-- Card Bottom Actions -->
-            <div class="pt-3 border-t border-slate-850 flex items-center justify-between gap-2">
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 @click="openTreeForStation(mach.id)"
-                class="h-8 px-3 border-slate-800 bg-slate-950 text-indigo-400 hover:text-indigo-300 hover:border-indigo-500/30 text-[9px] font-black uppercase tracking-wider rounded-xl gap-1.5 shadow-sm"
+                class="h-8 px-3 border-slate-800 bg-slate-950 text-indigo-400 hover:text-indigo-300 hover:border-indigo-500/30 text-xs font-medium rounded-lg gap-1.5 shadow-sm"
               >
                 <FolderTree class="w-3.5 h-3.5" />
                 <span>Visualise Tree</span>
@@ -431,10 +434,10 @@ onMounted(() => {
 
               <NuxtLink
                 :to="`/dashboard/inventory?query=station:${encodeURIComponent(mach.name)}`"
-                class="text-[9px] text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider flex items-center gap-1"
+                class="text-xs text-slate-400 hover:text-slate-200 font-medium flex items-center gap-1"
               >
                 <span>Parts</span>
-                <ChevronRight class="w-3 h-3" />
+                <ChevronRight class="w-3.5 h-3.5" />
               </NuxtLink>
             </div>
           </CardContent>
@@ -444,26 +447,26 @@ onMounted(() => {
 
     <!-- VIEW 2: Cards of Lines (with nested table inside) -->
     <div v-if="activeView === 'lines'" class="space-y-6">
-      <div class="flex items-center justify-between text-xs font-black uppercase tracking-widest text-slate-400 px-1">
+      <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400 px-1">
         <span>Production Lines Topology ({{ filteredLines.length }})</span>
       </div>
 
       <div v-for="line in filteredLines" :key="line.lineId || line.lineName" class="space-y-3">
-        <Card class="bg-slate-900/50 border-slate-800 rounded-3xl shadow-xl overflow-hidden">
-          <CardHeader class="p-6 border-b border-slate-850 bg-slate-900/80">
+        <Card class="bg-slate-900 border-slate-800 rounded-xl shadow-sm overflow-hidden">
+          <CardHeader class="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/90">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div class="flex items-center gap-3">
-                <div class="p-3 rounded-2xl bg-blue-600/15 text-blue-400 border border-blue-500/25">
+                <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
                   <Layers class="w-5 h-5" />
                 </div>
                 <div>
-                  <CardTitle class="text-base font-black text-slate-100 uppercase tracking-tight flex items-center gap-2.5">
+                  <CardTitle class="text-base font-semibold text-slate-100 flex items-center gap-2">
                     <span>{{ line.lineName }}</span>
-                    <Badge variant="outline" class="text-[8px] uppercase tracking-widest font-mono text-blue-400 border-blue-500/30 bg-blue-950/20">
+                    <Badge variant="outline" class="text-xs font-mono font-medium text-blue-400 border-blue-500/30 bg-blue-950/20 px-2 py-0.5 rounded-md">
                       Manufacturing Line
                     </Badge>
                   </CardTitle>
-                  <CardDescription class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                  <CardDescription class="text-xs text-slate-400 mt-0.5">
                     {{ line.machineCount }} Stations Deployed • {{ line.controllersCount || 0 }} Industrial PCs
                   </CardDescription>
                 </div>
@@ -477,7 +480,7 @@ onMounted(() => {
                   size="sm"
                   @click="requestLineStop(line.lineName)"
                   :class="lineStopRequested[line.lineName] ? 'border-rose-500 text-rose-400 bg-rose-950/30' : 'border-slate-800 text-slate-400 hover:text-rose-400'"
-                  class="h-9 px-3 text-[9px] font-black uppercase tracking-wider rounded-xl gap-1.5"
+                  class="h-8 px-3 text-xs font-medium rounded-lg gap-1.5"
                 >
                   <AlertOctagon class="w-3.5 h-3.5" />
                   <span>{{ lineStopRequested[line.lineName] ? 'Line Stop Pending' : 'Request Line Stop' }}</span>
@@ -490,61 +493,61 @@ onMounted(() => {
           <CardContent class="p-0">
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse">
-                <thead class="bg-slate-950/60 border-b border-slate-800/80">
+                <thead class="bg-slate-950/60 border-b border-slate-800">
                   <tr>
-                    <th class="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Station Identity</th>
-                    <th class="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Technology</th>
-                    <th class="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Host Controllers</th>
-                    <th class="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500 text-right">Actions</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Station Identity</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Technology</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Host Controllers</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-850">
+                <tbody class="divide-y divide-slate-800">
                   <tr
                     v-for="mach in line.machines"
                     :key="mach.id"
-                    class="hover:bg-slate-850/40 transition-colors"
+                    class="hover:bg-slate-800/40 transition-colors"
                   >
-                    <td class="px-6 py-4">
-                      <div class="flex items-center gap-3">
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2.5">
                         <div class="size-2 rounded-full bg-emerald-400" />
                         <div>
-                          <div class="text-xs font-black uppercase text-slate-200">
+                          <div class="text-xs font-semibold text-slate-200">
                             {{ mach.name }}
                           </div>
-                          <div class="text-[10px] text-slate-400 font-medium mt-0.5">
+                          <div class="text-xs text-slate-400 mt-0.5">
                             {{ mach.displayName || mach.customIdentifier }}
                           </div>
                         </div>
                       </div>
                     </td>
 
-                    <td class="px-6 py-4">
-                      <Badge variant="outline" class="text-[8px] uppercase tracking-wider font-mono text-teal-400 border-teal-500/30 bg-teal-950/20">
+                    <td class="px-4 py-3">
+                      <Badge variant="outline" class="text-xs font-mono font-medium text-teal-400 border-teal-500/30 bg-teal-950/20 px-2 py-0.5 rounded-md">
                         {{ mach.machineType || 'Assembly' }}
                       </Badge>
                     </td>
 
-                    <td class="px-6 py-4">
-                      <div class="flex flex-wrap gap-1.5">
+                    <td class="px-4 py-3">
+                      <div class="flex flex-wrap gap-1">
                         <span
                           v-for="c in mach.controllers"
                           :key="c.id || c.hostname"
-                          class="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[9px] font-mono text-slate-400"
+                          class="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-xs font-mono text-slate-400"
                         >
                           {{ c.hostname }}
                         </span>
-                        <span v-if="!mach.controllers?.length" class="text-[9px] font-mono text-slate-600 italic">
+                        <span v-if="!mach.controllers?.length" class="text-xs font-mono text-slate-500 italic">
                           None
                         </span>
                       </div>
                     </td>
 
-                    <td class="px-6 py-4 text-right">
+                    <td class="px-4 py-3 text-right">
                       <Button
                         variant="ghost"
                         size="sm"
                         @click="openTreeForStation(mach.id)"
-                        class="h-7 px-2.5 text-indigo-400 hover:text-indigo-300 text-[9px] font-black uppercase tracking-wider rounded-lg gap-1"
+                        class="h-7 px-2 text-indigo-400 hover:text-indigo-300 text-xs font-medium rounded-md gap-1"
                       >
                         <FolderTree class="w-3.5 h-3.5" />
                         <span>Tree</span>
@@ -561,7 +564,7 @@ onMounted(() => {
 
     <!-- VIEW 3: Technologies Grouping -->
     <div v-if="activeView === 'technologies'" class="space-y-6">
-      <div class="flex items-center justify-between text-xs font-black uppercase tracking-widest text-slate-400 px-1">
+      <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400 px-1">
         <span>Discipline & Technology Groupings ({{ filteredTechnologies.length }})</span>
       </div>
 
@@ -569,43 +572,43 @@ onMounted(() => {
         <Card
           v-for="tech in filteredTechnologies"
           :key="tech.technology"
-          class="bg-slate-900/60 border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col justify-between"
+          class="bg-slate-900 border-slate-800 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between"
         >
-          <CardHeader class="p-6 border-b border-slate-850 bg-slate-900/80">
+          <CardHeader class="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/90">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-3 rounded-2xl bg-teal-600/15 text-teal-400 border border-teal-500/25">
+                <div class="p-2 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20">
                   <Cpu class="w-5 h-5" />
                 </div>
                 <div>
-                  <CardTitle class="text-base font-black text-slate-100 uppercase tracking-tight">
+                  <CardTitle class="text-base font-semibold text-slate-100">
                     {{ tech.technology }}
                   </CardTitle>
-                  <CardDescription class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                  <CardDescription class="text-xs text-slate-400 mt-0.5">
                     {{ tech.machineCount }} Stations in this engineering discipline
                   </CardDescription>
                 </div>
               </div>
 
-              <Badge variant="outline" class="text-[9px] font-mono uppercase px-3 py-1 rounded-full text-teal-300 border-teal-500/30 bg-teal-950/20 font-bold">
+              <Badge variant="outline" class="text-xs font-mono px-2 py-0.5 rounded-md text-teal-300 border-teal-500/30 bg-teal-950/20 font-medium">
                 {{ tech.machineCount }} Units
               </Badge>
             </div>
           </CardHeader>
 
-          <CardContent class="p-4 space-y-2">
+          <CardContent class="p-3 sm:p-4 space-y-2">
             <div
               v-for="mach in tech.machines"
               :key="mach.id"
-              class="flex items-center justify-between p-3 rounded-2xl bg-slate-950/70 border border-slate-850 hover:border-slate-700 transition-colors"
+              class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition-colors"
             >
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2.5">
                 <div class="size-2 rounded-full bg-emerald-400" />
                 <div>
-                  <div class="text-xs font-black uppercase text-slate-200">
+                  <div class="text-xs font-semibold text-slate-200">
                     {{ mach.name }}
                   </div>
-                  <div class="text-[10px] text-slate-400 font-medium">
+                  <div class="text-xs text-slate-400">
                     {{ mach.displayName || mach.customIdentifier }} • Line: {{ mach.groupId || 'Line 1' }}
                   </div>
                 </div>
@@ -615,7 +618,7 @@ onMounted(() => {
                 variant="outline"
                 size="sm"
                 @click="openTreeForStation(mach.id)"
-                class="h-7 px-2.5 border-slate-800 bg-slate-900 text-indigo-400 hover:text-indigo-300 text-[9px] font-black uppercase tracking-wider rounded-lg gap-1 shadow-sm"
+                class="h-7 px-2.5 border-slate-800 bg-slate-900 text-indigo-400 hover:text-indigo-300 text-xs font-medium rounded-md gap-1 shadow-sm"
               >
                 <FolderTree class="w-3.5 h-3.5" />
                 <span>Tree</span>

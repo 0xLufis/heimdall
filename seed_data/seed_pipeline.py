@@ -749,6 +749,15 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE, pc_station_links=None)
         org_slug = org["slug"].replace("'", "''")
         sql.append(f"INSERT INTO auth.organization (id, name, slug, created_at) VALUES ('{org_id}', '{org_name}', '{org_slug}', NOW()) ON CONFLICT (id) DO NOTHING;")
 
+    sql.append("\n-- Seed Primary System Administrator into auth.user, auth.account, and auth.member")
+    admin_pw_hash = "4ad2888535f37c17fa6b2b7d74dc6211:bdb17beff0b6883c8f7d0ca3485b8dc4e7b17205c2f6ff4f77d4cbf41a1291181cb4880a34aac47c81e8d171980522b9579ae046e512166eebc239242a8a0900"
+    sql.append("INSERT INTO auth.user (id, name, email, email_verified, role, username, created_at, updated_at) "
+               "VALUES ('usr-admin-primary', 'System Administrator', 'admin@heimdall.dev', true, 'admin', 'admin', NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, role = EXCLUDED.role, username = EXCLUDED.username;")
+    sql.append(f"INSERT INTO auth.account (id, account_id, provider_id, user_id, password, created_at, updated_at) "
+               f"VALUES ('acc-admin-primary', 'usr-admin-primary', 'credential', 'usr-admin-primary', '{admin_pw_hash}', NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET password = EXCLUDED.password;")
+    sql.append("INSERT INTO auth.member (id, organization_id, user_id, role, created_at) VALUES ('mem-admin-platform', 'org-platform', 'usr-admin-primary', 'owner', NOW()) ON CONFLICT (id) DO NOTHING;")
+    sql.append("INSERT INTO auth.member (id, organization_id, user_id, role, created_at) VALUES ('mem-admin-controls', 'org-controls', 'usr-admin-primary', 'admin', NOW()) ON CONFLICT (id) DO NOTHING;")
+
     sql.append("\n-- Seed 60 Obviously Fake, AI-Generated Users into auth.user and auth.member")
     for uid, uname, uemail, urole, utitle, udept, uorgs in FAKE_USERS:
         u_name_esc = uname.replace("'", "''")

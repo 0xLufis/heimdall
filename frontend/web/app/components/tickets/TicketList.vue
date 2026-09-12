@@ -37,31 +37,31 @@ const sortByField = ref<string>('created_at')
 const getPriorityBadge = (priority: string) => {
   switch (priority) {
     case 'Critical':
-      return { class: 'bg-destructive/10 text-destructive border-destructive/30', label: 'CRITICAL' }
+      return { class: 'bg-rose-500/10 text-rose-400 border border-rose-500/20', label: 'CRITICAL' }
     case 'High':
-      return { class: 'bg-amber-500/10 text-amber-500 border-amber-500/30', label: 'HIGH' }
+      return { class: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', label: 'HIGH' }
     case 'Medium':
-      return { class: 'bg-primary/10 text-primary border-primary/30', label: 'MEDIUM' }
+      return { class: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20', label: 'MEDIUM' }
     case 'Low':
     default:
-      return { class: 'bg-muted text-muted-foreground border-border', label: 'LOW' }
+      return { class: 'bg-slate-800 text-slate-400 border border-slate-700', label: 'LOW' }
   }
 }
 
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'Open':
-      return { class: 'bg-blue-500/10 text-blue-400 border-blue-500/30', label: 'Open' }
+      return { class: 'bg-blue-500/10 text-blue-400 border border-blue-500/20', label: 'Open' }
     case 'In_Progress':
-      return { class: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30', label: 'In Progress' }
+      return { class: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20', label: 'In Progress' }
     case 'Pending_Parts':
-      return { class: 'bg-amber-500/10 text-amber-400 border-amber-500/30', label: 'Pending Parts' }
+      return { class: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', label: 'Pending Parts' }
     case 'Resolved':
-      return { class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', label: 'Resolved' }
+      return { class: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20', label: 'Resolved' }
     case 'Closed':
-      return { class: 'bg-slate-800 text-slate-500 border-slate-700', label: 'Closed' }
+      return { class: 'bg-slate-800 text-slate-400 border border-slate-700', label: 'Closed' }
     default:
-      return { class: 'bg-slate-800 text-slate-400 border-slate-700', label: status }
+      return { class: 'bg-slate-800 text-slate-400 border border-slate-700', label: status }
   }
 }
 
@@ -95,14 +95,14 @@ function handleFilter() {
 <template>
   <div class="space-y-4">
     <!-- Toolbar & Filters -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div class="flex items-center gap-2 flex-1 max-w-lg">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div class="flex items-center gap-2 flex-1 max-w-sm">
         <div class="relative flex-1">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
           <Input 
             v-model="searchQuery"
             placeholder="Search tickets, stations, technicians..."
-            class="pl-10 bg-slate-900 border-slate-800 rounded-xl text-xs"
+            class="pl-9 pr-3 bg-slate-950 border-slate-800 rounded-lg text-xs h-8 text-slate-200"
             @input="handleFilter"
           />
         </div>
@@ -110,7 +110,7 @@ function handleFilter() {
 
       <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
         <!-- Status Tabs -->
-        <div class="flex p-1 bg-slate-900 rounded-xl border border-slate-800 gap-1">
+        <div class="flex p-0.5 bg-slate-900 rounded-lg border border-slate-800 gap-0.5">
           <Button
             v-for="st in [
               { id: 'all', label: 'All' },
@@ -123,8 +123,8 @@ function handleFilter() {
             variant="ghost"
             size="sm"
             @click="activeStatusTab = st.id; handleFilter()"
-            :class="activeStatusTab === st.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'"
-            class="rounded-lg text-[9px] font-black uppercase px-3"
+            :class="activeStatusTab === st.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            class="rounded-md text-xs font-medium px-2.5 h-7 transition-colors"
           >
             {{ st.label }}
           </Button>
@@ -134,7 +134,7 @@ function handleFilter() {
         <select
           v-model="activePriorityFilter"
           @change="handleFilter"
-          class="bg-slate-900 border border-slate-800 text-slate-300 text-[10px] font-black uppercase rounded-xl px-3 h-8 focus:outline-none"
+          class="bg-slate-950 border border-slate-800 text-slate-300 text-xs font-medium rounded-lg px-2.5 h-8 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
           <option value="all">All Priorities</option>
           <option value="Critical">Critical</option>
@@ -146,23 +146,23 @@ function handleFilter() {
     </div>
 
     <!-- Tickets Table -->
-    <div class="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden shadow-2xl">
+    <div class="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden shadow-sm">
       <Table>
-        <TableHeader class="bg-slate-900/60">
+        <TableHeader class="bg-slate-950/60 border-b border-slate-800">
           <TableRow class="border-b border-slate-800 hover:bg-transparent">
-            <TableHead class="text-[10px] font-black uppercase tracking-widest text-slate-500 py-4 px-6">Ticket / Station</TableHead>
-            <TableHead class="text-[10px] font-black uppercase tracking-widest text-slate-500">Priority</TableHead>
-            <TableHead class="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</TableHead>
-            <TableHead class="text-[10px] font-black uppercase tracking-widest text-slate-500">Assigned Tech</TableHead>
-            <TableHead class="text-[10px] font-black uppercase tracking-widest text-slate-500">SLA Due</TableHead>
-            <TableHead class="text-[10px] font-black uppercase tracking-widest text-slate-500 text-right pr-6">Action</TableHead>
+            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">Ticket / Station</TableHead>
+            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">Priority</TableHead>
+            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">Status</TableHead>
+            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">Assigned Tech</TableHead>
+            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">SLA Due</TableHead>
+            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 text-right py-3 px-4">Action</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           <template v-if="tickets.length === 0">
             <TableRow>
-              <TableCell colspan="6" class="h-32 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">
+              <TableCell colspan="6" class="h-32 text-center text-slate-500 font-medium text-xs">
                 No maintenance tickets match the selected filters.
               </TableCell>
             </TableRow>
@@ -172,24 +172,24 @@ function handleFilter() {
             <TableRow 
               v-for="tkt in tickets" 
               :key="tkt.id"
-              class="border-b border-slate-800 hover:bg-slate-900/40 transition-colors group cursor-pointer"
+              class="border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors group cursor-pointer"
               @click="emit('selectTicket', tkt)"
             >
               <!-- Ticket & Station -->
-              <TableCell class="py-4 px-6">
+              <TableCell class="py-3 px-4">
                 <div class="flex items-start gap-3">
-                  <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-indigo-400 group-hover:border-indigo-500/40 transition-colors">
-                    <Cpu class="h-4 w-4" />
+                  <div class="p-2 rounded-lg bg-slate-800 text-indigo-400 group-hover:text-indigo-300 transition-colors">
+                    <Cpu class="size-4" />
                   </div>
                   <div>
                     <div class="flex items-center gap-2">
-                      <span class="text-xs font-mono font-black text-indigo-400">{{ tkt.ticketNumber }}</span>
-                      <span class="text-[10px] font-bold text-slate-500 uppercase">[{{ tkt.stationName }}]</span>
+                      <span class="text-xs font-mono font-medium text-indigo-400">{{ tkt.ticketNumber }}</span>
+                      <span class="text-[11px] text-slate-500 font-medium">[{{ tkt.stationName }}]</span>
                     </div>
-                    <h5 class="text-sm font-black text-slate-100 uppercase tracking-tight mt-0.5 group-hover:text-indigo-200 transition-colors">
+                    <h5 class="text-sm font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors mt-0.5">
                       {{ tkt.title }}
                     </h5>
-                    <p class="text-[10px] text-slate-400 line-clamp-1 max-w-md mt-0.5">
+                    <p class="text-xs text-slate-400 line-clamp-1 max-w-md mt-0.5">
                       {{ tkt.description }}
                     </p>
                   </div>
@@ -197,48 +197,48 @@ function handleFilter() {
               </TableCell>
 
               <!-- Priority -->
-              <TableCell>
-                <Badge variant="outline" :class="getPriorityBadge(tkt.priority).class" class="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5">
+              <TableCell class="py-3 px-4">
+                <Badge variant="outline" :class="getPriorityBadge(tkt.priority).class" class="text-xs font-medium px-2 py-0.5 rounded-md">
                   {{ getPriorityBadge(tkt.priority).label }}
                 </Badge>
               </TableCell>
 
               <!-- Status -->
-              <TableCell>
-                <Badge variant="outline" :class="getStatusBadge(tkt.status).class" class="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5">
+              <TableCell class="py-3 px-4">
+                <Badge variant="outline" :class="getStatusBadge(tkt.status).class" class="text-xs font-medium px-2 py-0.5 rounded-md">
                   {{ getStatusBadge(tkt.status).label }}
                 </Badge>
               </TableCell>
 
               <!-- Technician -->
-              <TableCell class="text-xs">
+              <TableCell class="py-3 px-4 text-xs">
                 <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 text-[10px] font-mono font-bold">
+                  <div class="w-6 h-6 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-xs font-semibold">
                     {{ tkt.assignedTechnicianName ? tkt.assignedTechnicianName.charAt(0) : '?' }}
                   </div>
-                  <span class="text-slate-300 font-bold uppercase text-[11px]">
+                  <span class="text-slate-300 font-medium text-xs">
                     {{ tkt.assignedTechnicianName || 'Unassigned' }}
                   </span>
                 </div>
               </TableCell>
 
               <!-- SLA Due -->
-              <TableCell>
-                <div class="flex items-center gap-1.5 font-mono text-xs" :class="formatSlaDue(tkt.slaDueAt, tkt.status).overdue ? 'text-rose-400 font-bold' : 'text-slate-400'">
-                  <Clock class="h-3.5 w-3.5" />
+              <TableCell class="py-3 px-4">
+                <div class="flex items-center gap-1.5 font-mono text-xs" :class="formatSlaDue(tkt.slaDueAt, tkt.status).overdue ? 'text-rose-400 font-medium' : 'text-slate-400'">
+                  <Clock class="size-3.5" />
                   <span>{{ formatSlaDue(tkt.slaDueAt, tkt.status).text }}</span>
                 </div>
               </TableCell>
 
               <!-- Actions -->
-              <TableCell class="text-right pr-6">
+              <TableCell class="text-right py-3 px-4">
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  class="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
+                  class="size-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
                   @click.stop="emit('selectTicket', tkt)"
                 >
-                  <ChevronRight class="h-4 w-4" />
+                  <ChevronRight class="size-4" />
                 </Button>
               </TableCell>
             </TableRow>

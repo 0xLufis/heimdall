@@ -1,12 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
 import InteractiveMap from '~/components/dashboard/InteractiveMap.vue'
 import InventoryTreeTable from '~/components/dashboard/InventoryTreeTable.vue'
 import UserTable from '~/components/dashboard/UserTable.vue'
 import OrgCard from '~/components/dashboard/OrgCard.vue'
 
 describe('All Pages, Components, and Table Selectors Test Suite', () => {
+  const nuxtStates = new Map<string, any>()
+
   beforeEach(() => {
+    nuxtStates.clear()
+    vi.stubGlobal('definePageMeta', vi.fn())
+    vi.stubGlobal('useState', (key: string, init?: () => any) => {
+      if (!nuxtStates.has(key)) {
+        nuxtStates.set(key, ref(init ? init() : undefined))
+      }
+      return nuxtStates.get(key)
+    })
     vi.stubGlobal('useShortcuts', () => ({ metaSymbol: 'Ctrl' }))
     vi.stubGlobal('useRouter', () => ({ push: vi.fn() }))
 
@@ -149,5 +160,56 @@ describe('All Pages, Components, and Table Selectors Test Suite', () => {
     expect(wrapper.text()).toContain('IPC-OP10-MAIN')
     expect(wrapper.text()).toContain('OP10_CAD_BLOCK_01')
     expect(wrapper.text()).toContain('+ Link DXF')
+  })
+
+  it('scrolls to selected PC in Spatial Anchors sidebar when map object is clicked', async () => {
+    vi.stubGlobal('$fetch', vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/proxy/ClientPc')) {
+        return Promise.resolve([
+          { id: 'pc-1', hostname: 'IPC-L01-MAIN', name: 'IPC-L01-MAIN', pinnedObjectHandle: 'L01-OP010' },
+          { id: 'pc-2', hostname: 'IPC-L02-MAIN', name: 'IPC-L02-MAIN', pinnedObjectHandle: 'L02-OP020' }
+        ])
+      }
+      if (url.includes('/api/proxy/Machine')) {
+        return Promise.resolve([
+          { id: 'm-1', name: 'Station 10', customIdentifier: 'L01-OP010', pinnedObjectHandle: 'L01-OP010', controllers: [{ id: 'pc-1', controllerId: 'pc-1' }] }
+        ])
+      }
+      return Promise.resolve([])
+    }))
+
+    const { default: MapPage } = await import('~/pages/dashboard/map.vue')
+    const wrapper = mount(MapPage, {
+      global: {
+        stubs: {
+          InteractiveMapCanvas: {
+            template: '<div class="map-stub"><button id="btn-click-obj" @click="$emit(\'object-clicked\', \'L01-OP010\', \'Station 10\')">Click</button></div>',
+            emits: ['object-clicked', 'object-dblclicked', 'map-clicked']
+          },
+          DashboardMapPinningDialog: true,
+          Popover: { template: '<div><slot /></div>' },
+          PopoverTrigger: { template: '<div><slot /></div>' },
+          PopoverContent: { template: '<div><slot /></div>' },
+        }
+      }
+    })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 50))
+    await wrapper.vm.$nextTick()
+
+    const scrollMock = vi.fn()
+    window.HTMLElement.prototype.scrollIntoView = scrollMock
+
+    // Trigger object-clicked on the map canvas
+    const btn = wrapper.find('#btn-click-obj')
+    expect(btn.exists()).toBe(true)
+    await btn.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // Assert that activePin and selectedAssetId matched pc-1
+    expect((wrapper.vm as any).selectedAssetId).toBe('pc-1')
+    expect((wrapper.vm as any).activePin).toBe('L01-OP010')
+    expect(scrollMock).toHaveBeenCalled()
   })
 })

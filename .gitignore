@@ -88,3 +88,10 @@ infra/windows/shared/agent/
 *.qcow2
 *.img
 
+# ==========================================
+# SQL Dumps & Generated Seed Data
+# Keep Drizzle / EF migrations, ignore generated SQL dumps
+# ==========================================
+*.sql
+!frontend/web/server/database/drizzle/*.sql
+!**/migrations/**/*.sql

@@ -302,103 +302,107 @@ onInventoryUpdate(() => {
 </script>
 
 <template>
-  <div class="space-y-8 animate-in fade-in duration-300">
+  <div class="space-y-6 animate-in fade-in duration-300">
     <!-- Header Area with KPI Badges & Controls -->
-    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-slate-900">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800">
       <div>
         <div class="flex items-center gap-3">
-          <h1 class="text-2xl font-black text-slate-100 tracking-tight uppercase">
-            Inventory & Asset Infrastructure
-          </h1>
+          <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <PackageCheck class="h-6 w-6" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+              Inventory & Asset Infrastructure
+            </h1>
+            <p class="text-sm text-slate-400 mt-0.5">
+              Hardware components, software licenses, serialized parts, and bulk consumable stock
+            </p>
+          </div>
         </div>
-        <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
-          Hardware components, software licenses, serialized parts, and bulk consumable stock
-        </p>
 
-        <!-- KPI Metric Badges -->
         <!-- KPI Metric Badges (Interactive Filters) -->
-        <div class="flex flex-wrap items-center gap-3 mt-4">
+        <div class="flex flex-wrap items-center gap-2 mt-4">
           <button 
             type="button"
             @click="classification = 'all'; tracking = 'all'"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
-            :class="classification === 'all' && tracking === 'all' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-sm ring-1 ring-indigo-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
+            :class="classification === 'all' && tracking === 'all' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-sm ring-1 ring-indigo-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
           >
             <Layers class="w-3.5 h-3.5 text-indigo-400" />
-            <span class="text-[10px] font-bold uppercase">Total:</span>
-            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalCount || items.length }}</span>
+            <span>Total:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalCount || items.length }}</span>
           </button>
 
           <button 
             type="button"
             @click="classification = (classification === 'hardware' ? 'all' : 'hardware')"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
-            :class="classification === 'hardware' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-sm ring-1 ring-emerald-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
+            :class="classification === 'hardware' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-sm ring-1 ring-emerald-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
           >
             <Cpu class="w-3.5 h-3.5 text-emerald-400" />
-            <span class="text-[10px] font-bold uppercase">Hardware:</span>
-            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalHardware }}</span>
+            <span>Hardware:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalHardware }}</span>
           </button>
 
           <button 
             type="button"
             @click="classification = (classification === 'software' ? 'all' : 'software')"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
-            :class="classification === 'software' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm ring-1 ring-blue-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
+            :class="classification === 'software' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm ring-1 ring-blue-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
           >
             <HardDrive class="w-3.5 h-3.5 text-blue-400" />
-            <span class="text-[10px] font-bold uppercase">Software:</span>
-            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalSoftware }}</span>
+            <span>Software:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalSoftware }}</span>
           </button>
 
           <button 
             type="button"
             @click="tracking = (tracking === 'serialized' ? 'all' : 'serialized')"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
-            :class="tracking === 'serialized' ? 'bg-teal-600/20 border-teal-500 text-teal-300 shadow-sm ring-1 ring-teal-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
+            :class="tracking === 'serialized' ? 'bg-teal-600/20 border-teal-500 text-teal-300 shadow-sm ring-1 ring-teal-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
           >
             <Wrench class="w-3.5 h-3.5 text-teal-400" />
-            <span class="text-[10px] font-bold uppercase">Serialized:</span>
-            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalParts }}</span>
+            <span>Serialized:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalParts }}</span>
           </button>
 
           <button 
             type="button"
             @click="tracking = (tracking === 'stock' ? 'all' : 'stock')"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
-            :class="tracking === 'stock' ? 'bg-purple-600/20 border-purple-500 text-purple-300 shadow-sm ring-1 ring-purple-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
+            :class="tracking === 'stock' ? 'bg-purple-600/20 border-purple-500 text-purple-300 shadow-sm ring-1 ring-purple-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
           >
             <Boxes class="w-3.5 h-3.5 text-purple-400" />
-            <span class="text-[10px] font-bold uppercase">Bulk Stock:</span>
-            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalStock }}</span>
+            <span>Bulk Stock:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalStock }}</span>
           </button>
 
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
             <DollarSign class="w-3.5 h-3.5 text-amber-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Valuation:</span>
-            <span class="font-mono font-black text-slate-200">{{ formatCurrency(kpis.totalGlobalCost) }} HUF</span>
+            <span class="text-slate-400">Valuation:</span>
+            <span class="font-mono font-semibold text-slate-200">{{ formatCurrency(kpis.totalGlobalCost) }} HUF</span>
           </div>
 
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
             <span class="size-2 rounded-full" :class="isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500'" />
-            <span class="text-[10px] font-bold uppercase tracking-widest" :class="isLiveConnected ? 'text-emerald-400' : 'text-emerald-500'">
-              {{ isLiveConnected ? 'Live Telemetry Sync: Connected' : 'Live Sync: Active' }}
+            <span :class="isLiveConnected ? 'text-emerald-400' : 'text-emerald-500'">
+              {{ isLiveConnected ? 'Live Telemetry Connected' : 'Live Sync Active' }}
             </span>
           </div>
         </div>
       </div>
       
       <!-- Primary View Switcher: Combinable Classification x Tracking -->
-      <div class="flex flex-wrap items-center gap-3 shrink-0">
+      <div class="flex flex-wrap items-center gap-2.5 shrink-0">
         <!-- Classification Facet -->
-        <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-1">
-          <span class="text-[9px] font-black uppercase text-slate-500 px-2 tracking-wider">Class:</span>
+        <div class="bg-slate-900 p-1 rounded-lg border border-slate-800 shadow-sm flex items-center gap-1">
+          <span class="text-xs text-slate-400 font-medium px-2">Class:</span>
           <Button 
             variant="ghost" 
             size="sm"
             @click="classification = 'all'" 
-            :class="classification === 'all' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8"
+            :class="classification === 'all' ? 'bg-indigo-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7"
           >
             All
           </Button>
@@ -406,8 +410,8 @@ onInventoryUpdate(() => {
             variant="ghost" 
             size="sm"
             @click="classification = 'hardware'" 
-            :class="classification === 'hardware' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8 flex items-center gap-1.5"
+            :class="classification === 'hardware' ? 'bg-indigo-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5"
           >
             <Cpu class="w-3 h-3" />
             Hardware
@@ -416,8 +420,8 @@ onInventoryUpdate(() => {
             variant="ghost" 
             size="sm"
             @click="classification = 'software'" 
-            :class="classification === 'software' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8 flex items-center gap-1.5"
+            :class="classification === 'software' ? 'bg-indigo-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5"
           >
             <HardDrive class="w-3 h-3" />
             Software
@@ -425,14 +429,14 @@ onInventoryUpdate(() => {
         </div>
 
         <!-- Tracking Facet -->
-        <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-1">
-          <span class="text-[9px] font-black uppercase text-slate-500 px-2 tracking-wider">Tracking:</span>
+        <div class="bg-slate-900 p-1 rounded-lg border border-slate-800 shadow-sm flex items-center gap-1">
+          <span class="text-xs text-slate-400 font-medium px-2">Tracking:</span>
           <Button 
             variant="ghost" 
             size="sm"
             @click="tracking = 'all'" 
-            :class="tracking === 'all' ? 'bg-purple-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8"
+            :class="tracking === 'all' ? 'bg-purple-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7"
           >
             All
           </Button>
@@ -440,8 +444,8 @@ onInventoryUpdate(() => {
             variant="ghost" 
             size="sm"
             @click="tracking = 'serialized'" 
-            :class="tracking === 'serialized' ? 'bg-purple-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8 flex items-center gap-1.5"
+            :class="tracking === 'serialized' ? 'bg-purple-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5"
           >
             <Wrench class="w-3 h-3" />
             Serialized
@@ -450,8 +454,8 @@ onInventoryUpdate(() => {
             variant="ghost" 
             size="sm"
             @click="tracking = 'stock'" 
-            :class="tracking === 'stock' ? 'bg-purple-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8 flex items-center gap-1.5"
+            :class="tracking === 'stock' ? 'bg-purple-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5"
           >
             <Boxes class="w-3 h-3" />
             Bulk Stock
@@ -461,32 +465,33 @@ onInventoryUpdate(() => {
         <!-- Visualise Component Tree Modal Trigger -->
         <Button 
           variant="outline" 
+          size="sm"
           @click="showTreeModal = true"
-          class="border-slate-800 bg-slate-900 hover:bg-slate-850 text-indigo-300 hover:text-indigo-200 rounded-xl text-[10px] font-black uppercase tracking-widest h-11 px-4 gap-2 shadow-sm"
+          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-indigo-300 hover:text-indigo-200 rounded-lg text-xs font-medium h-8 px-3 gap-1.5 shadow-sm"
         >
-          <FolderTree class="h-4 w-4 text-indigo-400" />
+          <FolderTree class="h-3.5 w-3.5 text-indigo-400" />
           <span>Visualise Tree</span>
         </Button>
 
         <!-- Column Configuration Popover -->
         <Popover>
           <PopoverTrigger as-child>
-            <Button variant="outline" class="border-slate-800 bg-slate-900 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest h-11 px-4">
-              <SlidersHorizontal class="h-4 w-4 mr-2 text-slate-400" />
+            <Button variant="outline" size="sm" class="border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 rounded-lg text-xs font-medium h-8 px-3">
+              <SlidersHorizontal class="h-3.5 w-3.5 mr-1.5 text-slate-400" />
               Columns
             </Button>
           </PopoverTrigger>
-          <PopoverContent class="w-80 p-0 bg-slate-950 border-slate-800 shadow-2xl overflow-hidden" align="end">
-            <div class="p-4 border-b border-slate-900 bg-slate-900/50">
-              <h4 class="text-[10px] font-black text-slate-200 uppercase tracking-widest">Display Configuration</h4>
-              <p class="text-[9px] text-slate-500 uppercase mt-1">Toggle visible data fields</p>
+          <PopoverContent class="w-80 p-0 bg-slate-950 border-slate-800 shadow-xl overflow-hidden" align="end">
+            <div class="p-3 border-b border-slate-800 bg-slate-900/50">
+              <h4 class="text-xs font-semibold text-slate-200">Display Configuration</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Toggle visible data fields</p>
             </div>
-            <div class="p-2 max-h-[400px] overflow-y-auto">
+            <div class="p-2 max-h-[360px] overflow-y-auto">
               <div 
                 v-for="(visible, key) in columns" 
                 :key="key" 
                 @click="columns[key] = !columns[key]"
-                class="flex items-start gap-3 p-2.5 rounded-lg cursor-pointer hover:bg-slate-900 transition-colors border border-transparent hover:border-slate-800 mb-1"
+                class="flex items-start gap-3 p-2 rounded-lg cursor-pointer hover:bg-slate-900 transition-colors border border-transparent hover:border-slate-800 mb-1"
                 :class="{'bg-indigo-500/5 border-indigo-500/10': columns[key]}"
               >
                 <div class="mt-0.5">
@@ -498,15 +503,15 @@ onInventoryUpdate(() => {
                   </div>
                 </div>
                 <div class="flex flex-col">
-                  <span class="text-xs font-black text-slate-200 uppercase tracking-tight">{{ key }}</span>
-                  <span class="text-[9px] text-slate-500 leading-relaxed mt-0.5">
+                  <span class="text-xs font-semibold text-slate-200 capitalize">{{ key }}</span>
+                  <span class="text-xs text-slate-400 leading-relaxed mt-0.5">
                     {{ getColumnDescription(key) }}
                   </span>
                 </div>
               </div>
             </div>
-            <div class="p-3 bg-slate-900/30 border-t border-slate-900 flex justify-end">
-              <Button variant="ghost" size="sm" @click="resetColumns" class="h-7 text-[9px] font-black uppercase text-slate-500 hover:text-slate-300">
+            <div class="p-2.5 bg-slate-900/30 border-t border-slate-800 flex justify-end">
+              <Button variant="ghost" size="sm" @click="resetColumns" class="h-7 text-xs font-medium text-slate-400 hover:text-slate-200">
                 Reset Defaults
               </Button>
             </div>
@@ -515,11 +520,12 @@ onInventoryUpdate(() => {
 
         <!-- Provision Asset Trigger -->
         <Button 
+          size="sm"
           @click="showAddModal = true" 
-          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 h-11 shadow-lg shadow-indigo-600/20 transition-all group border-0"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3.5 h-8 shadow-sm transition-all group border-0"
         >
-          <PlusIcon class="h-4 w-4 mr-2 group-hover:rotate-90 transition-transform" />
-          <span class="text-xs font-black uppercase tracking-widest">Provision Asset</span>
+          <PlusIcon class="h-3.5 w-3.5 mr-1.5 group-hover:rotate-90 transition-transform" />
+          <span class="text-xs font-medium">Provision Asset</span>
         </Button>
       </div>
     </div>
@@ -545,8 +551,8 @@ onInventoryUpdate(() => {
     />
 
     <!-- Pagination Controls Bar -->
-    <div v-if="items.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs">
-      <div class="flex items-center gap-3 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+    <div v-if="items.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+      <div class="flex items-center gap-2 text-slate-400 font-medium text-xs">
         <span>
           Showing 
           <span class="font-mono text-slate-200">{{ Math.min((currentPage - 1) * effectivePageSize + 1, items.length) }}</span> 
@@ -561,8 +567,8 @@ onInventoryUpdate(() => {
       <div class="flex flex-wrap items-center gap-4">
         <!-- Page Size Selector -->
         <div class="flex items-center gap-2">
-          <span class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Per Page:</span>
-          <div class="flex p-0.5 bg-slate-950 rounded-xl border border-slate-800 gap-1">
+          <span class="text-xs text-slate-400 font-medium">Per Page:</span>
+          <div class="flex p-0.5 bg-slate-950 rounded-lg border border-slate-800 gap-1">
             <Button 
               v-for="size in [5, 10, 50, 100, 1000]" 
               :key="size"
@@ -570,7 +576,7 @@ onInventoryUpdate(() => {
               size="sm"
               @click="pageSize = size"
               :class="pageSize === size ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-              class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase font-mono"
+              class="h-7 px-2 rounded-md text-xs font-medium font-mono"
             >
               {{ size }}
             </Button>
@@ -579,7 +585,7 @@ onInventoryUpdate(() => {
               size="sm"
               @click="pageSize = 'custom'"
               :class="pageSize === 'custom' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-              class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase"
+              class="h-7 px-2 rounded-md text-xs font-medium"
             >
               Custom
             </Button>
@@ -592,7 +598,7 @@ onInventoryUpdate(() => {
               min="1"
               max="10000"
               placeholder="Count"
-              class="w-20 h-7 px-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+              class="w-20 h-7 px-2 bg-slate-950 border border-slate-800 rounded-md text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
             />
           </div>
         </div>
@@ -604,7 +610,7 @@ onInventoryUpdate(() => {
             size="sm" 
             :disabled="currentPage === 1" 
             @click="setPage(1)"
-            class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-xs font-medium disabled:opacity-30 rounded-md"
           >
             First
           </Button>
@@ -613,12 +619,12 @@ onInventoryUpdate(() => {
             size="sm" 
             :disabled="currentPage === 1" 
             @click="setPage(currentPage - 1)"
-            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-xs font-medium disabled:opacity-30 rounded-md"
           >
             Prev
           </Button>
 
-          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 font-mono">
+          <span class="text-xs font-medium text-slate-400 px-2 font-mono">
             {{ currentPage }} / {{ totalPages }}
           </span>
 
@@ -627,7 +633,7 @@ onInventoryUpdate(() => {
             size="sm" 
             :disabled="currentPage >= totalPages" 
             @click="setPage(currentPage + 1)"
-            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-xs font-medium disabled:opacity-30 rounded-md"
           >
             Next
           </Button>
@@ -636,7 +642,7 @@ onInventoryUpdate(() => {
             size="sm" 
             :disabled="currentPage >= totalPages" 
             @click="setPage(totalPages)"
-            class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-xs font-medium disabled:opacity-30 rounded-md"
           >
             Last
           </Button>
