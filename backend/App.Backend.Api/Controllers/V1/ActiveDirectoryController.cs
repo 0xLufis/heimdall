@@ -10,7 +10,7 @@ namespace App.Backend.Api.Controllers.V1;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Policy = "SystemAdministration")]
+[Authorize(Policy = "ItAdministration")]
 public class ActiveDirectoryController : ControllerBase
 {
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
@@ -31,9 +31,10 @@ public class ActiveDirectoryController : ControllerBase
             .Select(p => p.Hostname!.ToLower())
             .ToListAsync();
 
+        var governances = await db.AdOuGovernances.ToListAsync();
         var ous = GetFactoryActiveDirectoryOUs();
 
-        // Mark existing status on candidate hosts
+        // Mark existing status on candidate hosts and attach IT governance
         foreach (var ou in ous)
         {
             foreach (var h in ou.CandidateHosts)
@@ -41,6 +42,21 @@ public class ActiveDirectoryController : ControllerBase
                 h.AlreadyImported = existingHostnames.Contains(h.Hostname.ToLower());
             }
             ou.HostCount = ou.CandidateHosts.Count;
+
+            var gov = governances.FirstOrDefault(g => g.OuPath.Equals(ou.OuPath, StringComparison.OrdinalIgnoreCase));
+            if (gov != null)
+            {
+                ou.AccessLevel = gov.AccessLevel;
+                ou.IsApproved = gov.IsApproved;
+                ou.ApprovedBy = gov.ApprovedBy;
+                ou.ApprovedAt = gov.ApprovedAt;
+                ou.ApprovalNotes = gov.Notes;
+            }
+            else
+            {
+                ou.AccessLevel = "unapproved";
+                ou.IsApproved = false;
+            }
         }
 
         return Ok(ous);
@@ -118,6 +134,58 @@ public class ActiveDirectoryController : ControllerBase
         });
     }
 
+    [HttpPost("ous/approve")]
+    public async Task<IActionResult> ApproveOrganizationalUnit([FromBody] AdOuApprovalRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.OuPath))
+        {
+            return BadRequest(new { Message = "OU path must be specified." });
+        }
+
+        await using var db = await _dbContextFactory.CreateDbContextAsync();
+        var normalizedPath = request.OuPath.Trim();
+        var gov = await db.AdOuGovernances
+            .FirstOrDefaultAsync(g => g.OuPath.ToLower() == normalizedPath.ToLower());
+
+        var isApproved = !string.Equals(request.AccessLevel, "unapproved", StringComparison.OrdinalIgnoreCase);
+        var actorName = ControllerContext?.HttpContext?.User?.Identity?.Name ?? "it_admin";
+
+        if (gov == null)
+        {
+            gov = new AdOuGovernance
+            {
+                Id = Guid.NewGuid(),
+                OuPath = normalizedPath,
+                AccessLevel = request.AccessLevel,
+                IsApproved = isApproved,
+                ApprovedBy = actorName,
+                ApprovedAt = DateTimeOffset.UtcNow,
+                Notes = request.Notes,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.AdOuGovernances.Add(gov);
+        }
+        else
+        {
+            gov.AccessLevel = request.AccessLevel;
+            gov.IsApproved = isApproved;
+            gov.ApprovedBy = actorName;
+            gov.ApprovedAt = DateTimeOffset.UtcNow;
+            gov.Notes = request.Notes;
+            gov.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync();
+        _logger.LogInformation("OU governance updated for '{OuPath}': AccessLevel={AccessLevel}, Approved={Approved}", gov.OuPath, gov.AccessLevel, gov.IsApproved);
+
+        return Ok(new
+        {
+            Message = $"Organizational Unit '{gov.OuPath}' governance updated.",
+            Governance = gov
+        });
+    }
+
     [HttpPost("import-hosts")]
     public async Task<IActionResult> ImportHosts([FromBody] AdHostImportRequest request)
     {
@@ -128,6 +196,27 @@ public class ActiveDirectoryController : ControllerBase
 
         await using var db = await _dbContextFactory.CreateDbContextAsync();
         var ouRules = await db.OuCertificateRules.Where(r => r.AutoEnroll).ToListAsync();
+        var governances = await db.AdOuGovernances.ToListAsync();
+
+        // Enforce IT Admin Read/Write OU Approval check
+        var targetOuPaths = request.Hosts
+            .Select(h => h.AdOuPath)
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var ouPath in targetOuPaths)
+        {
+            var gov = governances.FirstOrDefault(g => g.OuPath.Equals(ouPath, StringComparison.OrdinalIgnoreCase));
+            if (gov == null || !gov.IsApproved || !string.Equals(gov.AccessLevel, "read_write", StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    Message = $"Active Directory Organizational Unit '{ouPath}' is not approved for Read/Write in Heimdall. Approval by an IT Administrator is required.",
+                    OuPath = ouPath
+                });
+            }
+        }
 
         int importedCount = 0;
         int updatedCount = 0;
@@ -418,6 +507,20 @@ public class AdOrganizationalUnit
     public string MachineType { get; set; } = string.Empty;
     public int HostCount { get; set; }
     public List<AdCandidateHost> CandidateHosts { get; set; } = new();
+
+    // IT Admin Governance & Approvals
+    public string AccessLevel { get; set; } = "unapproved"; // "read_write", "read_only", "unapproved"
+    public bool IsApproved { get; set; } = false;
+    public string? ApprovedBy { get; set; }
+    public DateTimeOffset? ApprovedAt { get; set; }
+    public string? ApprovalNotes { get; set; }
+}
+
+public class AdOuApprovalRequest
+{
+    public string OuPath { get; set; } = string.Empty;
+    public string AccessLevel { get; set; } = "read_write"; // "read_write", "read_only", "unapproved"
+    public string? Notes { get; set; }
 }
 
 public class AdCandidateHost

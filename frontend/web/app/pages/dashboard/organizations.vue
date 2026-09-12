@@ -35,12 +35,13 @@
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <DashboardOrgCard 
-          v-for="org in orgs" 
-          :key="org.id" 
-          :org="org" 
+        <DashboardOrgCard
+          v-for="org in orgs"
+          :key="org.id"
+          :org="org"
           @manage-members="handleManageMembers"
           @edit="handleEditOrg"
+          @delete="handleDeleteOrg"
         />
     </div>
 
@@ -99,25 +100,66 @@
                     <div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                     <span class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Retrieving Roster...</span>
                 </div>
-                <div v-else class="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                    <div v-for="member in members" :key="member.id" class="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-2xl group hover:border-indigo-500/30 transition-all">
+                <div v-else class="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div v-if="members.length === 0" class="text-center py-8 text-slate-600 text-[10px] font-black uppercase tracking-widest">
+                        No operatives assigned to this unit.
+                    </div>
+                    <div
+                      v-for="mem in members"
+                      :key="mem.id"
+                      class="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-2xl group hover:border-indigo-500/30 transition-all"
+                    >
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xs font-black text-slate-400 uppercase">
-                                {{ member.user.name.charAt(0) }}
+                                {{ mem.user.name.charAt(0) }}
                             </div>
                             <div>
-                                <p class="text-sm font-black text-slate-200 uppercase tracking-tight">{{ member.user.name }}</p>
-                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{{ member.role }}</p>
+                                <p class="text-sm font-black text-slate-200 uppercase tracking-tight">{{ mem.user.name }}</p>
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{{ mem.role }}</p>
                             </div>
                         </div>
-                        <Button variant="ghost" size="icon" class="h-8 w-8 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
-                            <Trash2Icon class="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="h-8 w-8 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                          :disabled="removingMemberId === mem.id"
+                          @click="handleRemoveMember(mem)"
+                        >
+                            <Trash2Icon v-if="removingMemberId !== mem.id" class="h-4 w-4" />
+                            <div v-else class="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
                         </Button>
                     </div>
                 </div>
 
-                <div class="mt-8 pt-6 border-t border-slate-800 flex justify-between items-center">
-                    <p class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Authorization required for modification</p>
+                <!-- Invite Member Form -->
+                <div class="mt-6 pt-6 border-t border-slate-800 space-y-3">
+                    <p class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Invite Operative by Email</p>
+                    <div class="flex gap-3">
+                        <Input
+                          v-model="inviteEmail"
+                          type="email"
+                          placeholder="operative@domain.com"
+                          class="flex-1 rounded-xl h-10 border-slate-700 bg-slate-950 text-slate-200 text-xs"
+                        />
+                        <select
+                          v-model="inviteRole"
+                          class="bg-slate-950 border border-slate-700 rounded-xl px-3 text-xs text-slate-300 h-10 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                            <option value="owner">Owner</option>
+                        </select>
+                        <Button
+                          @click="handleInviteMember"
+                          :disabled="inviting || !inviteEmail"
+                          class="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                        >
+                            {{ inviting ? '...' : 'Invite' }}
+                        </Button>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-800 flex justify-end">
                     <Button variant="outline" @click="showMembersModal = false" class="rounded-xl border-slate-800 text-[10px] font-black uppercase tracking-widest h-10">
                         Close
                     </Button>
@@ -152,6 +194,14 @@ const editingOrg = ref<any>(null)
 const newOrgName = ref('')
 const newOrgSlug = ref('')
 
+// Invite state
+const inviteEmail = ref('')
+const inviteRole = ref<'member' | 'admin' | 'owner'>('member')
+const inviting = ref(false)
+
+// Remove state
+const removingMemberId = ref<string | null>(null)
+
 async function fetchOrgs() {
     loading.value = true
     try {
@@ -182,13 +232,13 @@ async function handleSubmitOrg() {
                     name: newOrgName.value
                 }
             })
-            if (error) alert(error.message)
+            if (error) { alert(error.message); return }
         } else {
             const { error } = await authClient.organization.create({
                 name: newOrgName.value,
                 slug: newOrgSlug.value
             })
-            if (error) alert(error.message)
+            if (error) { alert(error.message); return }
         }
         
         showCreateModal.value = false
@@ -203,22 +253,75 @@ async function handleSubmitOrg() {
     }
 }
 
+async function handleDeleteOrg(org: any) {
+    if (!confirm(`Permanently delete organization "${org.name}"? This cannot be undone.`)) return
+    try {
+        const { error } = await authClient.organization.delete({ organizationId: org.id })
+        if (error) { alert(error.message); return }
+        await fetchOrgs()
+    } catch (e) {
+        alert("Delete failed")
+    }
+}
+
 async function handleManageMembers(org: any) {
     selectedOrg.value = org
     showMembersModal.value = true
+    inviteEmail.value = ''
+    inviteRole.value = 'member'
     loadingMembers.value = true
     try {
         const res = await $fetch<{ success: boolean; members: any[] }>(`/api/organizations/${org.id}/members`)
         if (res && res.members) {
             members.value = res.members
-        } else {
-            const { data } = await (authClient.organization as any).getMembers?.({ query: { organizationId: org.id } }) || {}
-            if (data) members.value = data
         }
     } catch (e) {
         console.error('Error fetching org members:', e)
     } finally {
         loadingMembers.value = false
+    }
+}
+
+async function handleInviteMember() {
+    if (!selectedOrg.value || !inviteEmail.value) return
+    inviting.value = true
+    try {
+        const { error } = await authClient.organization.inviteMember({
+            organizationId: selectedOrg.value.id,
+            email: inviteEmail.value,
+            role: inviteRole.value
+        })
+        if (error) { alert(error.message); return }
+        inviteEmail.value = ''
+        // Refresh member list
+        const res = await $fetch<{ success: boolean; members: any[] }>(`/api/organizations/${selectedOrg.value.id}/members`)
+        if (res?.members) members.value = res.members
+        // Refresh org list for updated member count
+        await fetchOrgs()
+    } catch (e) {
+        alert('Invite failed')
+    } finally {
+        inviting.value = false
+    }
+}
+
+async function handleRemoveMember(mem: any) {
+    if (!selectedOrg.value) return
+    if (!confirm(`Remove ${mem.user.name} from ${selectedOrg.value.name}?`)) return
+    removingMemberId.value = mem.id
+    try {
+        const { error } = await (authClient.organization as any).removeMember({
+            organizationId: selectedOrg.value.id,
+            memberIdOrEmail: mem.user.email
+        })
+        if (error) { alert(error.message); return }
+        members.value = members.value.filter(m => m.id !== mem.id)
+        // Refresh org list for updated member count
+        await fetchOrgs()
+    } catch (e) {
+        alert('Remove failed')
+    } finally {
+        removingMemberId.value = null
     }
 }
 

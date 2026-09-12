@@ -9,6 +9,7 @@ import {
   resolvePattern,
   previewAdImport,
   commitImportedHosts,
+  setOuGovernance,
 } from '../../../frontend/web/server/utils/activeDirectoryStore'
 import {
   getRootCertificate,
@@ -146,8 +147,40 @@ describe('Active Directory VLAN Host Discovery & Templating', () => {
     expect(first.ouTags.purpose).toContain('Robotic')
     expect(first.ouTags.vlan).toBe('VLAN-10')
 
+    // IT Admin approves OU for Read/Write
+    setOuGovernance('OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp', 'read_write', 'it_admin')
+
     const commitRes = commitImportedHosts(preview.preview)
     expect(commitRes.totalProcessed).toBe(preview.preview.length)
+  })
+
+  it('should enforce IT Admin Read/Write OU approval before committing hosts', () => {
+    const unapprovedOu = 'OU=Unapproved-Zone,OU=VLAN99,DC=factory,DC=corp'
+    const mockHost = {
+      hostname: 'CPC-UNAPPROVED-01',
+      name: 'Unapproved Host',
+      macAddress: 'AA:BB:CC:DD:EE:99',
+      ipAddress: '10.99.0.10',
+      machineIdentifier: 'HW-UNAPPROVED-01',
+      osVersion: 'Windows 11',
+      vlanId: 99,
+      vlanName: 'VLAN 99 - Unapproved',
+      subnet: '10.99.0.0/24',
+      adOuPath: unapprovedOu,
+      ouTags: {}
+    }
+
+    // 1. Unapproved OU must throw 403
+    expect(() => commitImportedHosts([mockHost])).toThrow(/not approved for Read\/Write/)
+
+    // 2. Read-Only approved OU must also throw 403
+    setOuGovernance(unapprovedOu, 'read_only', 'it_admin')
+    expect(() => commitImportedHosts([mockHost])).toThrow(/not approved for Read\/Write/)
+
+    // 3. Read-Write approved OU must succeed
+    setOuGovernance(unapprovedOu, 'read_write', 'it_admin')
+    const res = commitImportedHosts([mockHost])
+    expect(res.totalProcessed).toBe(1)
   })
 
   it('should support dynamic key and value templating in tagRules', () => {

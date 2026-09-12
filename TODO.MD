@@ -98,7 +98,55 @@ The following subagents are defined for specialized execution of upcoming roadma
 - [] **Fix the org tab**: Make sure the org tag actually uses the OU based org structure if any exists
 
 
-##Decouple from Current AD specific feature
-- [] **Make user mgmt an interfaced function for use with non AD deployments**
-- [] **Look into alternative computer mgmt systems**
-- [] **Look into how much the day to day operation relies on AD in case of downtimes or migration away from AD**
+## Decouple from Current AD Specific Feature
+- [ ] **Make user mgmt an interfaced function for use with non AD deployments**
+- [ ] **Look into alternative computer mgmt systems**
+- [ ] **Look into how much the day to day operation relies on AD in case of downtimes or migration away from AD**
+
+---
+
+## Milestone 8: Backend Stability, Redis Diffing & Hardware Polling Reduction
+
+> Halted investigation goals — carry forward for implementation.
+
+### Crash & Scaling
+- [ ] **STAB-001**: Investigate OOM/crash root cause — confirm EF Core 5-level Include chain with Cartesian explosion is fully mitigated after `AsNoTracking()` + 2-level Include cap applied to `AssetRepository.cs`.
+- [ ] **STAB-002**: Profile Redis serialization under load — ensure no cyclic object graphs reach `CacheService.SetAsync`. Add a pre-serialization cycle-break step or a custom Newtonsoft `ReferenceLoopHandling.Ignore` resolver.
+- [ ] **STAB-003**: Add Redis diffing — before writing to Redis, compare the new payload hash (SHA-256 of serialized value) against a stored hash key. Skip the write if unchanged. Prevents redundant full-object overwrites under high-frequency polling scenarios.
+
+### Hardware Component Polling
+- [ ] **POLL-001**: Reduce hardware component telemetry polling interval from 2 seconds to a configurable minimum of 10–30 seconds for stable components (CPU clock, memory slots, disk specs). Keep high-frequency (2 s) only for dynamic metrics (CPU load, disk I/O, network throughput).
+- [ ] **POLL-002**: Gate polling interval via `SystemSetting` master config entry so it can be tuned at runtime without a deploy.
+
+---
+
+## Milestone 9: Organizations Tab & Multi-Tenant Member Management
+
+> Halted plan goals — carry forward for implementation.
+
+- [x] **ORG-001**: `organizations.get.ts` — include real `memberCount` via LEFT JOIN + GROUP BY so OrgCard can display accurate member counts instead of hardcoded "A B C" placeholders.
+- [x] **ORG-002**: `OrgCard.vue` — replace hardcoded avatar letters with a real member count badge; add delete button (emits `delete` event to parent page).
+- [x] **ORG-003**: `organizations.vue` — wire up `handleDeleteOrg` using `authClient.organization.delete`.
+- [x] **ORG-004**: `organizations.vue` — add invite-member form (email + role select) in the members modal; wire up `handleInviteMember` using `authClient.organization.inviteMember`.
+- [x] **ORG-005**: `organizations.vue` — wire up the Trash2Icon click on each member row; implement `handleRemoveMember` using `authClient.organization.removeMember`.
+
+---
+
+## Milestone 10: Auth Provider Modernization
+
+> Research / integration task.
+
+- [x] **AUTH-001**: Evaluate [Better Auth Studio self-hosting](https://www.better-auth.studio/self-hosting) for deployment as an integrated auth management UI. Assess feature coverage vs. current custom admin panels, Docker deployment model, and compatibility with existing `better-auth` server instance in `frontend/web/server/utils/auth.ts`.
+  - **Status**: Completed. Evaluated feature matrix and deployment architectures; implemented embedded Nitro route at `/admin/studio` with Drizzle event ingestion (`auth.auth_events`), role-gated studio session security, navigation links in sidebar and users dashboard, and automated test coverage.
+
+---
+
+## Milestone 11: Enterprise Organization Model, Inventory Segmentation & Machine Hierarchy
+- [x] **ORG-GOV-001**: Expand system administrative roles to `system_admin`, `heimdall_admin`, `it_admin`, and `engineering_admin` (segregating engineering admin from line management) with dynamic claims transformation and pseudo-IT admin role inheritance.
+- [x] **USER-CARD-001**: Implement user profile card and user account settings page (`/dashboard/settings`) with title, department, presence, and MFA policy configuration.
+- [x] **INV-SEG-001**: Segment inventory model into Serialized Parts (`isStockItem = false`, `InMachine`, `InStorage`, `UnderRepair`) and Bulk Stock Items (`isStockItem = true`, `stockQuantity`, `minStockThreshold`).
+- [x] **TREE-MODAL-001**: Replace monolithic hierarchy page with on-demand Station Component Tree visualization modal (`StationComponentTreeModal`).
+- [x] **MACHINES-001**: Build Production Machines & Lines page (`/dashboard/machines`) with 3 views: Cards of Machines, Cards of Lines, and Technologies (Assembly, Test, SMT, Welding, Fastening, Dispensing, Robotics).
+- [x] **OMNI-002**: Upgrade OmniSearch 2.0 with `nvim-coc` style floating auto-tag completion dropdown (`@`, `#`, `!`) and fuzzy ranking.
+- [x] **DATA-DOC-001**: Align sample seed data pipeline (`seed_pipeline.py`, `inventory_seed.csv`, `incremental_seed.sql`, `tree.get.ts`, `enterprise_plant_dataset.json`) and update data model documentation in `SYSTEM_ARCHITECTURE.md`, `API_REFERENCE.md`, and `USER_GUIDE.md`.
+

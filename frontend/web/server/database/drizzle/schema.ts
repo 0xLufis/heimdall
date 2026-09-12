@@ -178,3 +178,32 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+/**
+ * Audit events captured by Better Auth Studio.
+ */
+export const authEvents = hbSchema.table(
+  "auth_events",
+  {
+    id: text("id").primaryKey(),
+    type: text("type").notNull(),
+    timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
+    status: text("status").default("success").notNull(),
+    userId: text("user_id"),
+    sessionId: text("session_id"),
+    organizationId: text("organization_id"),
+    metadata: text("metadata"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    source: text("source").default("app"),
+    displayMessage: text("display_message"),
+    displaySeverity: text("display_severity"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_auth_events_user_id").on(table.userId),
+    index("idx_auth_events_type").on(table.type),
+    index("idx_auth_events_timestamp").on(table.timestamp),
+  ]
+);
+

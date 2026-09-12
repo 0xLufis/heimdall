@@ -101,6 +101,28 @@ public class InventoryController : ControllerBase
         return Ok(results);
     }
 
+    [HttpGet("parts")]
+    public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetParts()
+    {
+        var parts = await _assetRepository.GetPartsAsync();
+        return Ok(parts);
+    }
+
+    [HttpGet("stock")]
+    public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetStock()
+    {
+        var stock = await _assetRepository.GetStockAsync();
+        return Ok(stock);
+    }
+
+    [HttpGet("station-tree/{id}")]
+    public async Task<IActionResult> GetStationTree(Guid id)
+    {
+        var tree = await _assetRepository.GetStationComponentTreeAsync(id);
+        if (tree == null) return NotFound();
+        return Ok(tree);
+    }
+
     [HttpPost]
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<ActionResult<BaseInventoryItem>> CreateItem([FromBody] JsonElement rawItem)

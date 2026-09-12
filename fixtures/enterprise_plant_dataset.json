@@ -107,6 +107,66 @@
       "autoCreateOrg": true,
       "isEnabled": true,
       "memberUserIds": ["usr-auditor-01"]
+    },
+    {
+      "id": "sg-7",
+      "groupIdentifier": "4f5e6d7c-8b9a-0e1f-2a3b-4c5d6e7f8a9b",
+      "displayName": "Plant Engineering Directorate",
+      "identityProvider": "EntraID",
+      "mappedRole": "plant_director",
+      "mappedOrganizationName": "Factory Operations",
+      "mappedOrgRole": "owner",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-director-01"]
+    },
+    {
+      "id": "sg-8",
+      "groupIdentifier": "CN=Plant-Engineering-Managers,OU=Groups,DC=factory,DC=corp",
+      "displayName": "Plant Engineering Managers",
+      "identityProvider": "ActiveDirectory",
+      "mappedRole": "plant_engineering_manager",
+      "mappedOrganizationName": "Factory Operations",
+      "mappedOrgRole": "admin",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-engmgr-01", "usr-srmgr-01"]
+    },
+    {
+      "id": "sg-9",
+      "groupIdentifier": "7c4d3e2b-1a9f-4e8c-8b5a-0d9f8e7a6b5c",
+      "displayName": "Factory IT Site Admins",
+      "identityProvider": "EntraID",
+      "mappedRole": "it_site_admin",
+      "mappedOrganizationName": "Factory Operations",
+      "mappedOrgRole": "admin",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-itadmin-01"]
+    },
+    {
+      "id": "sg-10",
+      "groupIdentifier": "CN=Line-Operative-Planners,OU=Groups,DC=factory,DC=corp",
+      "displayName": "Production Line Operative Planners",
+      "identityProvider": "ActiveDirectory",
+      "mappedRole": "operative_planner",
+      "mappedOrganizationName": "Line 06 – Battery Module Line",
+      "mappedOrgRole": "admin",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-planner-01"]
+    },
+    {
+      "id": "sg-11",
+      "groupIdentifier": "CN=Engineering-Group-Leaders,OU=Groups,DC=factory,DC=corp",
+      "displayName": "Engineering Group Leaders",
+      "identityProvider": "ActiveDirectory",
+      "mappedRole": "group_leader",
+      "mappedOrganizationName": "Line 06 – Battery Module Line",
+      "mappedOrgRole": "admin",
+      "autoCreateOrg": true,
+      "isEnabled": true,
+      "memberUserIds": ["usr-sally-01", "usr-alex-01"]
     }
   ],
   "users": [
@@ -245,6 +305,81 @@
         "isOutOfOffice": false
       },
       "mfaPolicy": "monthly"
+    },
+    {
+      "id": "usr-director-01",
+      "name": "Dr. Arthur Pendelton",
+      "email": "arthur.pendelton@factory.corp",
+      "username": "apendelton",
+      "primaryRole": "plant_director",
+      "jobTitle": "Plant Director – Engineering & Operations",
+      "department": "Plant Directorate",
+      "securityGroupIds": ["4f5e6d7c-8b9a-0e1f-2a3b-4c5d6e7f8a9b"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "always"
+    },
+    {
+      "id": "usr-engmgr-01",
+      "name": "Samantha Wright",
+      "email": "samantha.wright@factory.corp",
+      "username": "swright",
+      "primaryRole": "plant_engineering_manager",
+      "jobTitle": "Plant Engineering Manager",
+      "department": "Engineering Management",
+      "securityGroupIds": ["CN=Plant-Engineering-Managers,OU=Groups,DC=factory,DC=corp"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "weekly"
+    },
+    {
+      "id": "usr-srmgr-01",
+      "name": "Viktor Brandt",
+      "email": "viktor.brandt@factory.corp",
+      "username": "vbrandt",
+      "primaryRole": "senior_engineering_manager",
+      "jobTitle": "Senior Engineering Manager – Automation & Lines",
+      "department": "Automation & Robotics",
+      "securityGroupIds": ["CN=Plant-Engineering-Managers,OU=Groups,DC=factory,DC=corp"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "weekly"
+    },
+    {
+      "id": "usr-itadmin-01",
+      "name": "David Lin",
+      "email": "david.lin@factory.corp",
+      "username": "dlin",
+      "primaryRole": "it_site_admin",
+      "jobTitle": "Factory IT Site Administrator",
+      "department": "Plant Infrastructure IT",
+      "securityGroupIds": ["7c4d3e2b-1a9f-4e8c-8b5a-0d9f8e7a6b5c"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "always"
+    },
+    {
+      "id": "usr-planner-01",
+      "name": "Mark Henderson",
+      "email": "mark.henderson@factory.corp",
+      "username": "mhenderson",
+      "primaryRole": "operative_planner",
+      "jobTitle": "Operative Line Planner & Dispatcher",
+      "department": "Production Operations & Scheduling",
+      "securityGroupIds": ["CN=Line-Operative-Planners,OU=Groups,DC=factory,DC=corp"],
+      "presence": {
+        "availability": "Available",
+        "isOutOfOffice": false
+      },
+      "mfaPolicy": "weekly"
     }
   ],
   "activeDirectoryOUs": [

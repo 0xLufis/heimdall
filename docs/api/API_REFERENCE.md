@@ -180,11 +180,92 @@ Appends a technician note or resolution observation.
 ### 1.5 Asset Inventory (`/api/v1/inventory`)
 
 #### `GET /api/v1/inventory`
-Retrieves equipment components supporting recursive hierarchy queries.
+Retrieves equipment components supporting search, filtering, and pagination.
 * **Query Parameters**:
   * `tree` (`boolean`, default: `false`): If true, returns assets structured in parent-child hierarchy.
   * `type` (`string`, optional): `HardwareComponent`, `SoftwareAsset`, `Machine`.
 * **Response `200 OK`**: Array of `InventoryItemDto`.
+
+#### `GET /api/v1/inventory/parts`
+Retrieves discrete serialized high-value capital assets (`isStockItem == false`). Each part is either installed on a machine (`InMachine`), stored in warehouse inventory (`InStorage`), or in repair depot (`UnderRepair`).
+* **Query Parameters**:
+  * `status` (`string`, optional): Filter by `InMachine`, `InStorage`, `UnderRepair`.
+  * `technology` (`string`, optional): Filter by `Assembly`, `Test`, `SMT`, `Welding`, `Fastening`, `Dispensing`, `Robotics`.
+  * `machineId` (`uuid`, optional): Filter parts installed on a specific station.
+* **Response `200 OK`**:
+```json
+[
+  {
+    "id": "comp-101",
+    "name": "Spindle Motor Assembly 15kW",
+    "displayName": "Main CNC Spindle Motor",
+    "serialNumber": "SN-SPINDLE-994",
+    "isStockItem": false,
+    "equipmentStatus": "InMachine",
+    "storageLocation": "OP10 Main Spindle Mount",
+    "technology": "Assembly",
+    "machineId": "024ca7de-eb1c-5af6-aad8-826caca2d75e",
+    "machine": {
+      "id": "024ca7de-eb1c-5af6-aad8-826caca2d75e",
+      "customIdentifier": "L01-OP10",
+      "displayName": "Line 01 - Body Assembly Alpha - Station 10"
+    }
+  }
+]
+```
+
+#### `GET /api/v1/inventory/stock`
+Retrieves bulk consumable and quantity-tracked stock items (`isStockItem == true`).
+* **Query Parameters**:
+  * `technology` (`string`, optional): Technology domain filter.
+  * `lowStockOnly` (`boolean`, default: `false`): If true, returns only items where `stockQuantity <= minStockThreshold`.
+* **Response `200 OK`**:
+```json
+[
+  {
+    "id": "stock-101",
+    "name": "STK-SCRW-M8",
+    "displayName": "M8x25mm Assembly Bolts",
+    "serialNumber": "LOT-2026-B01",
+    "isStockItem": true,
+    "stockQuantity": 9,
+    "minStockThreshold": 3,
+    "storageLocation": "Bin 42-B",
+    "technology": "Fastening"
+  }
+]
+```
+
+#### `GET /api/v1/inventory/station-tree/{id}`
+Returns the hierarchical component tree for a designated production station on demand, eliminating the need for full-table recursive queries.
+* **Route Parameters**:
+  * `id` (`uuid`): Unique identifier of the station.
+* **Response `200 OK`**:
+```json
+{
+  "stationId": "024ca7de-eb1c-5af6-aad8-826caca2d75e",
+  "customIdentifier": "L01-OP10",
+  "displayName": "Line 01 - Body Assembly Alpha - Station 10",
+  "installedComponents": [
+    {
+      "id": "comp-101",
+      "name": "Spindle Motor Assembly 15kW",
+      "serialNumber": "SN-SPINDLE-994",
+      "equipmentStatus": "InMachine",
+      "storageLocation": "OP10 Main Spindle Mount",
+      "technology": "Assembly",
+      "subComponents": []
+    }
+  ],
+  "controllers": [
+    {
+      "id": "cpc-001",
+      "hostname": "CPC-001",
+      "controlRole": "Primary"
+    }
+  ]
+}
+```
 
 #### `POST /api/v1/inventory`
 Creates a new physical or logical equipment component.
@@ -197,6 +278,10 @@ Creates a new physical or logical equipment component.
   "manufacturerId": "3a603620-1bbb-5f06-a92b-ce675965c311",
   "serialNumber": "SN-SRV-90142",
   "costInHUF": 450000.00,
+  "storageLocation": "OP20 Axis Drive",
+  "equipmentStatus": "InMachine",
+  "isStockItem": false,
+  "technology": "Welding",
   "metadata": {
     "RatedCurrent": "6.0A",
     "SupplyVoltage": "400V AC",
@@ -207,7 +292,76 @@ Creates a new physical or logical equipment component.
 
 ---
 
-### 1.6 Dashboard Summary (`/api/v1/dashboard`)
+### 1.6 Production Machines & Lines (`/api/v1/machine`)
+
+#### `GET /api/v1/machine/by-technology`
+Retrieves machines and production stations grouped by engineering technology discipline: `Assembly`, `Test`, `SMT`, `Welding`, `Fastening`, `Dispensing`, and `Robotics`.
+* **Response `200 OK`**:
+```json
+[
+  {
+    "technology": "Assembly",
+    "stationCount": 133,
+    "stations": [
+      {
+        "id": "024ca7de-eb1c-5af6-aad8-826caca2d75e",
+        "name": "L01-OP10",
+        "displayName": "Line 01 - Body Assembly Alpha - Station 10",
+        "customIdentifier": "L01-OP10",
+        "machineType": "Fitting",
+        "groupId": "Line 01 - Body Assembly Alpha"
+      }
+    ]
+  }
+]
+```
+
+#### `GET /api/v1/machine/by-line`
+Retrieves production lines with nested stations, controller associations, and health status indicators.
+* **Response `200 OK`**:
+```json
+[
+  {
+    "line": "Line 01 - Body Assembly Alpha",
+    "stationCount": 34,
+    "stations": [
+      {
+        "id": "024ca7de-eb1c-5af6-aad8-826caca2d75e",
+        "customIdentifier": "L01-OP10",
+        "machineType": "Fitting",
+        "technology": "Assembly",
+        "isOnline": true
+      }
+    ]
+  }
+]
+```
+
+---
+
+### 1.7 Active Directory & OU Governance (`/api/activedirectory`)
+
+#### `GET /api/activedirectory/ous`
+Lists discovered and managed Active Directory Organizational Units along with their approval status and designated access levels (`unapproved`, `read_only`, `read_write`).
+
+#### `POST /api/activedirectory/ous/approve`
+Approves or updates governance access for an OU. Requires `ITAdmin` or `SystemAdmin` role.
+* **Request Body**:
+```json
+{
+  "ouPath": "OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp",
+  "accessLevel": "read_write",
+  "approvedBy": "it.admin@factory.corp",
+  "notes": "Approved for full telemetry ingestion and edge configuration sync"
+}
+```
+
+#### `POST /api/activedirectory/ous/import`
+Commits discovered candidate IPC hosts from an approved OU into the active Heimdall fleet database.
+
+---
+
+### 1.8 Dashboard Summary (`/api/v1/dashboard`)
 
 #### `GET /api/v1/dashboard`
 Returns high-level plant operational metrics (cached in L1 memory for 30 seconds).

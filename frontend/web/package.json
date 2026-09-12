@@ -15,7 +15,6 @@
     "test:e2e": "NODE_PATH=./node_modules bun x playwright test"
   },
   "dependencies": {
-    "@better-auth/infra": "^0.1.14",
     "@electric-sql/pglite": "^0.5.8",
     "@microsoft/signalr": "^10.0.11",
     "@nuxt/icon": "^2.5.1",
@@ -28,6 +27,7 @@
     "@vueuse/math": "^14.4.0",
     "@vueuse/nuxt": "^14.4.0",
     "better-auth": "^1.7.2",
+    "better-auth-studio": "^1.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-kit": "^0.31.9",
@@ -52,6 +52,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@babel/core": "^7.26.0",
     "@playwright/test": "^1.62.1",
     "@types/pg": "^8.23.1",
     "@types/qrcode": "^1.5.6",

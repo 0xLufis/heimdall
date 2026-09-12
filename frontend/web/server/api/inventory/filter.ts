@@ -13,6 +13,10 @@ const SEED_INVENTORY = [
     purchaseDate: '2023-04-12T00:00:00Z',
     manufacturer: { id: 'mfr-siemens', name: 'Siemens' },
     responsibleTeams: [{ id: 'team-mech', name: 'Mechanical Maintenance' }],
+    isStockItem: false,
+    equipmentStatus: 'InMachine',
+    storageLocation: 'OP10 Main Spindle Mount',
+    technology: 'Assembly',
     metadata: { Power: '15kW', MaxRPM: '12000', Voltage: '400V', Station: 'OP10' }
   },
   {
@@ -26,6 +30,10 @@ const SEED_INVENTORY = [
     purchaseDate: '2024-01-15T00:00:00Z',
     manufacturer: { id: 'mfr-ifm', name: 'IFM Electronic' },
     responsibleTeams: [{ id: 'team-mech', name: 'Mechanical Maintenance' }],
+    isStockItem: false,
+    equipmentStatus: 'InMachine',
+    storageLocation: 'OP10 Feed Line',
+    technology: 'Assembly',
     metadata: { PressureRange: '0-10Bar', Protocol: 'IO-Link', Station: 'OP10' }
   },
   {
@@ -39,6 +47,10 @@ const SEED_INVENTORY = [
     purchaseDate: '2023-09-01T00:00:00Z',
     manufacturer: { id: 'mfr-kuka', name: 'KUKA' },
     responsibleTeams: [{ id: 'team-elec', name: 'Electrical Engineering' }],
+    isStockItem: false,
+    equipmentStatus: 'InMachine',
+    storageLocation: 'OP20 Axis Drive',
+    technology: 'Welding',
     metadata: { Voltage: '400V', Current: '30A', Station: 'OP20' }
   },
   {
@@ -52,7 +64,99 @@ const SEED_INVENTORY = [
     purchaseDate: '2024-02-10T00:00:00Z',
     manufacturer: { id: 'mfr-cognex', name: 'Cognex' },
     responsibleTeams: [{ id: 'team-quality', name: 'Quality Automation' }],
+    isStockItem: false,
+    equipmentStatus: 'InMachine',
+    storageLocation: 'OP30 Camera Mount',
+    technology: 'Test',
     metadata: { Resolution: '12MP', FPS: '60', Interface: 'GigE', Station: 'OP30' }
+  },
+  {
+    id: 'comp-spare-1',
+    name: 'Backup Servo Driver Module 30A',
+    displayName: 'Spare Servo Drive',
+    serialNumber: 'SN-SERVO-SPARE-01',
+    itemType: 'hardware',
+    customIdentifier: 'SPARE-SRV-01',
+    costInHUF: 940000,
+    purchaseDate: '2024-01-10T00:00:00Z',
+    manufacturer: { id: 'mfr-kuka', name: 'KUKA' },
+    responsibleTeams: [{ id: 'team-elec', name: 'Electrical Engineering' }],
+    isStockItem: false,
+    equipmentStatus: 'InStorage',
+    storageLocation: 'Shelf A3-4',
+    technology: 'Welding',
+    metadata: { Status: 'InStorage', Shelf: 'A3-4' }
+  },
+  {
+    id: 'comp-spare-2',
+    name: 'Cognex In-Sight 9000 Camera (Spare Unit)',
+    displayName: 'Spare Vision Inspector',
+    serialNumber: 'SN-CAM-SPARE-02',
+    itemType: 'hardware',
+    customIdentifier: 'SPARE-CAM-02',
+    costInHUF: 2100000,
+    purchaseDate: '2024-03-01T00:00:00Z',
+    manufacturer: { id: 'mfr-cognex', name: 'Cognex' },
+    responsibleTeams: [{ id: 'team-quality', name: 'Quality Automation' }],
+    isStockItem: false,
+    equipmentStatus: 'InStorage',
+    storageLocation: 'Shelf B1-2',
+    technology: 'Test',
+    metadata: { Status: 'InStorage', Shelf: 'B1-2' }
+  },
+  {
+    id: 'stock-101',
+    name: 'M8 High-Tensile Hex Cap Fastener Screws',
+    displayName: 'M8x25mm Assembly Bolts',
+    serialNumber: null,
+    itemType: 'hardware',
+    customIdentifier: 'STK-SCRW-M8',
+    costInHUF: 45000,
+    purchaseDate: '2024-02-01T00:00:00Z',
+    manufacturer: { id: 'mfr-wuerth', name: 'Würth' },
+    responsibleTeams: [{ id: 'team-mech', name: 'Mechanical Maintenance' }],
+    isStockItem: true,
+    stockQuantity: 9,
+    minStockThreshold: 3,
+    storageLocation: 'Bin 42-B',
+    technology: 'Fastening',
+    metadata: { Quantity: '9', Batch: 'LOT-2026-X', Bin: '42-B' }
+  },
+  {
+    id: 'stock-102',
+    name: 'Festo QS-1/4-8 Pneumatic Push-In Fittings',
+    displayName: 'Pneumatic Quick Couplers',
+    serialNumber: null,
+    itemType: 'hardware',
+    customIdentifier: 'STK-PNEU-QS',
+    costInHUF: 82000,
+    purchaseDate: '2024-02-15T00:00:00Z',
+    manufacturer: { id: 'mfr-festo', name: 'Festo' },
+    responsibleTeams: [{ id: 'team-mech', name: 'Mechanical Maintenance' }],
+    isStockItem: true,
+    stockQuantity: 24,
+    minStockThreshold: 5,
+    storageLocation: 'Bin 18-A',
+    technology: 'Assembly',
+    metadata: { Quantity: '24', Batch: 'LOT-2026-F', Bin: '18-A' }
+  },
+  {
+    id: 'stock-103',
+    name: 'Industrial Dispenser Nozzle Tips 0.25mm',
+    displayName: 'Precision Glue Dispenser Nozzles',
+    serialNumber: null,
+    itemType: 'hardware',
+    customIdentifier: 'STK-DISP-NZ',
+    costInHUF: 135000,
+    purchaseDate: '2024-03-01T00:00:00Z',
+    manufacturer: { id: 'mfr-nordson', name: 'Nordson' },
+    responsibleTeams: [{ id: 'team-mech', name: 'Mechanical Maintenance' }],
+    isStockItem: true,
+    stockQuantity: 15,
+    minStockThreshold: 4,
+    storageLocation: 'Bin 09-C',
+    technology: 'Dispensing',
+    metadata: { Quantity: '15', Batch: 'LOT-2026-D', Bin: '09-C' }
   },
   {
     id: 'comp-pc-1',
@@ -65,6 +169,10 @@ const SEED_INVENTORY = [
     purchaseDate: '2022-11-20T00:00:00Z',
     manufacturer: { id: 'mfr-advantech', name: 'Advantech' },
     responsibleTeams: [{ id: 'team-it', name: 'Industrial IT' }],
+    isStockItem: false,
+    equipmentStatus: 'InMachine',
+    storageLocation: 'Line 1 OP10 Control Cabinet',
+    technology: 'Assembly',
     metadata: { CPU: 'Core i7-11700E', RAM: '32GB DDR4', OS: 'Windows 10 IoT' }
   },
   {
@@ -78,6 +186,10 @@ const SEED_INVENTORY = [
     purchaseDate: '2023-06-18T00:00:00Z',
     manufacturer: { id: 'mfr-beckhoff', name: 'Beckhoff' },
     responsibleTeams: [{ id: 'team-quality', name: 'Quality Automation' }],
+    isStockItem: false,
+    equipmentStatus: 'InMachine',
+    storageLocation: 'Line 2 OP30 HMI Panel',
+    technology: 'Test',
     metadata: { Display: '21.5-inch Touch', IP: 'IP65 Front', CPU: 'Intel Xeon' }
   },
   {
@@ -147,6 +259,12 @@ function flattenTreeNodes(nodes: any[]): any[] {
       purchaseDate: node.purchaseDate || node.PurchaseDate,
       manufacturer: node.manufacturer || node.Manufacturer,
       responsibleTeams: node.responsibleTeams || node.ResponsibleTeams || [],
+      isStockItem: node.isStockItem ?? node.IsStockItem ?? false,
+      equipmentStatus: node.equipmentStatus ?? node.EquipmentStatus ?? (node.machineId ? 'InMachine' : 'InStorage'),
+      storageLocation: node.storageLocation ?? node.StorageLocation ?? 'Warehouse Shelf',
+      stockQuantity: node.stockQuantity ?? node.StockQuantity ?? 1,
+      minStockThreshold: node.minStockThreshold ?? node.MinStockThreshold ?? 1,
+      technology: node.technology ?? node.Technology ?? 'Assembly',
       metadata: node.metadata || node.Metadata || {},
       children: node.children || []
     }
@@ -164,15 +282,21 @@ function flattenTreeNodes(nodes: any[]): any[] {
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
-  let payload: Record<string, any> = {}
+  let payload: Record<string, any> = (event as any)._query || (event as any).query || (event as any)._body || (event as any).body || {}
 
-  if (method === 'GET') {
-    payload = getQuery(event) || {}
-  } else {
-    try {
-      payload = await readBody(event) || {}
-    } catch {
-      payload = {}
+  if (Object.keys(payload).length === 0) {
+    if (method === 'GET') {
+      try {
+        payload = getQuery(event) || {}
+      } catch {
+        payload = {}
+      }
+    } else {
+      try {
+        payload = await readBody(event) || {}
+      } catch {
+        payload = {}
+      }
     }
   }
 
@@ -293,9 +417,16 @@ export default defineEventHandler(async (event) => {
 
   // Filter by Type
   if (type && type !== 'all' && type !== 'hierarchy') {
+    const t = type.toLowerCase()
     items = items.filter(item => {
       const itemType = (item.itemType || '').toLowerCase()
-      return itemType === type.toLowerCase()
+      if (t === 'parts') {
+        return !item.isStockItem && itemType !== 'software'
+      }
+      if (t === 'stock') {
+        return item.isStockItem === true
+      }
+      return itemType === t
     })
   }
 
@@ -317,9 +448,18 @@ export default defineEventHandler(async (event) => {
     items = items.filter(item => {
       // Check explicit tag matches
       for (const [tagKey, tagVal] of Object.entries(tagMatches)) {
-        if (tagKey === 'type' && !item.itemType?.toLowerCase().includes(tagVal)) return false
-        if (tagKey === 'manufacturer' && !item.manufacturer?.name?.toLowerCase().includes(tagVal)) return false
-        if (tagKey === 'station' && !item.metadata?.Station?.toLowerCase().includes(tagVal) && !item.customIdentifier?.toLowerCase().includes(tagVal)) return false
+        if (tagKey === 'type') {
+          if (tagVal === 'parts' && item.isStockItem) return false
+          if (tagVal === 'stock' && !item.isStockItem) return false
+          if (tagVal !== 'parts' && tagVal !== 'stock' && !item.itemType?.toLowerCase().includes(tagVal)) return false
+        }
+        if ((tagKey === 'manufacturer' || tagKey === 'mfr') && !item.manufacturer?.name?.toLowerCase().includes(tagVal)) return false
+        if (tagKey === 'station' && !item.metadata?.Station?.toLowerCase().includes(tagVal) && !item.customIdentifier?.toLowerCase().includes(tagVal) && !item.storageLocation?.toLowerCase().includes(tagVal)) return false
+        if (tagKey === 'tech' && !item.technology?.toLowerCase().includes(tagVal)) return false
+        if (tagKey === 'status' && !item.equipmentStatus?.toLowerCase().includes(tagVal) && !item.telemetry?.isOnline?.toString().includes(tagVal)) return false
+        if (tagKey === 'serial' && !item.serialNumber?.toLowerCase().includes(tagVal)) return false
+        if (tagKey === 'location' && !item.storageLocation?.toLowerCase().includes(tagVal)) return false
+        if (tagKey === 'isstock' && String(item.isStockItem).toLowerCase() !== tagVal) return false
         if (tagKey === 'cost') {
           if (tagVal.startsWith('>')) {
             const min = parseFloat(tagVal.slice(1))

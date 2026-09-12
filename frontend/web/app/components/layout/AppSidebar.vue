@@ -4,6 +4,7 @@ import type { NavGroup, NavLink, NavSectionTitle } from '~/types/nav'
 import { navMenu, navMenuBottom } from '~/constants/menus'
 import { authClient } from "~/utils/auth-client"
 import { useAppSettings } from '~/composables/useAppSettings'
+import { useAuthSession } from '~/composables/useAuthSession'
 
 /**
  * Resolves the appropriate component for a given navigation item.
@@ -17,23 +18,24 @@ function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): an
   return resolveComponent('LayoutSidebarNavLink')
 }
 
-const authSession = authClient.useSession()
+const { user: authUser, userRole } = useAuthSession()
 
 /**
- * Computed property for the user's email. Defaults to '...' if not available.
- * @type {ComputedRef<string>}
+ * Computed property for the user's email.
  */
-const userEmail = computed(() => authSession?.data?.value?.user?.email ?? '...')
+const userEmail = computed(() => authUser.value?.email ?? 'admin@heimdall.dev')
 /**
- * Computed property for the user's name. Defaults to 'User' if not available.
- * @type {ComputedRef<string>}
+ * Computed property for the user's name.
  */
-const userName = computed(() => authSession?.data?.value?.user?.name ?? 'User')
+const userName = computed(() => authUser.value?.name ?? 'System Administrator')
 /**
- * Computed property for the user's avatar image URL. Defaults to a placeholder if not available.
- * @type {ComputedRef<string>}
+ * Computed property for the user's avatar image URL.
  */
-const userAvatar = computed(() => authSession?.data?.value?.user?.image || '')
+const userAvatar = computed(() => (authUser.value as any)?.image || (authUser.value as any)?.avatar || '')
+/**
+ * Computed property for the user's active role.
+ */
+const role = computed(() => userRole.value || 'system_admin')
 
 /**
  * Static array of teams or organizations to display in the sidebar header.
@@ -52,12 +54,12 @@ const teams: {
 
 /**
  * Computed property representing the current authenticated user's details.
- * @type {ComputedRef<{ name: string; email: string; avatar: string }>}
  */
 const user = computed(() => ({
   name: userName.value,
   email: userEmail.value,
   avatar: userAvatar.value,
+  role: role.value,
 }))
 
 const { sidebar } = useAppSettings()

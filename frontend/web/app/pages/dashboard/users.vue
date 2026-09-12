@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { RefreshCcwIcon, UserPlusIcon, SearchIcon, ShieldAlertIcon } from 'lucide-vue-next'
+import { RefreshCcwIcon, UserPlusIcon, SearchIcon, ShieldAlertIcon, FingerprintIcon } from 'lucide-vue-next'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -17,12 +17,21 @@ const searchQuery = ref('')
 const roleFilter = ref('all')
 const statusFilter = ref('all')
 
+const { canManageUsers } = useAuthSession()
+
 const availableRoles = [
   "system_admin",
+  "heimdall_admin",
+  "it_admin",
+  "engineering_admin",
   "admin",
   "manager",
+  "group_leader",
+  "shift_leader",
   "team_lead",
   "engineer",
+  "controls_engineer",
+  "lead_engineer",
   "technician",
   "generic",
   "user"
@@ -142,6 +151,12 @@ onMounted(() => {
           <RefreshCcwIcon class="h-4 w-4" :class="{ 'animate-spin': loading }" />
           <span class="text-[10px] font-black uppercase tracking-widest">Refresh</span>
         </Button>
+        <NuxtLink to="/admin/studio" target="_blank">
+          <Button variant="outline" class="gap-2 border-slate-800 bg-slate-900 text-indigo-400 hover:bg-slate-800 hover:text-indigo-300 rounded-xl h-11">
+            <FingerprintIcon class="h-4 w-4" />
+            <span class="text-[10px] font-black uppercase tracking-widest">Identity Studio</span>
+          </Button>
+        </NuxtLink>
         <Button class="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-lg shadow-indigo-500/20 rounded-xl h-11 px-6">
           <UserPlusIcon class="h-4 w-4" />
           <span class="text-[10px] font-black uppercase tracking-widest">Invite User</span>

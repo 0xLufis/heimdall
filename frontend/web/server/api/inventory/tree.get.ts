@@ -9,6 +9,9 @@ const SEED_MACHINES = [
     customIdentifier: 'STATION-OP10-01',
     displayName: 'Main CNC Milling Station',
     organizationId: 'Production Floor A',
+    technology: 'Assembly',
+    machineType: 'Milling',
+    groupId: 'Line 01 - Body Assembly Alpha',
     responsibleTeams: [{ id: 'team-mech', name: 'Mechanical Maintenance' }],
     controllers: [
       { id: 'ctrl-101', name: 'Siemens S7-1500 PLC', hostname: 'plc-op10.local' }
@@ -22,6 +25,10 @@ const SEED_MACHINES = [
         costInHUF: 1850000,
         purchaseDate: '2023-04-12T00:00:00Z',
         manufacturer: { name: 'Siemens' },
+        equipmentStatus: 'InMachine',
+        storageLocation: 'OP10 Main Spindle Mount',
+        technology: 'Assembly',
+        isStockItem: false,
         metadata: { Power: '15kW', MaxRPM: '12000' }
       },
       {
@@ -32,6 +39,10 @@ const SEED_MACHINES = [
         costInHUF: 320000,
         purchaseDate: '2024-01-15T00:00:00Z',
         manufacturer: { name: 'IFM Electronic' },
+        equipmentStatus: 'InMachine',
+        storageLocation: 'OP10 Feed Line',
+        technology: 'Assembly',
+        isStockItem: false,
         metadata: { PressureRange: '0-10Bar', Protocol: 'IO-Link' }
       }
     ],
@@ -43,6 +54,9 @@ const SEED_MACHINES = [
         itemType: 'software',
         costInHUF: 650000,
         version: '4.9.2',
+        equipmentStatus: 'InMachine',
+        technology: 'Assembly',
+        isStockItem: false,
         metadata: { LicenseType: 'Floating', Seats: '5' }
       }
     ]
@@ -54,6 +68,9 @@ const SEED_MACHINES = [
     customIdentifier: 'STATION-OP20-02',
     displayName: 'KUKA Robotic Welding Cell',
     organizationId: 'Production Floor A',
+    technology: 'Welding',
+    machineType: 'Soldering',
+    groupId: 'Line 02 - Robotic Welding Cell',
     responsibleTeams: [{ id: 'team-elec', name: 'Electrical Engineering' }],
     controllers: [
       { id: 'ctrl-201', name: 'KUKA KRC4 Controller', hostname: 'kuka-op20.local' }
@@ -67,6 +84,10 @@ const SEED_MACHINES = [
         costInHUF: 940000,
         purchaseDate: '2023-09-01T00:00:00Z',
         manufacturer: { name: 'KUKA' },
+        equipmentStatus: 'InMachine',
+        storageLocation: 'OP20 Axis Drive',
+        technology: 'Welding',
+        isStockItem: false,
         metadata: { Voltage: '400V', Current: '30A' }
       }
     ],
@@ -79,6 +100,9 @@ const SEED_MACHINES = [
     customIdentifier: 'STATION-OP30-03',
     displayName: 'Cognex Optical Inspection Station',
     organizationId: 'Production Floor B',
+    technology: 'Test',
+    machineType: 'Automatic Optical Inspection',
+    groupId: 'Line 09 - Optical Quality Inspection',
     responsibleTeams: [{ id: 'team-quality', name: 'Quality Automation' }],
     controllers: [],
     children: [
@@ -90,6 +114,10 @@ const SEED_MACHINES = [
         costInHUF: 2100000,
         purchaseDate: '2024-02-10T00:00:00Z',
         manufacturer: { name: 'Cognex' },
+        equipmentStatus: 'InMachine',
+        storageLocation: 'OP30 Camera Mount',
+        technology: 'Test',
+        isStockItem: false,
         metadata: { Resolution: '12MP', FPS: '60' }
       }
     ],
@@ -101,6 +129,9 @@ const SEED_MACHINES = [
         itemType: 'software',
         costInHUF: 1450000,
         version: '3.2.0',
+        equipmentStatus: 'InMachine',
+        technology: 'Test',
+        isStockItem: false,
         metadata: { Module: 'OCR & Defect Detection' }
       }
     ]

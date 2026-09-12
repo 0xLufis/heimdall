@@ -10,7 +10,7 @@ namespace App.Backend.Api.Controllers.V1;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Policy = "SystemAdministration")]
+[Authorize(Policy = "ItAdministration")]
 public class SecurityGroupMappingController : ControllerBase
 {
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;

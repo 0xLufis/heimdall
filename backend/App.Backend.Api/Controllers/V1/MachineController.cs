@@ -53,6 +53,63 @@ public class MachineController : ControllerBase
         return Ok(dtos);
     }
 
+    [HttpGet("by-technology")]
+    public async Task<IActionResult> GetMachinesByTechnology()
+    {
+        var machines = await _stationRepository.GetAllAsync();
+        var grouped = machines
+            .GroupBy(m => string.IsNullOrWhiteSpace(m.MachineType) ? "General Assembly" : m.MachineType)
+            .Select(g => new
+            {
+                Technology = g.Key,
+                MachineCount = g.Count(),
+                Machines = g.Select(m => new
+                {
+                    m.Id,
+                    m.Name,
+                    m.DisplayName,
+                    m.CustomIdentifier,
+                    m.MachineType,
+                    m.GroupId,
+                    ControllersCount = m.Controllers.Count,
+                    Controllers = m.Controllers.Select(c => new { c.Id, c.Hostname, c.IpAddress, c.LastOnline })
+                }).ToList()
+            })
+            .OrderByDescending(g => g.MachineCount)
+            .ToList();
+
+        return Ok(grouped);
+    }
+
+    [HttpGet("by-line")]
+    public async Task<IActionResult> GetMachinesByLine()
+    {
+        var machines = await _stationRepository.GetAllAsync();
+        var grouped = machines
+            .GroupBy(m => string.IsNullOrWhiteSpace(m.GroupId) ? "Unassigned Line" : m.GroupId)
+            .Select(g => new
+            {
+                LineId = g.Key,
+                LineName = g.Key,
+                MachineCount = g.Count(),
+                ControllersCount = g.Sum(m => m.Controllers.Count),
+                Machines = g.Select(m => new
+                {
+                    m.Id,
+                    m.Name,
+                    m.DisplayName,
+                    m.CustomIdentifier,
+                    m.MachineType,
+                    m.GroupId,
+                    Controllers = m.Controllers.Select(c => new { c.Id, c.Hostname, c.IpAddress, c.LastOnline })
+                }).ToList()
+            })
+            .OrderBy(g => g.LineName)
+            .ToList();
+
+        return Ok(grouped);
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<Machine>> GetMachine(Guid id)
     {

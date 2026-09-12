@@ -20,9 +20,9 @@ CSV_FILE = os.path.join(os.path.dirname(__file__), 'inventory_seed.csv')
 SQL_FILE = os.path.join(os.path.dirname(__file__), 'incremental_seed.sql')
 TOPOLOGY_FILE = os.path.join(os.path.dirname(__file__), 'production_topology.json')
 
-MANUFACTURERS = ["Siemens", "Beckhoff", "Fanuc", "Cognex", "Keyence", "Festo", "Omron", "Dell", "HP", "Cisco", "Phoenix Contact", "Advantech"]
+MANUFACTURERS = ["Siemens", "Beckhoff", "Fanuc", "Cognex", "Keyence", "Festo", "Omron", "Dell", "HP", "Cisco", "Phoenix Contact", "Advantech", "Würth", "Nordson", "KUKA", "Senju", "Binzel", "Schmalz", "Eaton", "Freudenberg"]
 SUPPLIERS = ["Insight", "Industrial Automata Direct", "Farnell", "RS Components", "MISUMI", "Conrad Electronic"]
-TEAMS = ["Controls Engineering", "Vision Systems", "Robotics Dept", "Maintenance Team", "IT Infrastructure", "Quality Assurance", "Logistics"]
+TEAMS = ["Controls Engineering", "Vision Systems", "Robotics Dept", "Maintenance Team", "IT Infrastructure", "Quality Assurance", "Logistics", "Plant Engineering Management"]
 ORGS = ["Production Floor A", "Production Floor B", "Production Floor C", "Production Floor D"]
 LINES = [
     "Line 01 - Body Assembly Alpha",
@@ -43,8 +43,27 @@ LINES = [
 ]
 DXF_HANDLES = ["H-AL1", "H-WS5", "L-SORT-A", "P-LINE-B", "Q-CELL-01", "C-TANK-4", "CNC-MC-12", "P-LINE-C", "T-CELL-01", "P-CELL-02"]
 
+TECHNOLOGIES = ["Assembly", "Test", "SMT", "Welding", "Fastening", "Dispensing", "Robotics"]
+LINE_TECH_MAP = {
+    0: ("Assembly", "Fitting"),
+    1: ("Welding", "Soldering"),
+    2: ("Assembly", "Milling"),
+    3: ("Fastening", "Pressing"),
+    4: ("Assembly", "Fitting"),
+    5: ("Dispensing", "Gap Filler"),
+    6: ("SMT", "Soldering"),
+    7: ("Dispensing", "Gap Filler"),
+    8: ("Test", "Automatic Optical Inspection"),
+    9: ("Test", "Tester Cell"),
+    10: ("Robotics", "Manipulator"),
+    11: ("Robotics", "Manipulator"),
+    12: ("Dispensing", "Gap Filler"),
+    13: ("Fastening", "Screwing Station"),
+    14: ("Robotics", "Manipulator")
+}
+
 def generate_csv(output_path=CSV_FILE):
-    print("Generating enterprise inventory dataset (500 Stations, 500 IPCs, Hardware & Software Components)...")
+    print("Generating enterprise inventory dataset (500 Stations, 500 IPCs, Serialized Parts, Bulk Stock)...")
     rows = []
 
     # 1. Generate 500 Stations
@@ -56,14 +75,17 @@ def generate_csv(output_path=CSV_FILE):
         st_name = f"L{(line_idx+1):02d}-OP{op_num}"
         st_display = f"{line_name} - Station {op_num}"
         st_team = random.choice(TEAMS) + ";" + random.choice(TEAMS)
-        mfr = random.choice(["Siemens", "Beckhoff", "Fanuc", "Festo", "Omron", "Cognex"])
+        mfr = random.choice(["Siemens", "Beckhoff", "Fanuc", "Festo", "Omron", "Cognex", "KUKA"])
         sup = random.choice(SUPPLIERS)
         sn = f"SN-STA-{i:04d}"
         handle = DXF_HANDLES[(i - 1) % len(DXF_HANDLES)]
         org = ORGS[(line_idx) % len(ORGS)]
+        tech, m_type = LINE_TECH_MAP[line_idx]
 
         meta = {
             "Line": line_name,
+            "Technology": tech,
+            "MachineType": m_type,
             "CycleTimeTarget": f"{random.randint(20, 90)}s",
             "SafetyRating": random.choice(["SIL2", "SIL3", "PLd", "PLe"]),
             "PowerSupply": random.choice(["400V 3Ph 50Hz", "230V 1Ph 50Hz", "24V DC Industrial"])
@@ -82,7 +104,16 @@ def generate_csv(output_path=CSV_FILE):
             "ClientPcHostname": "",
             "Metadata": json.dumps(meta),
             "PinnedObjectHandle": handle,
-            "OrganizationId": org
+            "OrganizationId": org,
+            "StorageLocation": f"{line_name} - Station {op_num}",
+            "EquipmentStatus": "InMachine",
+            "MachineId": "",
+            "StockQuantity": "",
+            "MinStockThreshold": "",
+            "IsStockItem": "False",
+            "Technology": tech,
+            "MachineType": m_type,
+            "GroupId": line_name
         })
     rows.extend(stations)
 
@@ -134,22 +165,31 @@ def generate_csv(output_path=CSV_FILE):
             "ClientPcHostname": hostname,
             "Metadata": json.dumps(meta),
             "PinnedObjectHandle": handle,
-            "OrganizationId": assoc_org
+            "OrganizationId": assoc_org,
+            "StorageLocation": f"Cabinet {assoc_station}",
+            "EquipmentStatus": "InMachine",
+            "MachineId": "",
+            "StockQuantity": "",
+            "MinStockThreshold": "",
+            "IsStockItem": "False",
+            "Technology": "IT Infrastructure",
+            "MachineType": "",
+            "GroupId": ""
         })
         stations[i - 1]["ClientPcHostname"] = hostname
     rows.extend(pcs)
 
-    # 3. Generate Hardware & Software Components
+    # 3. Generate Hardware & Software Components (InMachine)
     components = []
     comp_templates = [
-        ("PLC-S7-1500", "Siemens S7-1500 PLC", "HardwareComponent", "Siemens", json.dumps({"Model": "1516-3 PN/DP", "Memory": "1MB Code", "Rack": 1})),
-        ("CAM-Cognex-9000", "Cognex In-Sight 9000 Vision Camera", "HardwareComponent", "Cognex", json.dumps({"Resolution": "12MP", "Lens": "16mm", "Illumination": "Red LED"})),
-        ("DRV-AX5000", "Beckhoff AX5000 Servo Drive", "HardwareComponent", "Beckhoff", json.dumps({"Current": "12A", "Feedback": "EnDat 2.2", "Channels": 2})),
-        ("ROB-Fanuc-M20", "Fanuc M-20iB Robot Controller", "HardwareComponent", "Fanuc", json.dumps({"Payload": "20kg", "Reach": "1811mm", "DOF": 6})),
-        ("VAL-Festo-VTUG", "Festo VTUG Valve Terminal", "HardwareComponent", "Festo", json.dumps({"Valves": 12, "Bus": "Profinet", "Pressure": "6.0Bar"})),
-        ("SWI-Cisco-IE3300", "Cisco Catalyst IE3300 Industrial Switch", "HardwareComponent", "Cisco", json.dumps({"Ports": 10, "PoE": True, "Speed": "1Gbps"})),
-        ("SW-TwinCAT3", "Beckhoff TwinCAT 3 Runtime License", "SoftwareComponent", "Beckhoff", json.dumps({"LicenseKey": "TC3-RT-ENTERPRISE-500", "Version": "3.1.4026"})),
-        ("SW-TIAPortal", "Siemens TIA Portal V19 License", "SoftwareComponent", "Siemens", json.dumps({"LicenseKey": "TIA-V19-FLOATING-500", "Version": "19.0.0"}))
+        ("PLC-S7-1500", "Siemens S7-1500 PLC", "HardwareComponent", "Siemens", "Assembly", json.dumps({"Model": "1516-3 PN/DP", "Memory": "1MB Code", "Rack": 1})),
+        ("CAM-Cognex-9000", "Cognex In-Sight 9000 Vision Camera", "HardwareComponent", "Cognex", "Test", json.dumps({"Resolution": "12MP", "Lens": "16mm", "Illumination": "Red LED"})),
+        ("DRV-AX5000", "Beckhoff AX5000 Servo Drive", "HardwareComponent", "Beckhoff", "Robotics", json.dumps({"Current": "12A", "Feedback": "EnDat 2.2", "Channels": 2})),
+        ("ROB-Fanuc-M20", "Fanuc M-20iB Robot Controller", "HardwareComponent", "Fanuc", "Robotics", json.dumps({"Payload": "20kg", "Reach": "1811mm", "DOF": 6})),
+        ("VAL-Festo-VTUG", "Festo VTUG Valve Terminal", "HardwareComponent", "Festo", "Assembly", json.dumps({"Valves": 12, "Bus": "Profinet", "Pressure": "6.0Bar"})),
+        ("SWI-Cisco-IE3300", "Cisco Catalyst IE3300 Industrial Switch", "HardwareComponent", "Cisco", "IT Infrastructure", json.dumps({"Ports": 10, "PoE": True, "Speed": "1Gbps"})),
+        ("SW-TwinCAT3", "Beckhoff TwinCAT 3 Runtime License", "SoftwareComponent", "Beckhoff", "Robotics", json.dumps({"LicenseKey": "TC3-RT-ENTERPRISE-500", "Version": "3.1.4026"})),
+        ("SW-TIAPortal", "Siemens TIA Portal V19 License", "SoftwareComponent", "Siemens", "Assembly", json.dumps({"LicenseKey": "TIA-V19-FLOATING-500", "Version": "19.0.0"}))
     ]
 
     for i in range(1, 501):
@@ -158,7 +198,7 @@ def generate_csv(output_path=CSV_FILE):
         org = stations[i - 1]["OrganizationId"]
 
         for j in range(2):
-            tmpl_name, tmpl_disp, tmpl_type, tmpl_mfr, tmpl_meta = comp_templates[(i + j) % len(comp_templates)]
+            tmpl_name, tmpl_disp, tmpl_type, tmpl_mfr, tmpl_tech, tmpl_meta = comp_templates[(i + j) % len(comp_templates)]
             comp_name = f"{tmpl_name}-S{i:03d}-{j+1}"
             comp_disp = f"{tmpl_disp} ({st_name})"
 
@@ -175,11 +215,108 @@ def generate_csv(output_path=CSV_FILE):
                 "ClientPcHostname": pc_name,
                 "Metadata": tmpl_meta,
                 "PinnedObjectHandle": "",
-                "OrganizationId": org
+                "OrganizationId": org,
+                "StorageLocation": f"{st_name} Mount Bay {j+1}",
+                "EquipmentStatus": "InMachine",
+                "MachineId": st_name,
+                "StockQuantity": "",
+                "MinStockThreshold": "",
+                "IsStockItem": "False",
+                "Technology": tmpl_tech,
+                "MachineType": "",
+                "GroupId": ""
             })
     rows.extend(components)
 
-    fieldnames = ["Type", "Name", "DisplayName", "ResponsibleTeam", "Manufacturer", "Supplier", "SerialNumber", "ParentName", "StationIdentifier", "ClientPcHostname", "Metadata", "PinnedObjectHandle", "OrganizationId"]
+    # 4. Generate High-Value Discrete Serialized Spare Parts (InStorage & UnderRepair)
+    spares = []
+    for k in range(1, 81):
+        tmpl = comp_templates[(k - 1) % len(comp_templates)]
+        tmpl_name, tmpl_disp, tmpl_type, tmpl_mfr, tmpl_tech, tmpl_meta = tmpl
+        is_repair = (k % 15 == 0)
+        status = "UnderRepair" if is_repair else "InStorage"
+        shelf = f"Repair Depot Bay {((k % 4) + 1)}" if is_repair else f"Warehouse Shelf {chr(65 + (k % 4))}{((k % 6) + 1)}-{((k % 3) + 1)}"
+        spares.append({
+            "Type": tmpl_type,
+            "Name": f"SPARE-{tmpl_name}-{k:03d}",
+            "DisplayName": f"Spare {tmpl_disp} ({status})",
+            "ResponsibleTeam": "Maintenance Team",
+            "Manufacturer": tmpl_mfr,
+            "Supplier": "Industrial Automata Direct",
+            "SerialNumber": f"SN-SPARE-{k:04d}",
+            "ParentName": "",
+            "StationIdentifier": "",
+            "ClientPcHostname": "",
+            "Metadata": tmpl_meta,
+            "PinnedObjectHandle": "",
+            "OrganizationId": ORGS[k % len(ORGS)],
+            "StorageLocation": shelf,
+            "EquipmentStatus": status,
+            "MachineId": "",
+            "StockQuantity": "",
+            "MinStockThreshold": "",
+            "IsStockItem": "False",
+            "Technology": tmpl_tech,
+            "MachineType": "",
+            "GroupId": ""
+        })
+    rows.extend(spares)
+
+    # 5. Generate Bulk Quantity-Tracked Stock Items (IsStockItem = True)
+    stock_items_def = [
+        ("STK-SCRW-M8", "M8x25mm Assembly Hex Cap Screws", "Würth", "Fastening", 9, 3, "Bin 42-B"),
+        ("STK-SCRW-M6", "M6x16mm Hex Flange Bolts Grade 8.8", "Würth", "Fastening", 45, 10, "Bin 42-C"),
+        ("STK-PNEU-QS8", "Festo QS-1/4-8 Pneumatic Push-In Fittings", "Festo", "Assembly", 24, 5, "Bin 18-A"),
+        ("STK-PNEU-QS6", "Festo QS-1/8-6 Pneumatic Quick Couplers", "Festo", "Assembly", 38, 8, "Bin 18-B"),
+        ("STK-DISP-NZ25", "Precision Glue Dispenser Nozzle Tips 0.25mm", "Nordson", "Dispensing", 15, 4, "Bin 09-C"),
+        ("STK-DISP-NZ50", "Precision Sealant Dispenser Nozzles 0.50mm", "Nordson", "Dispensing", 22, 5, "Bin 09-D"),
+        ("STK-SLDR-SAC305", "SMT Lead-Free Solder Paste SAC305 (500g Jar)", "Senju", "SMT", 12, 3, "Bin 05-A"),
+        ("STK-SLDR-WIRE", "No-Clean Solder Wire 0.8mm Spool", "Kester", "SMT", 18, 4, "Bin 05-B"),
+        ("STK-WELD-TIP12", "Robotic MIG Contact Tips 1.2mm CuCrZr", "Binzel", "Welding", 50, 15, "Bin 14-A"),
+        ("STK-WELD-NZ20", "Robotic Gas Nozzles Conical 16mm", "Binzel", "Welding", 28, 8, "Bin 14-B"),
+        ("STK-ROB-PAD", "Polyurethane Vacuum Suction Gripper Cups 40mm", "Schmalz", "Robotics", 35, 10, "Bin 22-A"),
+        ("STK-FUSE-10A", "Industrial Fast-Blow 10A Ceramic Fuses 10x38mm", "Eaton", "Assembly", 80, 20, "Bin 02-A"),
+        ("STK-TERM-25", "Phoenix Contact Spring Terminal Blocks 2.5mm²", "Phoenix Contact", "Assembly", 120, 30, "Bin 01-C"),
+        ("STK-CAM-LENS", "Optical Telecentric Lens Protective Glass Cover", "Cognex", "Test", 14, 4, "Bin 31-A"),
+        ("STK-ORING-VITON", "Fluoroelastomer Viton Seal O-Rings 18x2.5mm", "Freudenberg", "Assembly", 95, 25, "Bin 08-B"),
+        ("STK-TIE-HD", "Heavy-Duty UV-Resistant Industrial Cable Ties", "HellermannTyton", "Assembly", 250, 50, "Bin 03-A")
+    ]
+
+    stock_items = []
+    for idx, (s_name, s_disp, s_mfr, s_tech, s_qty, s_min, s_bin) in enumerate(stock_items_def, start=1):
+        stock_items.append({
+            "Type": "HardwareComponent",
+            "Name": s_name,
+            "DisplayName": s_disp,
+            "ResponsibleTeam": "Maintenance Team",
+            "Manufacturer": s_mfr,
+            "Supplier": "RS Components",
+            "SerialNumber": f"LOT-2026-B{idx:02d}",
+            "ParentName": "",
+            "StationIdentifier": "",
+            "ClientPcHostname": "",
+            "Metadata": json.dumps({"StockQuantity": s_qty, "MinThreshold": s_min, "Bin": s_bin, "Lot": f"LOT-2026-B{idx:02d}"}),
+            "PinnedObjectHandle": "",
+            "OrganizationId": "Production Floor A",
+            "StorageLocation": s_bin,
+            "EquipmentStatus": "InStorage",
+            "MachineId": "",
+            "StockQuantity": str(s_qty),
+            "MinStockThreshold": str(s_min),
+            "IsStockItem": "True",
+            "Technology": s_tech,
+            "MachineType": "",
+            "GroupId": ""
+        })
+    rows.extend(stock_items)
+
+    fieldnames = [
+        "Type", "Name", "DisplayName", "ResponsibleTeam", "Manufacturer", "Supplier",
+        "SerialNumber", "ParentName", "StationIdentifier", "ClientPcHostname", "Metadata",
+        "PinnedObjectHandle", "OrganizationId", "StorageLocation", "EquipmentStatus",
+        "MachineId", "StockQuantity", "MinStockThreshold", "IsStockItem", "Technology",
+        "MachineType", "GroupId"
+    ]
     with open(output_path, mode="w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -314,11 +451,15 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
     # Seed Default Enterprise Security Group Mappings
     sql.append("\n-- Seed Active Directory & Entra ID Security Group Mappings")
     default_mappings = [
-        ("EntraID", "9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c", "OT Plant Administrators", "admin", None),
+        ("EntraID", "9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c", "OT Plant Administrators", "heimdall_admin", None),
+        ("EntraID", "7c4d3e2b-1a9f-4e8c-8b5a-0d9f8e7a6b5c", "Factory IT Site Admins", "it_admin", None),
+        ("EntraID", "4f5e6d7c-8b9a-0e1f-2a3b-4c5d6e7f8a9b", "Plant Engineering Directorate", "plant_director", None),
         ("EntraID", "1b3d5f7a-9c1e-4a2b-8d6f-0e2c4a6b8d0e", "Controls Engineering Core", "engineer", "Production Floor A"),
+        ("ActiveDirectory", "CN=Plant-Engineering-Managers,OU=Groups,DC=factory,DC=corp", "Plant Engineering Managers", "plant_engineering_manager", None),
+        ("ActiveDirectory", "CN=Engineering-Group-Leaders,OU=Groups,DC=factory,DC=corp", "Engineering Group Leaders", "group_leader", "Production Floor A"),
         ("ActiveDirectory", "CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp", "On-Prem Controls Engineers", "engineer", "Production Floor B"),
         ("ActiveDirectory", "CN=OT-Maintenance-Technicians,OU=Groups,DC=factory,DC=corp", "Plant Maintenance Technicians", "technician", None),
-        ("ActiveDirectory", "CN=OT-Floor-Operators,OU=Groups,DC=factory,DC=corp", "Production Operators", "operator", None)
+        ("ActiveDirectory", "CN=Line-Operative-Planners,OU=Groups,DC=factory,DC=corp", "Operative Line Planners", "operative_planner", None)
     ]
     for idp, gid, dname, role, org in default_mappings:
         m_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{idp}:{gid}"))
@@ -332,11 +473,11 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
                f"VALUES ('{uuid.uuid4()}', '1.0.0', 'SystemGovernanceAndPki', NOW(), 'Initial V1 direct schema baseline with RBAC governance and PKI') ON CONFLICT DO NOTHING;")
 
     # Seed Manufacturers, Suppliers, Teams
-    manufacturers = set(r['Manufacturer'] for r in rows if r['Manufacturer'])
-    suppliers = set(r['Supplier'] for r in rows if r['Supplier'])
+    manufacturers = set(r['Manufacturer'] for r in rows if r.get('Manufacturer'))
+    suppliers = set(r['Supplier'] for r in rows if r.get('Supplier'))
     teams = set()
     for r in rows:
-        if r['ResponsibleTeam']:
+        if r.get('ResponsibleTeam'):
             for t in r['ResponsibleTeam'].split(';'):
                 teams.add(t.strip())
 
@@ -371,14 +512,27 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
                        f"ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, organization_id = EXCLUDED.organization_id;")
         else:
             item_ids[row['Name']] = item_id
-            m_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Manufacturer'])}'" if row['Manufacturer'] else "NULL"
-            s_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Supplier'])}'" if row['Supplier'] else "NULL"
-            metadata = (row['Metadata'] or "{}").replace("'", "''")
-            display_name = row['DisplayName'].replace("'", "''")
+            m_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Manufacturer'])}'" if row.get('Manufacturer') else "NULL"
+            s_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Supplier'])}'" if row.get('Supplier') else "NULL"
+            metadata = (row.get('Metadata') or "{}").replace("'", "''")
+            display_name = row.get('DisplayName', '').replace("'", "''")
             name = row['Name'].replace("'", "''")
-            sql.append(f"INSERT INTO inventory_items (id, name, display_name, manufacturer_id, supplier_id, metadata, serial_number, organization_id) "
-                       f"VALUES ('{item_id}', '{name}', '{display_name}', {m_id}, {s_id}, '{metadata}'::jsonb, '{row['SerialNumber']}', {org_id}) "
-                       f"ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, metadata = inventory_items.metadata || EXCLUDED.metadata, organization_id = EXCLUDED.organization_id;")
+            
+            is_stock = "true" if str(row.get('IsStockItem', '')).lower() == 'true' else "false"
+            eq_status = f"'{row.get('EquipmentStatus') or 'InStorage'}'"
+            loc_val = row.get('StorageLocation', '').replace("'", "''") if row.get('StorageLocation') else None
+            storage_loc = f"'{loc_val}'" if loc_val else "NULL"
+            stock_qty = str(row['StockQuantity']) if row.get('StockQuantity') not in (None, '', 'None') else "NULL"
+            min_thresh = str(row['MinStockThreshold']) if row.get('MinStockThreshold') not in (None, '', 'None') else "NULL"
+            tech_val = row.get('Technology', '').replace("'", "''") if row.get('Technology') else None
+            tech = f"'{tech_val}'" if tech_val else "NULL"
+            machine_id = "NULL"
+            if row.get('StationIdentifier') and row['StationIdentifier'] in item_ids and row['Type'] != 'Machine':
+                machine_id = f"'{item_ids[row['StationIdentifier']]}'"
+
+            sql.append(f"INSERT INTO inventory_items (id, name, display_name, manufacturer_id, supplier_id, metadata, serial_number, organization_id, storage_location, equipment_status, is_stock_item, stock_quantity, min_stock_threshold, technology, machine_id) "
+                       f"VALUES ('{item_id}', '{name}', '{display_name}', {m_id}, {s_id}, '{metadata}'::jsonb, '{row.get('SerialNumber', '')}', {org_id}, {storage_loc}, {eq_status}, {is_stock}, {stock_qty}, {min_thresh}, {tech}, {machine_id}) "
+                       f"ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, metadata = inventory_items.metadata || EXCLUDED.metadata, organization_id = EXCLUDED.organization_id, storage_location = EXCLUDED.storage_location, equipment_status = EXCLUDED.equipment_status, is_stock_item = EXCLUDED.is_stock_item, stock_quantity = EXCLUDED.stock_quantity, min_stock_threshold = EXCLUDED.min_stock_threshold, technology = EXCLUDED.technology, machine_id = EXCLUDED.machine_id;")
 
     # TPT Table Extensions
     sql.append("\n-- Seed Derived TPT Tables")
@@ -387,13 +541,17 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
             item_id = item_ids[row['Name']]
             pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
             if row['Type'] == 'Machine':
-                sql.append(f"INSERT INTO stations (id, custom_identifier, pinned_object_handle) VALUES ('{item_id}', '{row['StationIdentifier'] or row['Name']}', {pin_handle}) ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle;")
+                mt = row.get('MachineType', '').replace("'", "''") if row.get('MachineType') else None
+                m_type = f"'{mt}'" if mt else "NULL"
+                gid = row.get('GroupId', '').replace("'", "''") if row.get('GroupId') else None
+                grp_id = f"'{gid}'" if gid else "NULL"
+                sql.append(f"INSERT INTO stations (id, custom_identifier, pinned_object_handle, machine_type, group_id) VALUES ('{item_id}', '{row['StationIdentifier'] or row['Name']}', {pin_handle}, {m_type}, {grp_id}) ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, machine_type = EXCLUDED.machine_type, group_id = EXCLUDED.group_id;")
             elif row['Type'] == 'HardwareComponent':
                 sql.append(f"INSERT INTO hardware_assets (id) VALUES ('{item_id}') ON CONFLICT (id) DO NOTHING;")
             elif row['Type'] == 'SoftwareComponent':
                 sql.append(f"INSERT INTO software_assets (id) VALUES ('{item_id}') ON CONFLICT (id) DO NOTHING;")
 
-            if row['ResponsibleTeam']:
+            if row.get('ResponsibleTeam'):
                 for t in row['ResponsibleTeam'].split(';'):
                     t = t.strip()
                     if t in team_ids:
@@ -429,15 +587,30 @@ def validate():
 
     stations = [r for r in rows if r['Type'] == 'Machine']
     pcs = [r for r in rows if r['Type'] == 'ClientPc']
-    components = [r for r in rows if r['Type'] not in ('Machine', 'ClientPc')]
+    parts = [r for r in rows if r['Type'] not in ('Machine', 'ClientPc') and str(r.get('IsStockItem', '')).lower() != 'true']
+    stock = [r for r in rows if str(r.get('IsStockItem', '')).lower() == 'true']
 
-    print(f"✓ Inventory CSV rows: {len(rows)} (Stations: {len(stations)}, IPCs: {len(pcs)}, Components: {len(components)})")
+    print(f"✓ Inventory CSV rows: {len(rows)} (Stations: {len(stations)}, IPCs: {len(pcs)}, Serialized Parts: {len(parts)}, Bulk Stock Items: {len(stock)})")
     assert len(stations) == 500, f"Expected 500 stations, got {len(stations)}"
     assert len(pcs) == 500, f"Expected 500 IPCs, got {len(pcs)}"
+    assert len(parts) >= 1000, f"Expected at least 1000 discrete serialized parts, got {len(parts)}"
+    assert len(stock) >= 10, f"Expected at least 10 bulk stock items, got {len(stock)}"
 
     # Check DXF handles
     handles_found = set(r['PinnedObjectHandle'] for r in rows if r['PinnedObjectHandle'])
     print(f"✓ Mapped CAD Handles: {len(handles_found)} unique anchors")
+
+    # Check statuses
+    statuses = set(r.get('EquipmentStatus') for r in rows if r.get('EquipmentStatus'))
+    print(f"✓ Equipment Statuses present: {statuses}")
+    assert 'InMachine' in statuses, "Missing InMachine status"
+    assert 'InStorage' in statuses, "Missing InStorage status"
+
+    # Check technologies
+    techs = set(r.get('Technology') for r in rows if r.get('Technology'))
+    print(f"✓ Technologies present: {techs}")
+    for t in ["Assembly", "Test", "SMT", "Welding", "Fastening", "Dispensing", "Robotics"]:
+        assert t in techs, f"Expected technology {t} in dataset"
 
     # Check SQL file content
     with open(SQL_FILE, 'r', encoding='utf-8') as f:
@@ -448,9 +621,13 @@ def validate():
     assert "client_certificates" in sql_content, "Missing client_certificates in SQL seed"
     assert "schema_version_manifest" in sql_content, "Missing schema_version_manifest in SQL seed"
     assert "StationControllers" in sql_content, "Missing StationControllers in SQL seed"
+    assert "storage_location" in sql_content, "Missing storage_location in SQL seed"
+    assert "equipment_status" in sql_content, "Missing equipment_status in SQL seed"
+    assert "is_stock_item" in sql_content, "Missing is_stock_item in SQL seed"
+    assert "technology" in sql_content, "Missing technology in SQL seed"
     assert "COMMIT;" in sql_content, "Missing COMMIT in SQL seed"
 
-    print("✓ SQL transaction integrity validated.")
+    print("✓ SQL transaction integrity and new data model columns validated.")
     print("All Seed Data validations passed successfully!")
     return True
 

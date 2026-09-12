@@ -119,17 +119,33 @@ builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransforma
 
 builder.Services.AddAuthorization(options =>
 {
+    // God user (system_admin) and Heimdall platform administrators (heimdall_admin, legacy admin, plant_director)
     options.AddPolicy("SystemAdministration", policy =>
-        policy.RequireRole("admin", "system_admin"));
+        policy.RequireRole("system_admin", "heimdall_admin", "admin", "plant_director"));
 
+    // IT Infrastructure operations (AD, Entra, PKI, OU approvals)
+    options.AddPolicy("ItAdministration", policy =>
+        policy.RequireRole("system_admin", "it_admin", "it_site_admin"));
+
+    // Engineering administration (Functional settings & User management)
+    options.AddPolicy("EngineeringAdministration", policy =>
+        policy.RequireRole("system_admin", "engineering_admin", "plant_engineering_manager", "senior_engineering_manager"));
+
+    // Functional endpoint configurations
     options.AddPolicy("EndpointConfigManagement", policy =>
-        policy.RequireRole("admin", "system_admin", "lead_engineer", "engineer", "controls_engineer"));
+        policy.RequireRole("system_admin", "heimdall_admin", "admin", "engineering_admin", "plant_engineering_manager", "senior_engineering_manager", "group_leader", "lead_engineer", "engineer", "controls_engineer"));
 
+    // Remote execution & OT commands
     options.AddPolicy("RemoteExecution", policy =>
-        policy.RequireRole("admin", "system_admin", "lead_engineer", "engineer"));
+        policy.RequireRole("system_admin", "heimdall_admin", "admin", "engineering_admin", "plant_engineering_manager", "senior_engineering_manager", "group_leader", "lead_engineer", "engineer"));
 
+    // Maintenance operations
     options.AddPolicy("MaintenanceOperations", policy =>
-        policy.RequireRole("admin", "system_admin", "lead_engineer", "engineer", "technician"));
+        policy.RequireRole("system_admin", "heimdall_admin", "admin", "engineering_admin", "plant_engineering_manager", "senior_engineering_manager", "group_leader", "lead_engineer", "engineer", "technician", "operative_planner", "manager"));
+
+    // Operative line stop requests and scheduling approvals
+    options.AddPolicy("LineStopRequest", policy =>
+        policy.RequireRole("system_admin", "plant_director", "plant_engineering_manager", "operative_planner", "group_leader"));
 });
 
 // --- 4. Controllers & SignalR & gRPC & Swagger & CORS & RateLimiting ---

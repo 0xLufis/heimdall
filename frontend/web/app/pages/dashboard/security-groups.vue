@@ -51,15 +51,80 @@ const testInputGroups = ref('9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c\nCN=OT-Control
 const testResult = ref<any>(null)
 const evaluating = ref(false)
 
+const { isItAdmin, isSystemAdmin } = useAuthSession()
+const canApproveOus = computed(() => isItAdmin.value || isSystemAdmin.value)
+
+interface AdOuItem {
+  ouPath: string
+  name: string
+  vlanId: number
+  vlanName: string
+  subnet: string
+  location?: string
+  purpose?: string
+  machineType?: string
+  hostCount: number
+  accessLevel?: 'read_write' | 'read_only' | 'unapproved'
+  isApproved?: boolean
+  approvedBy?: string
+  approvedAt?: string
+  approvalNotes?: string
+}
+
+const ousList = ref<AdOuItem[]>([])
+const loadingOus = ref(false)
+const approvingOuPath = ref<string | null>(null)
+
 const rolesList = [
   'system_admin',
+  'heimdall_admin',
+  'it_admin',
+  'engineering_admin',
   'admin',
-  'lead_engineer',
-  'controls_engineer',
+  'manager',
+  'group_leader',
+  'shift_leader',
+  'team_lead',
   'engineer',
+  'controls_engineer',
+  'lead_engineer',
   'technician',
   'operator'
 ]
+
+async function fetchOus() {
+  loadingOus.value = true
+  try {
+    const res = await $fetch<AdOuItem[]>('/api/activedirectory/ous')
+    ousList.value = res || []
+  } catch (e) {
+    console.error('Failed to fetch OUs:', e)
+  } finally {
+    loadingOus.value = false
+  }
+}
+
+async function handleSetOuGovernance(ouPath: string, level: 'read_write' | 'read_only' | 'unapproved') {
+  approvingOuPath.value = ouPath
+  error.value = ''
+  successMsg.value = ''
+  try {
+    await $fetch('/api/activedirectory/ous/approve', {
+      method: 'POST',
+      body: {
+        ouPath,
+        accessLevel: level,
+        notes: `Updated by IT Admin (${level})`
+      }
+    })
+    successMsg.value = `OU '${ouPath}' governance set to '${level}'.`
+    await fetchOus()
+  } catch (err: any) {
+    error.value = err.data?.statusMessage || err.data?.message || err.message || 'Failed to update OU governance'
+  } finally {
+    approvingOuPath.value = null
+  }
+}
 
 async function fetchMappings() {
   loading.value = true
@@ -259,6 +324,7 @@ async function runEvaluationTest() {
 
 onMounted(() => {
   fetchMappings()
+  fetchOus()
 })
 </script>
 
@@ -420,6 +486,143 @@ onMounted(() => {
               <tr v-if="mappings.length === 0">
                 <td colspan="6" class="px-4 py-8 text-center text-muted-foreground text-sm">
                   No directory group mappings defined yet. Click "Add Group Mapping" to register Entra ID / AD groups.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- Active Directory & Entra ID Organizational Unit (OU) Access Governance -->
+    <Card class="border-border/80">
+      <CardHeader>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div>
+            <CardTitle class="text-base flex items-center gap-2">
+              <ServerIcon class="h-5 w-5 text-cyan-500" />
+              <span>Active Directory & Entra ID Organizational Unit (OU) Governance</span>
+            </CardTitle>
+            <CardDescription class="mt-1">
+              IT Administrators control and approve OUs for Read/Write ingestion or Read-Only discovery into Heimdall inventory.
+            </CardDescription>
+          </div>
+          <div class="flex items-center gap-2">
+            <Badge variant="outline" class="text-xs uppercase font-mono tracking-wide text-cyan-400 border-cyan-500/40">
+              IT Administrator Authority
+            </Badge>
+            <Button variant="outline" size="sm" @click="fetchOus" :disabled="loadingOus">
+              <RefreshCwIcon class="h-3.5 w-3.5 mr-1.5" :class="{ 'animate-spin': loadingOus }" />
+              Sync OUs
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div v-if="!canApproveOus" class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-center gap-2">
+          <AlertCircleIcon class="h-4 w-4 shrink-0" />
+          <span>Restricted Access: Organizational Unit approval actions require IT Administrator (it_admin) or System Administrator (system_admin) privileges.</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-md border border-border">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-muted/50 text-muted-foreground text-xs uppercase border-b border-border">
+              <tr>
+                <th class="px-4 py-3">Discovered OU & Path</th>
+                <th class="px-4 py-3">Network & Subnet</th>
+                <th class="px-4 py-3 text-center">Discovered Hosts</th>
+                <th class="px-4 py-3">Governance Status</th>
+                <th class="px-4 py-3">Approval Details</th>
+                <th class="px-4 py-3 text-right">IT Approval Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              <tr v-for="ou in ousList" :key="ou.ouPath" class="hover:bg-muted/30 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="font-semibold text-foreground text-xs">{{ ou.name || ou.ouPath }}</div>
+                  <div class="font-mono text-[11px] text-muted-foreground break-all">{{ ou.ouPath }}</div>
+                  <div v-if="ou.purpose" class="text-[11px] text-muted-foreground mt-0.5">Role: {{ ou.purpose }}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="text-xs font-medium">{{ ou.vlanName }}</div>
+                  <div class="font-mono text-[11px] text-muted-foreground">{{ ou.subnet }}</div>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <Badge variant="secondary" class="font-mono text-xs">
+                    {{ ou.hostCount }} {{ ou.hostCount === 1 ? 'host' : 'hosts' }}
+                  </Badge>
+                </td>
+                <td class="px-4 py-3">
+                  <Badge 
+                    v-if="ou.accessLevel === 'read_write' && ou.isApproved"
+                    variant="outline" 
+                    class="bg-emerald-500/15 text-emerald-400 border-emerald-500/40 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Read / Write Approved
+                  </Badge>
+                  <Badge 
+                    v-else-if="ou.accessLevel === 'read_only' && ou.isApproved"
+                    variant="outline" 
+                    class="bg-amber-500/15 text-amber-400 border-amber-500/40 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Read-Only (Discovery)
+                  </Badge>
+                  <Badge 
+                    v-else 
+                    variant="outline" 
+                    class="bg-rose-500/15 text-rose-400 border-rose-500/40 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Unapproved / Blocked
+                  </Badge>
+                </td>
+                <td class="px-4 py-3 text-xs text-muted-foreground">
+                  <div v-if="ou.isApproved">
+                    <div>By: <span class="font-semibold text-foreground">{{ ou.approvedBy || 'it_admin' }}</span></div>
+                    <div v-if="ou.approvedAt" class="text-[10px]">{{ new Date(ou.approvedAt).toLocaleString() }}</div>
+                  </div>
+                  <div v-else class="italic text-[11px]">Pending IT Approval</div>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div v-if="canApproveOus" class="inline-flex items-center gap-1.5">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      class="h-7 text-[11px] hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-500/50"
+                      :disabled="approvingOuPath === ou.ouPath || (ou.accessLevel === 'read_write' && ou.isApproved)"
+                      @click="handleSetOuGovernance(ou.ouPath, 'read_write')"
+                    >
+                      <CheckCircle2Icon class="h-3.5 w-3.5 mr-1 text-emerald-400" />
+                      Approve R/W
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      class="h-7 text-[11px] hover:bg-amber-500/20 hover:text-amber-400 hover:border-amber-500/50"
+                      :disabled="approvingOuPath === ou.ouPath || (ou.accessLevel === 'read_only' && ou.isApproved)"
+                      @click="handleSetOuGovernance(ou.ouPath, 'read_only')"
+                    >
+                      Read-Only
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      class="h-7 text-[11px] text-destructive hover:text-destructive"
+                      :disabled="approvingOuPath === ou.ouPath || (!ou.isApproved && ou.accessLevel === 'unapproved')"
+                      @click="handleSetOuGovernance(ou.ouPath, 'unapproved')"
+                    >
+                      Revoke
+                    </Button>
+                  </div>
+                  <span v-else class="text-xs text-muted-foreground italic">Read-only</span>
+                </td>
+              </tr>
+              <tr v-if="ousList.length === 0">
+                <td colspan="6" class="px-4 py-8 text-center text-muted-foreground text-sm">
+                  <div v-if="loadingOus" class="flex items-center justify-center gap-2">
+                    <RefreshCwIcon class="h-4 w-4 animate-spin" />
+                    <span>Loading Organizational Units...</span>
+                  </div>
+                  <span v-else>No Active Directory OUs discovered.</span>
                 </td>
               </tr>
             </tbody>

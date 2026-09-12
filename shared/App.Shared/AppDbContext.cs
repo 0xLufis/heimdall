@@ -158,6 +158,7 @@ public class AppDbContext : DbContext
     public DbSet<SchemaVersionManifest> SchemaVersionManifests { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<MalformedTelemetryRecord> MalformedTelemetryRecords { get; set; }
+    public DbSet<AdOuGovernance> AdOuGovernances { get; set; }
     
     // Auth Sets (Managed by Better-Auth, excluded from migrations)
     public DbSet<AuthUser> AuthUsers { get; set; }
@@ -297,6 +298,12 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.ClientPc)
                   .WithMany(p => p.InventoryItems)
                   .HasForeignKey(e => e.ClientPcId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            // Link to installed Machine (Station)
+            entity.HasOne(e => e.Machine)
+                  .WithMany()
+                  .HasForeignKey(e => e.MachineId)
                   .OnDelete(DeleteBehavior.SetNull);
 
             // Many-to-Many with ResponsibleTeam

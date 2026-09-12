@@ -6,6 +6,7 @@ export interface KnownEntityDictionary {
   statuses: string[]
   roles: string[]
   protocols: string[]
+  technologies?: string[]
 }
 
 export const DEFAULT_DICTIONARY: KnownEntityDictionary = {
@@ -45,9 +46,10 @@ export const DEFAULT_DICTIONARY: KnownEntityDictionary = {
     'FieldbusCoupler',
     'DispenserHead'
   ],
-  statuses: ['online', 'offline', 'critical', 'warning', 'resolved', 'open', 'in_progress', 'pending_parts'],
+  statuses: ['online', 'offline', 'critical', 'warning', 'resolved', 'open', 'in_progress', 'pending_parts', 'InStorage', 'InMachine', 'UnderRepair'],
   roles: ['admin', 'engineer', 'technician', 'manager', 'operator', 'primary', 'secondary', 'safety'],
-  protocols: ['EtherCAT', 'PROFINET', 'OPC_UA', 'ModbusTCP', 'EtherNet_IP']
+  protocols: ['EtherCAT', 'PROFINET', 'OPC_UA', 'ModbusTCP', 'EtherNet_IP'],
+  technologies: ['Assembly', 'Test', 'SMT', 'Welding', 'Fastening', 'Dispensing', 'Robotics']
 }
 
 /**
@@ -290,7 +292,7 @@ export class AutoTagEngine {
 
       // Check Statuses
       for (const status of this.dictionary.statuses) {
-        if (status === lower) {
+        if (status.toLowerCase() === lower) {
           results.push({
             tag: {
               id: `tag-status-${status}`,
@@ -305,6 +307,28 @@ export class AutoTagEngine {
             source: 'fuzzy_dict'
           })
           break
+        }
+      }
+
+      // Check Technologies
+      if (this.dictionary.technologies) {
+        for (const tech of this.dictionary.technologies) {
+          if (tech.toLowerCase() === lower) {
+            results.push({
+              tag: {
+                id: `tag-tech-${tech}`,
+                key: 'tech',
+                value: tech,
+                label: `Tech: ${tech}`,
+                color: 'teal',
+                isAutoDetected: true
+              },
+              confidence: 1.0,
+              matchedSubstring: token,
+              source: 'fuzzy_dict'
+            })
+            break
+          }
         }
       }
     }

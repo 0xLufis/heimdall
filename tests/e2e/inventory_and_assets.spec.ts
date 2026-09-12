@@ -9,7 +9,7 @@ test.describe('Inventory & Asset Management E2E', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('switches tabs between Hardware, Software, and Hierarchy views', async ({ page }) => {
+  test('switches tabs between Hardware, Software, Parts, and Stock views', async ({ page }) => {
     const hwTab = page.getByRole('button', { name: /hardware/i }).first()
     await expect(hwTab).toBeVisible({ timeout: 10000 })
 
@@ -17,10 +17,18 @@ test.describe('Inventory & Asset Management E2E', () => {
     await swTab.click()
     await page.waitForTimeout(300)
 
-    const hierTab = page.getByRole('button', { name: /hierarchy/i }).first()
-    await hierTab.click()
+    const partsTab = page.getByRole('button', { name: /parts/i }).first()
+    await partsTab.click()
     await page.waitForTimeout(300)
-    await expect(page.getByText('Structure By:')).toBeVisible({ timeout: 5000 })
+
+    const stockTab = page.getByRole('button', { name: /stock/i }).first()
+    await stockTab.click()
+    await page.waitForTimeout(300)
+
+    const treeBtn = page.getByRole('button', { name: /visualise tree|component tree/i }).first()
+    await expect(treeBtn).toBeVisible({ timeout: 5000 })
+    await treeBtn.click()
+    await expect(page.getByText('Station Component Tree')).toBeVisible({ timeout: 5000 })
   })
 
   test('opens column configuration popover and toggles column visibility', async ({ page }) => {

@@ -1,9 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, username, organization, multiSession } from "better-auth/plugins";
-import { dash } from "@better-auth/infra";
+import { adminAc, userAc } from "better-auth/plugins/admin/access";
 import { useDb } from "./db"; // your drizzle instance
-import * as hbSchema from "../database/drizzle/schema"
+import * as hbSchema from "../database/drizzle/schema";
+import { createDrizzleEventsProvider } from "./studioEventsProvider";
 
 const socialProvidersConfig: Record<string, any> = {};
 
@@ -54,13 +55,77 @@ export const auth = betterAuth({
       provider: "pg",
       schema: hbSchema
    }),
+   databaseHooks: {
+      session: {
+         create: {
+            after: async (session) => {
+               try {
+                  const provider = createDrizzleEventsProvider();
+                  await provider.ingest({
+                     id: crypto.randomUUID(),
+                     type: "session.created",
+                     timestamp: new Date(),
+                     status: "success",
+                     userId: session.userId,
+                     sessionId: session.id,
+                     source: "app",
+                     display: {
+                        message: `Session established for user (${session.userId})`,
+                        severity: "info"
+                     }
+                  });
+               } catch (e) {
+                  console.error("[Auth Event Hook] Session create hook error:", e);
+               }
+            }
+         }
+      },
+      user: {
+         create: {
+            after: async (user) => {
+               try {
+                  const provider = createDrizzleEventsProvider();
+                  await provider.ingest({
+                     id: crypto.randomUUID(),
+                     type: "user.joined",
+                     timestamp: new Date(),
+                     status: "success",
+                     userId: user.id,
+                     metadata: { email: user.email, name: user.name },
+                     source: "app",
+                     display: {
+                        message: `Identity enrolled: ${user.email}`,
+                        severity: "success"
+                     }
+                  });
+               } catch (e) {
+                  console.error("[Auth Event Hook] User create hook error:", e);
+               }
+            }
+         }
+      }
+   },
    user: {
       additionalFields: {
          role: { type: "string" }
       }
    },
    plugins: [
-      admin(),
+      admin({
+         adminRoles: ["admin", "system_admin", "heimdall_admin", "engineering_admin"],
+         roles: {
+            admin: adminAc,
+            system_admin: adminAc,
+            heimdall_admin: adminAc,
+            engineering_admin: adminAc,
+            it_admin: userAc,
+            manager: userAc,
+            team_lead: userAc,
+            engineer: userAc,
+            technician: userAc,
+            user: userAc
+         }
+      }),
       username(),
       organization(),
       multiSession()

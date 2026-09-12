@@ -1,3 +1,5 @@
+import { createError } from 'h3'
+
 export interface AdCandidateHost {
   hostname: string
   name: string
@@ -6,6 +8,15 @@ export interface AdCandidateHost {
   osVersion: string
   machineIdentifier: string
   alreadyImported?: boolean
+}
+
+export interface AdOuGovernance {
+  ouPath: string
+  accessLevel: 'read_write' | 'read_only' | 'unapproved'
+  isApproved: boolean
+  approvedBy?: string
+  approvedAt?: string
+  notes?: string
 }
 
 export interface AdOrganizationalUnit {
@@ -19,6 +30,11 @@ export interface AdOrganizationalUnit {
   machineType: string
   hostCount: number
   candidateHosts: AdCandidateHost[]
+  accessLevel?: 'read_write' | 'read_only' | 'unapproved'
+  isApproved?: boolean
+  approvedBy?: string
+  approvedAt?: string
+  approvalNotes?: string
 }
 
 export interface TagTemplateRule {
@@ -87,9 +103,44 @@ function buildActiveDirectoryOus(): AdOrganizationalUnit[] {
 }
 
 const AD_OUS: AdOrganizationalUnit[] = buildActiveDirectoryOus()
+const ouGovernanceMap = new Map<string, AdOuGovernance>()
+
+export function getOuGovernances(): AdOuGovernance[] {
+  return Array.from(ouGovernanceMap.values())
+}
+
+export function setOuGovernance(
+  ouPath: string,
+  accessLevel: 'read_write' | 'read_only' | 'unapproved',
+  approvedBy: string = 'it_admin',
+  notes?: string
+): AdOuGovernance {
+  const isApproved = accessLevel !== 'unapproved'
+  const record: AdOuGovernance = {
+    ouPath,
+    accessLevel,
+    isApproved,
+    approvedBy,
+    approvedAt: new Date().toISOString(),
+    notes
+  }
+  ouGovernanceMap.set(ouPath.toLowerCase(), record)
+  return record
+}
 
 export function getActiveDirectoryOus(): AdOrganizationalUnit[] {
-  return JSON.parse(JSON.stringify(AD_OUS))
+  const list: AdOrganizationalUnit[] = JSON.parse(JSON.stringify(AD_OUS))
+  return list.map(ou => {
+    const gov = ouGovernanceMap.get(ou.ouPath.toLowerCase())
+    return {
+      ...ou,
+      accessLevel: gov?.accessLevel || 'unapproved',
+      isApproved: gov?.isApproved || false,
+      approvedBy: gov?.approvedBy,
+      approvedAt: gov?.approvedAt,
+      approvalNotes: gov?.notes
+    }
+  })
 }
 
 function extractOuTokens(ouPath: string): string[] {
@@ -191,6 +242,19 @@ export function commitImportedHosts(hosts: AdHostPreviewItem[]): {
   updatedCount: number
   totalProcessed: number
 } {
+  // Enforce IT Admin read_write approval check
+  for (const h of hosts) {
+    if (h.adOuPath) {
+      const gov = ouGovernanceMap.get(h.adOuPath.toLowerCase())
+      if (!gov || !gov.isApproved || gov.accessLevel !== 'read_write') {
+        throw createError({
+          statusCode: 403,
+          statusMessage: `Active Directory Organizational Unit '${h.adOuPath}' is not approved for Read/Write in Heimdall. Approval by an IT Administrator is required.`
+        })
+      }
+    }
+  }
+
   let importedCount = 0
   let updatedCount = 0
 

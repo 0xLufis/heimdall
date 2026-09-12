@@ -180,6 +180,14 @@ public class MfaAndActiveDirectoryTests
         var previewRes = controller.PreviewImport(previewReq) as OkObjectResult;
         Assert.NotNull(previewRes);
 
+        // IT Admin approves OU for read_write access before ingestion
+        await controller.ApproveOrganizationalUnit(new AdOuApprovalRequest
+        {
+            OuPath = "OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp",
+            AccessLevel = "read_write",
+            Notes = "Approved for plant production"
+        });
+
         // Import hosts
         var importReq = new AdHostImportRequest
         {
@@ -210,6 +218,69 @@ public class MfaAndActiveDirectoryTests
         Assert.Equal(10, savedPc.VlanId);
         Assert.Equal("10.10.10.0/24", savedPc.Subnet);
         Assert.Equal("OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp", savedPc.AdOuPath);
+    }
+
+    [Fact]
+    public async Task ActiveDirectory_ImportHosts_EnforcesItAdminReadWriteOuApproval()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(dbName).Options;
+        var factory = new TestDbContextFactory(options);
+        var controller = new ActiveDirectoryController(factory, NullLogger<ActiveDirectoryController>.Instance);
+
+        var importReq = new AdHostImportRequest
+        {
+            Hosts = new List<AdHostPreviewItem>
+            {
+                new()
+                {
+                    Hostname = "CPC-L06-AOI-01",
+                    Name = "Cognex VisionPro IPC 01",
+                    IpAddress = "10.10.20.31",
+                    MacAddress = "00:1A:2B:3C:4D:31",
+                    VlanId = 20,
+                    VlanName = "VLAN 20 - Optical Quality Inspection",
+                    Subnet = "10.10.20.0/24",
+                    AdOuPath = "OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp"
+                }
+            }
+        };
+
+        // 1. Unapproved OU must be rejected with 403 Forbidden
+        var unapprovedRes = await controller.ImportHosts(importReq) as ObjectResult;
+        Assert.NotNull(unapprovedRes);
+        Assert.Equal(403, unapprovedRes.StatusCode);
+
+        // 2. Read-Only approved OU must also be rejected with 403 Forbidden
+        await controller.ApproveOrganizationalUnit(new AdOuApprovalRequest
+        {
+            OuPath = "OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp",
+            AccessLevel = "read_only",
+            Notes = "Inspection discovery only"
+        });
+        var readOnlyRes = await controller.ImportHosts(importReq) as ObjectResult;
+        Assert.NotNull(readOnlyRes);
+        Assert.Equal(403, readOnlyRes.StatusCode);
+
+        // 3. Read-Write approved OU must succeed with 200 OK
+        await controller.ApproveOrganizationalUnit(new AdOuApprovalRequest
+        {
+            OuPath = "OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp",
+            AccessLevel = "read_write",
+            Notes = "Full read/write approved by IT Admin"
+        });
+        var successRes = await controller.ImportHosts(importReq) as OkObjectResult;
+        Assert.NotNull(successRes);
+
+        // Verify OU listing reflects governance status
+        var listRes = await controller.GetOrganizationalUnits() as OkObjectResult;
+        Assert.NotNull(listRes);
+        var ous = listRes.Value as List<AdOrganizationalUnit>;
+        Assert.NotNull(ous);
+        var aoiOu = ous.FirstOrDefault(o => o.OuPath.Contains("AOI-Vision"));
+        Assert.NotNull(aoiOu);
+        Assert.True(aoiOu.IsApproved);
+        Assert.Equal("read_write", aoiOu.AccessLevel);
     }
 
     [Fact]
@@ -312,4 +383,27 @@ public class MfaAndActiveDirectoryTests
             Assert.Equal("High-Assurance-Robotics-mTLS", pc.CertificateProfileName);
         }
     }
+
+    [Fact]
+    public void ActiveDirectory_Controllers_ConfiguredWithItAdministrationPolicy()
+    {
+        var adAttr = typeof(ActiveDirectoryController).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true)
+            .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()
+            .FirstOrDefault();
+        Assert.NotNull(adAttr);
+        Assert.Equal("ItAdministration", adAttr.Policy);
+
+        var sgAttr = typeof(SecurityGroupMappingController).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true)
+            .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()
+            .FirstOrDefault();
+        Assert.NotNull(sgAttr);
+        Assert.Equal("ItAdministration", sgAttr.Policy);
+
+        var certAttr = typeof(CertificateManagementController).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true)
+            .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>()
+            .FirstOrDefault();
+        Assert.NotNull(certAttr);
+        Assert.Equal("ItAdministration", certAttr.Policy);
+    }
 }
+

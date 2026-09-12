@@ -33,11 +33,18 @@ const {
   freeText,
   autoSuggestions,
   results,
+  primaryResults,
+  crossTableResults,
+  matchingKeys,
+  valueSuggestions,
+  activePendingKey,
   searchKeyGroups,
   isLoading,
   effectiveQueryString,
   handleInputChange,
   addTag,
+  selectKeySuggestion,
+  selectValueSuggestion,
   removeTag,
   clearAllTags,
   executeSearch,
@@ -49,7 +56,11 @@ const isMenuExplicitlyClosed = ref(false)
 
 const showDropdown = computed(() => {
   if (isMenuExplicitlyClosed.value || !isFocused.value) return false
-  return autoSuggestions.value.length > 0 || results.value.length > 0 || searchKeyGroups.value.length > 0
+  return autoSuggestions.value.length > 0 || 
+    results.value.length > 0 || 
+    searchKeyGroups.value.length > 0 ||
+    valueSuggestions.value.length > 0 ||
+    matchingKeys.value.length > 0
 })
 
 // Emit debounced live search queries to parent components
@@ -68,7 +79,10 @@ watchDebounced(
 const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
     e.preventDefault()
-    if (autoSuggestions.value.length > 0) {
+    if (activePendingKey.value && valueSuggestions.value.length > 0) {
+      selectValueSuggestion(valueSuggestions.value[0].value)
+      emit('search', effectiveQueryString.value)
+    } else if (autoSuggestions.value.length > 0) {
       addTag(autoSuggestions.value[0].tag)
       rawInput.value = ''
       isMenuExplicitlyClosed.value = false
@@ -109,7 +123,15 @@ const handleResultSelect = (item: SearchResultItem) => {
 }
 
 const handleKeySelect = (key: string) => {
-  rawInput.value = `${key}:`
+  selectKeySuggestion(key)
+  isMenuExplicitlyClosed.value = false
+  inputRef.value?.focus()
+  isFocused.value = true
+}
+
+const handleValueSelect = (val: string) => {
+  selectValueSuggestion(val)
+  emit('search', effectiveQueryString.value)
   isMenuExplicitlyClosed.value = false
   inputRef.value?.focus()
   isFocused.value = true
@@ -212,12 +234,19 @@ onUnmounted(() => {
       <AutoTagSuggestionDropdown
         :auto-suggestions="autoSuggestions"
         :results="results"
+        :primary-results="primaryResults"
+        :cross-table-results="crossTableResults"
+        :matching-keys="matchingKeys"
+        :value-suggestions="valueSuggestions"
+        :active-pending-key="activePendingKey"
         :search-key-groups="searchKeyGroups"
         :is-loading="isLoading"
         :free-text="freeText"
+        :instance-id="props.config?.instanceId || 'global'"
         @select-tag="handleTagSuggestionSelect"
         @select-result="handleResultSelect"
         @select-key="handleKeySelect"
+        @select-value="handleValueSelect"
       />
     </div>
   </div>

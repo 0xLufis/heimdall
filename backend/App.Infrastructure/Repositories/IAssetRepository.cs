@@ -19,4 +19,7 @@ public interface IAssetRepository
     Task<bool> DeleteAsync(Guid id);
     Task<int> GetCountAsync();
     Task<int> GetAuthUsersCountAsync();
+    Task<List<BaseInventoryItem>> GetPartsAsync();
+    Task<List<BaseInventoryItem>> GetStockAsync();
+    Task<object?> GetStationComponentTreeAsync(Guid stationId);
 }

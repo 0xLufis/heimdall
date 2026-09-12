@@ -69,6 +69,12 @@ const authPolicy = ref({
   maxFailedLoginAttempts: 5,
 })
 
+// Dynamic Admin Role Delegation (SysAdmin Privileged)
+const adminRoleDelegation = ref({
+  heimdallAdminIsPseudoItAdmin: true,
+  allowEngineeringAdminUserCreation: true,
+})
+
 // MFA Policy with Group & Role Thresholds
 interface MfaRule {
   id: string
@@ -240,6 +246,14 @@ async function loadAllData() {
       if (certsRes && Array.isArray(certsRes)) certificates.value = certsRes
     } catch {}
 
+    // 7. Admin Role Delegation
+    try {
+      const delRes = await $fetch<any>('/api/proxy/v1/systemsettings/admin-role-delegation')
+      if (delRes) {
+        adminRoleDelegation.value = { ...adminRoleDelegation.value, ...delRes }
+      }
+    } catch {}
+
     // Run initial sandbox evaluation
     runSandboxEvaluation()
   } catch (err: any) {
@@ -278,6 +292,13 @@ async function saveCurrentCategory() {
           body: mfaPolicy.value,
         })
       }
+      // Save Admin Role Delegation
+      try {
+        await $fetch('/api/proxy/v1/systemsettings/admin-role-delegation', {
+          method: 'PUT',
+          body: adminRoleDelegation.value,
+        })
+      } catch {}
     } else if (activeTab.value === 'integrations') {
       await $fetch('/api/proxy/v1/systemsettings/OpcUaConfig', {
         method: 'PUT',
@@ -552,6 +573,62 @@ onMounted(() => {
     <!-- TAB 1: MFA Policy & Timeout Governance                            -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div v-if="activeTab === 'auth'" class="space-y-6">
+      <!-- Admin Role Delegation & Pseudo-IT Admin Governance Card (SysAdmin Privileged) -->
+      <Card class="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <div class="flex items-center justify-between">
+            <div>
+              <CardTitle class="text-base text-slate-100 flex items-center gap-2">
+                <ShieldCheckIcon class="h-5 w-5 text-cyan-400" />
+                Admin Role Delegation & Inheritance Governance
+              </CardTitle>
+              <CardDescription class="text-xs text-slate-400">
+                Configure dynamic administrative privileges and pseudo-role inheritance. System Administrators can delegate IT Site Admin authority to Heimdall platform administrators.
+              </CardDescription>
+            </div>
+            <Badge variant="outline" class="border-cyan-500/40 text-cyan-400 text-xs">
+              SysAdmin Privileged
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-4">
+            <div>
+              <div class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                <span>Heimdall Admins are Pseudo IT-Admins</span>
+                <Badge variant="secondary" class="text-[9px] bg-cyan-950/60 text-cyan-300 border border-cyan-800/60">
+                  {{ adminRoleDelegation.heimdallAdminIsPseudoItAdmin ? 'Active' : 'Disabled' }}
+                </Badge>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                When enabled, users with role <code class="text-purple-300">heimdall_admin</code> automatically inherit full IT Site Admin privileges (<code class="text-cyan-300">it_site_admin</code> / <code class="text-cyan-300">it_admin</code>), allowing them to approve/revoke Active Directory & Entra ID OUs for Read/Write host ingestion and govern PKI mTLS root certificate rules.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              v-model="adminRoleDelegation.heimdallAdminIsPseudoItAdmin"
+              class="h-5 w-5 rounded border-slate-700 text-cyan-600 focus:ring-cyan-500 shrink-0 cursor-pointer"
+            />
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-4">
+            <div>
+              <div class="text-sm font-bold text-slate-200">
+                Engineering Admin Main App User Creation
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                Allows <code class="text-amber-300">engineering_admin</code> users to manage application accounts directly in <code class="text-slate-300">/dashboard/users</code> without accessing Identity Studio.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              v-model="adminRoleDelegation.allowEngineeringAdminUserCreation"
+              class="h-5 w-5 rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <!-- Master MFA & Inactivity Settings Card -->
       <Card class="bg-slate-900 border-slate-800">
         <CardHeader>

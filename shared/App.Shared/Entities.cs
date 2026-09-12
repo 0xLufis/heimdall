@@ -83,6 +83,32 @@ public abstract partial class BaseInventoryItem
     /// <summary>Flexible JSONB metadata for storing domain-specific attributes (e.g., CPU, RAM, Version).</summary>
     public JsonDocument? Metadata { get; set; }
 
+    /// <summary>Storage shelf, cabinet, or warehouse bin location (e.g. "Shelf B3").</summary>
+    [MaxLength(255)]
+    public string? StorageLocation { get; set; }
+
+    /// <summary>Equipment lifecycle status: InStorage (spare part in storage), InMachine (installed on a station), UnderRepair, Decommissioned.</summary>
+    [MaxLength(50)]
+    public string EquipmentStatus { get; set; } = "InStorage";
+
+    /// <summary>The ID of the Machine / Station this piece of equipment is installed on (if EquipmentStatus == InMachine).</summary>
+    public Guid? MachineId { get; set; }
+    /// <summary>Navigation property to the Machine where this component is installed.</summary>
+    public Machine? Machine { get; set; }
+
+    /// <summary>Quantity on hand for bulk stock items (e.g. 9 parts in stock). Null for discrete one-of serialized assets.</summary>
+    public int? StockQuantity { get; set; }
+
+    /// <summary>Minimum stock threshold for reorder alerts.</summary>
+    public int? MinStockThreshold { get; set; }
+
+    /// <summary>Whether this is a bulk quantity-tracked stock item (true) or a high-value discrete serialized asset (false).</summary>
+    public bool IsStockItem { get; set; } = false;
+
+    /// <summary>Industrial technology domain (e.g. Assembly, Test, SMT, Welding, Dispensing, Fastening, Robotics).</summary>
+    [MaxLength(100)]
+    public string? Technology { get; set; }
+
     /// <summary>Helper property for identifying the concrete class name in UI layers.</summary>
     [NotMapped]
     public virtual string ItemType => this.GetType().Name;
@@ -959,5 +985,48 @@ public class MalformedTelemetryRecord
     /// <summary>UTC timestamp when the malformed payload was received and quarantined.</summary>
     public DateTimeOffset QuarantinedAt { get; set; } = DateTimeOffset.UtcNow;
 }
+
+/// <summary>
+/// Organizational Unit governance rule approved by IT Administrators.
+/// Governs whether an Active Directory / Entra OU is approved for read-only discovery or read-write ingestion in Heimdall.
+/// </summary>
+[Table("ad_ou_governances")]
+public class AdOuGovernance
+{
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    [Column("ou_path")]
+    [MaxLength(256)]
+    public string OuPath { get; set; } = string.Empty;
+
+    [Required]
+    [Column("access_level")]
+    [MaxLength(32)]
+    public string AccessLevel { get; set; } = "read_only"; // "read_write", "read_only", "unapproved"
+
+    [Column("is_approved")]
+    public bool IsApproved { get; set; } = false;
+
+    [Column("approved_by")]
+    [MaxLength(128)]
+    public string? ApprovedBy { get; set; }
+
+    [Column("approved_at")]
+    public DateTimeOffset? ApprovedAt { get; set; }
+
+    [Column("notes")]
+    [MaxLength(512)]
+    public string? Notes { get; set; }
+
+    [Column("created_at")]
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    [Column("updated_at")]
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 
 

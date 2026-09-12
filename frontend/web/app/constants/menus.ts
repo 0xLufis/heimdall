@@ -30,6 +30,11 @@ export const navMenu: NavMenu[] = [
         link: '/dashboard/inventory',
       },
       {
+        title: 'Machines',
+        icon: 'i-lucide-cpu',
+        link: '/dashboard/machines',
+      },
+      {
         title: 'Telemetry Templates',
         icon: 'i-lucide-file-code',
         link: '/dashboard/telemetry/templates',
@@ -69,11 +74,23 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-sliders-horizontal',
         link: '/dashboard/admin/system-settings',
       },
+      {
+        title: 'Identity Studio',
+        icon: 'i-lucide-fingerprint',
+        link: '/admin/studio',
+        external: true,
+        target: '_blank',
+      },
     ],
   },
 ]
 
 export const navMenuBottom: NavMenuItems = [
+  {
+    title: 'User Settings',
+    icon: 'i-lucide-settings',
+    link: '/dashboard/settings',
+  },
   {
     title: 'Help & Support',
     icon: 'i-lucide-circle-help',

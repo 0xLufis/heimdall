@@ -2,13 +2,13 @@
 import { Card, CardContent, CardFooter, CardHeader } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Avatar, AvatarFallback } from '~/components/ui/avatar'
-import { Edit2Icon, UsersIcon, ShieldCheckIcon } from 'lucide-vue-next'
+import { Edit2Icon, UsersIcon, ShieldCheckIcon, Trash2Icon } from 'lucide-vue-next'
 
 defineProps<{
   org: any
 }>()
 
-defineEmits(['manage-members', 'edit'])
+defineEmits(['manage-members', 'edit', 'delete'])
 </script>
 
 <template>
@@ -21,13 +21,21 @@ defineEmits(['manage-members', 'edit'])
           </AvatarFallback>
         </Avatar>
         <div class="flex gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             class="h-8 w-8 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors"
             @click="$emit('edit', org)"
           >
             <Edit2Icon class="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 text-slate-500 hover:text-rose-500 hover:bg-slate-800 rounded-lg transition-colors"
+            @click="$emit('delete', org)"
+          >
+            <Trash2Icon class="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -38,7 +46,7 @@ defineEmits(['manage-members', 'edit'])
         </div>
       </div>
     </CardHeader>
-    
+
     <CardContent class="px-6 pb-6">
       <div class="mt-2 flex items-center justify-between border-t border-slate-800/50 pt-4">
         <div class="flex items-center gap-2">
@@ -53,17 +61,18 @@ defineEmits(['manage-members', 'edit'])
     </CardContent>
 
     <CardFooter class="px-6 py-4 bg-slate-950/30 flex items-center justify-between border-t border-slate-800">
-      <Button 
-        variant="link" 
+      <Button
+        variant="link"
         class="h-auto p-0 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] hover:text-indigo-300 no-underline transition-colors"
         @click="$emit('manage-members', org)"
       >
         Manage Personnel
       </Button>
-      <div class="flex -space-x-2">
-          <div v-for="i in 3" :key="i" class="w-6 h-6 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-[8px] font-black text-slate-500 uppercase">
-            {{ String.fromCharCode(64 + i) }}
-          </div>
+      <div class="flex items-center gap-1 text-slate-500">
+        <UsersIcon class="h-3 w-3" />
+        <span class="text-[9px] font-black uppercase tracking-widest">
+          {{ org.memberCount ?? 0 }} {{ org.memberCount === 1 ? 'Member' : 'Members' }}
+        </span>
       </div>
     </CardFooter>
   </Card>

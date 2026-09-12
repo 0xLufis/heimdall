@@ -14,11 +14,16 @@ public class SystemSettingsController : ControllerBase
 {
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly ILogger<SystemSettingsController> _logger;
+    private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache? _memoryCache;
 
-    public SystemSettingsController(IDbContextFactory<AppDbContext> dbContextFactory, ILogger<SystemSettingsController> logger)
+    public SystemSettingsController(
+        IDbContextFactory<AppDbContext> dbContextFactory, 
+        ILogger<SystemSettingsController> logger,
+        Microsoft.Extensions.Caching.Memory.IMemoryCache? memoryCache = null)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
+        _memoryCache = memoryCache;
     }
 
     [HttpGet]
@@ -70,7 +75,57 @@ public class SystemSettingsController : ControllerBase
         }
 
         await db.SaveChangesAsync();
+        if (_memoryCache != null)
+        {
+            App.Backend.Api.Security.DynamicSecurityGroupClaimsTransformer.InvalidateCache(_memoryCache);
+        }
         _logger.LogInformation("System setting {Category} updated by {User}", category, setting.UpdatedBy);
+        return Ok(setting);
+    }
+
+    [HttpGet("admin-role-delegation")]
+    public async Task<IActionResult> GetAdminRoleDelegation()
+    {
+        await using var db = await _dbContextFactory.CreateDbContextAsync();
+        var setting = await db.SystemSettings
+            .FirstOrDefaultAsync(s => s.Category == "AdminRoleDelegation" || s.Key == "AdminRoleDelegation");
+        if (setting == null)
+        {
+            return Ok(new { heimdallAdminIsPseudoItAdmin = true, allowEngineeringAdminUserCreation = true });
+        }
+        return Ok(JsonSerializer.Deserialize<object>(setting.ValueJson) ?? new { heimdallAdminIsPseudoItAdmin = true });
+    }
+
+    [HttpPut("admin-role-delegation")]
+    public async Task<IActionResult> UpdateAdminRoleDelegation([FromBody] JsonElement payload)
+    {
+        await using var db = await _dbContextFactory.CreateDbContextAsync();
+        var setting = await db.SystemSettings
+            .FirstOrDefaultAsync(s => s.Category == "AdminRoleDelegation" || s.Key == "AdminRoleDelegation");
+        var jsonStr = payload.GetRawText();
+        if (setting == null)
+        {
+            setting = new SystemSetting
+            {
+                Key = "AdminRoleDelegation",
+                Category = "AdminRoleDelegation",
+                ValueJson = jsonStr,
+                UpdatedBy = User?.Identity?.Name ?? "system_admin",
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.SystemSettings.Add(setting);
+        }
+        else
+        {
+            setting.ValueJson = jsonStr;
+            setting.UpdatedBy = User?.Identity?.Name ?? "system_admin";
+            setting.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+        await db.SaveChangesAsync();
+        if (_memoryCache != null)
+        {
+            App.Backend.Api.Security.DynamicSecurityGroupClaimsTransformer.InvalidateCache(_memoryCache);
+        }
         return Ok(setting);
     }
 

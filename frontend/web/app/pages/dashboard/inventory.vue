@@ -1,10 +1,26 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
-import { PlusIcon, SlidersHorizontal, Check, RefreshCw, Layers, HardDrive, Cpu, DollarSign, Activity, Wifi } from 'lucide-vue-next'
+import { 
+  PlusIcon, 
+  SlidersHorizontal, 
+  Check, 
+  RefreshCw, 
+  Layers, 
+  HardDrive, 
+  Cpu, 
+  DollarSign, 
+  Activity, 
+  Wifi,
+  FolderTree,
+  Boxes,
+  Wrench,
+  PackageCheck
+} from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
 import DashboardInventoryEditModal from '~/components/dashboard/InventoryEditModal.vue'
+import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
 import { useInventoryLive } from '~/composables/useInventoryLive'
 import type { SearchInstanceConfig } from '~/types/search'
 
@@ -14,8 +30,7 @@ definePageMeta({
 
 const { isLiveConnected, lastSyncedAt, onInventoryUpdate } = useInventoryLive()
 
-const activeTab = ref<'hardware' | 'software' | 'hierarchy'>('hardware')
-const hierarchyKey = ref<'machine' | 'client'>('machine')
+const activeTab = ref<'hardware' | 'software' | 'parts' | 'stock'>('hardware')
 const loading = ref(false)
 const items = ref<any[]>([])
 const currentQuery = ref('')
@@ -23,9 +38,12 @@ const kpis = ref({
   totalGlobalCount: 0,
   totalGlobalHardware: 0,
   totalGlobalSoftware: 0,
+  totalGlobalParts: 0,
+  totalGlobalStock: 0,
   totalGlobalCost: 0
 })
 
+const showTreeModal = ref(false)
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const selectedEditItem = ref<any | null>(null)
@@ -65,7 +83,7 @@ const inventorySearchConfig = computed<SearchInstanceConfig>(() => ({
   instanceId: 'inventory',
   placeholder: `Search ${activeTab.value} by name, model, serial, spec (e.g. manufacturer:Siemens)...`,
   defaultEndpoints: ['/api/proxy/inventory/search'],
-  defaultTags: activeTab.value !== 'hierarchy' ? [{ key: 'type', value: activeTab.value }] : [],
+  defaultTags: [{ key: 'type', value: activeTab.value }],
   enableAutoTagging: true
 }))
 
@@ -113,7 +131,6 @@ const onSearch = (q: string) => {
 }
 
 const fetchData = async (q: string = currentQuery.value) => {
-  if (activeTab.value === 'hierarchy') return
   loading.value = true
   try {
     const res = await $fetch<any>('/api/inventory/filter', {
@@ -126,7 +143,11 @@ const fetchData = async (q: string = currentQuery.value) => {
     if (res) {
       items.value = res.items || []
       if (res.kpis) {
-        kpis.value = res.kpis
+        kpis.value = {
+          ...res.kpis,
+          totalGlobalParts: items.value.filter(i => !i.isStockItem && i.itemType !== 'software').length,
+          totalGlobalStock: items.value.filter(i => i.isStockItem).length
+        }
       }
     }
   } catch (e) {
@@ -174,9 +195,7 @@ const handleSaveEdit = async (updatedItem: any) => {
 }
 
 watch(activeTab, () => {
-  if (activeTab.value !== 'hierarchy') {
-    fetchData()
-  }
+  fetchData()
 })
 
 onMounted(() => {
@@ -184,9 +203,7 @@ onMounted(() => {
 })
 
 onInventoryUpdate(() => {
-  if (activeTab.value !== 'hierarchy') {
-    fetchData(currentQuery.value)
-  }
+  fetchData(currentQuery.value)
 })
 </script>
 
@@ -201,7 +218,7 @@ onInventoryUpdate(() => {
           </h1>
         </div>
         <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
-          Hardware components, software licenses, and graph-linked station hierarchies
+          Hardware components, software licenses, serialized parts, and bulk consumable stock
         </p>
 
         <!-- KPI Metric Badges -->
@@ -222,6 +239,16 @@ onInventoryUpdate(() => {
             <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalSoftware || items.filter(i => i.itemType === 'software').length }}</span>
           </div>
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+            <Wrench class="w-3.5 h-3.5 text-teal-400" />
+            <span class="text-[10px] font-bold text-slate-500 uppercase">Parts:</span>
+            <span class="font-mono font-black text-slate-200">{{ items.filter(i => !i.isStockItem && i.itemType !== 'software').length }}</span>
+          </div>
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+            <Boxes class="w-3.5 h-3.5 text-purple-400" />
+            <span class="text-[10px] font-bold text-slate-500 uppercase">Stock:</span>
+            <span class="font-mono font-black text-slate-200">{{ items.filter(i => i.isStockItem).length }}</span>
+          </div>
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
             <DollarSign class="w-3.5 h-3.5 text-amber-400" />
             <span class="text-[10px] font-bold text-slate-500 uppercase">Valuation:</span>
             <span class="font-mono font-black text-slate-200">{{ formatCurrency(kpis.totalGlobalCost) }} HUF</span>
@@ -237,13 +264,13 @@ onInventoryUpdate(() => {
       
       <!-- Primary View Switcher & Action Button -->
       <div class="flex flex-wrap items-center gap-3 shrink-0">
-        <!-- View Mode Switcher -->
+        <!-- View Mode Switcher: Hardware, Software, Parts, Stock (Hierarchy removed) -->
         <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex gap-1">
           <Button 
             variant="ghost" 
             @click="activeTab = 'hardware'" 
             :class="activeTab === 'hardware' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
+            class="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
           >
             Hardware
           </Button>
@@ -251,22 +278,40 @@ onInventoryUpdate(() => {
             variant="ghost" 
             @click="activeTab = 'software'" 
             :class="activeTab === 'software' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
+            class="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
           >
             Software
           </Button>
           <Button 
             variant="ghost" 
-            @click="activeTab = 'hierarchy'" 
-            :class="activeTab === 'hierarchy' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
+            @click="activeTab = 'parts'" 
+            :class="activeTab === 'parts' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
           >
-            Hierarchy
+            Parts (Serialized)
+          </Button>
+          <Button 
+            variant="ghost" 
+            @click="activeTab = 'stock'" 
+            :class="activeTab === 'stock' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
+          >
+            Stock (Bulk)
           </Button>
         </div>
 
+        <!-- Visualise Component Tree Modal Trigger -->
+        <Button 
+          variant="outline" 
+          @click="showTreeModal = true"
+          class="border-slate-800 bg-slate-900 hover:bg-slate-850 text-indigo-300 hover:text-indigo-200 rounded-xl text-[10px] font-black uppercase tracking-widest h-11 px-4 gap-2 shadow-sm"
+        >
+          <FolderTree class="h-4 w-4 text-indigo-400" />
+          <span>Visualise Tree</span>
+        </Button>
+
         <!-- Column Configuration Popover -->
-        <Popover v-if="activeTab !== 'hierarchy'">
+        <Popover>
           <PopoverTrigger as-child>
             <Button variant="outline" class="border-slate-800 bg-slate-900 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest h-11 px-4">
               <SlidersHorizontal class="h-4 w-4 mr-2 text-slate-400" />
@@ -312,7 +357,6 @@ onInventoryUpdate(() => {
 
         <!-- Provision Asset Trigger -->
         <Button 
-          v-if="activeTab !== 'hierarchy'" 
           @click="showAddModal = true" 
           class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 h-11 shadow-lg shadow-indigo-600/20 transition-all group border-0"
         >
@@ -323,7 +367,7 @@ onInventoryUpdate(() => {
     </div>
 
     <!-- OmniSearch Bar -->
-    <div v-if="activeTab !== 'hierarchy'" class="max-w-4xl mx-auto w-full">
+    <div class="max-w-4xl mx-auto w-full">
       <OmniSearchBar 
         :config="inventorySearchConfig"
         :immediate="true"
@@ -331,145 +375,120 @@ onInventoryUpdate(() => {
       />
     </div>
 
-    <!-- Hierarchy Structure Selector (when in Hierarchy view) -->
-    <div v-if="activeTab === 'hierarchy'" class="flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-      <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Structure By:</span>
-      <div class="flex p-1 bg-slate-900 rounded-xl border border-slate-800 gap-1">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          @click="hierarchyKey = 'machine'"
-          :class="hierarchyKey === 'machine' ? 'bg-slate-800 text-indigo-400 font-black' : 'text-slate-500'"
-          class="rounded-lg text-[10px] uppercase px-3"
-        >
-          Station Centric
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          @click="hierarchyKey = 'client'"
-          :class="hierarchyKey === 'client' ? 'bg-slate-800 text-indigo-400 font-black' : 'text-slate-500'"
-          class="rounded-lg text-[10px] uppercase px-3"
-        >
-          Host PC Centric
-        </Button>
+    <!-- Repository Content Table -->
+    <DashboardInventoryTable 
+      :items="paginatedItems" 
+      :type="activeTab" 
+      :loading="loading"
+      :columns="columns"
+      @edit="handleEditItem"
+    />
+
+    <!-- Pagination Controls Bar -->
+    <div v-if="items.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs">
+      <div class="flex items-center gap-3 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+        <span>
+          Showing 
+          <span class="font-mono text-slate-200">{{ Math.min((currentPage - 1) * effectivePageSize + 1, items.length) }}</span> 
+          to 
+          <span class="font-mono text-slate-200">{{ Math.min(currentPage * effectivePageSize, items.length) }}</span> 
+          of 
+          <span class="font-mono text-slate-200">{{ items.length }}</span> 
+          assets
+        </span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-4">
+        <!-- Page Size Selector -->
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Per Page:</span>
+          <div class="flex p-0.5 bg-slate-950 rounded-xl border border-slate-800 gap-1">
+            <Button 
+              v-for="size in [5, 10, 50, 100, 1000]" 
+              :key="size"
+              variant="ghost" 
+              size="sm"
+              @click="pageSize = size"
+              :class="pageSize === size ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+              class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase font-mono"
+            >
+              {{ size }}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              @click="pageSize = 'custom'"
+              :class="pageSize === 'custom' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+              class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase"
+            >
+              Custom
+            </Button>
+          </div>
+
+          <div v-if="pageSize === 'custom'" class="flex items-center gap-1">
+            <input 
+              v-model.number="customPageSize"
+              type="number"
+              min="1"
+              max="10000"
+              placeholder="Count"
+              class="w-20 h-7 px-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <div class="flex items-center gap-1.5">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            :disabled="currentPage === 1" 
+            @click="setPage(1)"
+            class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+          >
+            First
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            :disabled="currentPage === 1" 
+            @click="setPage(currentPage - 1)"
+            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+          >
+            Prev
+          </Button>
+
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 font-mono">
+            {{ currentPage }} / {{ totalPages }}
+          </span>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            :disabled="currentPage >= totalPages" 
+            @click="setPage(currentPage + 1)"
+            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+          >
+            Next
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            :disabled="currentPage >= totalPages" 
+            @click="setPage(totalPages)"
+            class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
+          >
+            Last
+          </Button>
+        </div>
       </div>
     </div>
 
-    <!-- Repository Content Views -->
-    <template v-if="activeTab !== 'hierarchy'">
-      <DashboardInventoryTable 
-        :items="paginatedItems" 
-        :type="activeTab" 
-        :loading="loading"
-        :columns="columns"
-        @edit="handleEditItem"
-      />
-
-      <!-- Pagination Controls Bar -->
-      <div v-if="items.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs">
-        <div class="flex items-center gap-3 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-          <span>
-            Showing 
-            <span class="font-mono text-slate-200">{{ Math.min((currentPage - 1) * effectivePageSize + 1, items.length) }}</span> 
-            to 
-            <span class="font-mono text-slate-200">{{ Math.min(currentPage * effectivePageSize, items.length) }}</span> 
-            of 
-            <span class="font-mono text-slate-200">{{ items.length }}</span> 
-            assets
-          </span>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-4">
-          <!-- Page Size Selector -->
-          <div class="flex items-center gap-2">
-            <span class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Per Page:</span>
-            <div class="flex p-0.5 bg-slate-950 rounded-xl border border-slate-800 gap-1">
-              <Button 
-                v-for="size in [5, 10, 50, 100, 1000]" 
-                :key="size"
-                variant="ghost" 
-                size="sm"
-                @click="pageSize = size"
-                :class="pageSize === size ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-                class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase font-mono"
-              >
-                {{ size }}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                @click="pageSize = 'custom'"
-                :class="pageSize === 'custom' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-                class="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase"
-              >
-                Custom
-              </Button>
-            </div>
-
-            <div v-if="pageSize === 'custom'" class="flex items-center gap-1">
-              <input 
-                v-model.number="customPageSize"
-                type="number"
-                min="1"
-                max="10000"
-                placeholder="Count"
-                class="w-20 h-7 px-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
-
-          <!-- Navigation Controls -->
-          <div class="flex items-center gap-1.5">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              :disabled="currentPage === 1" 
-              @click="setPage(1)"
-              class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
-            >
-              First
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              :disabled="currentPage === 1" 
-              @click="setPage(currentPage - 1)"
-              class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
-            >
-              Prev
-            </Button>
-
-            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 font-mono">
-              {{ currentPage }} / {{ totalPages }}
-            </span>
-
-            <Button 
-              variant="outline" 
-              size="sm" 
-              :disabled="currentPage >= totalPages" 
-              @click="setPage(currentPage + 1)"
-              class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
-            >
-              Next
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              :disabled="currentPage >= totalPages" 
-              @click="setPage(totalPages)"
-              class="h-7 px-2 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-[10px] font-black uppercase disabled:opacity-30 rounded-lg"
-            >
-              Last
-            </Button>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <template v-else>
-      <DashboardInventoryTreeTable :primary-key="hierarchyKey" />
-    </template>
+    <!-- On-Demand Station Component Tree Visualizer Modal -->
+    <DashboardInventoryStationComponentTreeModal
+      :open="showTreeModal"
+      @update:open="showTreeModal = $event"
+    />
 
     <!-- Add Asset Modal Overlay -->
     <DashboardInventoryAddModal 

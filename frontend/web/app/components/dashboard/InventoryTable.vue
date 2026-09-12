@@ -8,7 +8,7 @@ import { Button } from '~/components/ui/button'
 
 const props = defineProps<{
   items: any[]
-  type: 'hardware' | 'software' | 'hierarchy'
+  type: 'hardware' | 'software' | 'hierarchy' | 'parts' | 'stock' | string
   loading: boolean
   columns: Record<string, boolean>
   isChild?: boolean
@@ -39,7 +39,7 @@ const formatCurrency = (val: any) => {
         </div>
         <div>
           <CardTitle class="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">
-            {{ type === 'software' ? 'Software Licenses & Packages' : 'Hardware Asset Registry' }}
+            {{ type === 'software' ? 'Software Licenses & Packages' : type === 'parts' ? 'Serialized Parts & High-Value Equipment' : type === 'stock' ? 'Bulk Stock Inventory & Consumables' : 'Hardware Asset Registry' }}
           </CardTitle>
           <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
             {{ items.length }} {{ type }} assets deployed in active infrastructure • Click any row to edit
@@ -119,6 +119,28 @@ const formatCurrency = (val: any) => {
                           {{ item.itemType || type }}
                         </Badge>
                         <Badge 
+                          v-if="item.isStockItem"
+                          variant="outline" 
+                          class="text-[7.5px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border-purple-500/30 text-purple-300 bg-purple-950/40 inline-flex items-center gap-1 leading-none shadow-sm"
+                        >
+                          Stock: {{ item.stockQuantity ?? 9 }} units
+                        </Badge>
+                        <Badge 
+                          v-if="item.equipmentStatus"
+                          variant="outline" 
+                          class="text-[7.5px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 leading-none shadow-sm"
+                          :class="item.equipmentStatus === 'InMachine' ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30' : item.equipmentStatus === 'InStorage' ? 'bg-blue-950/40 text-blue-300 border-blue-500/30' : 'bg-amber-950/40 text-amber-300 border-amber-500/30'"
+                        >
+                          {{ item.equipmentStatus }}
+                        </Badge>
+                        <Badge 
+                          v-if="item.technology"
+                          variant="outline" 
+                          class="text-[7.5px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border-teal-500/30 text-teal-300 bg-teal-950/30 inline-flex items-center leading-none"
+                        >
+                          {{ item.technology }}
+                        </Badge>
+                        <Badge 
                           v-if="item.telemetry?.isOnline !== undefined"
                           variant="outline"
                           class="text-[7.5px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-flex items-center gap-1 border-0 leading-none shadow-sm"
@@ -128,11 +150,14 @@ const formatCurrency = (val: any) => {
                           {{ item.telemetry.isOnline ? 'Live Agent' : 'Offline' }}
                         </Badge>
                       </div>
-                      <div class="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-wider">
-                        {{ item.displayName || item.customIdentifier || item.hostname || '' }}
+                      <div class="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-wider flex items-center gap-2">
+                        <span>{{ item.displayName || item.customIdentifier || item.hostname || '' }}</span>
+                        <span v-if="item.storageLocation" class="text-[8px] text-slate-500 font-mono font-normal">
+                          [Pos: {{ item.storageLocation }}]
+                        </span>
                       </div>
                       <div class="text-[9px] text-slate-500 font-mono tracking-tight mt-0.5">
-                        SN: {{ item.serialNumber || 'UNTRACKED' }}
+                        {{ item.isStockItem ? (item.serialNumber ? 'ID: ' + item.serialNumber : 'Bulk Stock Batch: ' + (item.metadata?.Batch || 'LOT-STD')) : 'SN: ' + (item.serialNumber || 'UNTRACKED') }}
                       </div>
                     </div>
                   </div>

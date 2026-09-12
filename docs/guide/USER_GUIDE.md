@@ -16,11 +16,13 @@ This guide describes the user interface, operational workflows, and features ava
 * The left sidebar provides direct navigation to all functional areas:
   * **Dashboard**: Executive KPIs and activity feed.
   * **Fleet (Clients)**: Edge controller status and live gauges.
+  * **Machines & Lines**: Interactive cards of machines, production lines, and technologies.
   * **Plant Map**: Interactive CAD floor plan with machine status pins.
-  * **Inventory**: Equipment repository, hierarchy trees, and specifications.
+  * **Inventory**: Differentiated serialized parts and bulk stock items with on-demand tree visualization.
   * **Tickets**: Real-time maintenance Kanban board.
-  * **Settings / Governance**: Users, roles, and security group mappings.
-* To change theme preferences (Light / Dark / System), open the user profile menu at the bottom-left of the sidebar.
+  * **Settings / Governance**: Users, system settings, security group mappings, and account profile.
+* To change theme preferences (Light / Dark / System), open the user profile card at the bottom-left of the sidebar.
+* Clicking **Account Settings** in the user card navigates to `/dashboard/settings` to manage profile attributes, MFA policies, and presence.
 
 ---
 
@@ -95,8 +97,6 @@ Operators can select from predefined error templates covering:
 - **Vision & Optics**: AOI blob rejection spike, telecentric lens strobe lag.
 - **Dispensing & Joining**: Gap filler nozzle pressure sag, screwdriver torque-angle window violation, NC servo press envelope error.
 
-Selecting a template automatically populates the title, technical error code, default tags, sample function block state, and telemetry keys.
-
 ### 4.3 Composable Action QR Codes & Camera Scanner
 - **QR Label Generation**: Click **Generate Machine QR** to create composable action QR codes (`report-incident`, `inspect-machine`, `claim-ticket`) for specific machines, lines, or tickets. Rendered as crisp, pure SVG graphics ready for printing.
 - **Mobile Camera Scanner**: Tap **Scan QR** in the navigation bar to scan physical equipment labels and instantly open the relevant machine's maintenance timeline.
@@ -110,38 +110,76 @@ Selecting a template automatically populates the title, technical error code, de
 
 ## 5. Inventory & Asset Management (`/dashboard/inventory`)
 
-### 5.1 Repository Tabs
-* **Hardware Tab**: Physical assets (drives, motors, sensors, IPCs, valves).
-* **Software Tab**: Operating systems, TwinCAT runtime licenses, PLC project versions.
-* **Hierarchy Tree View**: Explores recursive assemblies (e.g., Line $\to$ Station $\to$ Controller $\to$ Drive $\to$ Encoder).
+Heimdall replaces monolithic hierarchy tables with a high-performance, segmented inventory repository optimized for plant engineering workflows:
 
-### 5.2 Dynamic Asset Editor (5 Tabs)
-When adding or editing an asset, use the 5-tab editor:
-* **Identity**: Set asset name, model, serial number, and select the manufacturer.
-* **Topology**: Assign the station, managing PC, and parent assembly.
-* **Commercial**: Record the procurement cost in Hungarian Forint (HUF) and vendor information.
-* **Specs**: Add dynamic technical attributes (voltage ratings, payload limits, cycle times).
-* **Templates**: Select from pre-configured equipment templates to auto-fill common specifications.
+### 5.1 Repository Tabs: Parts vs. Stock
+* **Serialized Parts Tab (`isStockItem = false`)**:
+  * Displays high-value discrete capital assets (PLCs, cameras, servo drives, robotic manipulators).
+  * Equipment Status tracking:
+    * `InMachine`: Actively installed on a production station (with clickable station badge).
+    * `InStorage`: Spare units maintained in warehouse storage bins or racks.
+    * `UnderRepair`: Assets undergoing refurbishment in the central repair depot.
+  * Technology tags (`Assembly`, `Test`, `SMT`, `Welding`, `Fastening`, `Dispensing`, `Robotics`).
+* **Bulk Stock Tab (`isStockItem = true`)**:
+  * Displays quantity-tracked consumables (bolts, fittings, dispensing nozzles, solder paste, fuses).
+  * Current stock level gauges vs. configured minimum reorder thresholds.
+  * Low-stock warning badges (`Low Stock`, `Healthy Stock`).
+  * Warehouse storage bin addresses (e.g., `Bin 18-A`, `Bin 42-B`).
+
+### 5.2 On-Demand Station Component Tree Visualization
+Rather than cluttering the UI with an inflexible static hierarchy tree page, operators can click **Visualise Tree** next to any station or installed component to launch the modal tree inspector:
+* Displays the complete hierarchical tree of hardware components, client PCs, and software licenses for that process node.
+* Provides interactive node expansion, serial number badges, and component health indicators.
 
 ---
 
-## 6. System Governance & Active Directory (`/dashboard/admin/system-settings`)
+## 6. Production Machines & Lines (`/dashboard/machines`)
 
-### 6.1 Multi-Factor Authentication (MFA) Policies
-Configure re-authentication timeout thresholds per security role:
-- `SystemAdministrator`: Re-authenticate always (every session).
-- `Engineer`: Re-authenticate once a week (7 days).
-- `Technician`: Re-authenticate once a month (30 days).
-- Custom rules: Define enforcement thresholds for specialized security groups.
+The dedicated Machines module provides multi-dimensional visualization of the factory floor:
 
-### 6.2 Active Directory Host Discovery & VLAN Separation
-- Discover unmanaged factory edge hosts partitioned across industrial VLANs (VLAN 10 Robotics, VLAN 20 Vision, VLAN 30 Milling, VLAN 40 Dispensing, VLAN 50 Fastening, VLAN 60 Pressing).
-- Use **Mass Import Templating** to translate AD OU attributes (`Location`, `Subnet`, `MachineType`, `Purpose`) into structured Heimdall machine metadata.
+### 6.1 Three Distinct Operational Views
+1. **Cards of Machines**: Grid view of individual production stations with real-time controller status, cycle time metrics, assigned technicians, and quick actions.
+2. **Cards of Lines**: High-level line groupings (e.g., Line 01 Body Assembly Alpha, Line 06 Battery Module Line) with collapsible station tables showing sequence order, operations (OP10, OP20), and controllers.
+3. **Technologies View**: Grouped by industrial discipline:
+   * **Assembly**: Mechanical assembly, fitting, and transfer stations.
+   * **Test**: End-of-line testing cells, electrical safety, and functional testers.
+   * **SMT**: Surface-mount placement, reflow ovens, and solder paste printers.
+   * **Welding**: Robotic welding cells, laser joining, and ultrasonic welders.
+   * **Fastening**: Screwing stations and torque-angle controlled press cells.
+   * **Dispensing**: 2K thermal paste dispensers and gasket gluing stations.
+   * **Robotics**: 6-axis articulated robots, AGVs, and high-bay palletizers.
 
-### 6.3 PKI Root CA & OU Certificate Rules
-- Import existing enterprise Root CA certificates or generate internal self-signed certificates.
-- Define automatic X.509 certificate enrollment rules based on host Active Directory OU membership.
+---
 
-### 6.4 Security Group Organization Mapping (`/dashboard/security-groups`)
-- Map incoming directory claims (Entra ID GUIDs or on-prem AD Distinguished Names) to Heimdall tenant organizations.
-- Test claims mapping in the interactive evaluation sandbox with presets for engineering personas (Sally Vance, George Orwell, Alex Novak, Root Admin).
+## 7. OmniSearch 2.0 (`nvim-coc` Style Auto-Tag Engine)
+
+The top navigation search bar is powered by an intelligent tokenizer modeled after developer IDE autocompletion:
+* **Tag Directives**:
+  * `@` for Technology (`@Assembly`, `@Test`, `@SMT`, `@Welding`, `@Fastening`, `@Dispensing`, `@Robotics`)
+  * `#` for Equipment Status (`#inmachine`, `#instorage`, `#underrepair`, `#online`, `#offline`)
+  * `!` for Urgency/Priority (`!critical`, `!high`, `!medium`)
+* **Autocomplete Dropdown**: Typing `@`, `#`, or `!` summons a floating suggestion dropdown with description hints.
+* **Keyboard Navigation**: Use `Up`/`Down` arrow keys, `Tab`, or `Enter` to auto-insert tags without leaving the keyboard.
+* **Fuzzy Ranking**: Sub-millisecond instant matching across stations, serial numbers, models, and parts.
+
+---
+
+## 8. Governance, System Roles & User Settings
+
+### 8.1 System Administration Roles
+* **`SystemAdmin`**: Complete platform god user; bypasses all permission constraints and can configure pseudo-IT admin role inheritance.
+* **`HeimdallAdmin`**: OT platform administrator managing platform settings, telemetry pipelines, and security mappings.
+* **`ITAdmin`**: IT infrastructure administrator authoritative for Active Directory / Entra ID OU approvals and PKI certificate authorities.
+* **`EngineeringAdmin`**: Engineering technical administrator managing users, functional engineering configurations, recipes, and machine profiles from the application UI (strictly segregated from production management).
+
+### 8.2 Plant Engineering Roles
+* **`PlantDirector`**: Executive plant read access and final sign-off authority for line stops and capital allocation.
+* **`PlantEngineeringManager` & `SeniorEngineeringManager`**: Engineering department leadership.
+* **`GroupLeader`**: Technology or line group supervisor managing technician dedication and schedules.
+* **`Engineer` & `Technician`**: Automation, controls, and maintenance professionals executing work orders and repairs.
+* **`OperativePlanner`**: Line planning managers responsible for requesting and authorizing scheduled line stops.
+
+### 8.3 User Profile Card & Account Settings (`/dashboard/settings`)
+* View assigned roles, job title, department, and active organization in the persistent sidebar user card.
+* Navigate to `/dashboard/settings` to update MFA verification preferences, presence indicators, and personal interface settings.
+* Manage Active Directory OU approvals (`/dashboard/security-groups`) to safely onboard edge controllers.

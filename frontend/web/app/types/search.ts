@@ -16,7 +16,7 @@ export interface AutoTagResult {
 }
 
 export interface SearchInstanceConfig {
-  instanceId: 'dashboard' | 'inventory' | 'clients' | 'map' | 'tickets' | string
+  instanceId: 'dashboard' | 'inventory' | 'clients' | 'map' | 'tickets' | 'machines' | 'nodes' | 'global' | string
   placeholder?: string
   defaultEndpoints?: string[]
   allowedTagKeys?: string[]
@@ -39,6 +39,16 @@ export interface SearchResultItem {
   link?: string
   status?: string
   metadata?: Record<string, any>
+  sourceTable?: 'machines' | 'nodes' | 'inventory' | 'lines' | 'global' | string
+  isCrossTable?: boolean
+}
+
+export interface KeyLookupSuggestion {
+  key: string
+  value: string
+  description?: string
+  sourceTable?: string
+  count?: number
 }
 
 export interface SearchGroup {

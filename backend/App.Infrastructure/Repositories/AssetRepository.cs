@@ -124,6 +124,25 @@ public class AssetRepository : IAssetRepository
                         dbQuery = dbQuery.OfType<SoftwareComponent>();
                     }
                     break;
+                case "status":
+                    dbQuery = dbQuery.Where(c => c.EquipmentStatus.ToLower() == val);
+                    break;
+                case "isstock":
+                    bool isStock = val == "true" || val == "1" || val == "yes";
+                    dbQuery = dbQuery.Where(c => c.IsStockItem == isStock);
+                    break;
+                case "tech":
+                case "technology":
+                    dbQuery = dbQuery.Where(c => c.Technology != null && c.Technology.ToLower().Contains(val));
+                    break;
+                case "location":
+                case "shelf":
+                    dbQuery = dbQuery.Where(c => c.StorageLocation != null && c.StorageLocation.ToLower().Contains(val));
+                    break;
+                case "serial":
+                case "serialnumber":
+                    dbQuery = dbQuery.Where(c => c.SerialNumber != null && c.SerialNumber.ToLower().Contains(val));
+                    break;
             }
         }
 
@@ -237,5 +256,92 @@ public class AssetRepository : IAssetRepository
         {
             return 0;
         }
+    }
+
+    public async Task<List<BaseInventoryItem>> GetPartsAsync()
+    {
+        return await _context.InventoryItems
+            .AsNoTracking()
+            .Include(c => c.Manufacturer)
+            .Include(c => c.Supplier)
+            .Include(c => c.Machine)
+            .Include(c => c.ClientPc)
+            .Where(c => !c.IsStockItem)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+    }
+
+    public async Task<List<BaseInventoryItem>> GetStockAsync()
+    {
+        return await _context.InventoryItems
+            .AsNoTracking()
+            .Include(c => c.Manufacturer)
+            .Include(c => c.Supplier)
+            .Where(c => c.IsStockItem)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+    }
+
+    public async Task<object?> GetStationComponentTreeAsync(Guid stationId)
+    {
+        var station = await _context.InventoryItems
+            .OfType<Machine>()
+            .Include(m => m.Manufacturer)
+            .Include(m => m.ResponsibleTeams)
+            .Include(m => m.Controllers)
+                .ThenInclude(c => c.InventoryItems)
+            .FirstOrDefaultAsync(m => m.Id == stationId);
+
+        if (station == null) return null;
+
+        var installedParts = await _context.InventoryItems
+            .AsNoTracking()
+            .Include(i => i.Manufacturer)
+            .Where(i => i.MachineId == stationId)
+            .Select(i => new
+            {
+                i.Id,
+                i.Name,
+                i.DisplayName,
+                i.SerialNumber,
+                i.EquipmentStatus,
+                i.Technology,
+                i.StorageLocation,
+                i.ItemType,
+                ManufacturerName = i.Manufacturer != null ? i.Manufacturer.Name : null
+            })
+            .ToListAsync();
+
+        var controllers = station.Controllers.Select(c => new
+        {
+            c.Id,
+            c.Name,
+            c.Hostname,
+            c.IpAddress,
+            c.MacAddress,
+            c.VlanId,
+            c.PinnedObjectHandle,
+            c.LastOnline,
+            InternalComponents = c.InventoryItems.Select(item => new
+            {
+                item.Id,
+                item.Name,
+                item.SerialNumber,
+                item.ItemType
+            }).ToList()
+        }).ToList();
+
+        return new
+        {
+            StationId = station.Id,
+            StationName = station.Name,
+            station.DisplayName,
+            station.CustomIdentifier,
+            station.MachineType,
+            station.GroupId,
+            Controllers = controllers,
+            InstalledParts = installedParts,
+            TotalComponentsCount = installedParts.Count + controllers.Sum(ctrl => ctrl.InternalComponents.Count)
+        };
     }
 }
