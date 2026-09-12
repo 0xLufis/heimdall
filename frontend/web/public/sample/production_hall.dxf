@@ -489,7 +489,7 @@ $SKPOLY
   9
 $TDCREATE
  40
-2461170.9069791664
+2461296.7546412037
   9
 $TDUCREATE
  40
@@ -497,7 +497,7 @@ $TDUCREATE
   9
 $TDUPDATE
  40
-2461170.9069791664
+2461296.7546412037
   9
 $TDUUPDATE
  40
@@ -549,7 +549,7 @@ $SPLINESEGS
   9
 $HANDSEED
   5
-19E
+261
   9
 $SURFTAB1
  70
@@ -929,11 +929,11 @@ $PSTYLEMODE
   9
 $FINGERPRINTGUID
   2
-{9DA71634-5587-4D38-B97D-99543C2AE1C6}
+{91E8ED7E-3CB8-4516-845C-825AFAA6D297}
   9
 $VERSIONGUID
   2
-{4F754701-BD9E-4EF0-92DE-0E620C60E33B}
+{8B6B3D6B-DB89-455F-BBD3-83D768A8ED12}
   9
 $EXTNAMES
 290
@@ -1549,7 +1549,7 @@ LAYER
 100
 AcDbSymbolTable
  70
-9
+10
   0
 LAYER
   5
@@ -1611,7 +1611,7 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-BUILDING
+WALLS
  70
 0
  62
@@ -1635,11 +1635,11 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-STATIONS
+CONVEYORS
  70
 0
  62
-3
+2
   6
 Continuous
 370
@@ -1659,13 +1659,13 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-SAFETY
+PALLETS
  70
 0
  62
-2
+7
   6
-DASHED
+Continuous
 370
 -3
 390
@@ -1683,11 +1683,11 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-CONVEYORS
+ROBOT_CELLS
  70
 0
  62
-4
+6
   6
 Continuous
 370
@@ -1707,11 +1707,11 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-WALKWAYS
+STATIONS
  70
 0
  62
-8
+3
   6
 Continuous
 370
@@ -1731,11 +1731,11 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-TEXT
+SAFETY_FENCING
  70
 0
  62
-7
+1
   6
 Continuous
 370
@@ -1755,11 +1755,35 @@ AcDbSymbolTableRecord
 100
 AcDbLayerTableRecord
   2
-FLOOR
+STORAGE
  70
 0
  62
-8
+5
+  6
+Continuous
+370
+-3
+390
+13
+347
+21
+  0
+LAYER
+  5
+36
+330
+1
+100
+AcDbSymbolTableRecord
+100
+AcDbLayerTableRecord
+  2
+TEXT
+ 70
+0
+ 62
+7
   6
 Continuous
 370
@@ -1869,7 +1893,7 @@ ACAD
   0
 APPID
   5
-19B
+25E
 330
 3
 100
@@ -1883,7 +1907,7 @@ HATCHBACKGROUNDCOLOR
   0
 APPID
   5
-19C
+25F
 330
 3
 100
@@ -2059,7 +2083,7 @@ BLOCK_RECORD
 100
 AcDbSymbolTable
  70
-9
+11
   0
 BLOCK_RECORD
   5
@@ -2103,7 +2127,7 @@ AcDbBlockTableRecord
   0
 BLOCK_RECORD
   5
-36
+3C
 330
 9
 100
@@ -2111,27 +2135,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-TYPE_MECHANICAL
-340
-0
- 70
-0
-280
-1
-281
-0
-  0
-BLOCK_RECORD
-  5
-3E
-330
-9
-100
-AcDbSymbolTableRecord
-100
-AcDbBlockTableRecord
-  2
-TYPE_SCREWING
+CONVEYOR_BED
 340
 0
  70
@@ -2151,7 +2155,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-TYPE_VISION
+ROBOT_CELL
 340
 0
  70
@@ -2163,7 +2167,7 @@ TYPE_VISION
   0
 BLOCK_RECORD
   5
-4E
+4D
 330
 9
 100
@@ -2171,7 +2175,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-TYPE_TEST
+DISPENSING_CELL
 340
 0
  70
@@ -2191,7 +2195,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-TYPE_DISPENSING
+FASTENING_STATION
 340
 0
  70
@@ -2203,7 +2207,7 @@ TYPE_DISPENSING
   0
 BLOCK_RECORD
   5
-5C
+5E
 330
 9
 100
@@ -2211,7 +2215,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-TYPE_WELDING
+LASER_WELD_CELL
 340
 0
  70
@@ -2223,7 +2227,7 @@ TYPE_WELDING
   0
 BLOCK_RECORD
   5
-63
+66
 330
 9
 100
@@ -2231,7 +2235,67 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-TYPE_PACKAGING
+SERVO_PRESS
+340
+0
+ 70
+0
+280
+1
+281
+0
+  0
+BLOCK_RECORD
+  5
+6C
+330
+9
+100
+AcDbSymbolTableRecord
+100
+AcDbBlockTableRecord
+  2
+VISION_INSPECTION
+340
+0
+ 70
+0
+280
+1
+281
+0
+  0
+BLOCK_RECORD
+  5
+73
+330
+9
+100
+AcDbSymbolTableRecord
+100
+AcDbBlockTableRecord
+  2
+EOL_TEST_BENCH
+340
+0
+ 70
+0
+280
+1
+281
+0
+  0
+BLOCK_RECORD
+  5
+79
+330
+9
+100
+AcDbSymbolTableRecord
+100
+AcDbBlockTableRecord
+  2
+WAREHOUSE_RACK
 340
 0
  70
@@ -2327,9 +2391,9 @@ AcDbBlockEnd
   0
 BLOCK
   5
-37
+3D
 330
-36
+3C
 100
 AcDbEntity
   8
@@ -2337,7 +2401,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-TYPE_MECHANICAL
+CONVEYOR_BED
  70
 0
  10
@@ -2347,351 +2411,189 @@ TYPE_MECHANICAL
  30
 0.0
   3
-TYPE_MECHANICAL
+CONVEYOR_BED
   1
 
   0
 LWPOLYLINE
-  5
-39
-330
-36
-100
-AcDbEntity
-  8
-SAFETY
-  6
-DASHED
- 62
-2
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
--1.0
- 20
--1.0
- 10
-13.0
- 20
--1.0
- 10
-13.0
- 20
-11.0
- 10
--1.0
- 20
-11.0
- 10
--1.0
- 20
--1.0
-  0
-LWPOLYLINE
-  5
-3A
-330
-36
-100
-AcDbEntity
-  8
-STATIONS
- 62
-4
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-0.0
- 20
-0.0
- 10
-12.0
- 20
-0.0
- 10
-12.0
- 20
-10.0
- 10
-0.0
- 20
-10.0
- 10
-0.0
- 20
-0.0
-  0
-LWPOLYLINE
-  5
-3B
-330
-36
-100
-AcDbEntity
-  8
-STATIONS
- 62
-8
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-2.0
- 20
-2.0
- 10
-10.0
- 20
-2.0
- 10
-10.0
- 20
-8.0
- 10
-2.0
- 20
-8.0
- 10
-2.0
- 20
-2.0
-  0
-LINE
-  5
-3C
-330
-36
-100
-AcDbEntity
-  8
-STATIONS
- 62
-8
-100
-AcDbLine
- 10
-0.0
- 20
-0.0
- 30
-0.0
- 11
-12.0
- 21
-10.0
- 31
-0.0
-  0
-LINE
-  5
-3D
-330
-36
-100
-AcDbEntity
-  8
-STATIONS
- 62
-8
-100
-AcDbLine
- 10
-0.0
- 20
-10.0
- 30
-0.0
- 11
-12.0
- 21
-0.0
- 31
-0.0
-  0
-ENDBLK
-  5
-38
-330
-36
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockEnd
-  0
-BLOCK
   5
 3F
 330
-3E
+3C
 100
 AcDbEntity
   8
-0
-100
-AcDbBlockBegin
-  2
-TYPE_SCREWING
- 70
-0
- 10
-0.0
- 20
-0.0
- 30
-0.0
-  3
-TYPE_SCREWING
-  1
-
-  0
-LWPOLYLINE
-  5
-41
-330
-3E
-100
-AcDbEntity
-  8
-SAFETY
-  6
-DASHED
- 62
-2
+CONVEYORS
 100
 AcDbPolyline
  90
 5
  70
-1
+0
  10
--1.0
+-14.0
  20
--1.0
+-8.0
  10
-13.0
+14.0
  20
--1.0
+-8.0
  10
-13.0
+14.0
  20
-11.0
+8.0
  10
--1.0
+-14.0
  20
-11.0
+8.0
  10
--1.0
+-14.0
  20
--1.0
+-8.0
+  0
+LINE
+  5
+40
+330
+3C
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+-14.0
+ 20
+-4.0
+ 30
+0.0
+ 11
+14.0
+ 21
+-4.0
+ 31
+0.0
+  0
+LINE
+  5
+41
+330
+3C
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+-14.0
+ 20
+4.0
+ 30
+0.0
+ 11
+14.0
+ 21
+4.0
+ 31
+0.0
   0
 LWPOLYLINE
   5
 42
 330
-3E
+3C
 100
 AcDbEntity
   8
-STATIONS
- 62
-3
+PALLETS
 100
 AcDbPolyline
  90
 5
  70
-1
- 10
-0.0
- 20
-0.0
- 10
-12.0
- 20
-0.0
- 10
-12.0
- 20
-10.0
- 10
-0.0
- 20
-10.0
- 10
-0.0
- 20
-0.0
-  0
-LWPOLYLINE
-  5
-43
-330
-3E
-100
-AcDbEntity
-  8
-STATIONS
- 62
-7
-100
-AcDbPolyline
- 90
-3
- 70
 0
  10
-6.0
+-8.0
  20
-10.0
+-6.0
  10
-6.0
+8.0
+ 20
+-6.0
+ 10
+8.0
  20
 6.0
  10
-9.0
+-8.0
  20
 6.0
+ 10
+-8.0
+ 20
+-6.0
   0
 CIRCLE
   5
-44
+43
 330
-3E
+3C
 100
 AcDbEntity
   8
-STATIONS
- 62
-2
+PALLETS
 100
 AcDbCircle
  10
-9.0
+0.0
  20
-6.0
+0.0
  30
 0.0
  40
-1.0
+2.0
+  0
+TEXT
+  5
+44
+330
+3C
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 40
+1.5
+  1
+PALLET
+ 72
+1
+ 11
+0.0
+ 21
+0.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
   0
 ENDBLK
   5
-40
-330
 3E
+330
+3C
 100
 AcDbEntity
   8
@@ -2711,7 +2613,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-TYPE_VISION
+ROBOT_CELL
  70
 0
  10
@@ -2721,7 +2623,7 @@ TYPE_VISION
  30
 0.0
   3
-TYPE_VISION
+ROBOT_CELL
   1
 
   0
@@ -2733,39 +2635,37 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-SAFETY
+SAFETY_FENCING
   6
 DASHED
- 62
-2
 100
 AcDbPolyline
  90
 5
  70
-1
+0
  10
--1.0
+-16.0
  20
--1.0
+-16.0
  10
-13.0
+16.0
  20
--1.0
+-16.0
  10
-13.0
+16.0
  20
-11.0
+16.0
  10
--1.0
+-16.0
  20
-11.0
+16.0
  10
--1.0
+-16.0
  20
--1.0
+-16.0
   0
-LWPOLYLINE
+CIRCLE
   5
 49
 330
@@ -2773,37 +2673,19 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-STATIONS
- 62
-6
+ROBOT_CELLS
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbCircle
  10
 0.0
  20
 0.0
- 10
-12.0
- 20
+ 30
 0.0
- 10
-12.0
- 20
-10.0
- 10
-0.0
- 20
-10.0
- 10
-0.0
- 20
-0.0
+ 40
+5.0
   0
-CIRCLE
+LINE
   5
 4A
 330
@@ -2811,19 +2693,21 @@ CIRCLE
 100
 AcDbEntity
   8
-STATIONS
- 62
-7
+ROBOT_CELLS
 100
-AcDbCircle
+AcDbLine
  10
-6.0
+0.0
  20
-5.0
+0.0
  30
 0.0
- 40
-2.0
+ 11
+9.0
+ 21
+9.0
+ 31
+0.0
   0
 CIRCLE
   5
@@ -2833,21 +2717,19 @@ CIRCLE
 100
 AcDbEntity
   8
-STATIONS
- 62
-4
+ROBOT_CELLS
 100
 AcDbCircle
  10
-6.0
+9.0
  20
-5.0
+9.0
  30
 0.0
  40
-0.5
+2.0
   0
-LINE
+TEXT
   5
 4C
 330
@@ -2855,49 +2737,31 @@ LINE
 100
 AcDbEntity
   8
-STATIONS
- 62
-2
+TEXT
 100
-AcDbLine
+AcDbText
  10
-2.0
+0.0
  20
-1.0
+-12.0
  30
 0.0
- 11
-10.0
- 21
-1.0
- 31
-0.0
-  0
-LINE
-  5
-4D
-330
-45
-100
-AcDbEntity
-  8
-STATIONS
- 62
-2
-100
-AcDbLine
- 10
+ 40
 2.0
- 20
-9.0
- 30
-0.0
+  1
+6-AXIS ROBOT
+ 72
+1
  11
-10.0
+0.0
  21
-9.0
+-12.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 ENDBLK
   5
@@ -2913,9 +2777,9 @@ AcDbBlockEnd
   0
 BLOCK
   5
-4F
-330
 4E
+330
+4D
 100
 AcDbEntity
   8
@@ -2923,7 +2787,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-TYPE_TEST
+DISPENSING_CELL
  70
 0
  10
@@ -2933,157 +2797,153 @@ TYPE_TEST
  30
 0.0
   3
-TYPE_TEST
+DISPENSING_CELL
   1
 
   0
 LWPOLYLINE
   5
+50
+330
+4D
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbPolyline
+ 90
+5
+ 70
+0
+ 10
+-14.0
+ 20
+-12.0
+ 10
+14.0
+ 20
+-12.0
+ 10
+14.0
+ 20
+12.0
+ 10
+-14.0
+ 20
+12.0
+ 10
+-14.0
+ 20
+-12.0
+  0
+CIRCLE
+  5
 51
 330
-4E
-100
-AcDbEntity
-  8
-SAFETY
-  6
-DASHED
- 62
-2
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
--1.0
- 20
--1.0
- 10
-13.0
- 20
--1.0
- 10
-13.0
- 20
-11.0
- 10
--1.0
- 20
-11.0
- 10
--1.0
- 20
--1.0
-  0
-LWPOLYLINE
-  5
-52
-330
-4E
+4D
 100
 AcDbEntity
   8
 STATIONS
- 62
-1
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbCircle
  10
 0.0
  20
 0.0
- 10
-12.0
- 20
+ 30
 0.0
- 10
-12.0
- 20
-10.0
- 10
-0.0
- 20
-10.0
- 10
-0.0
- 20
-0.0
-  0
-LWPOLYLINE
-  5
-53
-330
-4E
-100
-AcDbEntity
-  8
-STATIONS
- 62
-7
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-3.0
- 20
-3.0
- 10
-9.0
- 20
-3.0
- 10
-9.0
- 20
-7.0
- 10
-3.0
- 20
-7.0
- 10
-3.0
- 20
-3.0
+ 40
+4.0
   0
 LINE
   5
-54
+52
 330
-4E
+4D
 100
 AcDbEntity
   8
 STATIONS
- 62
-3
 100
 AcDbLine
  10
-4.0
+-10.0
  20
-4.0
+0.0
  30
 0.0
  11
-8.0
+10.0
  21
-6.0
+0.0
  31
 0.0
   0
+LINE
+  5
+53
+330
+4D
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbLine
+ 10
+0.0
+ 20
+-8.0
+ 30
+0.0
+ 11
+0.0
+ 21
+8.0
+ 31
+0.0
+  0
+TEXT
+  5
+54
+330
+4D
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+0.0
+ 20
+-10.0
+ 30
+0.0
+ 40
+1.8
+  1
+2K DISPENSER
+ 72
+1
+ 11
+0.0
+ 21
+-10.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
 ENDBLK
   5
-50
+4F
 330
-4E
+4D
 100
 AcDbEntity
   8
@@ -3103,7 +2963,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-TYPE_DISPENSING
+FASTENING_STATION
  70
 0
  10
@@ -3113,7 +2973,7 @@ TYPE_DISPENSING
  30
 0.0
   3
-TYPE_DISPENSING
+FASTENING_STATION
   1
 
   0
@@ -3125,39 +2985,35 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-SAFETY
-  6
-DASHED
- 62
-2
+STATIONS
 100
 AcDbPolyline
  90
 5
  70
-1
+0
  10
--1.0
+-12.0
  20
--1.0
+-10.0
  10
-13.0
+12.0
  20
--1.0
+-10.0
  10
-13.0
+12.0
  20
-11.0
+10.0
  10
--1.0
+-12.0
  20
-11.0
+10.0
  10
--1.0
+-12.0
  20
--1.0
+-10.0
   0
-LWPOLYLINE
+CIRCLE
   5
 59
 330
@@ -3166,34 +3022,16 @@ LWPOLYLINE
 AcDbEntity
   8
 STATIONS
- 62
-5
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbCircle
  10
-0.0
+-5.0
  20
+-4.0
+ 30
 0.0
- 10
-12.0
- 20
-0.0
- 10
-12.0
- 20
-10.0
- 10
-0.0
- 20
-10.0
- 10
-0.0
- 20
-0.0
+ 40
+1.5
   0
 CIRCLE
   5
@@ -3204,20 +3042,18 @@ CIRCLE
 AcDbEntity
   8
 STATIONS
- 62
-7
 100
 AcDbCircle
  10
-3.0
+-5.0
  20
-5.0
+4.0
  30
 0.0
  40
-2.0
+1.5
   0
-LWPOLYLINE
+CIRCLE
   5
 5B
 330
@@ -3226,26 +3062,70 @@ LWPOLYLINE
 AcDbEntity
   8
 STATIONS
- 62
-7
 100
-AcDbPolyline
- 90
-3
- 70
-0
+AcDbCircle
  10
 5.0
  20
-5.0
+-4.0
+ 30
+0.0
+ 40
+1.5
+  0
+CIRCLE
+  5
+5C
+330
+55
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbCircle
  10
-10.0
- 20
 5.0
- 10
-10.0
  20
-3.0
+4.0
+ 30
+0.0
+ 40
+1.5
+  0
+TEXT
+  5
+5D
+330
+55
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+0.0
+ 20
+-8.0
+ 30
+0.0
+ 40
+1.8
+  1
+TORQUE FASTEN
+ 72
+1
+ 11
+0.0
+ 21
+-8.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
   0
 ENDBLK
   5
@@ -3261,9 +3141,9 @@ AcDbBlockEnd
   0
 BLOCK
   5
-5D
+5F
 330
-5C
+5E
 100
 AcDbEntity
   8
@@ -3271,7 +3151,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-TYPE_WELDING
+LASER_WELD_CELL
  70
 0
  10
@@ -3281,145 +3161,153 @@ TYPE_WELDING
  30
 0.0
   3
-TYPE_WELDING
+LASER_WELD_CELL
   1
 
   0
 LWPOLYLINE
   5
-5F
-330
-5C
-100
-AcDbEntity
-  8
-SAFETY
-  6
-DASHED
- 62
-2
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
--1.0
- 20
--1.0
- 10
-13.0
- 20
--1.0
- 10
-13.0
- 20
-11.0
- 10
--1.0
- 20
-11.0
- 10
--1.0
- 20
--1.0
-  0
-LWPOLYLINE
-  5
-60
-330
-5C
-100
-AcDbEntity
-  8
-STATIONS
- 62
-2
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-0.0
- 20
-0.0
- 10
-12.0
- 20
-0.0
- 10
-12.0
- 20
-10.0
- 10
-0.0
- 20
-10.0
- 10
-0.0
- 20
-0.0
-  0
-LWPOLYLINE
-  5
 61
 330
-5C
+5E
 100
 AcDbEntity
   8
-STATIONS
- 62
-7
+SAFETY_FENCING
 100
 AcDbPolyline
  90
-3
+5
  70
 0
  10
-2.0
+-16.0
  20
-2.0
+-14.0
  10
-6.0
+16.0
  20
-5.0
+-14.0
  10
-10.0
+16.0
  20
-8.0
+14.0
+ 10
+-16.0
+ 20
+14.0
+ 10
+-16.0
+ 20
+-14.0
   0
-CIRCLE
+LINE
   5
 62
 330
-5C
+5E
 100
 AcDbEntity
   8
 STATIONS
- 62
-1
 100
-AcDbCircle
+AcDbLine
  10
+-10.0
+ 20
+-8.0
+ 30
+0.0
+ 11
 10.0
+ 21
+8.0
+ 31
+0.0
+  0
+LINE
+  5
+63
+330
+5E
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbLine
+ 10
+-10.0
  20
 8.0
  30
 0.0
+ 11
+10.0
+ 21
+-8.0
+ 31
+0.0
+  0
+CIRCLE
+  5
+64
+330
+5E
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbCircle
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
  40
-0.5
+3.0
+  0
+TEXT
+  5
+65
+330
+5E
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+0.0
+ 20
+-11.0
+ 30
+0.0
+ 40
+1.8
+  1
+LASER WELD
+ 72
+1
+ 11
+0.0
+ 21
+-11.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
   0
 ENDBLK
   5
-5E
+60
 330
-5C
+5E
 100
 AcDbEntity
   8
@@ -3429,9 +3317,9 @@ AcDbBlockEnd
   0
 BLOCK
   5
-64
+67
 330
-63
+66
 100
 AcDbEntity
   8
@@ -3439,7 +3327,7 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-TYPE_PACKAGING
+SERVO_PRESS
  70
 0
  10
@@ -3449,131 +3337,627 @@ TYPE_PACKAGING
  30
 0.0
   3
-TYPE_PACKAGING
+SERVO_PRESS
   1
 
   0
 LWPOLYLINE
   5
+69
+330
 66
-330
-63
 100
 AcDbEntity
   8
-SAFETY
-  6
-DASHED
- 62
+STATIONS
+100
+AcDbPolyline
+ 90
+5
+ 70
+0
+ 10
+-12.0
+ 20
+-12.0
+ 10
+12.0
+ 20
+-12.0
+ 10
+12.0
+ 20
+12.0
+ 10
+-12.0
+ 20
+12.0
+ 10
+-12.0
+ 20
+-12.0
+  0
+CIRCLE
+  5
+6A
+330
+66
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbCircle
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 40
+6.0
+  0
+TEXT
+  5
+6B
+330
+66
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+0.0
+ 20
+-9.0
+ 30
+0.0
+ 40
+1.8
+  1
+SERVO PRESS
+ 72
+1
+ 11
+0.0
+ 21
+-9.0
+ 31
+0.0
+100
+AcDbText
+ 73
 2
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
--1.0
- 20
--1.0
- 10
-13.0
- 20
--1.0
- 10
-13.0
- 20
-11.0
- 10
--1.0
- 20
-11.0
- 10
--1.0
- 20
--1.0
-  0
-LWPOLYLINE
-  5
-67
-330
-63
-100
-AcDbEntity
-  8
-STATIONS
- 62
-40
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-0.0
- 20
-0.0
- 10
-12.0
- 20
-0.0
- 10
-12.0
- 20
-10.0
- 10
-0.0
- 20
-10.0
- 10
-0.0
- 20
-0.0
-  0
-LWPOLYLINE
-  5
-68
-330
-63
-100
-AcDbEntity
-  8
-STATIONS
- 62
-7
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-4.0
- 20
-4.0
- 10
-8.0
- 20
-4.0
- 10
-8.0
- 20
-8.0
- 10
-4.0
- 20
-8.0
- 10
-4.0
- 20
-4.0
   0
 ENDBLK
   5
-65
+68
 330
-63
+66
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockEnd
+  0
+BLOCK
+  5
+6D
+330
+6C
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+VISION_INSPECTION
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+VISION_INSPECTION
+  1
+
+  0
+LWPOLYLINE
+  5
+6F
+330
+6C
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbPolyline
+ 90
+5
+ 70
+0
+ 10
+-14.0
+ 20
+-10.0
+ 10
+14.0
+ 20
+-10.0
+ 10
+14.0
+ 20
+10.0
+ 10
+-14.0
+ 20
+10.0
+ 10
+-14.0
+ 20
+-10.0
+  0
+CIRCLE
+  5
+70
+330
+6C
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbCircle
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 40
+3.0
+  0
+CIRCLE
+  5
+71
+330
+6C
+100
+AcDbEntity
+  8
+STATIONS
+  6
+DASHED
+100
+AcDbCircle
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 40
+6.0
+  0
+TEXT
+  5
+72
+330
+6C
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+0.0
+ 20
+-8.0
+ 30
+0.0
+ 40
+1.8
+  1
+3D VISION AOI
+ 72
+1
+ 11
+0.0
+ 21
+-8.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+ENDBLK
+  5
+6E
+330
+6C
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockEnd
+  0
+BLOCK
+  5
+74
+330
+73
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+EOL_TEST_BENCH
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+EOL_TEST_BENCH
+  1
+
+  0
+LWPOLYLINE
+  5
+76
+330
+73
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbPolyline
+ 90
+5
+ 70
+0
+ 10
+-15.0
+ 20
+-12.0
+ 10
+15.0
+ 20
+-12.0
+ 10
+15.0
+ 20
+12.0
+ 10
+-15.0
+ 20
+12.0
+ 10
+-15.0
+ 20
+-12.0
+  0
+LWPOLYLINE
+  5
+77
+330
+73
+100
+AcDbEntity
+  8
+STATIONS
+100
+AcDbPolyline
+ 90
+5
+ 70
+0
+ 10
+-8.0
+ 20
+-6.0
+ 10
+8.0
+ 20
+-6.0
+ 10
+8.0
+ 20
+6.0
+ 10
+-8.0
+ 20
+6.0
+ 10
+-8.0
+ 20
+-6.0
+  0
+TEXT
+  5
+78
+330
+73
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+0.0
+ 20
+-9.0
+ 30
+0.0
+ 40
+1.8
+  1
+EOL TEST BENCH
+ 72
+1
+ 11
+0.0
+ 21
+-9.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+ENDBLK
+  5
+75
+330
+73
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockEnd
+  0
+BLOCK
+  5
+7A
+330
+79
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+WAREHOUSE_RACK
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+WAREHOUSE_RACK
+  1
+
+  0
+LWPOLYLINE
+  5
+7C
+330
+79
+100
+AcDbEntity
+  8
+STORAGE
+100
+AcDbPolyline
+ 90
+5
+ 70
+0
+ 10
+-30.0
+ 20
+-12.0
+ 10
+30.0
+ 20
+-12.0
+ 10
+30.0
+ 20
+12.0
+ 10
+-30.0
+ 20
+12.0
+ 10
+-30.0
+ 20
+-12.0
+  0
+LINE
+  5
+7D
+330
+79
+100
+AcDbEntity
+  8
+STORAGE
+100
+AcDbLine
+ 10
+-20.0
+ 20
+-12.0
+ 30
+0.0
+ 11
+-20.0
+ 21
+12.0
+ 31
+0.0
+  0
+LINE
+  5
+7E
+330
+79
+100
+AcDbEntity
+  8
+STORAGE
+100
+AcDbLine
+ 10
+-10.0
+ 20
+-12.0
+ 30
+0.0
+ 11
+-10.0
+ 21
+12.0
+ 31
+0.0
+  0
+LINE
+  5
+7F
+330
+79
+100
+AcDbEntity
+  8
+STORAGE
+100
+AcDbLine
+ 10
+0.0
+ 20
+-12.0
+ 30
+0.0
+ 11
+0.0
+ 21
+12.0
+ 31
+0.0
+  0
+LINE
+  5
+80
+330
+79
+100
+AcDbEntity
+  8
+STORAGE
+100
+AcDbLine
+ 10
+10.0
+ 20
+-12.0
+ 30
+0.0
+ 11
+10.0
+ 21
+12.0
+ 31
+0.0
+  0
+LINE
+  5
+81
+330
+79
+100
+AcDbEntity
+  8
+STORAGE
+100
+AcDbLine
+ 10
+20.0
+ 20
+-12.0
+ 30
+0.0
+ 11
+20.0
+ 21
+12.0
+ 31
+0.0
+  0
+TEXT
+  5
+82
+330
+79
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 40
+2.0
+  1
+STORAGE RACK
+ 72
+1
+ 11
+0.0
+ 21
+0.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+ENDBLK
+  5
+7B
+330
+79
 100
 AcDbEntity
   8
@@ -3589,37 +3973,35 @@ ENTITIES
   0
 LWPOLYLINE
   5
-69
+37
 330
 17
 100
 AcDbEntity
   8
-BUILDING
-370
-70
+WALLS
 100
 AcDbPolyline
  90
 5
  70
-1
+0
  10
 0.0
  20
 0.0
  10
-500.0
+2400.0
  20
 0.0
  10
-500.0
+2400.0
  20
-800.0
+1700.0
  10
 0.0
  20
-800.0
+1700.0
  10
 0.0
  20
@@ -3627,13 +4009,13 @@ AcDbPolyline
   0
 LWPOLYLINE
   5
-6A
+38
 330
 17
 100
 AcDbEntity
   8
-WALKWAYS
+WALLS
 100
 AcDbPolyline
  90
@@ -3641,41 +4023,17 @@ AcDbPolyline
  70
 0
  10
-230.0
+1350.0
  20
 0.0
  10
-230.0
+1350.0
  20
-800.0
-  0
-LWPOLYLINE
-  5
-6B
-330
-17
-100
-AcDbEntity
-  8
-WALKWAYS
-100
-AcDbPolyline
- 90
-2
- 70
-0
- 10
-270.0
- 20
-0.0
- 10
-270.0
- 20
-800.0
+1700.0
   0
 TEXT
   5
-6C
+39
 330
 17
 100
@@ -3685,23 +4043,21 @@ TEXT
 100
 AcDbText
  10
-250.0
+1200.0
  20
-400.0
+1660.0
  30
 0.0
  40
-7.0
+24.0
   1
-CENTRAL LOGISTICS THOROUGHFARE
- 50
-90.0
+HEIMDALL AUTOMATED SMART FACTORY – GIGA-01
  72
 1
  11
-250.0
+1200.0
  21
-400.0
+1660.0
  31
 0.0
 100
@@ -3709,123 +4065,99 @@ AcDbText
  73
 2
   0
-LWPOLYLINE
+TEXT
   5
-6D
+3A
 330
 17
 100
 AcDbEntity
   8
-FLOOR
+TEXT
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbText
  10
-30.0
+650.0
  20
+1620.0
+ 30
+0.0
+ 40
+16.0
+  1
+AUTOMATED PRODUCTION CORRIDOR (LINES 01 - 08)
+ 72
+1
+ 11
+650.0
+ 21
+1620.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+TEXT
+  5
+3B
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1875.0
+ 20
+1620.0
+ 30
+0.0
+ 40
+16.0
+  1
+HIGH-BAY LOGISTICS & SPARE PARTS WAREHOUSE (550 SERIALIZED SLOTS)
+ 72
+1
+ 11
+1875.0
+ 21
+1620.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+TEXT
+  5
+83
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
 60.0
- 10
-199.2
  20
+1530.0
+ 30
+0.0
+ 40
+10.0
+  1
+LINE 01 – SYNTHETIC AUDI E-TRON MODULE LINE (AI SIM)
+ 11
 60.0
- 10
-199.2
- 20
-114.0
- 10
-30.0
- 20
-114.0
- 10
-30.0
- 20
-60.0
-  0
-TEXT
-  5
-6E
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-30.0
- 20
-119.0
- 30
-0.0
- 40
-6.0
-  1
-Final Assembly Line LINE-A
- 11
-30.0
  21
-119.0
- 31
-0.0
-100
-AcDbText
-  0
-INSERT
-  5
-STA-LINE-A-10
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-TYPE_MECHANICAL
- 10
-48.0
- 20
-84.0
- 30
-0.0
- 41
-0.6
- 42
-0.6
-  0
-TEXT
-  5
-71
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-51.6
- 20
-76.0
- 30
-0.0
- 40
-2.0
-  1
-STA-LINE-A-10
- 72
-1
- 11
-51.6
- 21
-76.0
+1530.0
  31
 0.0
 100
@@ -3833,7 +4165,7 @@ AcDbText
   0
 LINE
   5
-72
+84
 330
 17
 100
@@ -3843,379 +4175,19 @@ CONVEYORS
 100
 AcDbLine
  10
-55.2
+80.0
  20
-85.8
+1490.0
  30
 0.0
  11
-73.19999999999999
+1240.0
  21
-85.8
+1490.0
  31
 0.0
   0
 LINE
-  5
-73
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-55.2
- 20
-88.2
- 30
-0.0
- 11
-73.19999999999999
- 21
-88.2
- 31
-0.0
-  0
-INSERT
-  5
-STA-LINE-A-20
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-TYPE_MECHANICAL
- 10
-73.19999999999999
- 20
-84.0
- 30
-0.0
- 41
-0.6
- 42
-0.6
-  0
-TEXT
-  5
-76
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-76.79999999999998
- 20
-76.0
- 30
-0.0
- 40
-2.0
-  1
-STA-LINE-A-20
- 72
-1
- 11
-76.79999999999998
- 21
-76.0
- 31
-0.0
-100
-AcDbText
-  0
-LINE
-  5
-77
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-80.4
- 20
-85.8
- 30
-0.0
- 11
-98.39999999999999
- 21
-85.8
- 31
-0.0
-  0
-LINE
-  5
-78
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-80.4
- 20
-88.2
- 30
-0.0
- 11
-98.39999999999999
- 21
-88.2
- 31
-0.0
-  0
-INSERT
-  5
-STA-LINE-A-30
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-TYPE_VISION
- 10
-98.39999999999999
- 20
-84.0
- 30
-0.0
- 41
-0.6
- 42
-0.6
-  0
-TEXT
-  5
-7B
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-101.99999999999999
- 20
-76.0
- 30
-0.0
- 40
-2.0
-  1
-STA-LINE-A-30
- 72
-1
- 11
-101.99999999999999
- 21
-76.0
- 31
-0.0
-100
-AcDbText
-  0
-LINE
-  5
-7C
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-105.6
- 20
-85.8
- 30
-0.0
- 11
-123.6
- 21
-85.8
- 31
-0.0
-  0
-LINE
-  5
-7D
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-105.6
- 20
-88.2
- 30
-0.0
- 11
-123.6
- 21
-88.2
- 31
-0.0
-  0
-INSERT
-  5
-STA-LINE-A-40
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-TYPE_DISPENSING
- 10
-123.6
- 20
-84.0
- 30
-0.0
- 41
-0.6
- 42
-0.6
-  0
-TEXT
-  5
-80
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-127.19999999999999
- 20
-76.0
- 30
-0.0
- 40
-2.0
-  1
-STA-LINE-A-40
- 72
-1
- 11
-127.19999999999999
- 21
-76.0
- 31
-0.0
-100
-AcDbText
-  0
-LINE
-  5
-81
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-130.8
- 20
-85.8
- 30
-0.0
- 11
-148.8
- 21
-85.8
- 31
-0.0
-  0
-LINE
-  5
-82
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-130.8
- 20
-88.2
- 30
-0.0
- 11
-148.8
- 21
-88.2
- 31
-0.0
-  0
-INSERT
-  5
-STA-LINE-A-50
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-TYPE_VISION
- 10
-148.8
- 20
-84.0
- 30
-0.0
- 41
-0.6
- 42
-0.6
-  0
-TEXT
   5
 85
 330
@@ -4223,31 +4195,23 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-152.4
+80.0
  20
-76.0
+1450.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-A-50
- 72
-1
  11
-152.4
+1240.0
  21
-76.0
+1450.0
  31
 0.0
-100
-AcDbText
   0
-LINE
+ARC
   5
 86
 330
@@ -4257,21 +4221,23 @@ AcDbEntity
   8
 CONVEYORS
 100
-AcDbLine
+AcDbCircle
  10
-156.0
+80.0
  20
-85.8
+1470.0
  30
 0.0
- 11
-174.0
- 21
-85.8
- 31
-0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+90.0
+ 51
+270.0
   0
-LINE
+ARC
   5
 87
 330
@@ -4281,45 +4247,71 @@ AcDbEntity
   8
 CONVEYORS
 100
-AcDbLine
+AcDbCircle
  10
-156.0
+1240.0
  20
-88.2
+1470.0
  30
 0.0
- 11
-174.0
- 21
-88.2
- 31
-0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+270.0
+ 51
+90.0
   0
-INSERT
+LINE
   5
-STA-LINE-A-60
+88
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_MECHANICAL
+AcDbLine
  10
-174.0
+300.0
  20
-84.0
+1490.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+315.0
+ 21
+1490.0
+ 31
+0.0
   0
-TEXT
+LINE
+  5
+89
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+315.0
+ 20
+1490.0
+ 30
+0.0
+ 11
+310.0
+ 21
+1494.0
+ 31
+0.0
+  0
+LINE
   5
 8A
 330
@@ -4327,31 +4319,23 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-177.6
+315.0
  20
-76.0
+1490.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-A-60
- 72
-1
  11
-177.6
+310.0
  21
-76.0
+1486.0
  31
 0.0
-100
-AcDbText
   0
-LWPOLYLINE
+LINE
   5
 8B
 330
@@ -4359,35 +4343,23 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-FLOOR
+CONVEYORS
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbLine
  10
-300.0
+600.0
  20
-60.0
- 10
-469.2
- 20
-60.0
- 10
-469.2
- 20
-114.0
- 10
-300.0
- 20
-114.0
- 10
-300.0
- 20
-60.0
+1490.0
+ 30
+0.0
+ 11
+615.0
+ 21
+1490.0
+ 31
+0.0
   0
-TEXT
+LINE
   5
 8C
 330
@@ -4395,53 +4367,71 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-300.0
+615.0
  20
-119.0
+1490.0
  30
 0.0
- 40
-6.0
-  1
-Electronics Test Line LINE-B
  11
-300.0
+610.0
  21
-119.0
+1494.0
  31
 0.0
-100
-AcDbText
   0
-INSERT
+LINE
   5
-STA-LINE-B-10
+8D
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_MECHANICAL
+AcDbLine
  10
-318.0
+615.0
  20
-84.0
+1490.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+610.0
+ 21
+1486.0
+ 31
+0.0
   0
-TEXT
+LINE
+  5
+8E
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+900.0
+ 20
+1490.0
+ 30
+0.0
+ 11
+915.0
+ 21
+1490.0
+ 31
+0.0
+  0
+LINE
   5
 8F
 330
@@ -4449,29 +4439,21 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-321.6
+915.0
  20
-76.0
+1490.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-B-10
- 72
-1
  11
-321.6
+910.0
  21
-76.0
+1494.0
  31
 0.0
-100
-AcDbText
   0
 LINE
   5
@@ -4485,45 +4467,21 @@ CONVEYORS
 100
 AcDbLine
  10
-325.2
+915.0
  20
-85.8
+1490.0
  30
 0.0
  11
-343.2
+910.0
  21
-85.8
- 31
-0.0
-  0
-LINE
-  5
-91
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-325.2
- 20
-88.2
- 30
-0.0
- 11
-343.2
- 21
-88.2
+1486.0
  31
 0.0
   0
 INSERT
   5
-STA-LINE-B-20
+L01-OP010
 330
 17
 100
@@ -4533,21 +4491,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_TEST
+CONVEYOR_BED
  10
-343.2
+120.0
  20
-84.0
+1490.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-94
+93
 330
 17
 100
@@ -4557,51 +4511,49 @@ TEXT
 100
 AcDbText
  10
-346.8
+120.0
  20
-76.0
+1506.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-B-20
+L01-OP010
  72
 1
  11
-346.8
+120.0
  21
-76.0
+1506.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-95
+L01-OP020
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+CONVEYOR_BED
  10
-350.4
+218.1818181818182
  20
-85.8
+1450.0
  30
 0.0
- 11
-368.4
- 21
-85.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 96
 330
@@ -4609,25 +4561,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-350.4
+218.1818181818182
  20
-88.2
+1432.0
  30
 0.0
+ 40
+4.0
+  1
+L01-OP020
+ 72
+1
  11
-368.4
+218.1818181818182
  21
-88.2
+1432.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-B-30
+L01-OP030
 330
 17
 100
@@ -4637,17 +4599,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_DISPENSING
+DISPENSING_CELL
  10
-368.4
+316.3636363636364
  20
-84.0
+1490.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -4661,77 +4619,31 @@ TEXT
 100
 AcDbText
  10
-372.0
+316.3636363636364
  20
-76.0
+1506.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-B-30
+L01-OP030
  72
 1
  11
-372.0
+316.3636363636364
  21
-76.0
+1506.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-9A
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-375.6
- 20
-85.8
- 30
-0.0
- 11
-393.6
- 21
-85.8
- 31
-0.0
-  0
-LINE
-  5
-9B
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-375.6
- 20
-88.2
- 30
-0.0
- 11
-393.6
- 21
-88.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-B-40
+L01-OP040
 330
 17
 100
@@ -4741,21 +4653,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_WELDING
+ROBOT_CELL
  10
-393.6
+414.54545454545456
  20
-84.0
+1450.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-9E
+9C
 330
 17
 100
@@ -4765,27 +4673,49 @@ TEXT
 100
 AcDbText
  10
-397.20000000000005
+414.54545454545456
  20
-76.0
+1432.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-B-40
+L01-OP040
  72
 1
  11
-397.20000000000005
+414.54545454545456
  21
-76.0
+1432.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L01-OP050
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+FASTENING_STATION
+ 10
+512.7272727272727
+ 20
+1490.0
+ 30
+0.0
+  0
+TEXT
   5
 9F
 330
@@ -4793,49 +4723,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-400.8
+512.7272727272727
  20
-85.8
+1506.0
  30
 0.0
+ 40
+4.0
+  1
+L01-OP050
+ 72
+1
  11
-418.8
+512.7272727272727
  21
-85.8
+1506.0
  31
 0.0
-  0
-LINE
-  5
-A0
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-400.8
- 20
-88.2
- 30
-0.0
- 11
-418.8
- 21
-88.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-B-50
+L01-OP060
 330
 17
 100
@@ -4845,21 +4761,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_PACKAGING
+LASER_WELD_CELL
  10
-418.8
+610.909090909091
  20
-84.0
+1450.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-A3
+A2
 330
 17
 100
@@ -4869,51 +4781,49 @@ TEXT
 100
 AcDbText
  10
-422.40000000000003
+610.909090909091
  20
-76.0
+1432.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-B-50
+L01-OP060
  72
 1
  11
-422.40000000000003
+610.909090909091
  21
-76.0
+1432.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-A4
+L01-OP070
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+EOL_TEST_BENCH
  10
-426.0
+709.0909090909091
  20
-85.8
+1490.0
  30
 0.0
- 11
-444.0
- 21
-85.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 A5
 330
@@ -4921,25 +4831,35 @@ A5
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-426.0
+709.0909090909091
  20
-88.2
+1506.0
  30
 0.0
+ 40
+4.0
+  1
+L01-OP070
+ 72
+1
  11
-444.0
+709.0909090909091
  21
-88.2
+1506.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-B-60
+L01-OP080
 330
 17
 100
@@ -4949,17 +4869,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_DISPENSING
+ROBOT_CELL
  10
-444.0
+807.2727272727273
  20
-84.0
+1450.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -4973,95 +4889,31 @@ TEXT
 100
 AcDbText
  10
-447.6
+807.2727272727273
  20
-76.0
+1432.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-B-60
+L01-OP080
  72
 1
  11
-447.6
+807.2727272727273
  21
-76.0
+1432.0
  31
 0.0
 100
 AcDbText
-  0
-LWPOLYLINE
-  5
-A9
-330
-17
-100
-AcDbEntity
-  8
-FLOOR
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-30.0
- 20
-200.0
- 10
-199.2
- 20
-200.0
- 10
-199.2
- 20
-254.0
- 10
-30.0
- 20
-254.0
- 10
-30.0
- 20
-200.0
-  0
-TEXT
-  5
-AA
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-30.0
- 20
-259.0
- 30
-0.0
- 40
-6.0
-  1
-Final Assembly Line LINE-C
- 11
-30.0
- 21
-259.0
- 31
-0.0
-100
-AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-C-10
+L01-OP090
 330
 17
 100
@@ -5071,21 +4923,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_SCREWING
+VISION_INSPECTION
  10
-48.0
+905.4545454545455
  20
-224.0
+1490.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-AD
+AB
 330
 17
 100
@@ -5095,27 +4943,49 @@ TEXT
 100
 AcDbText
  10
-51.6
+905.4545454545455
  20
-216.0
+1506.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-C-10
+L01-OP090
  72
 1
  11
-51.6
+905.4545454545455
  21
-216.0
+1506.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L01-OP100
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+FASTENING_STATION
+ 10
+1003.6363636363637
+ 20
+1450.0
+ 30
+0.0
+  0
+TEXT
   5
 AE
 330
@@ -5123,49 +4993,35 @@ AE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-55.2
+1003.6363636363637
  20
-225.8
+1432.0
  30
 0.0
+ 40
+4.0
+  1
+L01-OP100
+ 72
+1
  11
-73.19999999999999
+1003.6363636363637
  21
-225.8
+1432.0
  31
 0.0
-  0
-LINE
-  5
-AF
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-55.2
- 20
-228.2
- 30
-0.0
- 11
-73.19999999999999
- 21
-228.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-C-20
+L01-OP110
 330
 17
 100
@@ -5175,21 +5031,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_PACKAGING
+CONVEYOR_BED
  10
-73.19999999999999
+1101.818181818182
  20
-224.0
+1490.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-B2
+B1
 330
 17
 100
@@ -5199,51 +5051,49 @@ TEXT
 100
 AcDbText
  10
-76.79999999999998
+1101.818181818182
  20
-216.0
+1506.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-C-20
+L01-OP110
  72
 1
  11
-76.79999999999998
+1101.818181818182
  21
-216.0
+1506.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-B3
+L01-OP120
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+CONVEYOR_BED
  10
-80.4
+1200.0
  20
-225.8
+1450.0
  30
 0.0
- 11
-98.39999999999999
- 21
-225.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 B4
 330
@@ -5251,47 +5101,87 @@ B4
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-80.4
+1200.0
  20
-228.2
+1432.0
  30
 0.0
+ 40
+4.0
+  1
+L01-OP120
+ 72
+1
  11
-98.39999999999999
+1200.0
  21
-228.2
+1432.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
-INSERT
+TEXT
   5
-STA-LINE-C-30
+B5
 330
 17
 100
 AcDbEntity
   8
-0
+TEXT
 100
-AcDbBlockReference
-  2
-TYPE_WELDING
+AcDbText
  10
-98.39999999999999
+60.0
  20
-224.0
+1340.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 40
+10.0
+  1
+LINE 02 – SYNTHETIC AUDI BATTERY PACK LINE (AI SIM)
+ 11
+60.0
+ 21
+1340.0
+ 31
+0.0
+100
+AcDbText
   0
-TEXT
+LINE
+  5
+B6
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+80.0
+ 20
+1300.0
+ 30
+0.0
+ 11
+1240.0
+ 21
+1300.0
+ 31
+0.0
+  0
+LINE
   5
 B7
 330
@@ -5299,31 +5189,23 @@ B7
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-101.99999999999999
+80.0
  20
-216.0
+1260.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-C-30
- 72
-1
  11
-101.99999999999999
+1240.0
  21
-216.0
+1260.0
  31
 0.0
-100
-AcDbText
   0
-LINE
+ARC
   5
 B8
 330
@@ -5333,21 +5215,23 @@ AcDbEntity
   8
 CONVEYORS
 100
-AcDbLine
+AcDbCircle
  10
-105.6
+80.0
  20
-225.8
+1280.0
  30
 0.0
- 11
-123.6
- 21
-225.8
- 31
-0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+90.0
+ 51
+270.0
   0
-LINE
+ARC
   5
 B9
 330
@@ -5357,45 +5241,71 @@ AcDbEntity
   8
 CONVEYORS
 100
-AcDbLine
+AcDbCircle
  10
-105.6
+1240.0
  20
-228.2
+1280.0
  30
 0.0
- 11
-123.6
- 21
-228.2
- 31
-0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+270.0
+ 51
+90.0
   0
-INSERT
+LINE
   5
-STA-LINE-C-40
+BA
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_VISION
+AcDbLine
  10
-123.6
+300.0
  20
-224.0
+1300.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+315.0
+ 21
+1300.0
+ 31
+0.0
   0
-TEXT
+LINE
+  5
+BB
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+315.0
+ 20
+1300.0
+ 30
+0.0
+ 11
+310.0
+ 21
+1304.0
+ 31
+0.0
+  0
+LINE
   5
 BC
 330
@@ -5403,29 +5313,21 @@ BC
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-127.19999999999999
+315.0
  20
-216.0
+1300.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-C-40
- 72
-1
  11
-127.19999999999999
+310.0
  21
-216.0
+1296.0
  31
 0.0
-100
-AcDbText
   0
 LINE
   5
@@ -5439,15 +5341,15 @@ CONVEYORS
 100
 AcDbLine
  10
-130.8
+600.0
  20
-225.8
+1300.0
  30
 0.0
  11
-148.8
+615.0
  21
-225.8
+1300.0
  31
 0.0
   0
@@ -5463,43 +5365,67 @@ CONVEYORS
 100
 AcDbLine
  10
-130.8
+615.0
  20
-228.2
+1300.0
  30
 0.0
  11
-148.8
+610.0
  21
-228.2
+1304.0
  31
 0.0
   0
-INSERT
+LINE
   5
-STA-LINE-C-50
+BF
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_WELDING
+AcDbLine
  10
-148.8
+615.0
  20
-224.0
+1300.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+610.0
+ 21
+1296.0
+ 31
+0.0
   0
-TEXT
+LINE
+  5
+C0
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+900.0
+ 20
+1300.0
+ 30
+0.0
+ 11
+915.0
+ 21
+1300.0
+ 31
+0.0
+  0
+LINE
   5
 C1
 330
@@ -5507,29 +5433,21 @@ C1
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-152.4
+915.0
  20
-216.0
+1300.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-C-50
- 72
-1
  11
-152.4
+910.0
  21
-216.0
+1304.0
  31
 0.0
-100
-AcDbText
   0
 LINE
   5
@@ -5543,45 +5461,21 @@ CONVEYORS
 100
 AcDbLine
  10
-156.0
+915.0
  20
-225.8
+1300.0
  30
 0.0
  11
-174.0
+910.0
  21
-225.8
- 31
-0.0
-  0
-LINE
-  5
-C3
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-156.0
- 20
-228.2
- 30
-0.0
- 11
-174.0
- 21
-228.2
+1296.0
  31
 0.0
   0
 INSERT
   5
-STA-LINE-C-60
+L02-OP010
 330
 17
 100
@@ -5591,21 +5485,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_WELDING
+CONVEYOR_BED
  10
-174.0
+120.0
  20
-224.0
+1300.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-C6
+C5
 330
 17
 100
@@ -5615,61 +5505,47 @@ TEXT
 100
 AcDbText
  10
-177.6
+120.0
  20
-216.0
+1316.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-C-60
+L02-OP010
  72
 1
  11
-177.6
+120.0
  21
-216.0
+1316.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LWPOLYLINE
+INSERT
   5
-C7
+L02-OP020
 330
 17
 100
 AcDbEntity
   8
-FLOOR
+0
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbBlockReference
+  2
+DISPENSING_CELL
  10
-300.0
+210.0
  20
-200.0
- 10
-469.2
- 20
-200.0
- 10
-469.2
- 20
-254.0
- 10
-300.0
- 20
-254.0
- 10
-300.0
- 20
-200.0
+1260.0
+ 30
+0.0
   0
 TEXT
   5
@@ -5683,27 +5559,31 @@ TEXT
 100
 AcDbText
  10
-300.0
+210.0
  20
-259.0
+1242.0
  30
 0.0
  40
-6.0
+4.0
   1
-Battery Module Line LINE-D
+L02-OP020
+ 72
+1
  11
-300.0
+210.0
  21
-259.0
+1242.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-D-10
+L02-OP030
 330
 17
 100
@@ -5713,17 +5593,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_DISPENSING
+ROBOT_CELL
  10
-318.0
+300.0
  20
-224.0
+1300.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -5737,77 +5613,31 @@ TEXT
 100
 AcDbText
  10
-321.6
+300.0
  20
-216.0
+1316.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-D-10
+L02-OP030
  72
 1
  11
-321.6
+300.0
  21
-216.0
+1316.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-CC
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-325.2
- 20
-225.8
- 30
-0.0
- 11
-343.2
- 21
-225.8
- 31
-0.0
-  0
-LINE
-  5
-CD
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-325.2
- 20
-228.2
- 30
-0.0
- 11
-343.2
- 21
-228.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-D-20
+L02-OP040
 330
 17
 100
@@ -5817,21 +5647,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_WELDING
+ROBOT_CELL
  10
-343.2
+390.0
  20
-224.0
+1260.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-D0
+CE
 330
 17
 100
@@ -5841,27 +5667,49 @@ TEXT
 100
 AcDbText
  10
-346.8
+390.0
  20
-216.0
+1242.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-D-20
+L02-OP040
  72
 1
  11
-346.8
+390.0
  21
-216.0
+1242.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L02-OP050
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+FASTENING_STATION
+ 10
+480.0
+ 20
+1300.0
+ 30
+0.0
+  0
+TEXT
   5
 D1
 330
@@ -5869,49 +5717,35 @@ D1
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-350.4
+480.0
  20
-225.8
+1316.0
  30
 0.0
+ 40
+4.0
+  1
+L02-OP050
+ 72
+1
  11
-368.4
+480.0
  21
-225.8
+1316.0
  31
 0.0
-  0
-LINE
-  5
-D2
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-350.4
- 20
-228.2
- 30
-0.0
- 11
-368.4
- 21
-228.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-D-30
+L02-OP060
 330
 17
 100
@@ -5921,21 +5755,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_DISPENSING
+LASER_WELD_CELL
  10
-368.4
+570.0
  20
-224.0
+1260.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-D5
+D4
 330
 17
 100
@@ -5945,51 +5775,49 @@ TEXT
 100
 AcDbText
  10
-372.0
+570.0
  20
-216.0
+1242.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-D-30
+L02-OP060
  72
 1
  11
-372.0
+570.0
  21
-216.0
+1242.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-D6
+L02-OP070
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+VISION_INSPECTION
  10
-375.6
+660.0
  20
-225.8
+1300.0
  30
 0.0
- 11
-393.6
- 21
-225.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 D7
 330
@@ -5997,25 +5825,35 @@ D7
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-375.6
+660.0
  20
-228.2
+1316.0
  30
 0.0
+ 40
+4.0
+  1
+L02-OP070
+ 72
+1
  11
-393.6
+660.0
  21
-228.2
+1316.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-D-40
+L02-OP080
 330
 17
 100
@@ -6025,17 +5863,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_PACKAGING
+EOL_TEST_BENCH
  10
-393.6
+750.0
  20
-224.0
+1260.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -6049,77 +5883,31 @@ TEXT
 100
 AcDbText
  10
-397.20000000000005
+750.0
  20
-216.0
+1242.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-D-40
+L02-OP080
  72
 1
  11
-397.20000000000005
+750.0
  21
-216.0
+1242.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-DB
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-400.8
- 20
-225.8
- 30
-0.0
- 11
-418.8
- 21
-225.8
- 31
-0.0
-  0
-LINE
-  5
-DC
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-400.8
- 20
-228.2
- 30
-0.0
- 11
-418.8
- 21
-228.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-D-50
+L02-OP090
 330
 17
 100
@@ -6129,21 +5917,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_SCREWING
+SERVO_PRESS
  10
-418.8
+840.0
  20
-224.0
+1300.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-DF
+DD
 330
 17
 100
@@ -6153,27 +5937,49 @@ TEXT
 100
 AcDbText
  10
-422.40000000000003
+840.0
  20
-216.0
+1316.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-D-50
+L02-OP090
  72
 1
  11
-422.40000000000003
+840.0
  21
-216.0
+1316.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L02-OP100
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+FASTENING_STATION
+ 10
+930.0
+ 20
+1260.0
+ 30
+0.0
+  0
+TEXT
   5
 E0
 330
@@ -6181,49 +5987,35 @@ E0
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-426.0
+930.0
  20
-225.8
+1242.0
  30
 0.0
+ 40
+4.0
+  1
+L02-OP100
+ 72
+1
  11
-444.0
+930.0
  21
-225.8
+1242.0
  31
 0.0
-  0
-LINE
-  5
-E1
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-426.0
- 20
-228.2
- 30
-0.0
- 11
-444.0
- 21
-228.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-D-60
+L02-OP110
 330
 17
 100
@@ -6233,21 +6025,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_PACKAGING
+VISION_INSPECTION
  10
-444.0
+1020.0
  20
-224.0
+1300.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-E4
+E3
 330
 17
 100
@@ -6257,61 +6045,47 @@ TEXT
 100
 AcDbText
  10
-447.6
+1020.0
  20
-216.0
+1316.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-D-60
+L02-OP110
  72
 1
  11
-447.6
+1020.0
  21
-216.0
+1316.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LWPOLYLINE
+INSERT
   5
-E5
+L02-OP120
 330
 17
 100
 AcDbEntity
   8
-FLOOR
+0
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbBlockReference
+  2
+CONVEYOR_BED
  10
-30.0
+1110.0
  20
-340.0
- 10
-199.2
- 20
-340.0
- 10
-199.2
- 20
-394.0
- 10
-30.0
- 20
-394.0
- 10
-30.0
- 20
-340.0
+1260.0
+ 30
+0.0
   0
 TEXT
   5
@@ -6325,27 +6099,31 @@ TEXT
 100
 AcDbText
  10
-30.0
+1110.0
  20
-399.0
+1242.0
  30
 0.0
  40
-6.0
+4.0
   1
-Sealant Dispensing Line LINE-E
+L02-OP120
+ 72
+1
  11
-30.0
+1110.0
  21
-399.0
+1242.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-E-10
+L02-OP130
 330
 17
 100
@@ -6355,17 +6133,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_MECHANICAL
+CONVEYOR_BED
  10
-48.0
+1200.0
  20
-364.0
+1300.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -6379,27 +6153,29 @@ TEXT
 100
 AcDbText
  10
-51.6
+1200.0
  20
-356.0
+1316.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-E-10
+L02-OP130
  72
 1
  11
-51.6
+1200.0
  21
-356.0
+1316.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+TEXT
   5
 EA
 330
@@ -6407,21 +6183,27 @@ EA
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-55.2
+60.0
  20
-365.8
+1150.0
  30
 0.0
+ 40
+10.0
+  1
+LINE 03 – SYNTHETIC AUDI POWERTRAIN LINE (AI SIM)
  11
-73.19999999999999
+60.0
  21
-365.8
+1150.0
  31
 0.0
+100
+AcDbText
   0
 LINE
   5
@@ -6435,43 +6217,69 @@ CONVEYORS
 100
 AcDbLine
  10
-55.2
+80.0
  20
-368.2
+1110.0
  30
 0.0
  11
-73.19999999999999
+1240.0
  21
-368.2
+1110.0
  31
 0.0
   0
-INSERT
+LINE
   5
-STA-LINE-E-20
+EC
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_DISPENSING
+AcDbLine
  10
-73.19999999999999
+80.0
  20
-364.0
+1070.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+1240.0
+ 21
+1070.0
+ 31
+0.0
   0
-TEXT
+ARC
+  5
+ED
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbCircle
+ 10
+80.0
+ 20
+1090.0
+ 30
+0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+90.0
+ 51
+270.0
+  0
+ARC
   5
 EE
 330
@@ -6479,29 +6287,23 @@ EE
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbCircle
  10
-76.79999999999998
+1240.0
  20
-356.0
+1090.0
  30
 0.0
  40
-2.0
-  1
-STA-LINE-E-20
- 72
-1
- 11
-76.79999999999998
- 21
-356.0
- 31
-0.0
+20.0
 100
-AcDbText
+AcDbArc
+ 50
+270.0
+ 51
+90.0
   0
 LINE
   5
@@ -6515,15 +6317,15 @@ CONVEYORS
 100
 AcDbLine
  10
-80.4
+300.0
  20
-365.8
+1110.0
  30
 0.0
  11
-98.39999999999999
+315.0
  21
-365.8
+1110.0
  31
 0.0
   0
@@ -6539,43 +6341,67 @@ CONVEYORS
 100
 AcDbLine
  10
-80.4
+315.0
  20
-368.2
+1110.0
  30
 0.0
  11
-98.39999999999999
+310.0
  21
-368.2
+1114.0
  31
 0.0
   0
-INSERT
+LINE
   5
-STA-LINE-E-30
+F1
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_WELDING
+AcDbLine
  10
-98.39999999999999
+315.0
  20
-364.0
+1110.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+310.0
+ 21
+1106.0
+ 31
+0.0
   0
-TEXT
+LINE
+  5
+F2
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+600.0
+ 20
+1110.0
+ 30
+0.0
+ 11
+615.0
+ 21
+1110.0
+ 31
+0.0
+  0
+LINE
   5
 F3
 330
@@ -6583,29 +6409,21 @@ F3
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-101.99999999999999
+615.0
  20
-356.0
+1110.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-E-30
- 72
-1
  11
-101.99999999999999
+610.0
  21
-356.0
+1114.0
  31
 0.0
-100
-AcDbText
   0
 LINE
   5
@@ -6619,15 +6437,15 @@ CONVEYORS
 100
 AcDbLine
  10
-105.6
+615.0
  20
-365.8
+1110.0
  30
 0.0
  11
-123.6
+610.0
  21
-365.8
+1106.0
  31
 0.0
   0
@@ -6643,77 +6461,21 @@ CONVEYORS
 100
 AcDbLine
  10
-105.6
+900.0
  20
-368.2
+1110.0
  30
 0.0
  11
-123.6
+915.0
  21
-368.2
+1110.0
  31
 0.0
-  0
-INSERT
-  5
-STA-LINE-E-40
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-TYPE_VISION
- 10
-123.6
- 20
-364.0
- 30
-0.0
- 41
-0.6
- 42
-0.6
-  0
-TEXT
-  5
-F8
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-127.19999999999999
- 20
-356.0
- 30
-0.0
- 40
-2.0
-  1
-STA-LINE-E-40
- 72
-1
- 11
-127.19999999999999
- 21
-356.0
- 31
-0.0
-100
-AcDbText
   0
 LINE
   5
-F9
+F6
 330
 17
 100
@@ -6723,19 +6485,63 @@ CONVEYORS
 100
 AcDbLine
  10
-130.8
+915.0
  20
-365.8
+1110.0
  30
 0.0
  11
-148.8
+910.0
  21
-365.8
+1114.0
  31
 0.0
   0
 LINE
+  5
+F7
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+915.0
+ 20
+1110.0
+ 30
+0.0
+ 11
+910.0
+ 21
+1106.0
+ 31
+0.0
+  0
+INSERT
+  5
+L03-OP010
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+120.0
+ 20
+1110.0
+ 30
+0.0
+  0
+TEXT
   5
 FA
 330
@@ -6743,25 +6549,35 @@ FA
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-130.8
+120.0
  20
-368.2
+1126.0
  30
 0.0
+ 40
+4.0
+  1
+L03-OP010
+ 72
+1
  11
-148.8
+120.0
  21
-368.2
+1126.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-E-50
+L03-OP020
 330
 17
 100
@@ -6771,17 +6587,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_WELDING
+SERVO_PRESS
  10
-148.8
+218.1818181818182
  20
-364.0
+1070.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -6795,77 +6607,31 @@ TEXT
 100
 AcDbText
  10
-152.4
+218.1818181818182
  20
-356.0
+1052.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-E-50
+L03-OP020
  72
 1
  11
-152.4
+218.1818181818182
  21
-356.0
+1052.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-FE
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-156.0
- 20
-365.8
- 30
-0.0
- 11
-174.0
- 21
-365.8
- 31
-0.0
-  0
-LINE
-  5
-FF
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-156.0
- 20
-368.2
- 30
-0.0
- 11
-174.0
- 21
-368.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-E-60
+L03-OP030
 330
 17
 100
@@ -6875,21 +6641,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_SCREWING
+ROBOT_CELL
  10
-174.0
+316.3636363636364
  20
-364.0
+1110.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-102
+100
 330
 17
 100
@@ -6899,27 +6661,49 @@ TEXT
 100
 AcDbText
  10
-177.6
+316.3636363636364
  20
-356.0
+1126.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-E-60
+L03-OP030
  72
 1
  11
-177.6
+316.3636363636364
  21
-356.0
+1126.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LWPOLYLINE
+INSERT
+  5
+L03-OP040
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+FASTENING_STATION
+ 10
+414.54545454545456
+ 20
+1070.0
+ 30
+0.0
+  0
+TEXT
   5
 103
 330
@@ -6927,67 +6711,35 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-FLOOR
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-300.0
- 20
-340.0
- 10
-469.2
- 20
-340.0
- 10
-469.2
- 20
-394.0
- 10
-300.0
- 20
-394.0
- 10
-300.0
- 20
-340.0
-  0
-TEXT
-  5
-104
-330
-17
-100
-AcDbEntity
-  8
 TEXT
 100
 AcDbText
  10
-300.0
+414.54545454545456
  20
-399.0
+1052.0
  30
 0.0
  40
-6.0
+4.0
   1
-Electronics Test Line LINE-F
+L03-OP040
+ 72
+1
  11
-300.0
+414.54545454545456
  21
-399.0
+1052.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-F-10
+L03-OP050
 330
 17
 100
@@ -6997,21 +6749,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_VISION
+SERVO_PRESS
  10
-318.0
+512.7272727272727
  20
-364.0
+1110.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-107
+106
 330
 17
 100
@@ -7021,51 +6769,49 @@ TEXT
 100
 AcDbText
  10
-321.6
+512.7272727272727
  20
-356.0
+1126.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-F-10
+L03-OP050
  72
 1
  11
-321.6
+512.7272727272727
  21
-356.0
+1126.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-108
+L03-OP060
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+DISPENSING_CELL
  10
-325.2
+610.909090909091
  20
-365.8
+1070.0
  30
 0.0
- 11
-343.2
- 21
-365.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 109
 330
@@ -7073,25 +6819,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-325.2
+610.909090909091
  20
-368.2
+1052.0
  30
 0.0
+ 40
+4.0
+  1
+L03-OP060
+ 72
+1
  11
-343.2
+610.909090909091
  21
-368.2
+1052.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-F-20
+L03-OP070
 330
 17
 100
@@ -7101,17 +6857,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_DISPENSING
+EOL_TEST_BENCH
  10
-343.2
+709.0909090909091
  20
-364.0
+1110.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -7125,77 +6877,31 @@ TEXT
 100
 AcDbText
  10
-346.8
+709.0909090909091
  20
-356.0
+1126.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-F-20
+L03-OP070
  72
 1
  11
-346.8
+709.0909090909091
  21
-356.0
+1126.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-10D
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-350.4
- 20
-365.8
- 30
-0.0
- 11
-368.4
- 21
-365.8
- 31
-0.0
-  0
-LINE
-  5
-10E
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-350.4
- 20
-368.2
- 30
-0.0
- 11
-368.4
- 21
-368.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-F-30
+L03-OP080
 330
 17
 100
@@ -7205,21 +6911,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_VISION
+VISION_INSPECTION
  10
-368.4
+807.2727272727273
  20
-364.0
+1070.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-111
+10F
 330
 17
 100
@@ -7229,27 +6931,49 @@ TEXT
 100
 AcDbText
  10
-372.0
+807.2727272727273
  20
-356.0
+1052.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-F-30
+L03-OP080
  72
 1
  11
-372.0
+807.2727272727273
  21
-356.0
+1052.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L03-OP090
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+FASTENING_STATION
+ 10
+905.4545454545455
+ 20
+1110.0
+ 30
+0.0
+  0
+TEXT
   5
 112
 330
@@ -7257,49 +6981,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-375.6
+905.4545454545455
  20
-365.8
+1126.0
  30
 0.0
+ 40
+4.0
+  1
+L03-OP090
+ 72
+1
  11
-393.6
+905.4545454545455
  21
-365.8
+1126.0
  31
 0.0
-  0
-LINE
-  5
-113
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-375.6
- 20
-368.2
- 30
-0.0
- 11
-393.6
- 21
-368.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-F-40
+L03-OP100
 330
 17
 100
@@ -7309,21 +7019,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_WELDING
+ROBOT_CELL
  10
-393.6
+1003.6363636363637
  20
-364.0
+1070.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-116
+115
 330
 17
 100
@@ -7333,51 +7039,49 @@ TEXT
 100
 AcDbText
  10
-397.20000000000005
+1003.6363636363637
  20
-356.0
+1052.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-F-40
+L03-OP100
  72
 1
  11
-397.20000000000005
+1003.6363636363637
  21
-356.0
+1052.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-117
+L03-OP110
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+CONVEYOR_BED
  10
-400.8
+1101.818181818182
  20
-365.8
+1110.0
  30
 0.0
- 11
-418.8
- 21
-365.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 118
 330
@@ -7385,25 +7089,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-400.8
+1101.818181818182
  20
-368.2
+1126.0
  30
 0.0
+ 40
+4.0
+  1
+L03-OP110
+ 72
+1
  11
-418.8
+1101.818181818182
  21
-368.2
+1126.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-F-50
+L03-OP120
 330
 17
 100
@@ -7413,17 +7127,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_SCREWING
+CONVEYOR_BED
  10
-418.8
+1200.0
  20
-364.0
+1070.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -7437,27 +7147,29 @@ TEXT
 100
 AcDbText
  10
-422.40000000000003
+1200.0
  20
-356.0
+1052.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-F-50
+L03-OP120
  72
 1
  11
-422.40000000000003
+1200.0
  21
-356.0
+1052.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+TEXT
   5
 11C
 330
@@ -7465,21 +7177,27 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-426.0
+60.0
  20
-365.8
+960.0
  30
 0.0
+ 40
+10.0
+  1
+LINE 04 – SYNTHETIC ELECTRONICS SMT PLACEMENT (AI SIM)
  11
-444.0
+60.0
  21
-365.8
+960.0
  31
 0.0
+100
+AcDbText
   0
 LINE
   5
@@ -7493,43 +7211,69 @@ CONVEYORS
 100
 AcDbLine
  10
-426.0
+80.0
  20
-368.2
+920.0
  30
 0.0
  11
-444.0
+1240.0
  21
-368.2
+920.0
  31
 0.0
   0
-INSERT
+LINE
   5
-STA-LINE-F-60
+11E
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_DISPENSING
+AcDbLine
  10
-444.0
+80.0
  20
-364.0
+880.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+1240.0
+ 21
+880.0
+ 31
+0.0
   0
-TEXT
+ARC
+  5
+11F
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbCircle
+ 10
+80.0
+ 20
+900.0
+ 30
+0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+90.0
+ 51
+270.0
+  0
+ARC
   5
 120
 330
@@ -7537,31 +7281,25 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbCircle
  10
-447.6
+1240.0
  20
-356.0
+900.0
  30
 0.0
  40
-2.0
-  1
-STA-LINE-F-60
- 72
-1
- 11
-447.6
- 21
-356.0
- 31
-0.0
+20.0
 100
-AcDbText
+AcDbArc
+ 50
+270.0
+ 51
+90.0
   0
-LWPOLYLINE
+LINE
   5
 121
 330
@@ -7569,35 +7307,23 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-FLOOR
+CONVEYORS
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbLine
  10
-30.0
+300.0
  20
-480.0
- 10
-199.2
- 20
-480.0
- 10
-199.2
- 20
-534.0
- 10
-30.0
- 20
-534.0
- 10
-30.0
- 20
-480.0
+920.0
+ 30
+0.0
+ 11
+315.0
+ 21
+920.0
+ 31
+0.0
   0
-TEXT
+LINE
   5
 122
 330
@@ -7605,53 +7331,71 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-30.0
+315.0
  20
-539.0
+920.0
  30
 0.0
- 40
-6.0
-  1
-Electronics Test Line LINE-G
  11
-30.0
+310.0
  21
-539.0
+924.0
  31
 0.0
-100
-AcDbText
   0
-INSERT
+LINE
   5
-STA-LINE-G-10
+123
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_SCREWING
+AcDbLine
  10
-48.0
+315.0
  20
-504.0
+920.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+310.0
+ 21
+916.0
+ 31
+0.0
   0
-TEXT
+LINE
+  5
+124
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+600.0
+ 20
+920.0
+ 30
+0.0
+ 11
+615.0
+ 21
+920.0
+ 31
+0.0
+  0
+LINE
   5
 125
 330
@@ -7659,29 +7403,21 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-51.6
+615.0
  20
-496.0
+920.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-G-10
- 72
-1
  11
-51.6
+610.0
  21
-496.0
+924.0
  31
 0.0
-100
-AcDbText
   0
 LINE
   5
@@ -7695,15 +7431,15 @@ CONVEYORS
 100
 AcDbLine
  10
-55.2
+615.0
  20
-505.8
+920.0
  30
 0.0
  11
-73.19999999999999
+610.0
  21
-505.8
+916.0
  31
 0.0
   0
@@ -7719,77 +7455,21 @@ CONVEYORS
 100
 AcDbLine
  10
-55.2
+900.0
  20
-508.2
+920.0
  30
 0.0
  11
-73.19999999999999
+915.0
  21
-508.2
+920.0
  31
 0.0
-  0
-INSERT
-  5
-STA-LINE-G-20
-330
-17
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockReference
-  2
-TYPE_SCREWING
- 10
-73.19999999999999
- 20
-504.0
- 30
-0.0
- 41
-0.6
- 42
-0.6
-  0
-TEXT
-  5
-12A
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-76.79999999999998
- 20
-496.0
- 30
-0.0
- 40
-2.0
-  1
-STA-LINE-G-20
- 72
-1
- 11
-76.79999999999998
- 21
-496.0
- 31
-0.0
-100
-AcDbText
   0
 LINE
   5
-12B
+128
 330
 17
 100
@@ -7799,19 +7479,63 @@ CONVEYORS
 100
 AcDbLine
  10
-80.4
+915.0
  20
-505.8
+920.0
  30
 0.0
  11
-98.39999999999999
+910.0
  21
-505.8
+924.0
  31
 0.0
   0
 LINE
+  5
+129
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+915.0
+ 20
+920.0
+ 30
+0.0
+ 11
+910.0
+ 21
+916.0
+ 31
+0.0
+  0
+INSERT
+  5
+L04-OP010
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+120.0
+ 20
+920.0
+ 30
+0.0
+  0
+TEXT
   5
 12C
 330
@@ -7819,25 +7543,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-80.4
+120.0
  20
-508.2
+936.0
  30
 0.0
+ 40
+4.0
+  1
+L04-OP010
+ 72
+1
  11
-98.39999999999999
+120.0
  21
-508.2
+936.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-G-30
+L04-OP020
 330
 17
 100
@@ -7847,17 +7581,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_VISION
+VISION_INSPECTION
  10
-98.39999999999999
+210.0
  20
-504.0
+880.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -7871,77 +7601,31 @@ TEXT
 100
 AcDbText
  10
-101.99999999999999
+210.0
  20
-496.0
+862.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-G-30
+L04-OP020
  72
 1
  11
-101.99999999999999
+210.0
  21
-496.0
+862.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-130
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-105.6
- 20
-505.8
- 30
-0.0
- 11
-123.6
- 21
-505.8
- 31
-0.0
-  0
-LINE
-  5
-131
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-105.6
- 20
-508.2
- 30
-0.0
- 11
-123.6
- 21
-508.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-G-40
+L04-OP030
 330
 17
 100
@@ -7951,21 +7635,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_WELDING
+ROBOT_CELL
  10
-123.6
+300.0
  20
-504.0
+920.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-134
+132
 330
 17
 100
@@ -7975,27 +7655,49 @@ TEXT
 100
 AcDbText
  10
-127.19999999999999
+300.0
  20
-496.0
+936.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-G-40
+L04-OP030
  72
 1
  11
-127.19999999999999
+300.0
  21
-496.0
+936.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L04-OP040
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+DISPENSING_CELL
+ 10
+390.0
+ 20
+880.0
+ 30
+0.0
+  0
+TEXT
   5
 135
 330
@@ -8003,49 +7705,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-130.8
+390.0
  20
-505.8
+862.0
  30
 0.0
+ 40
+4.0
+  1
+L04-OP040
+ 72
+1
  11
-148.8
+390.0
  21
-505.8
+862.0
  31
 0.0
-  0
-LINE
-  5
-136
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-130.8
- 20
-508.2
- 30
-0.0
- 11
-148.8
- 21
-508.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-G-50
+L04-OP050
 330
 17
 100
@@ -8055,21 +7743,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_MECHANICAL
+VISION_INSPECTION
  10
-148.8
+480.0
  20
-504.0
+920.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-139
+138
 330
 17
 100
@@ -8079,51 +7763,49 @@ TEXT
 100
 AcDbText
  10
-152.4
+480.0
  20
-496.0
+936.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-G-50
+L04-OP050
  72
 1
  11
-152.4
+480.0
  21
-496.0
+936.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-13A
+L04-OP060
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+SERVO_PRESS
  10
-156.0
+570.0
  20
-505.8
+880.0
  30
 0.0
- 11
-174.0
- 21
-505.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 13B
 330
@@ -8131,25 +7813,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-156.0
+570.0
  20
-508.2
+862.0
  30
 0.0
+ 40
+4.0
+  1
+L04-OP060
+ 72
+1
  11
-174.0
+570.0
  21
-508.2
+862.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-G-60
+L04-OP070
 330
 17
 100
@@ -8159,17 +7851,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_MECHANICAL
+EOL_TEST_BENCH
  10
-174.0
+660.0
  20
-504.0
+920.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -8183,95 +7871,31 @@ TEXT
 100
 AcDbText
  10
-177.6
+660.0
  20
-496.0
+936.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-G-60
+L04-OP070
  72
 1
  11
-177.6
+660.0
  21
-496.0
+936.0
  31
 0.0
 100
 AcDbText
-  0
-LWPOLYLINE
-  5
-13F
-330
-17
-100
-AcDbEntity
-  8
-FLOOR
-100
-AcDbPolyline
- 90
-5
- 70
-1
- 10
-300.0
- 20
-480.0
- 10
-469.2
- 20
-480.0
- 10
-469.2
- 20
-534.0
- 10
-300.0
- 20
-534.0
- 10
-300.0
- 20
-480.0
-  0
-TEXT
-  5
-140
-330
-17
-100
-AcDbEntity
-  8
-TEXT
-100
-AcDbText
- 10
-300.0
- 20
-539.0
- 30
-0.0
- 40
-6.0
-  1
-Vision Inspection Line LINE-H
- 11
-300.0
- 21
-539.0
- 31
-0.0
-100
-AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-H-10
+L04-OP080
 330
 17
 100
@@ -8281,21 +7905,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_PACKAGING
+ROBOT_CELL
  10
-318.0
+750.0
  20
-504.0
+880.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-143
+141
 330
 17
 100
@@ -8305,27 +7925,49 @@ TEXT
 100
 AcDbText
  10
-321.6
+750.0
  20
-496.0
+862.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-H-10
+L04-OP080
  72
 1
  11
-321.6
+750.0
  21
-496.0
+862.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L04-OP090
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+840.0
+ 20
+920.0
+ 30
+0.0
+  0
+TEXT
   5
 144
 330
@@ -8333,49 +7975,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-325.2
+840.0
  20
-505.8
+936.0
  30
 0.0
+ 40
+4.0
+  1
+L04-OP090
+ 72
+1
  11
-343.2
+840.0
  21
-505.8
+936.0
  31
 0.0
-  0
-LINE
-  5
-145
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-325.2
- 20
-508.2
- 30
-0.0
- 11
-343.2
- 21
-508.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-H-20
+L04-OP100
 330
 17
 100
@@ -8385,21 +8013,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_VISION
+FASTENING_STATION
  10
-343.2
+930.0
  20
-504.0
+880.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-148
+147
 330
 17
 100
@@ -8409,51 +8033,49 @@ TEXT
 100
 AcDbText
  10
-346.8
+930.0
  20
-496.0
+862.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-H-20
+L04-OP100
  72
 1
  11
-346.8
+930.0
  21
-496.0
+862.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-149
+L04-OP110
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+CONVEYOR_BED
  10
-350.4
+1020.0
  20
-505.8
+920.0
  30
 0.0
- 11
-368.4
- 21
-505.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 14A
 330
@@ -8461,25 +8083,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-350.4
+1020.0
  20
-508.2
+936.0
  30
 0.0
+ 40
+4.0
+  1
+L04-OP110
+ 72
+1
  11
-368.4
+1020.0
  21
-508.2
+936.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-H-30
+L04-OP120
 330
 17
 100
@@ -8489,17 +8121,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_WELDING
+CONVEYOR_BED
  10
-368.4
+1110.0
  20
-504.0
+880.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -8513,77 +8141,31 @@ TEXT
 100
 AcDbText
  10
-372.0
+1110.0
  20
-496.0
+862.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-H-30
+L04-OP120
  72
 1
  11
-372.0
+1110.0
  21
-496.0
+862.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-14E
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-375.6
- 20
-505.8
- 30
-0.0
- 11
-393.6
- 21
-505.8
- 31
-0.0
-  0
-LINE
-  5
-14F
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-375.6
- 20
-508.2
- 30
-0.0
- 11
-393.6
- 21
-508.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-H-40
+L04-OP130
 330
 17
 100
@@ -8593,21 +8175,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_VISION
+CONVEYOR_BED
  10
-393.6
+1200.0
  20
-504.0
+920.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-152
+150
 330
 17
 100
@@ -8617,25 +8195,81 @@ TEXT
 100
 AcDbText
  10
-397.20000000000005
+1200.0
  20
-496.0
+936.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-H-40
+L04-OP130
  72
 1
  11
-397.20000000000005
+1200.0
  21
-496.0
+936.0
  31
 0.0
 100
 AcDbText
+ 73
+2
+  0
+TEXT
+  5
+151
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+60.0
+ 20
+770.0
+ 30
+0.0
+ 40
+10.0
+  1
+LINE 05 – SYNTHETIC BODY-IN-WHITE ROBOTIC WELDING (AI SIM)
+ 11
+60.0
+ 21
+770.0
+ 31
+0.0
+100
+AcDbText
+  0
+LINE
+  5
+152
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+80.0
+ 20
+730.0
+ 30
+0.0
+ 11
+1240.0
+ 21
+730.0
+ 31
+0.0
   0
 LINE
   5
@@ -8649,19 +8283,19 @@ CONVEYORS
 100
 AcDbLine
  10
-400.8
+80.0
  20
-505.8
+690.0
  30
 0.0
  11
-418.8
+1240.0
  21
-505.8
+690.0
  31
 0.0
   0
-LINE
+ARC
   5
 154
 330
@@ -8671,45 +8305,73 @@ AcDbEntity
   8
 CONVEYORS
 100
-AcDbLine
+AcDbCircle
  10
-400.8
+80.0
  20
-508.2
+710.0
  30
 0.0
- 11
-418.8
- 21
-508.2
- 31
-0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+90.0
+ 51
+270.0
   0
-INSERT
+ARC
   5
-STA-LINE-H-50
+155
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_PACKAGING
+AcDbCircle
  10
-418.8
+1240.0
  20
-504.0
+710.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 40
+20.0
+100
+AcDbArc
+ 50
+270.0
+ 51
+90.0
   0
-TEXT
+LINE
+  5
+156
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+300.0
+ 20
+730.0
+ 30
+0.0
+ 11
+315.0
+ 21
+730.0
+ 31
+0.0
+  0
+LINE
   5
 157
 330
@@ -8717,29 +8379,21 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-422.40000000000003
+315.0
  20
-496.0
+730.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-H-50
- 72
-1
  11
-422.40000000000003
+310.0
  21
-496.0
+734.0
  31
 0.0
-100
-AcDbText
   0
 LINE
   5
@@ -8753,15 +8407,15 @@ CONVEYORS
 100
 AcDbLine
  10
-426.0
+315.0
  20
-505.8
+730.0
  30
 0.0
  11
-444.0
+310.0
  21
-505.8
+726.0
  31
 0.0
   0
@@ -8777,43 +8431,67 @@ CONVEYORS
 100
 AcDbLine
  10
-426.0
+600.0
  20
-508.2
+730.0
  30
 0.0
  11
-444.0
+615.0
  21
-508.2
+730.0
  31
 0.0
   0
-INSERT
+LINE
   5
-STA-LINE-H-60
+15A
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_DISPENSING
+AcDbLine
  10
-444.0
+615.0
  20
-504.0
+730.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+610.0
+ 21
+734.0
+ 31
+0.0
   0
-TEXT
+LINE
+  5
+15B
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+615.0
+ 20
+730.0
+ 30
+0.0
+ 11
+610.0
+ 21
+726.0
+ 31
+0.0
+  0
+LINE
   5
 15C
 330
@@ -8821,31 +8499,23 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-447.6
+900.0
  20
-496.0
+730.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-H-60
- 72
-1
  11
-447.6
+915.0
  21
-496.0
+730.0
  31
 0.0
-100
-AcDbText
   0
-LWPOLYLINE
+LINE
   5
 15D
 330
@@ -8853,35 +8523,23 @@ LWPOLYLINE
 100
 AcDbEntity
   8
-FLOOR
+CONVEYORS
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbLine
  10
-30.0
+915.0
  20
-620.0
- 10
-199.2
- 20
-620.0
- 10
-199.2
- 20
-674.0
- 10
-30.0
- 20
-674.0
- 10
-30.0
- 20
-620.0
+730.0
+ 30
+0.0
+ 11
+910.0
+ 21
+734.0
+ 31
+0.0
   0
-TEXT
+LINE
   5
 15E
 330
@@ -8889,31 +8547,25 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-30.0
+915.0
  20
-679.0
+730.0
  30
 0.0
- 40
-6.0
-  1
-Sealant Dispensing Line LINE-I
  11
-30.0
+910.0
  21
-679.0
+726.0
  31
 0.0
-100
-AcDbText
   0
 INSERT
   5
-STA-LINE-I-10
+L05-OP010
 330
 17
 100
@@ -8923,17 +8575,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_MECHANICAL
+CONVEYOR_BED
  10
-48.0
+120.0
  20
-644.0
+730.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -8947,77 +8595,31 @@ TEXT
 100
 AcDbText
  10
-51.6
+120.0
  20
-636.0
+746.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-I-10
+L05-OP010
  72
 1
  11
-51.6
+120.0
  21
-636.0
+746.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-162
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-55.2
- 20
-645.8
- 30
-0.0
- 11
-73.19999999999999
- 21
-645.8
- 31
-0.0
-  0
-LINE
-  5
-163
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-55.2
- 20
-648.2
- 30
-0.0
- 11
-73.19999999999999
- 21
-648.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-I-20
+L05-OP020
 330
 17
 100
@@ -9027,21 +8629,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_PACKAGING
+ROBOT_CELL
  10
-73.19999999999999
+218.1818181818182
  20
-644.0
+690.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-166
+164
 330
 17
 100
@@ -9051,27 +8649,49 @@ TEXT
 100
 AcDbText
  10
-76.79999999999998
+218.1818181818182
  20
-636.0
+672.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-I-20
+L05-OP020
  72
 1
  11
-76.79999999999998
+218.1818181818182
  21
-636.0
+672.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L05-OP030
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+LASER_WELD_CELL
+ 10
+316.3636363636364
+ 20
+730.0
+ 30
+0.0
+  0
+TEXT
   5
 167
 330
@@ -9079,49 +8699,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-80.4
+316.3636363636364
  20
-645.8
+746.0
  30
 0.0
+ 40
+4.0
+  1
+L05-OP030
+ 72
+1
  11
-98.39999999999999
+316.3636363636364
  21
-645.8
+746.0
  31
 0.0
-  0
-LINE
-  5
-168
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-80.4
- 20
-648.2
- 30
-0.0
- 11
-98.39999999999999
- 21
-648.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-I-30
+L05-OP040
 330
 17
 100
@@ -9131,21 +8737,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_DISPENSING
+ROBOT_CELL
  10
-98.39999999999999
+414.54545454545456
  20
-644.0
+690.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-16B
+16A
 330
 17
 100
@@ -9155,51 +8757,49 @@ TEXT
 100
 AcDbText
  10
-101.99999999999999
+414.54545454545456
  20
-636.0
+672.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-I-30
+L05-OP040
  72
 1
  11
-101.99999999999999
+414.54545454545456
  21
-636.0
+672.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
   5
-16C
+L05-OP050
 330
 17
 100
 AcDbEntity
   8
-CONVEYORS
+0
 100
-AcDbLine
+AcDbBlockReference
+  2
+FASTENING_STATION
  10
-105.6
+512.7272727272727
  20
-645.8
+730.0
  30
 0.0
- 11
-123.6
- 21
-645.8
- 31
-0.0
   0
-LINE
+TEXT
   5
 16D
 330
@@ -9207,25 +8807,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-105.6
+512.7272727272727
  20
-648.2
+746.0
  30
 0.0
+ 40
+4.0
+  1
+L05-OP050
+ 72
+1
  11
-123.6
+512.7272727272727
  21
-648.2
+746.0
  31
 0.0
+100
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-I-40
+L05-OP060
 330
 17
 100
@@ -9235,17 +8845,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_TEST
+LASER_WELD_CELL
  10
-123.6
+610.909090909091
  20
-644.0
+690.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -9259,77 +8865,31 @@ TEXT
 100
 AcDbText
  10
-127.19999999999999
+610.909090909091
  20
-636.0
+672.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-I-40
+L05-OP060
  72
 1
  11
-127.19999999999999
+610.909090909091
  21
-636.0
+672.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-171
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-130.8
- 20
-645.8
- 30
-0.0
- 11
-148.8
- 21
-645.8
- 31
-0.0
-  0
-LINE
-  5
-172
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-130.8
- 20
-648.2
- 30
-0.0
- 11
-148.8
- 21
-648.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-I-50
+L05-OP070
 330
 17
 100
@@ -9339,21 +8899,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_SCREWING
+VISION_INSPECTION
  10
-148.8
+709.0909090909091
  20
-644.0
+730.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-175
+173
 330
 17
 100
@@ -9363,27 +8919,49 @@ TEXT
 100
 AcDbText
  10
-152.4
+709.0909090909091
  20
-636.0
+746.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-I-50
+L05-OP070
  72
 1
  11
-152.4
+709.0909090909091
  21
-636.0
+746.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LINE
+INSERT
+  5
+L05-OP080
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+ROBOT_CELL
+ 10
+807.2727272727273
+ 20
+690.0
+ 30
+0.0
+  0
+TEXT
   5
 176
 330
@@ -9391,49 +8969,35 @@ LINE
 100
 AcDbEntity
   8
-CONVEYORS
+TEXT
 100
-AcDbLine
+AcDbText
  10
-156.0
+807.2727272727273
  20
-645.8
+672.0
  30
 0.0
+ 40
+4.0
+  1
+L05-OP080
+ 72
+1
  11
-174.0
+807.2727272727273
  21
-645.8
+672.0
  31
 0.0
-  0
-LINE
-  5
-177
-330
-17
 100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-156.0
- 20
-648.2
- 30
-0.0
- 11
-174.0
- 21
-648.2
- 31
-0.0
+AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-I-60
+L05-OP090
 330
 17
 100
@@ -9443,21 +9007,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_TEST
+FASTENING_STATION
  10
-174.0
+905.4545454545455
  20
-644.0
+730.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-17A
+179
 330
 17
 100
@@ -9467,61 +9027,47 @@ TEXT
 100
 AcDbText
  10
-177.6
+905.4545454545455
  20
-636.0
+746.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-I-60
+L05-OP090
  72
 1
  11
-177.6
+905.4545454545455
  21
-636.0
+746.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
-LWPOLYLINE
+INSERT
   5
-17B
+L05-OP100
 330
 17
 100
 AcDbEntity
   8
-FLOOR
+0
 100
-AcDbPolyline
- 90
-5
- 70
-1
+AcDbBlockReference
+  2
+ROBOT_CELL
  10
-300.0
+1003.6363636363637
  20
-620.0
- 10
-469.2
- 20
-620.0
- 10
-469.2
- 20
-674.0
- 10
-300.0
- 20
-674.0
- 10
-300.0
- 20
-620.0
+690.0
+ 30
+0.0
   0
 TEXT
   5
@@ -9535,27 +9081,31 @@ TEXT
 100
 AcDbText
  10
-300.0
+1003.6363636363637
  20
-679.0
+672.0
  30
 0.0
  40
-6.0
+4.0
   1
-Final Assembly Line LINE-J
+L05-OP100
+ 72
+1
  11
-300.0
+1003.6363636363637
  21
-679.0
+672.0
  31
 0.0
 100
 AcDbText
+ 73
+2
   0
 INSERT
   5
-STA-LINE-J-10
+L05-OP110
 330
 17
 100
@@ -9565,17 +9115,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_TEST
+CONVEYOR_BED
  10
-318.0
+1101.818181818182
  20
-644.0
+730.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -9589,77 +9135,31 @@ TEXT
 100
 AcDbText
  10
-321.6
+1101.818181818182
  20
-636.0
+746.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-J-10
+L05-OP110
  72
 1
  11
-321.6
+1101.818181818182
  21
-636.0
+746.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-180
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-325.2
- 20
-645.8
- 30
-0.0
- 11
-343.2
- 21
-645.8
- 31
-0.0
-  0
-LINE
-  5
-181
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-325.2
- 20
-648.2
- 30
-0.0
- 11
-343.2
- 21
-648.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-J-20
+L05-OP120
 330
 17
 100
@@ -9669,21 +9169,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_DISPENSING
+CONVEYOR_BED
  10
-343.2
+1200.0
  20
-644.0
+690.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-184
+182
 330
 17
 100
@@ -9693,25 +9189,81 @@ TEXT
 100
 AcDbText
  10
-346.8
+1200.0
  20
-636.0
+672.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-J-20
+L05-OP120
  72
 1
  11
-346.8
+1200.0
  21
-636.0
+672.0
  31
 0.0
 100
 AcDbText
+ 73
+2
+  0
+TEXT
+  5
+183
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+60.0
+ 20
+580.0
+ 30
+0.0
+ 40
+10.0
+  1
+LINE 06 – SYNTHETIC PRECISION PRESS FIT (AI SIM)
+ 11
+60.0
+ 21
+580.0
+ 31
+0.0
+100
+AcDbText
+  0
+LINE
+  5
+184
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+80.0
+ 20
+540.0
+ 30
+0.0
+ 11
+1240.0
+ 21
+540.0
+ 31
+0.0
   0
 LINE
   5
@@ -9725,19 +9277,19 @@ CONVEYORS
 100
 AcDbLine
  10
-350.4
+80.0
  20
-645.8
+500.0
  30
 0.0
  11
-368.4
+1240.0
  21
-645.8
+500.0
  31
 0.0
   0
-LINE
+ARC
   5
 186
 330
@@ -9747,45 +9299,73 @@ AcDbEntity
   8
 CONVEYORS
 100
-AcDbLine
+AcDbCircle
  10
-350.4
+80.0
  20
-648.2
+520.0
  30
 0.0
- 11
-368.4
- 21
-648.2
- 31
-0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+90.0
+ 51
+270.0
   0
-INSERT
+ARC
   5
-STA-LINE-J-30
+187
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_DISPENSING
+AcDbCircle
  10
-368.4
+1240.0
  20
-644.0
+520.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 40
+20.0
+100
+AcDbArc
+ 50
+270.0
+ 51
+90.0
   0
-TEXT
+LINE
+  5
+188
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+300.0
+ 20
+540.0
+ 30
+0.0
+ 11
+315.0
+ 21
+540.0
+ 31
+0.0
+  0
+LINE
   5
 189
 330
@@ -9793,29 +9373,21 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-372.0
+315.0
  20
-636.0
+540.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-J-30
- 72
-1
  11
-372.0
+310.0
  21
-636.0
+544.0
  31
 0.0
-100
-AcDbText
   0
 LINE
   5
@@ -9829,15 +9401,15 @@ CONVEYORS
 100
 AcDbLine
  10
-375.6
+315.0
  20
-645.8
+540.0
  30
 0.0
  11
-393.6
+310.0
  21
-645.8
+536.0
  31
 0.0
   0
@@ -9853,43 +9425,67 @@ CONVEYORS
 100
 AcDbLine
  10
-375.6
+600.0
  20
-648.2
+540.0
  30
 0.0
  11
-393.6
+615.0
  21
-648.2
+540.0
  31
 0.0
   0
-INSERT
+LINE
   5
-STA-LINE-J-40
+18C
 330
 17
 100
 AcDbEntity
   8
-0
+CONVEYORS
 100
-AcDbBlockReference
-  2
-TYPE_DISPENSING
+AcDbLine
  10
-393.6
+615.0
  20
-644.0
+540.0
  30
 0.0
- 41
-0.6
- 42
-0.6
+ 11
+610.0
+ 21
+544.0
+ 31
+0.0
   0
-TEXT
+LINE
+  5
+18D
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+615.0
+ 20
+540.0
+ 30
+0.0
+ 11
+610.0
+ 21
+536.0
+ 31
+0.0
+  0
+LINE
   5
 18E
 330
@@ -9897,29 +9493,21 @@ TEXT
 100
 AcDbEntity
   8
-TEXT
+CONVEYORS
 100
-AcDbText
+AcDbLine
  10
-397.20000000000005
+900.0
  20
-636.0
+540.0
  30
 0.0
- 40
-2.0
-  1
-STA-LINE-J-40
- 72
-1
  11
-397.20000000000005
+915.0
  21
-636.0
+540.0
  31
 0.0
-100
-AcDbText
   0
 LINE
   5
@@ -9933,15 +9521,15 @@ CONVEYORS
 100
 AcDbLine
  10
-400.8
+915.0
  20
-645.8
+540.0
  30
 0.0
  11
-418.8
+910.0
  21
-645.8
+544.0
  31
 0.0
   0
@@ -9957,21 +9545,21 @@ CONVEYORS
 100
 AcDbLine
  10
-400.8
+915.0
  20
-648.2
+540.0
  30
 0.0
  11
-418.8
+910.0
  21
-648.2
+536.0
  31
 0.0
   0
 INSERT
   5
-STA-LINE-J-50
+L06-OP010
 330
 17
 100
@@ -9981,17 +9569,13 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_VISION
+CONVEYOR_BED
  10
-418.8
+120.0
  20
-644.0
+540.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
@@ -10005,77 +9589,31 @@ TEXT
 100
 AcDbText
  10
-422.40000000000003
+120.0
  20
-636.0
+556.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-J-50
+L06-OP010
  72
 1
  11
-422.40000000000003
+120.0
  21
-636.0
+556.0
  31
 0.0
 100
 AcDbText
-  0
-LINE
-  5
-194
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-426.0
- 20
-645.8
- 30
-0.0
- 11
-444.0
- 21
-645.8
- 31
-0.0
-  0
-LINE
-  5
-195
-330
-17
-100
-AcDbEntity
-  8
-CONVEYORS
-100
-AcDbLine
- 10
-426.0
- 20
-648.2
- 30
-0.0
- 11
-444.0
- 21
-648.2
- 31
-0.0
+ 73
+2
   0
 INSERT
   5
-STA-LINE-J-60
+L06-OP020
 330
 17
 100
@@ -10085,21 +9623,17 @@ AcDbEntity
 100
 AcDbBlockReference
   2
-TYPE_TEST
+SERVO_PRESS
  10
-444.0
+218.1818181818182
  20
-644.0
+500.0
  30
 0.0
- 41
-0.6
- 42
-0.6
   0
 TEXT
   5
-198
+196
 330
 17
 100
@@ -10109,25 +9643,47 @@ TEXT
 100
 AcDbText
  10
-447.6
+218.1818181818182
  20
-636.0
+482.0
  30
 0.0
  40
-2.0
+4.0
   1
-STA-LINE-J-60
+L06-OP020
  72
 1
  11
-447.6
+218.1818181818182
  21
-636.0
+482.0
  31
 0.0
 100
 AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L06-OP030
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+SERVO_PRESS
+ 10
+316.3636363636364
+ 20
+540.0
+ 30
+0.0
   0
 TEXT
   5
@@ -10141,21 +9697,21 @@ TEXT
 100
 AcDbText
  10
-250.0
+316.3636363636364
  20
-20.0
+556.0
  30
 0.0
  40
-15.0
+4.0
   1
-INBOUND SHIPPING
+L06-OP030
  72
 1
  11
-250.0
+316.3636363636364
  21
-20.0
+556.0
  31
 0.0
 100
@@ -10163,9 +9719,29 @@ AcDbText
  73
 2
   0
+INSERT
+  5
+L06-OP040
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+ROBOT_CELL
+ 10
+414.54545454545456
+ 20
+500.0
+ 30
+0.0
+  0
 TEXT
   5
-19A
+19C
 330
 17
 100
@@ -10175,27 +9751,3325 @@ TEXT
 100
 AcDbText
  10
-250.0
+414.54545454545456
  20
-770.0
+482.0
  30
 0.0
  40
-15.0
+4.0
   1
-TECHNICAL LABS
+L06-OP040
  72
 1
  11
-250.0
+414.54545454545456
  21
-770.0
+482.0
  31
 0.0
 100
 AcDbText
  73
 2
+  0
+INSERT
+  5
+L06-OP050
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+FASTENING_STATION
+ 10
+512.7272727272727
+ 20
+540.0
+ 30
+0.0
+  0
+TEXT
+  5
+19F
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+512.7272727272727
+ 20
+556.0
+ 30
+0.0
+ 40
+4.0
+  1
+L06-OP050
+ 72
+1
+ 11
+512.7272727272727
+ 21
+556.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L06-OP060
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+SERVO_PRESS
+ 10
+610.909090909091
+ 20
+500.0
+ 30
+0.0
+  0
+TEXT
+  5
+1A2
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+610.909090909091
+ 20
+482.0
+ 30
+0.0
+ 40
+4.0
+  1
+L06-OP060
+ 72
+1
+ 11
+610.909090909091
+ 21
+482.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L06-OP070
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+709.0909090909091
+ 20
+540.0
+ 30
+0.0
+  0
+TEXT
+  5
+1A5
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+709.0909090909091
+ 20
+556.0
+ 30
+0.0
+ 40
+4.0
+  1
+L06-OP070
+ 72
+1
+ 11
+709.0909090909091
+ 21
+556.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L06-OP080
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+EOL_TEST_BENCH
+ 10
+807.2727272727273
+ 20
+500.0
+ 30
+0.0
+  0
+TEXT
+  5
+1A8
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+807.2727272727273
+ 20
+482.0
+ 30
+0.0
+ 40
+4.0
+  1
+L06-OP080
+ 72
+1
+ 11
+807.2727272727273
+ 21
+482.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L06-OP090
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+SERVO_PRESS
+ 10
+905.4545454545455
+ 20
+540.0
+ 30
+0.0
+  0
+TEXT
+  5
+1AB
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+905.4545454545455
+ 20
+556.0
+ 30
+0.0
+ 40
+4.0
+  1
+L06-OP090
+ 72
+1
+ 11
+905.4545454545455
+ 21
+556.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L06-OP100
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+ROBOT_CELL
+ 10
+1003.6363636363637
+ 20
+500.0
+ 30
+0.0
+  0
+TEXT
+  5
+1AE
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1003.6363636363637
+ 20
+482.0
+ 30
+0.0
+ 40
+4.0
+  1
+L06-OP100
+ 72
+1
+ 11
+1003.6363636363637
+ 21
+482.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L06-OP110
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+1101.818181818182
+ 20
+540.0
+ 30
+0.0
+  0
+TEXT
+  5
+1B1
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1101.818181818182
+ 20
+556.0
+ 30
+0.0
+ 40
+4.0
+  1
+L06-OP110
+ 72
+1
+ 11
+1101.818181818182
+ 21
+556.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L06-OP120
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+1200.0
+ 20
+500.0
+ 30
+0.0
+  0
+TEXT
+  5
+1B4
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1200.0
+ 20
+482.0
+ 30
+0.0
+ 40
+4.0
+  1
+L06-OP120
+ 72
+1
+ 11
+1200.0
+ 21
+482.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+TEXT
+  5
+1B5
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+60.0
+ 20
+390.0
+ 30
+0.0
+ 40
+10.0
+  1
+LINE 07 – SYNTHETIC OPTICAL QUALITY METROLOGY (AI SIM)
+ 11
+60.0
+ 21
+390.0
+ 31
+0.0
+100
+AcDbText
+  0
+LINE
+  5
+1B6
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+80.0
+ 20
+350.0
+ 30
+0.0
+ 11
+1240.0
+ 21
+350.0
+ 31
+0.0
+  0
+LINE
+  5
+1B7
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+80.0
+ 20
+310.0
+ 30
+0.0
+ 11
+1240.0
+ 21
+310.0
+ 31
+0.0
+  0
+ARC
+  5
+1B8
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbCircle
+ 10
+80.0
+ 20
+330.0
+ 30
+0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+90.0
+ 51
+270.0
+  0
+ARC
+  5
+1B9
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbCircle
+ 10
+1240.0
+ 20
+330.0
+ 30
+0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+270.0
+ 51
+90.0
+  0
+LINE
+  5
+1BA
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+300.0
+ 20
+350.0
+ 30
+0.0
+ 11
+315.0
+ 21
+350.0
+ 31
+0.0
+  0
+LINE
+  5
+1BB
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+315.0
+ 20
+350.0
+ 30
+0.0
+ 11
+310.0
+ 21
+354.0
+ 31
+0.0
+  0
+LINE
+  5
+1BC
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+315.0
+ 20
+350.0
+ 30
+0.0
+ 11
+310.0
+ 21
+346.0
+ 31
+0.0
+  0
+LINE
+  5
+1BD
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+600.0
+ 20
+350.0
+ 30
+0.0
+ 11
+615.0
+ 21
+350.0
+ 31
+0.0
+  0
+LINE
+  5
+1BE
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+615.0
+ 20
+350.0
+ 30
+0.0
+ 11
+610.0
+ 21
+354.0
+ 31
+0.0
+  0
+LINE
+  5
+1BF
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+615.0
+ 20
+350.0
+ 30
+0.0
+ 11
+610.0
+ 21
+346.0
+ 31
+0.0
+  0
+LINE
+  5
+1C0
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+900.0
+ 20
+350.0
+ 30
+0.0
+ 11
+915.0
+ 21
+350.0
+ 31
+0.0
+  0
+LINE
+  5
+1C1
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+915.0
+ 20
+350.0
+ 30
+0.0
+ 11
+910.0
+ 21
+354.0
+ 31
+0.0
+  0
+LINE
+  5
+1C2
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+915.0
+ 20
+350.0
+ 30
+0.0
+ 11
+910.0
+ 21
+346.0
+ 31
+0.0
+  0
+INSERT
+  5
+L07-OP010
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+120.0
+ 20
+350.0
+ 30
+0.0
+  0
+TEXT
+  5
+1C5
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+120.0
+ 20
+366.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP010
+ 72
+1
+ 11
+120.0
+ 21
+366.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP020
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+210.0
+ 20
+310.0
+ 30
+0.0
+  0
+TEXT
+  5
+1C8
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+210.0
+ 20
+292.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP020
+ 72
+1
+ 11
+210.0
+ 21
+292.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP030
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+300.0
+ 20
+350.0
+ 30
+0.0
+  0
+TEXT
+  5
+1CB
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+300.0
+ 20
+366.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP030
+ 72
+1
+ 11
+300.0
+ 21
+366.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP040
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+ROBOT_CELL
+ 10
+390.0
+ 20
+310.0
+ 30
+0.0
+  0
+TEXT
+  5
+1CE
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+390.0
+ 20
+292.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP040
+ 72
+1
+ 11
+390.0
+ 21
+292.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP050
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+480.0
+ 20
+350.0
+ 30
+0.0
+  0
+TEXT
+  5
+1D1
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+480.0
+ 20
+366.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP050
+ 72
+1
+ 11
+480.0
+ 21
+366.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP060
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+EOL_TEST_BENCH
+ 10
+570.0
+ 20
+310.0
+ 30
+0.0
+  0
+TEXT
+  5
+1D4
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+570.0
+ 20
+292.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP060
+ 72
+1
+ 11
+570.0
+ 21
+292.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP070
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+660.0
+ 20
+350.0
+ 30
+0.0
+  0
+TEXT
+  5
+1D7
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+660.0
+ 20
+366.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP070
+ 72
+1
+ 11
+660.0
+ 21
+366.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP080
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+ROBOT_CELL
+ 10
+750.0
+ 20
+310.0
+ 30
+0.0
+  0
+TEXT
+  5
+1DA
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+750.0
+ 20
+292.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP080
+ 72
+1
+ 11
+750.0
+ 21
+292.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP090
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+840.0
+ 20
+350.0
+ 30
+0.0
+  0
+TEXT
+  5
+1DD
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+840.0
+ 20
+366.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP090
+ 72
+1
+ 11
+840.0
+ 21
+366.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP100
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+930.0
+ 20
+310.0
+ 30
+0.0
+  0
+TEXT
+  5
+1E0
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+930.0
+ 20
+292.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP100
+ 72
+1
+ 11
+930.0
+ 21
+292.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP110
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+1020.0
+ 20
+350.0
+ 30
+0.0
+  0
+TEXT
+  5
+1E3
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1020.0
+ 20
+366.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP110
+ 72
+1
+ 11
+1020.0
+ 21
+366.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP120
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+1110.0
+ 20
+310.0
+ 30
+0.0
+  0
+TEXT
+  5
+1E6
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1110.0
+ 20
+292.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP120
+ 72
+1
+ 11
+1110.0
+ 21
+292.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L07-OP130
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+1200.0
+ 20
+350.0
+ 30
+0.0
+  0
+TEXT
+  5
+1E9
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1200.0
+ 20
+366.0
+ 30
+0.0
+ 40
+4.0
+  1
+L07-OP130
+ 72
+1
+ 11
+1200.0
+ 21
+366.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+TEXT
+  5
+1EA
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+60.0
+ 20
+200.0
+ 30
+0.0
+ 40
+10.0
+  1
+LINE 08 – SYNTHETIC END-OF-LINE VEHICLE INTEGRATION (AI SIM)
+ 11
+60.0
+ 21
+200.0
+ 31
+0.0
+100
+AcDbText
+  0
+LINE
+  5
+1EB
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+80.0
+ 20
+160.0
+ 30
+0.0
+ 11
+1240.0
+ 21
+160.0
+ 31
+0.0
+  0
+LINE
+  5
+1EC
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+80.0
+ 20
+120.0
+ 30
+0.0
+ 11
+1240.0
+ 21
+120.0
+ 31
+0.0
+  0
+ARC
+  5
+1ED
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbCircle
+ 10
+80.0
+ 20
+140.0
+ 30
+0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+90.0
+ 51
+270.0
+  0
+ARC
+  5
+1EE
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbCircle
+ 10
+1240.0
+ 20
+140.0
+ 30
+0.0
+ 40
+20.0
+100
+AcDbArc
+ 50
+270.0
+ 51
+90.0
+  0
+LINE
+  5
+1EF
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+300.0
+ 20
+160.0
+ 30
+0.0
+ 11
+315.0
+ 21
+160.0
+ 31
+0.0
+  0
+LINE
+  5
+1F0
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+315.0
+ 20
+160.0
+ 30
+0.0
+ 11
+310.0
+ 21
+164.0
+ 31
+0.0
+  0
+LINE
+  5
+1F1
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+315.0
+ 20
+160.0
+ 30
+0.0
+ 11
+310.0
+ 21
+156.0
+ 31
+0.0
+  0
+LINE
+  5
+1F2
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+600.0
+ 20
+160.0
+ 30
+0.0
+ 11
+615.0
+ 21
+160.0
+ 31
+0.0
+  0
+LINE
+  5
+1F3
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+615.0
+ 20
+160.0
+ 30
+0.0
+ 11
+610.0
+ 21
+164.0
+ 31
+0.0
+  0
+LINE
+  5
+1F4
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+615.0
+ 20
+160.0
+ 30
+0.0
+ 11
+610.0
+ 21
+156.0
+ 31
+0.0
+  0
+LINE
+  5
+1F5
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+900.0
+ 20
+160.0
+ 30
+0.0
+ 11
+915.0
+ 21
+160.0
+ 31
+0.0
+  0
+LINE
+  5
+1F6
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+915.0
+ 20
+160.0
+ 30
+0.0
+ 11
+910.0
+ 21
+164.0
+ 31
+0.0
+  0
+LINE
+  5
+1F7
+330
+17
+100
+AcDbEntity
+  8
+CONVEYORS
+100
+AcDbLine
+ 10
+915.0
+ 20
+160.0
+ 30
+0.0
+ 11
+910.0
+ 21
+156.0
+ 31
+0.0
+  0
+INSERT
+  5
+L08-OP010
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+120.0
+ 20
+160.0
+ 30
+0.0
+  0
+TEXT
+  5
+1FA
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+120.0
+ 20
+176.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP010
+ 72
+1
+ 11
+120.0
+ 21
+176.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP020
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+EOL_TEST_BENCH
+ 10
+210.0
+ 20
+120.0
+ 30
+0.0
+  0
+TEXT
+  5
+1FD
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+210.0
+ 20
+102.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP020
+ 72
+1
+ 11
+210.0
+ 21
+102.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP030
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+EOL_TEST_BENCH
+ 10
+300.0
+ 20
+160.0
+ 30
+0.0
+  0
+TEXT
+  5
+200
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+300.0
+ 20
+176.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP030
+ 72
+1
+ 11
+300.0
+ 21
+176.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP040
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+ROBOT_CELL
+ 10
+390.0
+ 20
+120.0
+ 30
+0.0
+  0
+TEXT
+  5
+203
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+390.0
+ 20
+102.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP040
+ 72
+1
+ 11
+390.0
+ 21
+102.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP050
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+480.0
+ 20
+160.0
+ 30
+0.0
+  0
+TEXT
+  5
+206
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+480.0
+ 20
+176.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP050
+ 72
+1
+ 11
+480.0
+ 21
+176.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP060
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+EOL_TEST_BENCH
+ 10
+570.0
+ 20
+120.0
+ 30
+0.0
+  0
+TEXT
+  5
+209
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+570.0
+ 20
+102.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP060
+ 72
+1
+ 11
+570.0
+ 21
+102.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP070
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+FASTENING_STATION
+ 10
+660.0
+ 20
+160.0
+ 30
+0.0
+  0
+TEXT
+  5
+20C
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+660.0
+ 20
+176.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP070
+ 72
+1
+ 11
+660.0
+ 21
+176.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP080
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+EOL_TEST_BENCH
+ 10
+750.0
+ 20
+120.0
+ 30
+0.0
+  0
+TEXT
+  5
+20F
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+750.0
+ 20
+102.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP080
+ 72
+1
+ 11
+750.0
+ 21
+102.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP090
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+ROBOT_CELL
+ 10
+840.0
+ 20
+160.0
+ 30
+0.0
+  0
+TEXT
+  5
+212
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+840.0
+ 20
+176.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP090
+ 72
+1
+ 11
+840.0
+ 21
+176.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP100
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+VISION_INSPECTION
+ 10
+930.0
+ 20
+120.0
+ 30
+0.0
+  0
+TEXT
+  5
+215
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+930.0
+ 20
+102.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP100
+ 72
+1
+ 11
+930.0
+ 21
+102.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP110
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+1020.0
+ 20
+160.0
+ 30
+0.0
+  0
+TEXT
+  5
+218
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1020.0
+ 20
+176.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP110
+ 72
+1
+ 11
+1020.0
+ 21
+176.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP120
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+1110.0
+ 20
+120.0
+ 30
+0.0
+  0
+TEXT
+  5
+21B
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1110.0
+ 20
+102.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP120
+ 72
+1
+ 11
+1110.0
+ 21
+102.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+L08-OP130
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+CONVEYOR_BED
+ 10
+1200.0
+ 20
+160.0
+ 30
+0.0
+  0
+TEXT
+  5
+21E
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1200.0
+ 20
+176.0
+ 30
+0.0
+ 40
+4.0
+  1
+L08-OP130
+ 72
+1
+ 11
+1200.0
+ 21
+176.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+TEXT
+  5
+21F
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1420.0
+ 20
+240.0
+ 30
+0.0
+ 40
+8.0
+  1
+WAREHOUSE AISLE A – SPARE PARTS & BULK STORAGE
+ 11
+1420.0
+ 21
+240.0
+ 31
+0.0
+100
+AcDbText
+  0
+INSERT
+  5
+RACK-A-1
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1500.0
+ 20
+200.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-A-2
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1700.0
+ 20
+200.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-A-3
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1900.0
+ 20
+200.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-A-4
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+2100.0
+ 20
+200.0
+ 30
+0.0
+  0
+TEXT
+  5
+228
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1420.0
+ 20
+440.0
+ 30
+0.0
+ 40
+8.0
+  1
+WAREHOUSE AISLE B – SPARE PARTS & BULK STORAGE
+ 11
+1420.0
+ 21
+440.0
+ 31
+0.0
+100
+AcDbText
+  0
+INSERT
+  5
+RACK-B-1
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1500.0
+ 20
+400.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-B-2
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1700.0
+ 20
+400.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-B-3
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1900.0
+ 20
+400.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-B-4
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+2100.0
+ 20
+400.0
+ 30
+0.0
+  0
+TEXT
+  5
+231
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1420.0
+ 20
+640.0
+ 30
+0.0
+ 40
+8.0
+  1
+WAREHOUSE AISLE C – SPARE PARTS & BULK STORAGE
+ 11
+1420.0
+ 21
+640.0
+ 31
+0.0
+100
+AcDbText
+  0
+INSERT
+  5
+RACK-C-1
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1500.0
+ 20
+600.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-C-2
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1700.0
+ 20
+600.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-C-3
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1900.0
+ 20
+600.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-C-4
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+2100.0
+ 20
+600.0
+ 30
+0.0
+  0
+TEXT
+  5
+23A
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1420.0
+ 20
+840.0
+ 30
+0.0
+ 40
+8.0
+  1
+WAREHOUSE AISLE D – SPARE PARTS & BULK STORAGE
+ 11
+1420.0
+ 21
+840.0
+ 31
+0.0
+100
+AcDbText
+  0
+INSERT
+  5
+RACK-D-1
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1500.0
+ 20
+800.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-D-2
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1700.0
+ 20
+800.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-D-3
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1900.0
+ 20
+800.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-D-4
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+2100.0
+ 20
+800.0
+ 30
+0.0
+  0
+TEXT
+  5
+243
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1420.0
+ 20
+1040.0
+ 30
+0.0
+ 40
+8.0
+  1
+WAREHOUSE AISLE E – SPARE PARTS & BULK STORAGE
+ 11
+1420.0
+ 21
+1040.0
+ 31
+0.0
+100
+AcDbText
+  0
+INSERT
+  5
+RACK-E-1
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1500.0
+ 20
+1000.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-E-2
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1700.0
+ 20
+1000.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-E-3
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1900.0
+ 20
+1000.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-E-4
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+2100.0
+ 20
+1000.0
+ 30
+0.0
+  0
+TEXT
+  5
+24C
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1420.0
+ 20
+1240.0
+ 30
+0.0
+ 40
+8.0
+  1
+WAREHOUSE AISLE F – SPARE PARTS & BULK STORAGE
+ 11
+1420.0
+ 21
+1240.0
+ 31
+0.0
+100
+AcDbText
+  0
+INSERT
+  5
+RACK-F-1
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1500.0
+ 20
+1200.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-F-2
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1700.0
+ 20
+1200.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-F-3
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1900.0
+ 20
+1200.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-F-4
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+2100.0
+ 20
+1200.0
+ 30
+0.0
+  0
+TEXT
+  5
+255
+330
+17
+100
+AcDbEntity
+  8
+TEXT
+100
+AcDbText
+ 10
+1420.0
+ 20
+1440.0
+ 30
+0.0
+ 40
+8.0
+  1
+WAREHOUSE AISLE G – SPARE PARTS & BULK STORAGE
+ 11
+1420.0
+ 21
+1440.0
+ 31
+0.0
+100
+AcDbText
+  0
+INSERT
+  5
+RACK-G-1
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1500.0
+ 20
+1400.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-G-2
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1700.0
+ 20
+1400.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-G-3
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+1900.0
+ 20
+1400.0
+ 30
+0.0
+  0
+INSERT
+  5
+RACK-G-4
+330
+17
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockReference
+  2
+WAREHOUSE_RACK
+ 10
+2100.0
+ 20
+1400.0
+ 30
+0.0
   0
 ENDSEC
   0
@@ -11187,7 +14061,7 @@ CREATED_BY_EZDXF
   3
 WRITTEN_BY_EZDXF
 350
-19D
+260
   0
 DICTIONARYVAR
   5
@@ -11199,11 +14073,11 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-05-09T19:46:03.594651+00:00
+1.4.3 @ 2026-09-12T16:06:41.523665+00:00
   0
 DICTIONARYVAR
   5
-19D
+260
 330
 2D
 100
@@ -11211,7 +14085,7 @@ DictionaryVariables
 280
 0
   1
-1.4.3 @ 2026-05-09T19:46:03.752087+00:00
+1.4.3 @ 2026-09-12T16:06:41.569155+00:00
   0
 ENDSEC
   0

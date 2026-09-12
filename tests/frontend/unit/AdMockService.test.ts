@@ -44,14 +44,15 @@ describe('Pure SVG QR Code Renderer Suite', () => {
 describe('Mock Active Directory & Entra ID Graph Suite', () => {
   const dataset = getEnterpriseDataset()
 
-  it('resolves directory security groups for Sally Vance', () => {
-    const sally = dataset.users.find(u => u.name === 'Sally Vance')!
-    expect(sally).toBeDefined()
-    const sallyGroups = dataset.securityGroups.filter(g =>
-      sally.securityGroupIds.includes(g.groupIdentifier)
+  it('resolves directory security groups for Synthetica Botman', () => {
+    const synth = dataset.users.find(u => u.name.includes('Synthetica Botman'))!
+    expect(synth).toBeDefined()
+    expect(synth.email).toBe('synthetica.botman.ai@fake-factory.internal')
+    const synthGroups = dataset.securityGroups.filter(g =>
+      synth.securityGroupIds.includes(g.groupIdentifier)
     )
-    expect(sallyGroups.length).toBeGreaterThanOrEqual(1)
-    expect(sallyGroups[0].displayName).toBe('On-Prem Controls Engineers')
+    expect(synthGroups.length).toBeGreaterThanOrEqual(1)
+    expect(synthGroups[0].displayName).toBe('Line 01 Controls Engineers')
   })
 
   it('provides Microsoft Graph user representations with valid UPN', () => {
@@ -65,9 +66,9 @@ describe('Mock Active Directory & Entra ID Graph Suite', () => {
     }))
 
     expect(graphUsers.length).toBeGreaterThanOrEqual(8)
-    const admin = graphUsers.find(u => u.displayName === 'Root Administrator')
-    expect(admin?.userPrincipalName).toBe('sysadmin@factory.corp')
-    expect(admin?.mail).toBe('admin@factory.corp')
+    const admin = graphUsers.find(u => u.displayName.includes('Dr. Algorithmus Prime'))
+    expect(admin?.userPrincipalName).toBe('dr.algorithmus.prime.ai@fake-factory.internal')
+    expect(admin?.mail).toBe('dr.algorithmus.prime.ai@fake-factory.internal')
   })
 
   it('provides Microsoft Graph computer device representations', () => {
@@ -85,10 +86,10 @@ describe('Mock Active Directory & Entra ID Graph Suite', () => {
     }))
 
     expect(devices.length).toBeGreaterThanOrEqual(10)
-    const kuka = devices.find(d => d.deviceHostName === 'CPC-L06-ROB-01')
-    expect(kuka).toBeDefined()
-    expect(kuka?.network.vlanId).toBe(10)
-    expect(kuka?.trustType).toBe('ServerAdJoined')
+    const edgePc = devices.find(d => d.deviceHostName === 'IPC-L01-OP030-DEDICATED')
+    expect(edgePc).toBeDefined()
+    expect(edgePc?.network.vlanId).toBe(101)
+    expect(edgePc?.trustType).toBe('ServerAdJoined')
   })
 
   it('supports LDAP search simulation by objectClass and baseDN', () => {

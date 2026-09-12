@@ -1,3692 +1,1816 @@
 {
   "production_hall": {
-    "name": "Heimdall Mega-Factory",
+    "name": "Heimdall Smart Factory Giga-01 (Synthetic AI Facility)",
     "lines": [
       {
-        "id": "LINE-A",
-        "name": "Final Assembly Line LINE-A",
-        "description": "Automated final assembly line line-a",
+        "id": "org-line-01",
+        "line_num": 1,
+        "name": "Line 01 \u2013 Synthetic Audi E-Tron Module Line (AI Sim)",
+        "tech": "Dispensing",
         "stations": [
           {
-            "id": "STA-LINE-A-10",
-            "name": "Mechanical Station 1",
-            "type": "Mechanical",
-            "team": "Mechanical",
+            "id": "L01-OP010",
+            "name": "L01-OP010 \u2013 Hyper-Conveyor Pallet Infeed 9000",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP010",
             "pcs": [
               {
-                "id": "PC-LINE-A-10-1",
-                "hostname": "PROD-LINE-A-10-PC1",
-                "ip": "10.1.1.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L01-CONVEYOR-MAIN",
+                "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "ip": "192.168.10.3",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-A-10-2",
-                "hostname": "PROD-LINE-A-10-PC2",
-                "ip": "10.1.1.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-A-20",
-            "name": "Mechanical Station 2",
-            "type": "Mechanical",
-            "team": "Mechanical",
+            "id": "L01-OP020",
+            "name": "L01-OP020 \u2013 Robo-RFID Pallet Scanner AI-X",
+            "type": "ConveyorTransfer",
+            "technology": "Test",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP020",
             "pcs": [
               {
-                "id": "PC-LINE-A-20-1",
-                "hostname": "PROD-LINE-A-20-PC1",
-                "ip": "10.1.2.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L01-CONVEYOR-MAIN",
+                "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "ip": "192.168.10.3",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-A-20-2",
-                "hostname": "PROD-LINE-A-20-PC2",
-                "ip": "10.1.2.12",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-A-30",
-            "name": "Vision Station 3",
-            "type": "Vision",
-            "team": "Mechanical",
+            "id": "L01-OP030",
+            "name": "L01-OP030 \u2013 Giga-Gluer 2K Thermal Dispenser Bot",
+            "type": "Dispenser",
+            "technology": "Dispensing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP030",
             "pcs": [
               {
-                "id": "PC-LINE-A-30-1",
-                "hostname": "PROD-LINE-A-30-PC1",
-                "ip": "10.1.3.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L01-OP030-DEDICATED",
+                "hostname": "IPC-L01-OP030-DEDICATED",
+                "ip": "192.168.10.2",
+                "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-A-30-2",
-                "hostname": "PROD-LINE-A-30-PC2",
-                "ip": "10.1.3.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line01_Cell030.tsproj (Port 851)",
+                "mes": "Audi MES Production Client v3.1"
               }
             ]
           },
           {
-            "id": "STA-LINE-A-40",
-            "name": "Dispensing Station 4",
-            "type": "Dispensing",
-            "team": "Dispensing",
+            "id": "L01-OP040",
+            "name": "L01-OP040 \u2013 Auto-Bolt Torquinator 3000",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP040",
+            "pcs": []
+          },
+          {
+            "id": "L01-OP050",
+            "name": "L01-OP050 \u2013 Pallet-Lift Elevator Mech-Tron",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP050",
             "pcs": [
               {
-                "id": "PC-LINE-A-40-1",
-                "hostname": "PROD-LINE-A-40-PC1",
-                "ip": "10.1.4.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L01-CONVEYOR-MAIN",
+                "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "ip": "192.168.10.3",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-A-40-2",
-                "hostname": "PROD-LINE-A-40-PC2",
-                "ip": "10.1.4.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-A-50",
-            "name": "Vision Station 5",
-            "type": "Vision",
-            "team": "Mechanical",
+            "id": "L01-OP060",
+            "name": "L01-OP060 \u2013 Laser-Zapper Seam Welder Omni-9",
+            "type": "LaserWelder",
+            "technology": "Welding",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP060",
             "pcs": [
               {
-                "id": "PC-LINE-A-50-1",
-                "hostname": "PROD-LINE-A-50-PC1",
-                "ip": "10.1.5.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L01-OP060-PLC",
+                "hostname": "IPC-L01-OP060-PLC",
+                "ip": "192.168.10.6",
+                "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line01_LaserMotion.tsproj (Port 851)",
+                "mes": "Beckhoff ADS Telemetry Streamer"
               },
               {
-                "id": "PC-LINE-A-50-2",
-                "hostname": "PROD-LINE-A-50-PC2",
-                "ip": "10.1.5.12",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L01-OP060-VISION",
+                "hostname": "IPC-L01-OP060-VISION",
+                "ip": "192.168.10.7",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "Vision GigE Cam Driver active",
+                "mes": "Cognex In-Sight Explorer 6.5.0 Connector"
+              },
+              {
+                "id": "IPC-L01-OP060-MES-GATE",
+                "hostname": "IPC-L01-OP060-MES-GATE",
+                "ip": "192.168.10.8",
+                "os": "Debian 12 Bookworm Industrial",
+                "status": "Healthy",
+                "twincat": "MQTT / OPC UA Gateway active",
+                "mes": "Audi Corporate Plant MES Gateway v3"
               }
             ]
           },
           {
-            "id": "STA-LINE-A-60",
-            "name": "Mechanical Station 6",
-            "type": "Mechanical",
-            "team": "Vision",
+            "id": "L01-OP070",
+            "name": "L01-OP070 \u2013 High-Voltage Sparky Insulation Tester",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP070",
+            "pcs": []
+          },
+          {
+            "id": "L01-OP080",
+            "name": "L01-OP080 \u2013 Cell-Loader Gantry Manipulator AI",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP080",
             "pcs": [
               {
-                "id": "PC-LINE-A-60-1",
-                "hostname": "PROD-LINE-A-60-PC1",
-                "ip": "10.1.6.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L01-ROB-ALPHA",
+                "hostname": "IPC-L01-ROB-ALPHA",
+                "ip": "192.168.10.4",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line01_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-A-60-2",
-                "hostname": "PROD-LINE-A-60-PC2",
-                "ip": "10.1.6.12",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L01-ROB-BETA",
+                "hostname": "IPC-L01-ROB-BETA",
+                "ip": "192.168.10.5",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-A-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-A-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line01_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
+          },
+          {
+            "id": "L01-OP090",
+            "name": "L01-OP090 \u2013 Deep-Vision AOI Flaw-Finder 4000",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP090",
+            "pcs": [
+              {
+                "id": "IPC-L01-ROB-ALPHA",
+                "hostname": "IPC-L01-ROB-ALPHA",
+                "ip": "192.168.10.4",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line01_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              },
+              {
+                "id": "IPC-L01-ROB-BETA",
+                "hostname": "IPC-L01-ROB-BETA",
+                "ip": "192.168.10.5",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line01_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              }
+            ]
+          },
+          {
+            "id": "L01-OP100",
+            "name": "L01-OP100 \u2013 Multi-Spindle Cover Fastener Cyber",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP100",
+            "pcs": []
+          },
+          {
+            "id": "L01-OP110",
+            "name": "L01-OP110 \u2013 Pallet Accumulator Buffer Loop-1",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP110",
+            "pcs": []
+          },
+          {
+            "id": "L01-OP120",
+            "name": "L01-OP120 \u2013 Outfeed Barcode Check & Gate Bot",
+            "type": "ConveyorTransfer",
+            "technology": "Test",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP120",
+            "pcs": []
           }
         ]
       },
       {
-        "id": "LINE-B",
-        "name": "Electronics Test Line LINE-B",
-        "description": "Automated electronics test line line-b",
+        "id": "org-line-02",
+        "line_num": 2,
+        "name": "Line 02 \u2013 Synthetic Audi Battery Pack Line (AI Sim)",
+        "tech": "Assembly",
         "stations": [
           {
-            "id": "STA-LINE-B-10",
-            "name": "Mechanical Station 1",
-            "type": "Mechanical",
-            "team": "Test",
+            "id": "L02-OP010",
+            "name": "L02-OP010 \u2013 Pack-Tray Roller Infeed Infeed-Bot",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP010",
             "pcs": [
               {
-                "id": "PC-LINE-B-10-1",
-                "hostname": "PROD-LINE-B-10-PC1",
-                "ip": "10.2.1.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.10.10",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-B-10-2",
-                "hostname": "PROD-LINE-B-10-PC2",
-                "ip": "10.2.1.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-B-20",
-            "name": "Test Station 2",
-            "type": "Test",
-            "team": "Mechanical",
+            "id": "L02-OP020",
+            "name": "L02-OP020 \u2013 Cooling-Plate Adhesive Applicator AI",
+            "type": "Dispenser",
+            "technology": "Dispensing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP020",
             "pcs": [
               {
-                "id": "PC-LINE-B-20-1",
-                "hostname": "PROD-LINE-B-20-PC1",
-                "ip": "10.2.2.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.10.10",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-B-20-2",
-                "hostname": "PROD-LINE-B-20-PC2",
-                "ip": "10.2.2.12",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-B-30",
-            "name": "Dispensing Station 3",
-            "type": "Dispensing",
-            "team": "Mechanical",
+            "id": "L02-OP030",
+            "name": "L02-OP030 \u2013 Heavy-Module Unload Robot Gantry 1",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP030",
             "pcs": [
               {
-                "id": "PC-LINE-B-30-1",
-                "hostname": "PROD-LINE-B-30-PC1",
-                "ip": "10.2.3.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L02-OP030-DEDICATED",
+                "hostname": "IPC-L02-OP030-DEDICATED",
+                "ip": "192.168.10.9",
+                "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-B-30-2",
-                "hostname": "PROD-LINE-B-30-PC2",
-                "ip": "10.2.3.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line02_Cell030.tsproj (Port 851)",
+                "mes": "Audi MES Production Client v3.1"
               }
             ]
           },
           {
-            "id": "STA-LINE-B-40",
-            "name": "Welding Station 4",
-            "type": "Welding",
-            "team": "Mechanical",
+            "id": "L02-OP040",
+            "name": "L02-OP040 \u2013 Dual-Arm Battery Tray Inserter Mech",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP040",
+            "pcs": []
+          },
+          {
+            "id": "L02-OP050",
+            "name": "L02-OP050 \u2013 Busbar Torque Tightening Station 8X",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP050",
             "pcs": [
               {
-                "id": "PC-LINE-B-40-1",
-                "hostname": "PROD-LINE-B-40-PC1",
-                "ip": "10.2.4.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.10.10",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-B-40-2",
-                "hostname": "PROD-LINE-B-40-PC2",
-                "ip": "10.2.4.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-B-50",
-            "name": "Packaging Station 5",
-            "type": "Packaging",
-            "team": "Screwing",
+            "id": "L02-OP060",
+            "name": "L02-OP060 \u2013 Laser Seam Seal Chamber Hermetic-X",
+            "type": "LaserWelder",
+            "technology": "Welding",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP060",
             "pcs": [
               {
-                "id": "PC-LINE-B-50-1",
-                "hostname": "PROD-LINE-B-50-PC1",
-                "ip": "10.2.5.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L02-OP060-PLC",
+                "hostname": "IPC-L02-OP060-PLC",
+                "ip": "192.168.10.13",
+                "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line02_LaserMotion.tsproj (Port 851)",
+                "mes": "Beckhoff ADS Telemetry Streamer"
               },
               {
-                "id": "PC-LINE-B-50-2",
-                "hostname": "PROD-LINE-B-50-PC2",
-                "ip": "10.2.5.12",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L02-OP060-VISION",
+                "hostname": "IPC-L02-OP060-VISION",
+                "ip": "192.168.10.14",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "Vision GigE Cam Driver active",
+                "mes": "Cognex In-Sight Explorer 6.5.0 Connector"
+              },
+              {
+                "id": "IPC-L02-OP060-MES-GATE",
+                "hostname": "IPC-L02-OP060-MES-GATE",
+                "ip": "192.168.10.15",
+                "os": "Debian 12 Bookworm Industrial",
+                "status": "Healthy",
+                "twincat": "MQTT / OPC UA Gateway active",
+                "mes": "Audi Corporate Plant MES Gateway v3"
               }
             ]
           },
           {
-            "id": "STA-LINE-B-60",
-            "name": "Dispensing Station 6",
-            "type": "Dispensing",
-            "team": "Screwing",
+            "id": "L02-OP070",
+            "name": "L02-OP070 \u2013 Laser Bead Profilometer Checker AI",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP070",
+            "pcs": []
+          },
+          {
+            "id": "L02-OP080",
+            "name": "L02-OP080 \u2013 Helium Leak Sniffer Chamber Zero-P",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP080",
             "pcs": [
               {
-                "id": "PC-LINE-B-60-1",
-                "hostname": "PROD-LINE-B-60-PC1",
-                "ip": "10.2.6.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L02-ROB-ALPHA",
+                "hostname": "IPC-L02-ROB-ALPHA",
+                "ip": "192.168.10.11",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line02_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-B-60-2",
-                "hostname": "PROD-LINE-B-60-PC2",
-                "ip": "10.2.6.12",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L02-ROB-BETA",
+                "hostname": "IPC-L02-ROB-BETA",
+                "ip": "192.168.10.12",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-B-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-B-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line02_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
+          },
+          {
+            "id": "L02-OP090",
+            "name": "L02-OP090 \u2013 Pack Lid Structural Servo Press 50kN",
+            "type": "ServoPress",
+            "technology": "Fastening",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP090",
+            "pcs": [
+              {
+                "id": "IPC-L02-ROB-ALPHA",
+                "hostname": "IPC-L02-ROB-ALPHA",
+                "ip": "192.168.10.11",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line02_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              },
+              {
+                "id": "IPC-L02-ROB-BETA",
+                "hostname": "IPC-L02-ROB-BETA",
+                "ip": "192.168.10.12",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line02_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              }
+            ]
+          },
+          {
+            "id": "L02-OP100",
+            "name": "L02-OP100 \u2013 Perimeter Hex Bolt Nutrunner Gantry",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP100",
+            "pcs": []
+          },
+          {
+            "id": "L02-OP110",
+            "name": "L02-OP110 \u2013 Optical Topographic Seal Inspector",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP110",
+            "pcs": []
+          },
+          {
+            "id": "L02-OP120",
+            "name": "L02-OP120 \u2013 Final Pack Discharge Pallet Elevator",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP120",
+            "pcs": []
+          },
+          {
+            "id": "L02-OP130",
+            "name": "L02-OP130 \u2013 Battery Pack EOL High-Voltage Gate",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP130",
+            "pcs": []
           }
         ]
       },
       {
-        "id": "LINE-C",
-        "name": "Final Assembly Line LINE-C",
-        "description": "Automated final assembly line line-c",
+        "id": "org-line-03",
+        "line_num": 3,
+        "name": "Line 03 \u2013 Synthetic Audi Powertrain Line (AI Sim)",
+        "tech": "Assembly",
         "stations": [
           {
-            "id": "STA-LINE-C-10",
-            "name": "Screwing Station 1",
-            "type": "Screwing",
-            "team": "Test",
+            "id": "L03-OP010",
+            "name": "L03-OP010 \u2013 Hairpin Stator Raw Infeed Track",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP010",
             "pcs": [
               {
-                "id": "PC-LINE-C-10-1",
-                "hostname": "PROD-LINE-C-10-PC1",
-                "ip": "10.3.1.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L03-CONVEYOR-MAIN",
+                "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "ip": "192.168.10.17",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-C-10-2",
-                "hostname": "PROD-LINE-C-10-PC2",
-                "ip": "10.3.1.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-C-20",
-            "name": "Packaging Station 2",
-            "type": "Packaging",
-            "team": "Controls",
+            "id": "L03-OP020",
+            "name": "L03-OP020 \u2013 Precision Stator Iron Core Press 80kN",
+            "type": "ServoPress",
+            "technology": "Assembly",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP020",
             "pcs": [
               {
-                "id": "PC-LINE-C-20-1",
-                "hostname": "PROD-LINE-C-20-PC1",
-                "ip": "10.3.2.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L03-CONVEYOR-MAIN",
+                "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "ip": "192.168.10.17",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-C-20-2",
-                "hostname": "PROD-LINE-C-20-PC2",
-                "ip": "10.3.2.12",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-C-30",
-            "name": "Welding Station 3",
-            "type": "Welding",
-            "team": "Dispensing",
+            "id": "L03-OP030",
+            "name": "L03-OP030 \u2013 Hairpin Wire Crown Insertion Robot",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP030",
             "pcs": [
               {
-                "id": "PC-LINE-C-30-1",
-                "hostname": "PROD-LINE-C-30-PC1",
-                "ip": "10.3.3.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L03-OP030-DEDICATED",
+                "hostname": "IPC-L03-OP030-DEDICATED",
+                "ip": "192.168.10.16",
+                "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-C-30-2",
-                "hostname": "PROD-LINE-C-30-PC2",
-                "ip": "10.3.3.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line03_Cell030.tsproj (Port 851)",
+                "mes": "Audi MES Production Client v3.1"
               }
             ]
           },
           {
-            "id": "STA-LINE-C-40",
-            "name": "Vision Station 4",
-            "type": "Vision",
-            "team": "Screwing",
+            "id": "L03-OP040",
+            "name": "L03-OP040 \u2013 Crown Head Twist & Chamfer Tooling",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP040",
+            "pcs": []
+          },
+          {
+            "id": "L03-OP050",
+            "name": "L03-OP050 \u2013 Rotor Shaft Cryogenic Insertion Press",
+            "type": "ServoPress",
+            "technology": "Assembly",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP050",
             "pcs": [
               {
-                "id": "PC-LINE-C-40-1",
-                "hostname": "PROD-LINE-C-40-PC1",
-                "ip": "10.3.4.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L03-CONVEYOR-MAIN",
+                "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "ip": "192.168.10.17",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-C-40-2",
-                "hostname": "PROD-LINE-C-40-PC2",
-                "ip": "10.3.4.12",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-C-50",
-            "name": "Welding Station 5",
-            "type": "Welding",
-            "team": "Controls",
+            "id": "L03-OP060",
+            "name": "L03-OP060 \u2013 Trickle Resin Trickler & Varnish Bot",
+            "type": "Dispenser",
+            "technology": "Dispensing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP060",
             "pcs": [
               {
-                "id": "PC-LINE-C-50-1",
-                "hostname": "PROD-LINE-C-50-PC1",
-                "ip": "10.3.5.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L03-OP060-PLC",
+                "hostname": "IPC-L03-OP060-PLC",
+                "ip": "192.168.10.20",
+                "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line03_LaserMotion.tsproj (Port 851)",
+                "mes": "Beckhoff ADS Telemetry Streamer"
               },
               {
-                "id": "PC-LINE-C-50-2",
-                "hostname": "PROD-LINE-C-50-PC2",
-                "ip": "10.3.5.12",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L03-OP060-VISION",
+                "hostname": "IPC-L03-OP060-VISION",
+                "ip": "192.168.10.21",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "Vision GigE Cam Driver active",
+                "mes": "Cognex In-Sight Explorer 6.5.0 Connector"
+              },
+              {
+                "id": "IPC-L03-OP060-MES-GATE",
+                "hostname": "IPC-L03-OP060-MES-GATE",
+                "ip": "192.168.10.22",
+                "os": "Debian 12 Bookworm Industrial",
+                "status": "Healthy",
+                "twincat": "MQTT / OPC UA Gateway active",
+                "mes": "Audi Corporate Plant MES Gateway v3"
               }
             ]
           },
           {
-            "id": "STA-LINE-C-60",
-            "name": "Welding Station 6",
-            "type": "Welding",
-            "team": "Screwing",
+            "id": "L03-OP070",
+            "name": "L03-OP070 \u2013 Infrared Resin Curing Tunnel EOL",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP070",
+            "pcs": []
+          },
+          {
+            "id": "L03-OP080",
+            "name": "L03-OP080 \u2013 High-Speed Dynamic Balancing Rig 3D",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP080",
             "pcs": [
               {
-                "id": "PC-LINE-C-60-1",
-                "hostname": "PROD-LINE-C-60-PC1",
-                "ip": "10.3.6.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L03-ROB-ALPHA",
+                "hostname": "IPC-L03-ROB-ALPHA",
+                "ip": "192.168.10.18",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line03_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-C-60-2",
-                "hostname": "PROD-LINE-C-60-PC2",
-                "ip": "10.3.6.12",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L03-ROB-BETA",
+                "hostname": "IPC-L03-ROB-BETA",
+                "ip": "192.168.10.19",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-C-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-C-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line03_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
+          },
+          {
+            "id": "L03-OP090",
+            "name": "L03-OP090 \u2013 End-Shield Bearing Fastener Torquer",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP090",
+            "pcs": [
+              {
+                "id": "IPC-L03-ROB-ALPHA",
+                "hostname": "IPC-L03-ROB-ALPHA",
+                "ip": "192.168.10.18",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line03_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              },
+              {
+                "id": "IPC-L03-ROB-BETA",
+                "hostname": "IPC-L03-ROB-BETA",
+                "ip": "192.168.10.19",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line03_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              }
+            ]
+          },
+          {
+            "id": "L03-OP100",
+            "name": "L03-OP100 \u2013 Stator Rotor Magnetization Gate AI",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP100",
+            "pcs": []
+          },
+          {
+            "id": "L03-OP110",
+            "name": "L03-OP110 \u2013 Powertrain Conveyor Turn-Table Loop",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP110",
+            "pcs": []
+          },
+          {
+            "id": "L03-OP120",
+            "name": "L03-OP120 \u2013 Powertrain Full Dynamometer Dyno-X",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP120",
+            "pcs": []
           }
         ]
       },
       {
-        "id": "LINE-D",
-        "name": "Battery Module Line LINE-D",
-        "description": "Automated battery module line line-d",
+        "id": "org-line-04",
+        "line_num": 4,
+        "name": "Line 04 \u2013 Synthetic Electronics SMT Placement (AI Sim)",
+        "tech": "SMT",
         "stations": [
           {
-            "id": "STA-LINE-D-10",
-            "name": "Dispensing Station 1",
-            "type": "Dispensing",
-            "team": "Vision",
+            "id": "L04-OP010",
+            "name": "L04-OP010 \u2013 SMT Magazine Unloader Pallet Shuttle",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP010",
             "pcs": [
               {
-                "id": "PC-LINE-D-10-1",
-                "hostname": "PROD-LINE-D-10-PC1",
-                "ip": "10.4.1.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.10.24",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-D-10-2",
-                "hostname": "PROD-LINE-D-10-PC2",
-                "ip": "10.4.1.12",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-D-20",
-            "name": "Welding Station 2",
-            "type": "Welding",
-            "team": "Controls",
+            "id": "L04-OP020",
+            "name": "L04-OP020 \u2013 DEK Solder Paste Jet Printer 0.1mm",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP020",
             "pcs": [
               {
-                "id": "PC-LINE-D-20-1",
-                "hostname": "PROD-LINE-D-20-PC1",
-                "ip": "10.4.2.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.10.24",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-D-20-2",
-                "hostname": "PROD-LINE-D-20-PC2",
-                "ip": "10.4.2.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-D-30",
-            "name": "Dispensing Station 3",
-            "type": "Dispensing",
-            "team": "Vision",
+            "id": "L04-OP030",
+            "name": "L04-OP030 \u2013 Koh Young 3D Solder Paste Inspector",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP030",
             "pcs": [
               {
-                "id": "PC-LINE-D-30-1",
-                "hostname": "PROD-LINE-D-30-PC1",
-                "ip": "10.4.3.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L04-OP030-DEDICATED",
+                "hostname": "IPC-L04-OP030-DEDICATED",
+                "ip": "192.168.10.23",
+                "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-D-30-2",
-                "hostname": "PROD-LINE-D-30-PC2",
-                "ip": "10.4.3.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line04_Cell030.tsproj (Port 851)",
+                "mes": "Audi MES Production Client v3.1"
               }
             ]
           },
           {
-            "id": "STA-LINE-D-40",
-            "name": "Packaging Station 4",
-            "type": "Packaging",
-            "team": "Test",
+            "id": "L04-OP040",
+            "name": "L04-OP040 \u2013 Siplace Dual-Gantry Chip Shooter AI",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP040",
+            "pcs": []
+          },
+          {
+            "id": "L04-OP050",
+            "name": "L04-OP050 \u2013 Odd-Form Component Inserter Gantry",
+            "type": "Dispenser",
+            "technology": "Dispensing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP050",
             "pcs": [
               {
-                "id": "PC-LINE-D-40-1",
-                "hostname": "PROD-LINE-D-40-PC1",
-                "ip": "10.4.4.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.10.24",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-D-40-2",
-                "hostname": "PROD-LINE-D-40-PC2",
-                "ip": "10.4.4.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-D-50",
-            "name": "Screwing Station 5",
-            "type": "Screwing",
-            "team": "Dispensing",
+            "id": "L04-OP060",
+            "name": "L04-OP060 \u2013 Pre-Reflow 3D Optical Vision Checker",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP060",
             "pcs": [
               {
-                "id": "PC-LINE-D-50-1",
-                "hostname": "PROD-LINE-D-50-PC1",
-                "ip": "10.4.5.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L04-OP060-PLC",
+                "hostname": "IPC-L04-OP060-PLC",
+                "ip": "192.168.10.27",
+                "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line04_LaserMotion.tsproj (Port 851)",
+                "mes": "Beckhoff ADS Telemetry Streamer"
               },
               {
-                "id": "PC-LINE-D-50-2",
-                "hostname": "PROD-LINE-D-50-PC2",
-                "ip": "10.4.5.12",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L04-OP060-VISION",
+                "hostname": "IPC-L04-OP060-VISION",
+                "ip": "192.168.10.28",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "Vision GigE Cam Driver active",
+                "mes": "Cognex In-Sight Explorer 6.5.0 Connector"
+              },
+              {
+                "id": "IPC-L04-OP060-MES-GATE",
+                "hostname": "IPC-L04-OP060-MES-GATE",
+                "ip": "192.168.10.29",
+                "os": "Debian 12 Bookworm Industrial",
+                "status": "Healthy",
+                "twincat": "MQTT / OPC UA Gateway active",
+                "mes": "Audi Corporate Plant MES Gateway v3"
               }
             ]
           },
           {
-            "id": "STA-LINE-D-60",
-            "name": "Packaging Station 6",
-            "type": "Packaging",
-            "team": "Controls",
+            "id": "L04-OP070",
+            "name": "L04-OP070 \u2013 10-Zone Nitrogen Reflow Convection Oven",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP070",
+            "pcs": []
+          },
+          {
+            "id": "L04-OP080",
+            "name": "L04-OP080 \u2013 Post-Reflow Automated Optical Inspector",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP080",
             "pcs": [
               {
-                "id": "PC-LINE-D-60-1",
-                "hostname": "PROD-LINE-D-60-PC1",
-                "ip": "10.4.6.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L04-ROB-ALPHA",
+                "hostname": "IPC-L04-ROB-ALPHA",
+                "ip": "192.168.10.25",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line04_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-D-60-2",
-                "hostname": "PROD-LINE-D-60-PC2",
-                "ip": "10.4.6.12",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L04-ROB-BETA",
+                "hostname": "IPC-L04-ROB-BETA",
+                "ip": "192.168.10.26",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-D-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-D-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line04_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
+          },
+          {
+            "id": "L04-OP090",
+            "name": "L04-OP090 \u2013 Flying-Probe ICT Circuit Board Tester",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP090",
+            "pcs": [
+              {
+                "id": "IPC-L04-ROB-ALPHA",
+                "hostname": "IPC-L04-ROB-ALPHA",
+                "ip": "192.168.10.25",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line04_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              },
+              {
+                "id": "IPC-L04-ROB-BETA",
+                "hostname": "IPC-L04-ROB-BETA",
+                "ip": "192.168.10.26",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line04_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              }
+            ]
+          },
+          {
+            "id": "L04-OP100",
+            "name": "L04-OP100 \u2013 Selective Wave Solder Mini-Pot Bot",
+            "type": "FasteningStation",
+            "technology": "Welding",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP100",
+            "pcs": []
+          },
+          {
+            "id": "L04-OP110",
+            "name": "L04-OP110 \u2013 Conformal Coating UV Dispenser Booth",
+            "type": "Dispenser",
+            "technology": "Dispensing",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP110",
+            "pcs": []
+          },
+          {
+            "id": "L04-OP120",
+            "name": "L04-OP120 \u2013 UV Cure Inspection Tunnel & Camera",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP120",
+            "pcs": []
+          },
+          {
+            "id": "L04-OP130",
+            "name": "L04-OP130 \u2013 PCB Depaneling Laser Router Outfeed",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP130",
+            "pcs": []
           }
         ]
       },
       {
-        "id": "LINE-E",
-        "name": "Sealant Dispensing Line LINE-E",
-        "description": "Automated sealant dispensing line line-e",
+        "id": "org-line-05",
+        "line_num": 5,
+        "name": "Line 05 \u2013 Synthetic Body-in-White Robotic Welding (AI Sim)",
+        "tech": "Welding",
         "stations": [
           {
-            "id": "STA-LINE-E-10",
-            "name": "Mechanical Station 1",
-            "type": "Mechanical",
-            "team": "Test",
+            "id": "L05-OP010",
+            "name": "L05-OP010 \u2013 Subframe Clamping Jig Shuttle Table",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP010",
             "pcs": [
               {
-                "id": "PC-LINE-E-10-1",
-                "hostname": "PROD-LINE-E-10-PC1",
-                "ip": "10.5.1.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L05-CONVEYOR-MAIN",
+                "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "ip": "192.168.10.31",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-E-10-2",
-                "hostname": "PROD-LINE-E-10-PC2",
-                "ip": "10.5.1.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-E-20",
-            "name": "Dispensing Station 2",
-            "type": "Dispensing",
-            "team": "Mechanical",
+            "id": "L05-OP020",
+            "name": "L05-OP020 \u2013 Heavy Spot-Welding Robot Titan-01",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP020",
             "pcs": [
               {
-                "id": "PC-LINE-E-20-1",
-                "hostname": "PROD-LINE-E-20-PC1",
-                "ip": "10.5.2.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L05-CONVEYOR-MAIN",
+                "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "ip": "192.168.10.31",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-E-20-2",
-                "hostname": "PROD-LINE-E-20-PC2",
-                "ip": "10.5.2.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-E-30",
-            "name": "Welding Station 3",
-            "type": "Welding",
-            "team": "Vision",
+            "id": "L05-OP030",
+            "name": "L05-OP030 \u2013 Trumpf Disk Laser Welding Chamber A",
+            "type": "LaserWelder",
+            "technology": "Welding",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP030",
             "pcs": [
               {
-                "id": "PC-LINE-E-30-1",
-                "hostname": "PROD-LINE-E-30-PC1",
-                "ip": "10.5.3.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L05-OP030-DEDICATED",
+                "hostname": "IPC-L05-OP030-DEDICATED",
+                "ip": "192.168.10.30",
+                "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-E-30-2",
-                "hostname": "PROD-LINE-E-30-PC2",
-                "ip": "10.5.3.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line05_Cell030.tsproj (Port 851)",
+                "mes": "Audi MES Production Client v3.1"
               }
             ]
           },
           {
-            "id": "STA-LINE-E-40",
-            "name": "Vision Station 4",
-            "type": "Vision",
-            "team": "Screwing",
+            "id": "L05-OP040",
+            "name": "L05-OP040 \u2013 Robotic Stud Welding Manipulator B",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP040",
+            "pcs": []
+          },
+          {
+            "id": "L05-OP050",
+            "name": "L05-OP050 \u2013 Blind Rivet Nut Insertion Screwer",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP050",
             "pcs": [
               {
-                "id": "PC-LINE-E-40-1",
-                "hostname": "PROD-LINE-E-40-PC1",
-                "ip": "10.5.4.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L05-CONVEYOR-MAIN",
+                "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "ip": "192.168.10.31",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-E-40-2",
-                "hostname": "PROD-LINE-E-40-PC2",
-                "ip": "10.5.4.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-E-50",
-            "name": "Welding Station 5",
-            "type": "Welding",
-            "team": "Test",
+            "id": "L05-OP060",
+            "name": "L05-OP060 \u2013 Laser Seam Geometry Tracker Scanner",
+            "type": "LaserWelder",
+            "technology": "Welding",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP060",
             "pcs": [
               {
-                "id": "PC-LINE-E-50-1",
-                "hostname": "PROD-LINE-E-50-PC1",
-                "ip": "10.5.5.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L05-OP060-PLC",
+                "hostname": "IPC-L05-OP060-PLC",
+                "ip": "192.168.10.34",
+                "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line05_LaserMotion.tsproj (Port 851)",
+                "mes": "Beckhoff ADS Telemetry Streamer"
               },
               {
-                "id": "PC-LINE-E-50-2",
-                "hostname": "PROD-LINE-E-50-PC2",
-                "ip": "10.5.5.12",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L05-OP060-VISION",
+                "hostname": "IPC-L05-OP060-VISION",
+                "ip": "192.168.10.35",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "Vision GigE Cam Driver active",
+                "mes": "Cognex In-Sight Explorer 6.5.0 Connector"
+              },
+              {
+                "id": "IPC-L05-OP060-MES-GATE",
+                "hostname": "IPC-L05-OP060-MES-GATE",
+                "ip": "192.168.10.36",
+                "os": "Debian 12 Bookworm Industrial",
+                "status": "Healthy",
+                "twincat": "MQTT / OPC UA Gateway active",
+                "mes": "Audi Corporate Plant MES Gateway v3"
               }
             ]
           },
           {
-            "id": "STA-LINE-E-60",
-            "name": "Screwing Station 6",
-            "type": "Screwing",
-            "team": "Controls",
+            "id": "L05-OP070",
+            "name": "L05-OP070 \u2013 Optical Body Gap & Flushness Gate",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP070",
+            "pcs": []
+          },
+          {
+            "id": "L05-OP080",
+            "name": "L05-OP080 \u2013 Structural Foam Injection Applicator",
+            "type": "Dispenser",
+            "technology": "Dispensing",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP080",
             "pcs": [
               {
-                "id": "PC-LINE-E-60-1",
-                "hostname": "PROD-LINE-E-60-PC1",
-                "ip": "10.5.6.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L05-ROB-ALPHA",
+                "hostname": "IPC-L05-ROB-ALPHA",
+                "ip": "192.168.10.32",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line05_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-E-60-2",
-                "hostname": "PROD-LINE-E-60-PC2",
-                "ip": "10.5.6.12",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L05-ROB-BETA",
+                "hostname": "IPC-L05-ROB-BETA",
+                "ip": "192.168.10.33",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-E-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-E-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line05_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
+          },
+          {
+            "id": "L05-OP090",
+            "name": "L05-OP090 \u2013 Friction Stir Welder Overhead Unit",
+            "type": "FasteningStation",
+            "technology": "Welding",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP090",
+            "pcs": [
+              {
+                "id": "IPC-L05-ROB-ALPHA",
+                "hostname": "IPC-L05-ROB-ALPHA",
+                "ip": "192.168.10.32",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line05_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              },
+              {
+                "id": "IPC-L05-ROB-BETA",
+                "hostname": "IPC-L05-ROB-BETA",
+                "ip": "192.168.10.33",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line05_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              }
+            ]
+          },
+          {
+            "id": "L05-OP100",
+            "name": "L05-OP100 \u2013 Dual-Robot Seam Finishing Cell",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP100",
+            "pcs": []
+          },
+          {
+            "id": "L05-OP110",
+            "name": "L05-OP110 \u2013 Overhead Transfer Crane Pick Shifter",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP110",
+            "pcs": []
+          },
+          {
+            "id": "L05-OP120",
+            "name": "L05-OP120 \u2013 Body Shell Dimension Verification Gate",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP120",
+            "pcs": []
           }
         ]
       },
       {
-        "id": "LINE-F",
-        "name": "Electronics Test Line LINE-F",
-        "description": "Automated electronics test line line-f",
+        "id": "org-line-06",
+        "line_num": 6,
+        "name": "Line 06 \u2013 Synthetic Precision Press Fit (AI Sim)",
+        "tech": "Fastening",
         "stations": [
           {
-            "id": "STA-LINE-F-10",
-            "name": "Vision Station 1",
-            "type": "Vision",
-            "team": "Test",
+            "id": "L06-OP010",
+            "name": "L06-OP010 \u2013 Bearing Housing Pallet Shuttle Infeed",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP010",
             "pcs": [
               {
-                "id": "PC-LINE-F-10-1",
-                "hostname": "PROD-LINE-F-10-PC1",
-                "ip": "10.6.1.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L06-CONVEYOR-MAIN",
+                "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "ip": "192.168.10.38",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-F-10-2",
-                "hostname": "PROD-LINE-F-10-PC2",
-                "ip": "10.6.1.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-F-20",
-            "name": "Dispensing Station 2",
-            "type": "Dispensing",
-            "team": "Controls",
+            "id": "L06-OP020",
+            "name": "L06-OP020 \u2013 TOX Electric Servo Press 100kN Unit 1",
+            "type": "ServoPress",
+            "technology": "Fastening",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP020",
             "pcs": [
               {
-                "id": "PC-LINE-F-20-1",
-                "hostname": "PROD-LINE-F-20-PC1",
-                "ip": "10.6.2.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L06-CONVEYOR-MAIN",
+                "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "ip": "192.168.10.38",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-F-20-2",
-                "hostname": "PROD-LINE-F-20-PC2",
-                "ip": "10.6.2.12",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-F-30",
-            "name": "Vision Station 3",
-            "type": "Vision",
-            "team": "Screwing",
+            "id": "L06-OP030",
+            "name": "L06-OP030 \u2013 Bushing Rotary Feeder & Inserter 2",
+            "type": "ServoPress",
+            "technology": "Fastening",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP030",
             "pcs": [
               {
-                "id": "PC-LINE-F-30-1",
-                "hostname": "PROD-LINE-F-30-PC1",
-                "ip": "10.6.3.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L06-OP030-DEDICATED",
+                "hostname": "IPC-L06-OP030-DEDICATED",
+                "ip": "192.168.10.37",
+                "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-F-30-2",
-                "hostname": "PROD-LINE-F-30-PC2",
-                "ip": "10.6.3.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line06_Cell030.tsproj (Port 851)",
+                "mes": "Audi MES Production Client v3.1"
               }
             ]
           },
           {
-            "id": "STA-LINE-F-40",
-            "name": "Welding Station 4",
-            "type": "Welding",
-            "team": "Screwing",
+            "id": "L06-OP040",
+            "name": "L06-OP040 \u2013 Needle Bearing Pick-and-Place Robot",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP040",
+            "pcs": []
+          },
+          {
+            "id": "L06-OP050",
+            "name": "L06-OP050 \u2013 Threaded Retainer Torque Tightener",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP050",
             "pcs": [
               {
-                "id": "PC-LINE-F-40-1",
-                "hostname": "PROD-LINE-F-40-PC1",
-                "ip": "10.6.4.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L06-CONVEYOR-MAIN",
+                "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "ip": "192.168.10.38",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-F-40-2",
-                "hostname": "PROD-LINE-F-40-PC2",
-                "ip": "10.6.4.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-F-50",
-            "name": "Screwing Station 5",
-            "type": "Screwing",
-            "team": "Vision",
+            "id": "L06-OP060",
+            "name": "L06-OP060 \u2013 High-Precision Pin Press Servo 25kN",
+            "type": "ServoPress",
+            "technology": "Fastening",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP060",
             "pcs": [
               {
-                "id": "PC-LINE-F-50-1",
-                "hostname": "PROD-LINE-F-50-PC1",
-                "ip": "10.6.5.11",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L06-OP060-PLC",
+                "hostname": "IPC-L06-OP060-PLC",
+                "ip": "192.168.10.41",
+                "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line06_LaserMotion.tsproj (Port 851)",
+                "mes": "Beckhoff ADS Telemetry Streamer"
               },
               {
-                "id": "PC-LINE-F-50-2",
-                "hostname": "PROD-LINE-F-50-PC2",
-                "ip": "10.6.5.12",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L06-OP060-VISION",
+                "hostname": "IPC-L06-OP060-VISION",
+                "ip": "192.168.10.42",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "Vision GigE Cam Driver active",
+                "mes": "Cognex In-Sight Explorer 6.5.0 Connector"
+              },
+              {
+                "id": "IPC-L06-OP060-MES-GATE",
+                "hostname": "IPC-L06-OP060-MES-GATE",
+                "ip": "192.168.10.43",
+                "os": "Debian 12 Bookworm Industrial",
+                "status": "Healthy",
+                "twincat": "MQTT / OPC UA Gateway active",
+                "mes": "Audi Corporate Plant MES Gateway v3"
               }
             ]
           },
           {
-            "id": "STA-LINE-F-60",
-            "name": "Dispensing Station 6",
-            "type": "Dispensing",
-            "team": "Test",
+            "id": "L06-OP070",
+            "name": "L06-OP070 \u2013 Force-Displacement Envelope Monitor",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP070",
+            "pcs": []
+          },
+          {
+            "id": "L06-OP080",
+            "name": "L06-OP080 \u2013 Ultrasonic Crack & Defect Detector",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP080",
             "pcs": [
               {
-                "id": "PC-LINE-F-60-1",
-                "hostname": "PROD-LINE-F-60-PC1",
-                "ip": "10.6.6.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L06-ROB-ALPHA",
+                "hostname": "IPC-L06-ROB-ALPHA",
+                "ip": "192.168.10.39",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line06_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-F-60-2",
-                "hostname": "PROD-LINE-F-60-PC2",
-                "ip": "10.6.6.12",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L06-ROB-BETA",
+                "hostname": "IPC-L06-ROB-BETA",
+                "ip": "192.168.10.40",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-F-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-F-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line06_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
+          },
+          {
+            "id": "L06-OP090",
+            "name": "L06-OP090 \u2013 Circlip Snap-Ring Pneumatic Press",
+            "type": "ServoPress",
+            "technology": "Fastening",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP090",
+            "pcs": [
+              {
+                "id": "IPC-L06-ROB-ALPHA",
+                "hostname": "IPC-L06-ROB-ALPHA",
+                "ip": "192.168.10.39",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line06_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              },
+              {
+                "id": "IPC-L06-ROB-BETA",
+                "hostname": "IPC-L06-ROB-BETA",
+                "ip": "192.168.10.40",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line06_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              }
+            ]
+          },
+          {
+            "id": "L06-OP100",
+            "name": "L06-OP100 \u2013 Bearing Lubricant Micro-Doser 10mg",
+            "type": "Dispenser",
+            "technology": "Dispensing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP100",
+            "pcs": []
+          },
+          {
+            "id": "L06-OP110",
+            "name": "L06-OP110 \u2013 Quality Pass Diverter Rejection Gate",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP110",
+            "pcs": []
+          },
+          {
+            "id": "L06-OP120",
+            "name": "L06-OP120 \u2013 Finished Bearing Pallet Packing Station",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP120",
+            "pcs": []
           }
         ]
       },
       {
-        "id": "LINE-G",
-        "name": "Electronics Test Line LINE-G",
-        "description": "Automated electronics test line line-g",
+        "id": "org-line-07",
+        "line_num": 7,
+        "name": "Line 07 \u2013 Synthetic Optical Quality Metrology (AI Sim)",
+        "tech": "Test",
         "stations": [
           {
-            "id": "STA-LINE-G-10",
-            "name": "Screwing Station 1",
-            "type": "Screwing",
-            "team": "Screwing",
+            "id": "L07-OP010",
+            "name": "L07-OP010 \u2013 Inspection Pallet Indexing Rotary Bed",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP010",
             "pcs": [
               {
-                "id": "PC-LINE-G-10-1",
-                "hostname": "PROD-LINE-G-10-PC1",
-                "ip": "10.7.1.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.10.45",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-G-10-2",
-                "hostname": "PROD-LINE-G-10-PC2",
-                "ip": "10.7.1.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-G-20",
-            "name": "Screwing Station 2",
-            "type": "Screwing",
-            "team": "Mechanical",
+            "id": "L07-OP020",
+            "name": "L07-OP020 \u2013 Telecentric 50MP Multi-Angle Booth",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP020",
             "pcs": [
               {
-                "id": "PC-LINE-G-20-1",
-                "hostname": "PROD-LINE-G-20-PC1",
-                "ip": "10.7.2.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.10.45",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-G-20-2",
-                "hostname": "PROD-LINE-G-20-PC2",
-                "ip": "10.7.2.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-G-30",
-            "name": "Vision Station 3",
-            "type": "Vision",
-            "team": "Test",
+            "id": "L07-OP030",
+            "name": "L07-OP030 \u2013 Laser Line Profilometer 3D Surface AI",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP030",
             "pcs": [
               {
-                "id": "PC-LINE-G-30-1",
-                "hostname": "PROD-LINE-G-30-PC1",
-                "ip": "10.7.3.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L07-OP030-DEDICATED",
+                "hostname": "IPC-L07-OP030-DEDICATED",
+                "ip": "192.168.10.44",
+                "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-G-30-2",
-                "hostname": "PROD-LINE-G-30-PC2",
-                "ip": "10.7.3.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line07_Cell030.tsproj (Port 851)",
+                "mes": "Audi MES Production Client v3.1"
               }
             ]
           },
           {
-            "id": "STA-LINE-G-40",
-            "name": "Welding Station 4",
-            "type": "Welding",
-            "team": "Mechanical",
+            "id": "L07-OP040",
+            "name": "L07-OP040 \u2013 Surface Roughness Tactile Probing Arm",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP040",
+            "pcs": []
+          },
+          {
+            "id": "L07-OP050",
+            "name": "L07-OP050 \u2013 Specular Reflectance Defect Scanner",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP050",
             "pcs": [
               {
-                "id": "PC-LINE-G-40-1",
-                "hostname": "PROD-LINE-G-40-PC1",
-                "ip": "10.7.4.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.10.45",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-G-40-2",
-                "hostname": "PROD-LINE-G-40-PC2",
-                "ip": "10.7.4.12",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-G-50",
-            "name": "Mechanical Station 5",
-            "type": "Mechanical",
-            "team": "Screwing",
+            "id": "L07-OP060",
+            "name": "L07-OP060 \u2013 Optical Coordinate Measuring CMM Gantry",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP060",
             "pcs": [
               {
-                "id": "PC-LINE-G-50-1",
-                "hostname": "PROD-LINE-G-50-PC1",
-                "ip": "10.7.5.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L07-OP060-PLC",
+                "hostname": "IPC-L07-OP060-PLC",
+                "ip": "192.168.10.48",
+                "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line07_LaserMotion.tsproj (Port 851)",
+                "mes": "Beckhoff ADS Telemetry Streamer"
               },
               {
-                "id": "PC-LINE-G-50-2",
-                "hostname": "PROD-LINE-G-50-PC2",
-                "ip": "10.7.5.12",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L07-OP060-VISION",
+                "hostname": "IPC-L07-OP060-VISION",
+                "ip": "192.168.10.49",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "Vision GigE Cam Driver active",
+                "mes": "Cognex In-Sight Explorer 6.5.0 Connector"
+              },
+              {
+                "id": "IPC-L07-OP060-MES-GATE",
+                "hostname": "IPC-L07-OP060-MES-GATE",
+                "ip": "192.168.10.50",
+                "os": "Debian 12 Bookworm Industrial",
+                "status": "Healthy",
+                "twincat": "MQTT / OPC UA Gateway active",
+                "mes": "Audi Corporate Plant MES Gateway v3"
               }
             ]
           },
           {
-            "id": "STA-LINE-G-60",
-            "name": "Mechanical Station 6",
-            "type": "Mechanical",
-            "team": "Test",
+            "id": "L07-OP070",
+            "name": "L07-OP070 \u2013 Deep-Learning Anomaly Classifier AI",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP070",
+            "pcs": []
+          },
+          {
+            "id": "L07-OP080",
+            "name": "L07-OP080 \u2013 Part Re-Orientation Robotic Swivel",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP080",
             "pcs": [
               {
-                "id": "PC-LINE-G-60-1",
-                "hostname": "PROD-LINE-G-60-PC1",
-                "ip": "10.7.6.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L07-ROB-ALPHA",
+                "hostname": "IPC-L07-ROB-ALPHA",
+                "ip": "192.168.10.46",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line07_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-G-60-2",
-                "hostname": "PROD-LINE-G-60-PC2",
-                "ip": "10.7.6.12",
-                "os": "Windows 10 Pro",
+                "id": "IPC-L07-ROB-BETA",
+                "hostname": "IPC-L07-ROB-BETA",
+                "ip": "192.168.10.47",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-G-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-G-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line07_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
+          },
+          {
+            "id": "L07-OP090",
+            "name": "L07-OP090 \u2013 X-Ray CT Void Inspection Scanner",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP090",
+            "pcs": [
+              {
+                "id": "IPC-L07-ROB-ALPHA",
+                "hostname": "IPC-L07-ROB-ALPHA",
+                "ip": "192.168.10.46",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line07_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              },
+              {
+                "id": "IPC-L07-ROB-BETA",
+                "hostname": "IPC-L07-ROB-BETA",
+                "ip": "192.168.10.47",
+                "os": "Windows 10 IoT Enterprise",
+                "status": "Healthy",
+                "twincat": "TC3_Line07_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
+              }
+            ]
+          },
+          {
+            "id": "L07-OP100",
+            "name": "L07-OP100 \u2013 Direct Part Marking Laser QR Stamper",
+            "type": "FasteningStation",
+            "technology": "Welding",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP100",
+            "pcs": []
+          },
+          {
+            "id": "L07-OP110",
+            "name": "L07-OP110 \u2013 Post-Marking Verification Scanner 2D",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP110",
+            "pcs": []
+          },
+          {
+            "id": "L07-OP120",
+            "name": "L07-OP120 \u2013 Certified Quality Pallet Stacking Bay",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP120",
+            "pcs": []
+          },
+          {
+            "id": "L07-OP130",
+            "name": "L07-OP130 \u2013 Automated Metrology Archive & Gate",
+            "type": "ConveyorTransfer",
+            "technology": "Test",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP130",
+            "pcs": []
           }
         ]
       },
       {
-        "id": "LINE-H",
-        "name": "Vision Inspection Line LINE-H",
-        "description": "Automated vision inspection line line-h",
+        "id": "org-line-08",
+        "line_num": 8,
+        "name": "Line 08 \u2013 Synthetic End-of-Line Vehicle Integration (AI Sim)",
+        "tech": "Test",
         "stations": [
           {
-            "id": "STA-LINE-H-10",
-            "name": "Packaging Station 1",
-            "type": "Packaging",
-            "team": "Test",
+            "id": "L08-OP010",
+            "name": "L08-OP010 \u2013 Final Chasis Docking & Lock Conveyor",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP010",
             "pcs": [
               {
-                "id": "PC-LINE-H-10-1",
-                "hostname": "PROD-LINE-H-10-PC1",
-                "ip": "10.8.1.11",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.10.52",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-H-10-2",
-                "hostname": "PROD-LINE-H-10-PC2",
-                "ip": "10.8.1.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-H-20",
-            "name": "Vision Station 2",
-            "type": "Vision",
-            "team": "Test",
+            "id": "L08-OP020",
+            "name": "L08-OP020 \u2013 Brake Hydraulic Vacuum Bleed Bench",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP020",
             "pcs": [
               {
-                "id": "PC-LINE-H-20-1",
-                "hostname": "PROD-LINE-H-20-PC1",
-                "ip": "10.8.2.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.10.52",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-H-20-2",
-                "hostname": "PROD-LINE-H-20-PC2",
-                "ip": "10.8.2.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-H-30",
-            "name": "Welding Station 3",
-            "type": "Welding",
-            "team": "Vision",
+            "id": "L08-OP030",
+            "name": "L08-OP030 \u2013 Coolant Degassing & Fluid Filling Station",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP030",
             "pcs": [
               {
-                "id": "PC-LINE-H-30-1",
-                "hostname": "PROD-LINE-H-30-PC1",
-                "ip": "10.8.3.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L08-OP030-DEDICATED",
+                "hostname": "IPC-L08-OP030-DEDICATED",
+                "ip": "192.168.10.51",
+                "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-H-30-2",
-                "hostname": "PROD-LINE-H-30-PC2",
-                "ip": "10.8.3.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_Cell030.tsproj (Port 851)",
+                "mes": "Audi MES Production Client v3.1"
               }
             ]
           },
           {
-            "id": "STA-LINE-H-40",
-            "name": "Vision Station 4",
-            "type": "Vision",
-            "team": "Screwing",
+            "id": "L08-OP040",
+            "name": "L08-OP040 \u2013 Wheel Nut Automated Torque Tightener 5X",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP040",
+            "pcs": []
+          },
+          {
+            "id": "L08-OP050",
+            "name": "L08-OP050 \u2013 Optical Wheel Alignment Laser Gate",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP050",
             "pcs": [
               {
-                "id": "PC-LINE-H-40-1",
-                "hostname": "PROD-LINE-H-40-PC1",
-                "ip": "10.8.4.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.10.52",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-H-40-2",
-                "hostname": "PROD-LINE-H-40-PC2",
-                "ip": "10.8.4.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
               }
             ]
           },
           {
-            "id": "STA-LINE-H-50",
-            "name": "Packaging Station 5",
-            "type": "Packaging",
-            "team": "Controls",
+            "id": "L08-OP060",
+            "name": "L08-OP060 \u2013 Headlight Matrix LED Calibration Rig",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP060",
             "pcs": [
               {
-                "id": "PC-LINE-H-50-1",
-                "hostname": "PROD-LINE-H-50-PC1",
-                "ip": "10.8.5.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L08-OP060-PLC",
+                "hostname": "IPC-L08-OP060-PLC",
+                "ip": "192.168.10.55",
+                "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_LaserMotion.tsproj (Port 851)",
+                "mes": "Beckhoff ADS Telemetry Streamer"
               },
               {
-                "id": "PC-LINE-H-50-2",
-                "hostname": "PROD-LINE-H-50-PC2",
-                "ip": "10.8.5.12",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L08-OP060-VISION",
+                "hostname": "IPC-L08-OP060-VISION",
+                "ip": "192.168.10.56",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "Vision GigE Cam Driver active",
+                "mes": "Cognex In-Sight Explorer 6.5.0 Connector"
+              },
+              {
+                "id": "IPC-L08-OP060-MES-GATE",
+                "hostname": "IPC-L08-OP060-MES-GATE",
+                "ip": "192.168.10.57",
+                "os": "Debian 12 Bookworm Industrial",
+                "status": "Healthy",
+                "twincat": "MQTT / OPC UA Gateway active",
+                "mes": "Audi Corporate Plant MES Gateway v3"
               }
             ]
           },
           {
-            "id": "STA-LINE-H-60",
-            "name": "Dispensing Station 6",
-            "type": "Dispensing",
-            "team": "Mechanical",
-            "pcs": [
-              {
-                "id": "PC-LINE-H-60-1",
-                "hostname": "PROD-LINE-H-60-PC1",
-                "ip": "10.8.6.11",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-H-60-2",
-                "hostname": "PROD-LINE-H-60-PC2",
-                "ip": "10.8.6.12",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-H-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-H-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "id": "LINE-I",
-        "name": "Sealant Dispensing Line LINE-I",
-        "description": "Automated sealant dispensing line line-i",
-        "stations": [
+            "id": "L08-OP070",
+            "name": "L08-OP070 \u2013 ADAS Radar & LiDAR Target Array Aligner",
+            "type": "FasteningStation",
+            "technology": "Test",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP070",
+            "pcs": []
+          },
           {
-            "id": "STA-LINE-I-10",
-            "name": "Mechanical Station 1",
-            "type": "Mechanical",
-            "team": "Test",
+            "id": "L08-OP080",
+            "name": "L08-OP080 \u2013 All-Wheel Drive Roll Dynamometer 150kW",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP080",
             "pcs": [
               {
-                "id": "PC-LINE-I-10-1",
-                "hostname": "PROD-LINE-I-10-PC1",
-                "ip": "10.9.1.11",
-                "os": "Windows 10 IoT",
+                "id": "IPC-L08-ROB-ALPHA",
+                "hostname": "IPC-L08-ROB-ALPHA",
+                "ip": "192.168.10.53",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-I-10-2",
-                "hostname": "PROD-LINE-I-10-PC2",
-                "ip": "10.9.1.12",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L08-ROB-BETA",
+                "hostname": "IPC-L08-ROB-BETA",
+                "ip": "192.168.10.54",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
           },
           {
-            "id": "STA-LINE-I-20",
-            "name": "Packaging Station 2",
-            "type": "Packaging",
-            "team": "Controls",
+            "id": "L08-OP090",
+            "name": "L08-OP090 \u2013 OBD-II High-Speed Ethernet Flash ECU",
+            "type": "RobotCell",
+            "technology": "Robotics",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP090",
             "pcs": [
               {
-                "id": "PC-LINE-I-20-1",
-                "hostname": "PROD-LINE-I-20-PC1",
-                "ip": "10.9.2.11",
-                "os": "Ubuntu 22.04 LTS",
+                "id": "IPC-L08-ROB-ALPHA",
+                "hostname": "IPC-L08-ROB-ALPHA",
+                "ip": "192.168.10.53",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               },
               {
-                "id": "PC-LINE-I-20-2",
-                "hostname": "PROD-LINE-I-20-PC2",
-                "ip": "10.9.2.12",
-                "os": "Windows 11 Pro",
+                "id": "IPC-L08-ROB-BETA",
+                "hostname": "IPC-L08-ROB-BETA",
+                "ip": "192.168.10.54",
+                "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
+                "twincat": "TC3_Line08_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector"
               }
             ]
           },
           {
-            "id": "STA-LINE-I-30",
-            "name": "Dispensing Station 3",
-            "type": "Dispensing",
-            "team": "Dispensing",
-            "pcs": [
-              {
-                "id": "PC-LINE-I-30-1",
-                "hostname": "PROD-LINE-I-30-PC1",
-                "ip": "10.9.3.11",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-I-30-2",
-                "hostname": "PROD-LINE-I-30-PC2",
-                "ip": "10.9.3.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
+            "id": "L08-OP100",
+            "name": "L08-OP100 \u2013 Underbody Acoustic Ultrasonic Sniffer",
+            "type": "VisionInspection",
+            "technology": "Test",
+            "team": "Controls Engineering (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP100",
+            "pcs": []
           },
           {
-            "id": "STA-LINE-I-40",
-            "name": "Test Station 4",
-            "type": "Test",
-            "team": "Test",
-            "pcs": [
-              {
-                "id": "PC-LINE-I-40-1",
-                "hostname": "PROD-LINE-I-40-PC1",
-                "ip": "10.9.4.11",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-I-40-2",
-                "hostname": "PROD-LINE-I-40-PC2",
-                "ip": "10.9.4.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
+            "id": "L08-OP110",
+            "name": "L08-OP110 \u2013 Monsoon Water Ingress Leak Test Booth",
+            "type": "EOLTester",
+            "technology": "Test",
+            "team": "Platform Operations (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP110",
+            "pcs": []
           },
           {
-            "id": "STA-LINE-I-50",
-            "name": "Screwing Station 5",
-            "type": "Screwing",
-            "team": "Dispensing",
-            "pcs": [
-              {
-                "id": "PC-LINE-I-50-1",
-                "hostname": "PROD-LINE-I-50-PC1",
-                "ip": "10.9.5.11",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-I-50-2",
-                "hostname": "PROD-LINE-I-50-PC2",
-                "ip": "10.9.5.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Atlas-Copco-Controller",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "ToolModel": "Tensor STR"
-                    }
-                  }
-                ]
-              }
-            ]
+            "id": "L08-OP120",
+            "name": "L08-OP120 \u2013 Hot Air Blow-Off & Drying Tunnel Bot",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP120",
+            "pcs": []
           },
           {
-            "id": "STA-LINE-I-60",
-            "name": "Test Station 6",
-            "type": "Test",
-            "team": "Screwing",
-            "pcs": [
-              {
-                "id": "PC-LINE-I-60-1",
-                "hostname": "PROD-LINE-I-60-PC1",
-                "ip": "10.9.6.11",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-I-60-2",
-                "hostname": "PROD-LINE-I-60-PC2",
-                "ip": "10.9.6.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-I-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-I-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "id": "LINE-J",
-        "name": "Final Assembly Line LINE-J",
-        "description": "Automated final assembly line line-j",
-        "stations": [
-          {
-            "id": "STA-LINE-J-10",
-            "name": "Test Station 1",
-            "type": "Test",
-            "team": "Screwing",
-            "pcs": [
-              {
-                "id": "PC-LINE-J-10-1",
-                "hostname": "PROD-LINE-J-10-PC1",
-                "ip": "10.10.1.11",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-J-10-2",
-                "hostname": "PROD-LINE-J-10-PC2",
-                "ip": "10.10.1.12",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-10",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "STA-LINE-J-20",
-            "name": "Dispensing Station 2",
-            "type": "Dispensing",
-            "team": "Mechanical",
-            "pcs": [
-              {
-                "id": "PC-LINE-J-20-1",
-                "hostname": "PROD-LINE-J-20-PC1",
-                "ip": "10.10.2.11",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-J-20-2",
-                "hostname": "PROD-LINE-J-20-PC2",
-                "ip": "10.10.2.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-20",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "STA-LINE-J-30",
-            "name": "Dispensing Station 3",
-            "type": "Dispensing",
-            "team": "Controls",
-            "pcs": [
-              {
-                "id": "PC-LINE-J-30-1",
-                "hostname": "PROD-LINE-J-30-PC1",
-                "ip": "10.10.3.11",
-                "os": "Windows 11 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-J-30-2",
-                "hostname": "PROD-LINE-J-30-PC2",
-                "ip": "10.10.3.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-30",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "STA-LINE-J-40",
-            "name": "Dispensing Station 4",
-            "type": "Dispensing",
-            "team": "Test",
-            "pcs": [
-              {
-                "id": "PC-LINE-J-40-1",
-                "hostname": "PROD-LINE-J-40-PC1",
-                "ip": "10.10.4.11",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-J-40-2",
-                "hostname": "PROD-LINE-J-40-PC2",
-                "ip": "10.10.4.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-40",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "STA-LINE-J-50",
-            "name": "Vision Station 5",
-            "type": "Vision",
-            "team": "Dispensing",
-            "pcs": [
-              {
-                "id": "PC-LINE-J-50-1",
-                "hostname": "PROD-LINE-J-50-PC1",
-                "ip": "10.10.5.11",
-                "os": "Ubuntu 22.04 LTS",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-J-50-2",
-                "hostname": "PROD-LINE-J-50-PC2",
-                "ip": "10.10.5.12",
-                "os": "Windows 10 Pro",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-50",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  },
-                  {
-                    "name": "Cognex-Camera",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Sensor": "12MP",
-                      "Interface": "GigE"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "STA-LINE-J-60",
-            "name": "Test Station 6",
-            "type": "Test",
-            "team": "Vision",
-            "pcs": [
-              {
-                "id": "PC-LINE-J-60-1",
-                "hostname": "PROD-LINE-J-60-PC1",
-                "ip": "10.10.6.11",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              },
-              {
-                "id": "PC-LINE-J-60-2",
-                "hostname": "PROD-LINE-J-60-PC2",
-                "ip": "10.10.6.12",
-                "os": "Windows 10 IoT",
-                "status": "Healthy",
-                "components": [
-                  {
-                    "name": "PLC-LINE-J-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Model": "Siemens S7-1500",
-                      "Firmware": "v2.8"
-                    }
-                  },
-                  {
-                    "name": "HMI-LINE-J-60",
-                    "type": "HardwareComponent",
-                    "metadata": {
-                      "Resolution": "1920x1080"
-                    }
-                  }
-                ]
-              }
-            ]
+            "id": "L08-OP130",
+            "name": "L08-OP130 \u2013 Final Shipping Factory Release Gate",
+            "type": "ConveyorTransfer",
+            "technology": "Test",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP130",
+            "pcs": []
           }
         ]
       }

@@ -17,78 +17,78 @@ import {
 describe('Enterprise Plant Dataset Loader Suite', () => {
   it('loads canonical dataset with plant metadata', () => {
     const meta = getPlantMetadata()
-    expect(meta.plantName).toBe('Smart Factory Giga-01')
+    expect(meta.plantName).toBe('Smart Factory Giga-01 (AI Synthetic Facility)')
     expect(meta.plantCode).toBe('SF-GIGA-01')
-    expect(meta.domain).toBe('factory.corp')
+    expect(meta.domain).toBe('fake-factory.internal')
     expect(meta.entraTenantId).toBe('72f988bf-86f1-41af-91ab-2d7cd011db47')
   })
 
   it('loads predefined enterprise organizations', () => {
     const orgs = getPlantOrganizations()
-    expect(orgs.length).toBeGreaterThanOrEqual(4)
-    const line06 = orgs.find(o => o.slug === 'line-06-battery-module-line')
+    expect(orgs.length).toBeGreaterThanOrEqual(16)
+    const line06 = orgs.find(o => o.slug.includes('line-06'))
     expect(line06).toBeDefined()
     expect(line06?.name).toContain('Line 06')
   })
 
   it('loads directory users with credentials, roles, and group memberships', () => {
     const users = getPlantUsers()
-    expect(users.length).toBeGreaterThanOrEqual(8)
+    expect(users.length).toBe(60)
 
-    const sally = users.find(u => u.name === 'Sally Vance')
-    expect(sally).toBeDefined()
-    expect(sally?.email).toBe('sally.vance@factory.corp')
-    expect(sally?.securityGroupIds).toContain('CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp')
+    const synth1 = users.find(u => u.name.includes('Synthetica Botman'))
+    expect(synth1).toBeDefined()
+    expect(synth1?.email).toBe('synthetica.botman.ai@fake-factory.internal')
+    expect(synth1?.securityGroupIds).toContain('CN=SG-Line01-Controls,OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp')
 
-    const orwell = users.find(u => u.name === 'George Orwell')
-    expect(orwell).toBeDefined()
-    expect(orwell?.securityGroupIds).toContain('CN=OT-Maintenance-Technicians,OU=Groups,DC=factory,DC=corp')
+    const synth2 = users.find(u => u.name.includes('Robo McControlsFace'))
+    expect(synth2).toBeDefined()
+    expect(synth2?.securityGroupIds).toContain('CN=SG-Line01-Controls,OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp')
   })
 
   it('loads client PCs with rich CMI / WMI hardware specifications', () => {
     const pcs = getPlantClientPcs()
-    expect(pcs.length).toBeGreaterThanOrEqual(10)
+    expect(pcs.length).toBe(56)
 
-    const rob01 = pcs.find(p => p.hostname === 'CPC-L06-ROB-01')
+    const rob01 = pcs.find(p => p.hostname === 'IPC-L06-ROB-ALPHA')
     expect(rob01).toBeDefined()
     expect(rob01?.cmiHardware.cpu.NumberOfCores).toBe(8)
-    expect(rob01?.cmiHardware.bios.SerialNumber).toBe('BIOS-L06-ROB-01')
+    expect(rob01?.cmiHardware.bios.SerialNumber).toBe('BIOS-IPC-L06-ROB-ALPHA')
     expect(rob01?.cmiHardware.os.Caption).toContain('Windows 10 IoT')
 
-    const vis01 = pcs.find(p => p.hostname === 'CPC-L09-VIS-01')
-    expect(vis01).toBeDefined()
-    expect(vis01?.cmiHardware.computerSystem.Manufacturer).toContain('Advantech')
-    expect(vis01?.cmiHardware.computerSystem.Model).toContain('MIC-770')
+    const ded01 = pcs.find(p => p.hostname === 'IPC-L01-OP030-DEDICATED')
+    expect(ded01).toBeDefined()
+    expect(ded01?.cmiHardware.computerSystem.Manufacturer).toContain('Beckhoff')
+    expect(ded01?.cmiHardware.computerSystem.Model).toContain('C6030')
   })
 
   it('loads active directory OUs partitioned by VLAN', () => {
     const ous = getPlantActiveDirectoryOUs()
-    expect(ous.length).toBeGreaterThanOrEqual(6)
+    expect(ous.length).toBeGreaterThanOrEqual(8)
     const vlan10 = ous.find(o => o.vlanId === 10)
     expect(vlan10?.name).toBe('Robotics')
-    expect(vlan10?.candidateHostnames).toContain('CPC-L06-ROB-01')
+    expect(vlan10?.candidateHostnames).toContain('IPC-L06-ROB-ALPHA')
   })
 })
 
 describe('Better-Auth & Entra ID Security Group Org Governance Suite', () => {
   it('converts organization names to URL-safe kebab-case slugs', () => {
     expect(slugify('Factory Operations')).toBe('factory-operations')
-    expect(slugify('Line 06 – Battery Module Line')).toBe('line-06-battery-module-line')
-    expect(slugify('Line 09 – Optical Quality Inspection')).toBe('line-09-optical-quality-inspection')
+    expect(slugify('Line 01 – Synthetic Audi E-Tron Module Line')).toBe('line-01-synthetic-audi-e-tron-module-line')
+    expect(slugify('Platform Operations (Synthetic AI Guild)')).toBe('platform-operations-synthetic-ai-guild')
   })
 
   it('evaluates security group claims and maps to tenant organizations and roles', () => {
-    // Sally Vance's group
-    const evalSally = evaluateSecurityGroupOrgMapping([
-      'CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp',
+    // Line 01 Controls Engineers
+    const evalControls = evaluateSecurityGroupOrgMapping([
+      'CN=SG-Line01-Controls,OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp',
     ])
-    expect(evalSally.matchedGroups.length).toBe(1)
-    expect(evalSally.matchedGroups[0].displayName).toBe('On-Prem Controls Engineers')
-    expect(evalSally.matchedGroups[0].mappedRole).toBe('controls_engineer')
-    expect(evalSally.targetOrganizations.length).toBe(1)
-    expect(evalSally.targetOrganizations[0].name).toBe('Line 06 – Battery Module Line')
-    expect(evalSally.targetOrganizations[0].role).toBe('admin')
-    expect(evalSally.suggestedActiveOrganization).toBe('line-06-battery-module-line')
+    expect(evalControls.matchedGroups.length).toBe(1)
+    expect(evalControls.matchedGroups[0].displayName).toBe('Line 01 Controls Engineers')
+    expect(evalControls.matchedGroups[0].mappedRole).toBe('controls_engineer')
+    expect(evalControls.targetOrganizations.length).toBe(1)
+    expect(evalControls.targetOrganizations[0].name).toContain('Line 01')
+    expect(evalControls.targetOrganizations[0].role).toBe('admin')
+    expect(evalControls.suggestedActiveOrganization).toContain('line-01')
 
     // Root Admin group
     const evalAdmin = evaluateSecurityGroupOrgMapping([
@@ -96,20 +96,20 @@ describe('Better-Auth & Entra ID Security Group Org Governance Suite', () => {
     ])
     expect(evalAdmin.matchedGroups.length).toBe(1)
     expect(evalAdmin.matchedGroups[0].mappedRole).toBe('system_admin')
-    expect(evalAdmin.targetOrganizations[0].name).toBe('Factory Operations')
+    expect(evalAdmin.targetOrganizations[0].name).toContain('Platform Operations')
     expect(evalAdmin.targetOrganizations[0].role).toBe('owner')
   })
 
   it('resolves multiple groups into compound organization memberships with highest privileges', () => {
     const evalMulti = evaluateSecurityGroupOrgMapping([
-      'CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp',
-      'CN=Facility-Shift-Leaders,OU=Groups,DC=factory,DC=corp',
+      'CN=SG-Line01-Controls,OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp',
+      'CN=SG-Line02-Assembly,OU=AudiLine02,OU=ProductionLines,DC=factory,DC=corp',
     ])
     expect(evalMulti.matchedGroups.length).toBe(2)
     expect(evalMulti.targetOrganizations.length).toBe(2)
     const orgNames = evalMulti.targetOrganizations.map(o => o.name)
-    expect(orgNames).toContain('Line 06 – Battery Module Line')
-    expect(orgNames).toContain('Factory Operations')
+    expect(orgNames.some(n => n.includes('Line 01'))).toBe(true)
+    expect(orgNames.some(n => n.includes('Line 02'))).toBe(true)
   })
 
   it('returns graceful empty result for unknown directory group claims', () => {
@@ -123,13 +123,13 @@ describe('Better-Auth & Entra ID Security Group Org Governance Suite', () => {
   })
 
   it('runs syncUserSecurityGroupsToOrganizations and yields enrolled organizations', async () => {
-    const syncRes = await syncUserSecurityGroupsToOrganizations('usr-sally-01', [
-      'CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp',
+    const syncRes = await syncUserSecurityGroupsToOrganizations('usr-synth-01', [
+      'CN=SG-Line01-Controls,OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp',
     ])
-    expect(syncRes.userId).toBe('usr-sally-01')
-    expect(syncRes.matchedGroups).toContain('CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp')
+    expect(syncRes.userId).toBe('usr-synth-01')
+    expect(syncRes.matchedGroups).toContain('CN=SG-Line01-Controls,OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp')
     expect(syncRes.enrolledOrganizations.length).toBe(1)
-    expect(syncRes.enrolledOrganizations[0].organizationSlug).toBe('line-06-battery-module-line')
+    expect(syncRes.enrolledOrganizations[0].organizationSlug).toContain('line-01')
     expect(syncRes.activeOrganizationId).toBeDefined()
   })
 })

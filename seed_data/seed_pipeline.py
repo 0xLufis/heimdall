@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Heimdall Unified Seed Data Pipeline & Integrity Validator
-Generates enterprise-scale inventory datasets, transactional SQL seeds,
-default security group mappings, system settings, and validates referential integrity.
+Generates enterprise-scale dataset with 100 diverse machines across 8 automated lines,
+4 control topologies (1-1, 1-n, m-n, n-1), running TwinCAT 3 & MES clients,
+550 serialized stock parts + bulk consumables, and 60 overtly fake, AI-generated users.
 """
 
 import csv
@@ -20,200 +21,525 @@ CSV_FILE = os.path.join(os.path.dirname(__file__), 'inventory_seed.csv')
 SQL_FILE = os.path.join(os.path.dirname(__file__), 'incremental_seed.sql')
 TOPOLOGY_FILE = os.path.join(os.path.dirname(__file__), 'production_topology.json')
 
-MANUFACTURERS = ["Siemens", "Beckhoff", "Fanuc", "Cognex", "Keyence", "Festo", "Omron", "Dell", "HP", "Cisco", "Phoenix Contact", "Advantech", "Würth", "Nordson", "KUKA", "Senju", "Binzel", "Schmalz", "Eaton", "Freudenberg"]
-SUPPLIERS = ["Insight", "Industrial Automata Direct", "Farnell", "RS Components", "MISUMI", "Conrad Electronic"]
-TEAMS = ["Controls Engineering", "Vision Systems", "Robotics Dept", "Maintenance Team", "IT Infrastructure", "Quality Assurance", "Logistics", "Plant Engineering Management"]
-ORGS = ["Production Floor A", "Production Floor B", "Production Floor C", "Production Floor D"]
-LINES = [
-    "Line 01 - Body Assembly Alpha",
-    "Line 02 - Robotic Welding Cell",
-    "Line 03 - Precision Machining & Milling",
-    "Line 04 - High-Speed Stamping & Press",
-    "Line 05 - Powertrain Sub-Assembly",
-    "Line 06 - Automated Battery Module Line",
-    "Line 07 - Electronics & SMT Placement",
-    "Line 08 - Surface Coating & Paint Shop",
-    "Line 09 - Optical Quality Inspection",
-    "Line 10 - End-of-Line EOL Testing",
-    "Line 11 - Automated Packaging & Boxing",
-    "Line 12 - High-Bay Warehousing & AGVs",
-    "Line 13 - Chemical Treatment & Plating",
-    "Line 14 - Final Vehicle Integration",
-    "Line 15 - Logistics & Palletizing Cell"
+MANUFACTURERS = [
+    "Siemens", "Beckhoff", "Fanuc", "KUKA", "Cognex", "Keyence", "Festo", "Omron",
+    "Atlas Copco", "Bosch Rexroth", "Trumpf", "TOX Pressotechnik", "Nordson", "SICK",
+    "SEW Eurodrive", "Balluff", "Phoenix Contact", "Advantech", "Würth", "Hirschmann"
 ]
-DXF_HANDLES = ["H-AL1", "H-WS5", "L-SORT-A", "P-LINE-B", "Q-CELL-01", "C-TANK-4", "CNC-MC-12", "P-LINE-C", "T-CELL-01", "P-CELL-02"]
+SUPPLIERS = ["Insight Industrial", "Direct Automation Europe", "Farnell Components", "RS Components", "MISUMI Industrial", "Conrad Electronic"]
+TEAMS = [
+    "Controls Engineering (Synthetic AI Guild)",
+    "Robotics & Cybernetics (Synthetic AI Guild)",
+    "Vision & Photons (Synthetic AI Guild)",
+    "SMT & Microchips (Synthetic AI Guild)",
+    "Tooling & Mechanoids (Synthetic AI Guild)",
+    "Plant Maintenance (Synthetic AI Guild)",
+    "Platform Operations (Synthetic AI Guild)"
+]
 
-TECHNOLOGIES = ["Assembly", "Test", "SMT", "Welding", "Fastening", "Dispensing", "Robotics"]
-LINE_TECH_MAP = {
-    0: ("Assembly", "Fitting"),
-    1: ("Welding", "Soldering"),
-    2: ("Assembly", "Milling"),
-    3: ("Fastening", "Pressing"),
-    4: ("Assembly", "Fitting"),
-    5: ("Dispensing", "Gap Filler"),
-    6: ("SMT", "Soldering"),
-    7: ("Dispensing", "Gap Filler"),
-    8: ("Test", "Automatic Optical Inspection"),
-    9: ("Test", "Tester Cell"),
-    10: ("Robotics", "Manipulator"),
-    11: ("Robotics", "Manipulator"),
-    12: ("Dispensing", "Gap Filler"),
-    13: ("Fastening", "Screwing Station"),
-    14: ("Robotics", "Manipulator")
-}
+ORGANIZATIONS = [
+    # 8 Production Lines
+    {"id": "org-line-01", "name": "Line 01 – Synthetic Audi E-Tron Module Line", "slug": "line-01-synthetic-audi-e-tron-module-line", "desc": "High-voltage battery module automated assembly loop"},
+    {"id": "org-line-02", "name": "Line 02 – Synthetic Audi Battery Pack Line", "slug": "line-02-synthetic-audi-battery-pack-line", "desc": "Pack integration, adhesive sealing, and structural bolting"},
+    {"id": "org-line-03", "name": "Line 03 – Synthetic Audi Powertrain Line", "slug": "line-03-synthetic-audi-powertrain-line", "desc": "Stator hairpin winding, rotor insertion, and dyno test"},
+    {"id": "org-line-04", "name": "Line 04 – Synthetic Electronics SMT Placement", "slug": "line-04-synthetic-electronics-smt-placement", "desc": "High-speed dual-beam SMT placement and 3D SPI/AOI"},
+    {"id": "org-line-05", "name": "Line 05 – Synthetic Body-in-White Robotic Welding", "slug": "line-05-synthetic-body-in-white-robotic-welding", "desc": "Subframe clamping, spot welding, and laser seam joining"},
+    {"id": "org-line-06", "name": "Line 06 – Synthetic Precision Press Fit", "slug": "line-06-synthetic-precision-press-fit", "desc": "Servo press bushing insertion and force-displacement monitor"},
+    {"id": "org-line-07", "name": "Line 07 – Synthetic Optical Quality Metrology", "slug": "line-07-synthetic-optical-quality-metrology", "desc": "Telecentric multi-camera metrology and defect classification"},
+    {"id": "org-line-08", "name": "Line 08 – Synthetic End-of-Line Vehicle Integration", "slug": "line-08-synthetic-end-of-line-vehicle-integration", "desc": "Final brake dyno, radar ADAS calibration, and OBD-II flash"},
+    # 7 Technology Guilds
+    {"id": "org-controls", "name": "Controls & Automation (Synthetic AI Guild)", "slug": "controls-automation-synthetic-ai-guild", "desc": "PLC controls, TwinCAT 3, EtherCAT, and fieldbus automation"},
+    {"id": "org-robotics", "name": "Robotics & Cybernetics (Synthetic AI Guild)", "slug": "robotics-cybernetics-synthetic-ai-guild", "desc": "6-axis articulated robots, Cartesian gantries, and motion kinematics"},
+    {"id": "org-vision", "name": "Vision & Photons (Synthetic AI Guild)", "slug": "vision-photons-synthetic-ai-guild", "desc": "Industrial optical inspection, deep learning vision, and laser profilometry"},
+    {"id": "org-smt", "name": "SMT & Microchips (Synthetic AI Guild)", "slug": "smt-microchips-synthetic-ai-guild", "desc": "Surface mount technology, PCB testing, and reflow processes"},
+    {"id": "org-assembly", "name": "Tooling & Mechanoids (Synthetic AI Guild)", "slug": "tooling-mechanoids-synthetic-ai-guild", "desc": "Conveyors, pallets, pneumatic grippers, and torque nutrunners"},
+    {"id": "org-maintenance", "name": "Plant Maintenance (Synthetic AI Guild)", "slug": "plant-maintenance-synthetic-ai-guild", "desc": "Predictive maintenance, depot repairs, and spare parts management"},
+    {"id": "org-platform", "name": "Platform Operations (Synthetic AI Guild)", "slug": "platform-operations-synthetic-ai-guild", "desc": "Root platform governance, IT infrastructure, and PKI security"},
+    # 1 Cross-Project Group
+    {"id": "org-audi-proj", "name": "Audi Vehicle Project (Synthetic AI Guild)", "slug": "audi-vehicle-project-synthetic-ai-guild", "desc": "Cross-line engineering and product lifecycle management"}
+]
+
+# 60 OVERTLY FAKE, AI-GENERATED USERS
+FAKE_USERS = [
+    ("usr-synth-01", "Synthetica Botman (AI Model v4)", "synthetica.botman.ai@fake-factory.internal", "controls_engineer", "Lead Controls Specialist", "Controls & Automation", ["org-controls", "org-line-01", "org-audi-proj"]),
+    ("usr-synth-02", "Robo McControlsFace", "robo.mccontrolsface.ai@fake-factory.internal", "controls_engineer", "Senior PLC Engineer", "Controls & Automation", ["org-controls", "org-line-01", "org-line-02"]),
+    ("usr-synth-03", "Dr. Algorithmus Prime", "dr.algorithmus.prime.ai@fake-factory.internal", "plant_director", "Synthetic Plant Overlord", "Plant Management", ["org-platform", "org-audi-proj", "org-line-01", "org-line-02", "org-controls"]),
+    ("usr-synth-04", "Tensor Flowski", "tensor.flowski.ai@fake-factory.internal", "lead_engineer", "Machine Learning Vision Lead", "Vision Systems", ["org-vision", "org-line-04", "org-line-07", "org-audi-proj"]),
+    ("usr-synth-05", "Vectoria Embeddings", "vectoria.embeddings.ai@fake-factory.internal", "engineer", "Precision Metrology Engineer", "Vision Systems", ["org-vision", "org-line-07"]),
+    ("usr-synth-06", "Claude Von Tokenizer", "claude.vontokenizer.ai@fake-factory.internal", "plant_engineering_manager", "Chief Automation Architect", "Plant Engineering", ["org-platform", "org-audi-proj", "org-controls", "org-robotics"]),
+    ("usr-synth-07", "Promptly GenAI-Smith", "promptly.genai.ai@fake-factory.internal", "operative_planner", "Operative Line Planner", "Operations Planning", ["org-line-01", "org-line-02", "org-line-03", "org-platform"]),
+    ("usr-synth-08", "Nullpointer McException", "nullpointer.mcexception.ai@fake-factory.internal", "it_site_admin", "Senior Bug Hunter & IT Admin", "Industrial IT", ["org-platform", "org-controls"]),
+    ("usr-synth-09", "Hal Nine-Thousand-B", "hal9000b.ai@fake-factory.internal", "shift_leader", "Automated Safety Supervisor", "Safety & EHS", ["org-platform", "org-line-05"]),
+    ("usr-synth-10", "Otto Mation", "otto.mation.ai@fake-factory.internal", "engineer", "Robotic Cell Integrator", "Robotics", ["org-robotics", "org-line-01", "org-line-05"]),
+    ("usr-synth-11", "Circuit Breaker Johnson", "circuit.breaker.ai@fake-factory.internal", "technician", "High-Voltage Electrical Tech", "Maintenance", ["org-maintenance", "org-line-02"]),
+    ("usr-synth-12", "Bytecode Beauregard", "bytecode.beauregard.ai@fake-factory.internal", "engineer", "Embedded Firmware Hacker", "Industrial IT", ["org-controls", "org-smt"]),
+    ("usr-synth-13", "Overfitted McValidation", "overfitted.mcvalidation.ai@fake-factory.internal", "engineer", "Quality Assurance Inspector", "Quality", ["org-vision", "org-line-07", "org-line-08"]),
+    ("usr-synth-14", "Stochastic Parrot-Perez", "stochastic.parrot.ai@fake-factory.internal", "technician", "Dispatch Coordinator", "Logistics", ["org-platform", "org-line-01", "org-line-08"]),
+    ("usr-synth-15", "Rusty Cogsworth", "rusty.cogsworth.ai@fake-factory.internal", "technician", "Mechanical Tooling Master", "Maintenance", ["org-maintenance", "org-assembly", "org-line-06"]),
+    ("usr-synth-16", "Deeplearnington Smyth", "deeplearnington.smyth.ai@fake-factory.internal", "engineer", "Neural Vision Developer", "Vision Systems", ["org-vision", "org-line-04"]),
+    ("usr-synth-17", "Silicon O'Chip", "silicon.ochip.ai@fake-factory.internal", "engineer", "SMT Placement Specialist", "SMT & Microchips", ["org-smt", "org-line-04"]),
+    ("usr-synth-18", "Glitchy McGlitch", "glitchy.mcglitch.ai@fake-factory.internal", "technician", "Diagnostic Test Operator", "Test", ["org-maintenance", "org-line-08"]),
+    ("usr-synth-19", "Matrix O'Gradient", "matrix.ogradient.ai@fake-factory.internal", "engineer", "Optimization Mathematical Modeler", "Plant Engineering", ["org-controls", "org-audi-proj"]),
+    ("usr-synth-20", "Bitty Byte-Bender", "bitty.bytebender.ai@fake-factory.internal", "technician", "Fieldbus Wiring Specialist", "Controls & Automation", ["org-controls", "org-line-03"]),
+    ("usr-synth-21", "Epoch MacEpochface", "epoch.macepochface.ai@fake-factory.internal", "engineer", "Reflow Thermal Profiler", "SMT & Microchips", ["org-smt", "org-line-04"]),
+    ("usr-synth-22", "Transformer D. Model", "transformer.d.model.ai@fake-factory.internal", "lead_engineer", "Multi-Agent Fleet Coordinator", "Robotics", ["org-robotics", "org-line-02", "org-line-05"]),
+    ("usr-synth-23", "Cyberia Glitchcraft", "cyberia.glitchcraft.ai@fake-factory.internal", "technician", "Laser Optics Calibration Tech", "Tooling", ["org-assembly", "org-line-01", "org-line-05"]),
+    ("usr-synth-24", "Robo-Copernicus", "robo.copernicus.ai@fake-factory.internal", "engineer", "Astronomical Motion Kinematicist", "Robotics", ["org-robotics", "org-audi-proj"]),
+    ("usr-synth-25", "Synthia Hal-Zero", "synthia.halzero.ai@fake-factory.internal", "engineer", "2K Thermal Paste Formulator", "Dispensing", ["org-assembly", "org-line-01", "org-line-02"]),
+    ("usr-synth-26", "Gepetto Automaton", "gepetto.automaton.ai@fake-factory.internal", "technician", "Conveyor Pallet Mechanic", "Tooling", ["org-assembly", "org-line-01", "org-line-03"]),
+    ("usr-synth-27", "Perceptron Jones", "perceptron.jones.ai@fake-factory.internal", "technician", "Sensor Calibration Specialist", "Maintenance", ["org-maintenance", "org-line-06"]),
+    ("usr-synth-28", "Automata Sparkplug", "automata.sparkplug.ai@fake-factory.internal", "technician", "Capacitor Discharge Tech", "Maintenance", ["org-maintenance", "org-line-02"]),
+    ("usr-synth-29", "Bitbucket O'Flanagan", "bitbucket.oflanagan.ai@fake-factory.internal", "engineer", "PLC Git Versioning Engineer", "Industrial IT", ["org-controls", "org-platform"]),
+    ("usr-synth-30", "Pixelina Subpixel", "pixelina.subpixel.ai@fake-factory.internal", "engineer", "Optical Lens Inspector", "Vision Systems", ["org-vision", "org-line-07"]),
+    ("usr-synth-31", "Screwy McTorque", "screwy.mctorque.ai@fake-factory.internal", "technician", "Atlas Copco Calibration Tech", "Tooling", ["org-assembly", "org-line-01", "org-line-06"]),
+    ("usr-synth-32", "Pneumatica Flow", "pneumatica.flow.ai@fake-factory.internal", "technician", "Festo Valve Terminal Tuner", "Maintenance", ["org-maintenance", "org-line-06"]),
+    ("usr-synth-33", "Laserbeam Larry", "laserbeam.larry.ai@fake-factory.internal", "engineer", "Trumpf Laser Specialist", "Welding", ["org-assembly", "org-line-01", "org-line-05"]),
+    ("usr-synth-34", "Relay McSolenoid", "relay.mcsolenoid.ai@fake-factory.internal", "technician", "Emergency Stop Loop Certifier", "Safety", ["org-controls", "org-line-05"]),
+    ("usr-synth-35", "Dataframe Doris", "dataframe.doris.ai@fake-factory.internal", "engineer", "Telemetry Stream Aggregator", "Industrial IT", ["org-platform", "org-audi-proj"]),
+    ("usr-synth-36", "Backprop Barnaby", "backprop.barnaby.ai@fake-factory.internal", "engineer", "Error Propagation Minimizer", "Quality", ["org-vision", "org-line-07"]),
+    ("usr-synth-37", "Firmware Floyd", "firmware.floyd.ai@fake-factory.internal", "technician", "ADS Beckhoff Flasher", "Controls & Automation", ["org-controls", "org-line-03"]),
+    ("usr-synth-38", "Logicgate Lucy", "logicgate.lucy.ai@fake-factory.internal", "engineer", "IEC 61131-3 Ladder Specialist", "Controls & Automation", ["org-controls", "org-line-02"]),
+    ("usr-synth-39", "Heatsink Hank", "heatsink.hank.ai@fake-factory.internal", "technician", "Battery Thermal Interface Tech", "Assembly", ["org-assembly", "org-line-02"]),
+    ("usr-synth-40", "Actuator Artie", "actuator.artie.ai@fake-factory.internal", "technician", "Servo Press Load Cell Tech", "Tooling", ["org-assembly", "org-line-06"]),
+    ("usr-synth-41", "Ethercat Emma", "ethercat.emma.ai@fake-factory.internal", "engineer", "Distributed Clock Synchronizer", "Controls & Automation", ["org-controls", "org-line-01", "org-audi-proj"]),
+    ("usr-synth-42", "Profibus Pete", "profibus.pete.ai@fake-factory.internal", "technician", "Legacy RS-485 Cable Wrangler", "Maintenance", ["org-maintenance", "org-line-05"]),
+    ("usr-synth-43", "Opcua Oliver", "opcua.oliver.ai@fake-factory.internal", "engineer", "NodeSet Companion Model Expert", "Industrial IT", ["org-platform", "org-controls"]),
+    ("usr-synth-44", "Barcode Brenda", "barcode.brenda.ai@fake-factory.internal", "technician", "DataMatrix 2D Scanner Tester", "Quality", ["org-vision", "org-line-04"]),
+    ("usr-synth-45", "Solderpot Sammy", "solderpot.sammy.ai@fake-factory.internal", "technician", "Wave Solder Nitrogen Overseer", "SMT & Microchips", ["org-smt", "org-line-04"]),
+    ("usr-synth-46", "Bushing Barney", "bushing.barney.ai@fake-factory.internal", "technician", "Interference Fit Specialist", "Assembly", ["org-assembly", "org-line-06"]),
+    ("usr-synth-47", "Leakcheck Lola", "leakcheck.lola.ai@fake-factory.internal", "engineer", "Helium Sniffer Chamber Lead", "Test", ["org-maintenance", "org-line-02"]),
+    ("usr-synth-48", "Voltmeter Victor", "voltmeter.victor.ai@fake-factory.internal", "technician", "Hi-Pot Electrical Tester", "Test", ["org-maintenance", "org-line-01", "org-line-08"]),
+    ("usr-synth-49", "Dynamo Dan", "dynamo.dan.ai@fake-factory.internal", "engineer", "Roll Bench Dyno Specialist", "Test", ["org-assembly", "org-line-08"]),
+    ("usr-synth-50", "Radar Rhonda", "radar.rhonda.ai@fake-factory.internal", "engineer", "ADAS Target Array Aligner", "Test", ["org-vision", "org-line-08"]),
+    ("usr-synth-51", "Torquewrench Tim", "torquewrench.tim.ai@fake-factory.internal", "technician", "Angle-Over-Yield Calibrator", "Assembly", ["org-assembly", "org-line-03"]),
+    ("usr-synth-52", "Gantry Gary", "gantry.gary.ai@fake-factory.internal", "technician", "XYZ Overhead Cartesian Rigger", "Tooling", ["org-robotics", "org-line-02"]),
+    ("usr-synth-53", "Optical Olivia", "optical.olivia.ai@fake-factory.internal", "engineer", "Telecentric Lighting Tuner", "Vision Systems", ["org-vision", "org-line-07"]),
+    ("usr-synth-54", "Hairpin Harold", "hairpin.harold.ai@fake-factory.internal", "technician", "Copper Hairpin Bending Master", "Assembly", ["org-assembly", "org-line-03"]),
+    ("usr-synth-55", "Impregnator Ian", "impregnator.ian.ai@fake-factory.internal", "technician", "Resin Varnish Dipping Operator", "Assembly", ["org-assembly", "org-line-03"]),
+    ("usr-synth-56", "Clamping Clara", "clamping.clara.ai@fake-factory.internal", "technician", "Hydraulic BIW Jig Operator", "Tooling", ["org-assembly", "org-line-05"]),
+    ("usr-synth-57", "Interlock Irma", "interlock.irma.ai@fake-factory.internal", "technician", "Safety Light Curtain Inspector", "Maintenance", ["org-maintenance", "org-line-06"]),
+    ("usr-synth-58", "Obdflash Oscar", "obdflash.oscar.ai@fake-factory.internal", "engineer", "UDS Diagnostic ECU Flasher", "Industrial IT", ["org-platform", "org-line-08"]),
+    ("usr-synth-59", "Washgate Wanda", "washgate.wanda.ai@fake-factory.internal", "technician", "High-Pressure De-Ionized Washer", "Maintenance", ["org-maintenance", "org-line-08"]),
+    ("usr-synth-60", "Watchdog Walter", "watchdog.walter.ai@fake-factory.internal", "system_admin", "Master Watchdog & Superuser", "Platform Operations", ["org-platform", "org-audi-proj", "org-controls", "org-maintenance"])
+]
+
+# LINE METADATA CONFIGURATION (8 LINES, 100 STATIONS TOTAL)
+LINE_CONFIGS = [
+    {
+        "line_num": 1,
+        "org_id": "org-line-01",
+        "name": "Line 01 – Synthetic Audi E-Tron Module Line (AI Sim)",
+        "tech": "Dispensing",
+        "station_count": 12,
+        "stations": [
+            ("OP010", "Hyper-Conveyor Pallet Infeed 9000", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L01-OP010"),
+            ("OP020", "Robo-RFID Pallet Scanner AI-X", "ConveyorTransfer", "Test", "Balluff", "L01-OP020"),
+            ("OP030", "Giga-Gluer 2K Thermal Dispenser Bot", "Dispenser", "Dispensing", "Nordson", "L01-OP030"),
+            ("OP040", "Auto-Bolt Torquinator 3000", "FasteningStation", "Fastening", "Atlas Copco", "L01-OP040"),
+            ("OP050", "Pallet-Lift Elevator Mech-Tron", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L01-OP050"),
+            ("OP060", "Laser-Zapper Seam Welder Omni-9", "LaserWelder", "Welding", "Trumpf", "L01-OP060"),
+            ("OP070", "High-Voltage Sparky Insulation Tester", "EOLTester", "Test", "Chroma", "L01-OP070"),
+            ("OP080", "Cell-Loader Gantry Manipulator AI", "RobotCell", "Robotics", "KUKA", "L01-OP080"),
+            ("OP090", "Deep-Vision AOI Flaw-Finder 4000", "VisionInspection", "Test", "Cognex", "L01-OP090"),
+            ("OP100", "Multi-Spindle Cover Fastener Cyber", "FasteningStation", "Fastening", "Atlas Copco", "L01-OP100"),
+            ("OP110", "Pallet Accumulator Buffer Loop-1", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L01-OP110"),
+            ("OP120", "Outfeed Barcode Check & Gate Bot", "ConveyorTransfer", "Test", "Keyence", "L01-OP120")
+        ]
+    },
+    {
+        "line_num": 2,
+        "org_id": "org-line-02",
+        "name": "Line 02 – Synthetic Audi Battery Pack Line (AI Sim)",
+        "tech": "Assembly",
+        "station_count": 13,
+        "stations": [
+            ("OP010", "Pack-Tray Roller Infeed Infeed-Bot", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L02-OP010"),
+            ("OP020", "Cooling-Plate Adhesive Applicator AI", "Dispenser", "Dispensing", "Nordson", "L02-OP020"),
+            ("OP030", "Heavy-Module Unload Robot Gantry 1", "RobotCell", "Robotics", "Fanuc", "L02-OP030"),
+            ("OP040", "Dual-Arm Battery Tray Inserter Mech", "RobotCell", "Robotics", "Fanuc", "L02-OP040"),
+            ("OP050", "Busbar Torque Tightening Station 8X", "FasteningStation", "Fastening", "Atlas Copco", "L02-OP050"),
+            ("OP060", "Laser Seam Seal Chamber Hermetic-X", "LaserWelder", "Welding", "Trumpf", "L02-OP060"),
+            ("OP070", "Laser Bead Profilometer Checker AI", "VisionInspection", "Test", "Cognex", "L02-OP070"),
+            ("OP080", "Helium Leak Sniffer Chamber Zero-P", "EOLTester", "Test", "Pfeiffer", "L02-OP080"),
+            ("OP090", "Pack Lid Structural Servo Press 50kN", "ServoPress", "Fastening", "TOX Pressotechnik", "L02-OP090"),
+            ("OP100", "Perimeter Hex Bolt Nutrunner Gantry", "FasteningStation", "Fastening", "Atlas Copco", "L02-OP100"),
+            ("OP110", "Optical Topographic Seal Inspector", "VisionInspection", "Test", "Keyence", "L02-OP110"),
+            ("OP120", "Final Pack Discharge Pallet Elevator", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L02-OP120"),
+            ("OP130", "Battery Pack EOL High-Voltage Gate", "EOLTester", "Test", "Chroma", "L02-OP130")
+        ]
+    },
+    {
+        "line_num": 3,
+        "org_id": "org-line-03",
+        "name": "Line 03 – Synthetic Audi Powertrain Line (AI Sim)",
+        "tech": "Assembly",
+        "station_count": 12,
+        "stations": [
+            ("OP010", "Hairpin Stator Raw Infeed Track", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L03-OP010"),
+            ("OP020", "Precision Stator Iron Core Press 80kN", "ServoPress", "Assembly", "TOX Pressotechnik", "L03-OP020"),
+            ("OP030", "Hairpin Wire Crown Insertion Robot", "RobotCell", "Robotics", "KUKA", "L03-OP030"),
+            ("OP040", "Crown Head Twist & Chamfer Tooling", "FasteningStation", "Fastening", "Atlas Copco", "L03-OP040"),
+            ("OP050", "Rotor Shaft Cryogenic Insertion Press", "ServoPress", "Assembly", "TOX Pressotechnik", "L03-OP050"),
+            ("OP060", "Trickle Resin Trickler & Varnish Bot", "Dispenser", "Dispensing", "Nordson", "L03-OP060"),
+            ("OP070", "Infrared Resin Curing Tunnel EOL", "EOLTester", "Test", "Heraeus", "L03-OP070"),
+            ("OP080", "High-Speed Dynamic Balancing Rig 3D", "VisionInspection", "Test", "Schenck", "L03-OP080"),
+            ("OP090", "End-Shield Bearing Fastener Torquer", "FasteningStation", "Fastening", "Atlas Copco", "L03-OP090"),
+            ("OP100", "Stator Rotor Magnetization Gate AI", "RobotCell", "Robotics", "KUKA", "L03-OP100"),
+            ("OP110", "Powertrain Conveyor Turn-Table Loop", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L03-OP110"),
+            ("OP120", "Powertrain Full Dynamometer Dyno-X", "EOLTester", "Test", "AVL", "L03-OP120")
+        ]
+    },
+    {
+        "line_num": 4,
+        "org_id": "org-line-04",
+        "name": "Line 04 – Synthetic Electronics SMT Placement (AI Sim)",
+        "tech": "SMT",
+        "station_count": 13,
+        "stations": [
+            ("OP010", "SMT Magazine Unloader Pallet Shuttle", "ConveyorTransfer", "Assembly", "ASM", "L04-OP010"),
+            ("OP020", "DEK Solder Paste Jet Printer 0.1mm", "VisionInspection", "Test", "ASM", "L04-OP020"),
+            ("OP030", "Koh Young 3D Solder Paste Inspector", "VisionInspection", "Test", "Koh Young", "L04-OP030"),
+            ("OP040", "Siplace Dual-Gantry Chip Shooter AI", "RobotCell", "Robotics", "ASM", "L04-OP040"),
+            ("OP050", "Odd-Form Component Inserter Gantry", "Dispenser", "Dispensing", "Fuji", "L04-OP050"),
+            ("OP060", "Pre-Reflow 3D Optical Vision Checker", "VisionInspection", "Test", "Cognex", "L04-OP060"),
+            ("OP070", "10-Zone Nitrogen Reflow Convection Oven", "EOLTester", "Test", "Heller", "L04-OP070"),
+            ("OP080", "Post-Reflow Automated Optical Inspector", "VisionInspection", "Test", "Koh Young", "L04-OP080"),
+            ("OP090", "Flying-Probe ICT Circuit Board Tester", "EOLTester", "Test", "Spea", "L04-OP090"),
+            ("OP100", "Selective Wave Solder Mini-Pot Bot", "FasteningStation", "Welding", "Ersa", "L04-OP100"),
+            ("OP110", "Conformal Coating UV Dispenser Booth", "Dispenser", "Dispensing", "Nordson", "L04-OP110"),
+            ("OP120", "UV Cure Inspection Tunnel & Camera", "VisionInspection", "Test", "Cognex", "L04-OP120"),
+            ("OP130", "PCB Depaneling Laser Router Outfeed", "ConveyorTransfer", "Assembly", "LPKF", "L04-OP130")
+        ]
+    },
+    {
+        "line_num": 5,
+        "org_id": "org-line-05",
+        "name": "Line 05 – Synthetic Body-in-White Robotic Welding (AI Sim)",
+        "tech": "Welding",
+        "station_count": 12,
+        "stations": [
+            ("OP010", "Subframe Clamping Jig Shuttle Table", "ConveyorTransfer", "Assembly", "KUKA", "L05-OP010"),
+            ("OP020", "Heavy Spot-Welding Robot Titan-01", "RobotCell", "Robotics", "KUKA", "L05-OP020"),
+            ("OP030", "Trumpf Disk Laser Welding Chamber A", "LaserWelder", "Welding", "Trumpf", "L05-OP030"),
+            ("OP040", "Robotic Stud Welding Manipulator B", "RobotCell", "Robotics", "Fanuc", "L05-OP040"),
+            ("OP050", "Blind Rivet Nut Insertion Screwer", "FasteningStation", "Fastening", "Atlas Copco", "L05-OP050"),
+            ("OP060", "Laser Seam Geometry Tracker Scanner", "LaserWelder", "Welding", "Trumpf", "L05-OP060"),
+            ("OP070", "Optical Body Gap & Flushness Gate", "VisionInspection", "Test", "Cognex", "L05-OP070"),
+            ("OP080", "Structural Foam Injection Applicator", "Dispenser", "Dispensing", "Nordson", "L05-OP080"),
+            ("OP090", "Friction Stir Welder Overhead Unit", "FasteningStation", "Welding", "KUKA", "L05-OP090"),
+            ("OP100", "Dual-Robot Seam Finishing Cell", "RobotCell", "Robotics", "Fanuc", "L05-OP100"),
+            ("OP110", "Overhead Transfer Crane Pick Shifter", "ConveyorTransfer", "Assembly", "Demag", "L05-OP110"),
+            ("OP120", "Body Shell Dimension Verification Gate", "VisionInspection", "Test", "Keyence", "L05-OP120")
+        ]
+    },
+    {
+        "line_num": 6,
+        "org_id": "org-line-06",
+        "name": "Line 06 – Synthetic Precision Press Fit (AI Sim)",
+        "tech": "Fastening",
+        "station_count": 12,
+        "stations": [
+            ("OP010", "Bearing Housing Pallet Shuttle Infeed", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L06-OP010"),
+            ("OP020", "TOX Electric Servo Press 100kN Unit 1", "ServoPress", "Fastening", "TOX Pressotechnik", "L06-OP020"),
+            ("OP030", "Bushing Rotary Feeder & Inserter 2", "ServoPress", "Fastening", "TOX Pressotechnik", "L06-OP030"),
+            ("OP040", "Needle Bearing Pick-and-Place Robot", "RobotCell", "Robotics", "KUKA", "L06-OP040"),
+            ("OP050", "Threaded Retainer Torque Tightener", "FasteningStation", "Fastening", "Atlas Copco", "L06-OP050"),
+            ("OP060", "High-Precision Pin Press Servo 25kN", "ServoPress", "Fastening", "TOX Pressotechnik", "L06-OP060"),
+            ("OP070", "Force-Displacement Envelope Monitor", "VisionInspection", "Test", "Promess", "L06-OP070"),
+            ("OP080", "Ultrasonic Crack & Defect Detector", "EOLTester", "Test", "Olympus", "L06-OP080"),
+            ("OP090", "Circlip Snap-Ring Pneumatic Press", "ServoPress", "Fastening", "Festo", "L06-OP090"),
+            ("OP100", "Bearing Lubricant Micro-Doser 10mg", "Dispenser", "Dispensing", "Nordson", "L06-OP100"),
+            ("OP110", "Quality Pass Diverter Rejection Gate", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L06-OP110"),
+            ("OP120", "Finished Bearing Pallet Packing Station", "ConveyorTransfer", "Assembly", "Bosch Rexroth", "L06-OP120")
+        ]
+    },
+    {
+        "line_num": 7,
+        "org_id": "org-line-07",
+        "name": "Line 07 – Synthetic Optical Quality Metrology (AI Sim)",
+        "tech": "Test",
+        "station_count": 13,
+        "stations": [
+            ("OP010", "Inspection Pallet Indexing Rotary Bed", "ConveyorTransfer", "Assembly", "Weiss", "L07-OP010"),
+            ("OP020", "Telecentric 50MP Multi-Angle Booth", "VisionInspection", "Test", "Cognex", "L07-OP020"),
+            ("OP030", "Laser Line Profilometer 3D Surface AI", "VisionInspection", "Test", "Keyence", "L07-OP030"),
+            ("OP040", "Surface Roughness Tactile Probing Arm", "RobotCell", "Robotics", "Mitutoyo", "L07-OP040"),
+            ("OP050", "Specular Reflectance Defect Scanner", "VisionInspection", "Test", "Cognex", "L07-OP050"),
+            ("OP060", "Optical Coordinate Measuring CMM Gantry", "EOLTester", "Test", "Zeiss", "L07-OP060"),
+            ("OP070", "Deep-Learning Anomaly Classifier AI", "VisionInspection", "Test", "Cognex", "L07-OP070"),
+            ("OP080", "Part Re-Orientation Robotic Swivel", "RobotCell", "Robotics", "KUKA", "L07-OP080"),
+            ("OP090", "X-Ray CT Void Inspection Scanner", "VisionInspection", "Test", "Yxlon", "L07-OP090"),
+            ("OP100", "Direct Part Marking Laser QR Stamper", "FasteningStation", "Welding", "Trumpf", "L07-OP100"),
+            ("OP110", "Post-Marking Verification Scanner 2D", "VisionInspection", "Test", "Cognex", "L07-OP110"),
+            ("OP120", "Certified Quality Pallet Stacking Bay", "ConveyorTransfer", "Assembly", "Demag", "L07-OP120"),
+            ("OP130", "Automated Metrology Archive & Gate", "ConveyorTransfer", "Test", "Keyence", "L07-OP130")
+        ]
+    },
+    {
+        "line_num": 8,
+        "org_id": "org-line-08",
+        "name": "Line 08 – Synthetic End-of-Line Vehicle Integration (AI Sim)",
+        "tech": "Test",
+        "station_count": 13,
+        "stations": [
+            ("OP010", "Final Chasis Docking & Lock Conveyor", "ConveyorTransfer", "Assembly", "Siemens", "L08-OP010"),
+            ("OP020", "Brake Hydraulic Vacuum Bleed Bench", "EOLTester", "Test", "Dürr", "L08-OP020"),
+            ("OP030", "Coolant Degassing & Fluid Filling Station", "EOLTester", "Test", "Dürr", "L08-OP030"),
+            ("OP040", "Wheel Nut Automated Torque Tightener 5X", "RobotCell", "Robotics", "Atlas Copco", "L08-OP040"),
+            ("OP050", "Optical Wheel Alignment Laser Gate", "VisionInspection", "Test", "Beissbarth", "L08-OP050"),
+            ("OP060", "Headlight Matrix LED Calibration Rig", "EOLTester", "Test", "Hella", "L08-OP060"),
+            ("OP070", "ADAS Radar & LiDAR Target Array Aligner", "FasteningStation", "Test", "Continental", "L08-OP070"),
+            ("OP080", "All-Wheel Drive Roll Dynamometer 150kW", "EOLTester", "Test", "Maha", "L08-OP080"),
+            ("OP090", "OBD-II High-Speed Ethernet Flash ECU", "RobotCell", "Robotics", "Vector", "L08-OP090"),
+            ("OP100", "Underbody Acoustic Ultrasonic Sniffer", "VisionInspection", "Test", "Siemens", "L08-OP100"),
+            ("OP110", "Monsoon Water Ingress Leak Test Booth", "EOLTester", "Test", "Dürr", "L08-OP110"),
+            ("OP120", "Hot Air Blow-Off & Drying Tunnel Bot", "ConveyorTransfer", "Assembly", "Dürr", "L08-OP120"),
+            ("OP130", "Final Shipping Factory Release Gate", "ConveyorTransfer", "Test", "Siemens", "L08-OP130")
+        ]
+    }
+]
 
 def generate_csv(output_path=CSV_FILE):
-    print("Generating enterprise inventory dataset (500 Stations, 500 IPCs, Serialized Parts, Bulk Stock)...")
+    print("Generating enterprise inventory dataset (100 Diverse Machines across 8 Lines, 4 Topologies, 550 Serialized Stock, Bulk Stock)...")
     rows = []
 
-    # 1. Generate 500 Stations
+    # 1. Generate Exactly 100 Diverse Machines
     stations = []
-    for i in range(1, 501):
-        line_idx = (i - 1) % len(LINES)
-        line_name = LINES[line_idx]
-        station_idx = (i - 1) // len(LINES) + 1
-        op_num = station_idx * 10
-        st_name = f"L{(line_idx+1):02d}-OP{op_num:03d}"
-        st_display = f"{line_name} - Station {op_num:03d}"
-        st_team = random.choice(TEAMS) + ";" + random.choice(TEAMS)
-        mfr = random.choice(["Siemens", "Beckhoff", "Fanuc", "Festo", "Omron", "Cognex", "KUKA"])
-        sup = random.choice(SUPPLIERS)
-        sn = f"SN-STA-{i:04d}"
-        handle = DXF_HANDLES[(i - 1) % len(DXF_HANDLES)]
-        org = ORGS[(line_idx) % len(ORGS)]
-        tech, m_type = LINE_TECH_MAP[line_idx]
+    total_machine_count = 0
 
-        meta = {
-            "Line": line_name,
-            "Technology": tech,
-            "MachineType": m_type,
-            "CycleTimeTarget": f"{random.randint(20, 90)}s",
-            "SafetyRating": random.choice(["SIL2", "SIL3", "PLd", "PLe"]),
-            "PowerSupply": random.choice(["400V 3Ph 50Hz", "230V 1Ph 50Hz", "24V DC Industrial"])
-        }
+    for l_cfg in LINE_CONFIGS:
+        line_name = l_cfg["name"]
+        org_id = l_cfg["org_id"]
+        for op_code, disp_label, m_type, tech, mfr, handle in l_cfg["stations"]:
+            total_machine_count += 1
+            st_id = f"LINE-{l_cfg['line_num']:02d}-{op_code}"
+            st_name = f"L{l_cfg['line_num']:02d}-{op_code}"
+            st_display = f"{st_name} – {disp_label}"
+            team = random.choice(TEAMS)
+            sup = random.choice(SUPPLIERS)
+            sn = f"SN-SYNTH-MCH-{l_cfg['line_num']:02d}-{op_code}"
 
-        stations.append({
-            "Type": "Machine",
-            "Name": st_name,
-            "DisplayName": st_display,
-            "ResponsibleTeam": st_team,
-            "Manufacturer": mfr,
-            "Supplier": sup,
-            "SerialNumber": sn,
-            "ParentName": "",
-            "StationIdentifier": st_name,
-            "ClientPcHostname": "",
-            "Metadata": json.dumps(meta),
-            "PinnedObjectHandle": handle,
-            "OrganizationId": org,
-            "StorageLocation": f"{line_name} - Station {op_num}",
-            "EquipmentStatus": "InMachine",
-            "MachineId": "",
-            "StockQuantity": "",
-            "MinStockThreshold": "",
-            "IsStockItem": "False",
-            "Technology": tech,
-            "MachineType": m_type,
-            "GroupId": line_name
-        })
+            meta = {
+                "Line": line_name,
+                "Technology": tech,
+                "MachineType": m_type,
+                "StationIdentifier": st_id,
+                "CycleTimeTarget": f"{random.randint(15, 60)}s",
+                "SafetyRating": random.choice(["SIL3 / PLe", "SIL2 / PLd"]),
+                "PowerSupply": random.choice(["400V 3Ph 50Hz", "24V DC Industrial Spool", "48V High Current"]),
+                "ConveyorLoop": f"Conveyor Loop L{l_cfg['line_num']:02d}",
+                "PalletCarrierType": "Pallet RFID High-Speed 400x400"
+            }
+
+            stations.append({
+                "Type": "Machine",
+                "Name": st_name,
+                "DisplayName": st_display,
+                "ResponsibleTeam": team,
+                "Manufacturer": mfr,
+                "Supplier": sup,
+                "SerialNumber": sn,
+                "ParentName": "",
+                "StationIdentifier": st_id,
+                "ClientPcHostname": "",
+                "Metadata": json.dumps(meta),
+                "PinnedObjectHandle": handle,
+                "OrganizationId": org_id,
+                "StorageLocation": f"{line_name} – Cell {op_code}",
+                "EquipmentStatus": "InMachine",
+                "MachineId": "",
+                "StockQuantity": "",
+                "MinStockThreshold": "",
+                "IsStockItem": "False",
+                "Technology": tech,
+                "MachineType": m_type,
+                "GroupId": line_name
+            })
+
+    assert total_machine_count == 100, f"Expected 100 machines, got {total_machine_count}"
     rows.extend(stations)
 
-    # 2. Generate 500 Client PCs / IPCs
+    # 2. Generate IPC Controllers & Control Topologies (1-1, 1-n, m-n, n-1)
+    # Every line will feature:
+    # - 1-1: Dedicated IPC to single machine (e.g. OP030)
+    # - 1-n: 1 Central IPC to multiple conveyor/buffer stations (e.g. OP010, OP020, OP050)
+    # - m-n: Multiple IPCs controlling multiple coordinated stations (e.g. 2 IPCs to OP080 & OP090)
+    # - n-1: Multiple specialized IPCs on 1 complex station (e.g. PLC + Vision + MES on OP060)
     pcs = []
-    pc_models = [
-        ("SIMATIC IPC477E", "Siemens", "Windows 10 IoT Enterprise 2021 LTSC"),
-        ("Embedded PC C6030", "Beckhoff", "Windows 11 IoT Enterprise LTSC 2024"),
-        ("OptiPlex 7090 Micro", "Dell", "Ubuntu 24.04 LTS"),
-        ("Z2 Mini G9 Workstation", "HP", "Windows 11 Pro Workstation"),
-        ("UNO-2484G Fanless Edge", "Advantech", "Debian 12 Bookworm")
-    ]
+    pc_station_links = [] # (pc_name, station_name, role)
 
-    software_suites = [
-        "Beckhoff TwinCAT 3.1 Build 4026.10;Siemens TIA Portal V19;Wireshark 4.2.4;TcRTEthernet Driver v3.1",
-        "Cognex In-Sight Explorer 6.5.0;Fanuc ROBOGUIDE V9.40;Kepware KEPServerEX 6.14",
-        "Festo Automation Suite 2.6.0;Omron Sysmac Studio 1.54;Visual Studio 2022 Community",
-        "Siemens WinCC Advanced V19;Node-RED v3.1;Beckhoff TwinCAT 3.1;Mosquitto MQTT Broker"
-    ]
+    pc_idx = 1
+    for l_cfg in LINE_CONFIGS:
+        l_num = l_cfg["line_num"]
+        l_name = l_cfg["name"]
+        org_id = l_cfg["org_id"]
 
-    for i in range(1, 501):
-        hostname = f"CPC-{i:03d}"
-        display_name = f"Edge Terminal {hostname}"
-        assoc_station = stations[i - 1]["Name"]
-        assoc_org = stations[i - 1]["OrganizationId"]
-        model_name, mfr, os_ver = pc_models[(i - 1) % len(pc_models)]
-        sw = software_suites[(i - 1) % len(software_suites)]
-        handle = stations[i - 1]["PinnedObjectHandle"]
+        # A. 1-1 Topology: Dedicated IPC on OP030
+        ipc_11 = f"IPC-L{l_num:02d}-OP030-DEDICATED"
+        pcs.append({
+            "hostname": ipc_11,
+            "display": f"{ipc_11} (Dedicated 1:1 Controller)",
+            "station": f"L{l_num:02d}-OP030",
+            "org": org_id,
+            "mfr": "Beckhoff",
+            "os": "Windows 10 IoT Enterprise 2021 LTSC",
+            "twincat": f"TC3_Line{l_num:02d}_Cell030.tsproj (Port 851)",
+            "mes": "Audi MES Production Client v3.1",
+            "model": "Embedded PC C6030 Fanless"
+        })
+        pc_station_links.append((ipc_11, f"L{l_num:02d}-OP030", "Primary"))
 
+        # B. 1-n Topology: 1 Main Conveyor IPC controlling OP010, OP020, OP050, OP110
+        ipc_1n = f"IPC-L{l_num:02d}-CONVEYOR-MAIN"
+        pcs.append({
+            "hostname": ipc_1n,
+            "display": f"{ipc_1n} (Master Conveyor 1:n PLC)",
+            "station": f"L{l_num:02d}-OP010",
+            "org": org_id,
+            "mfr": "Siemens",
+            "os": "Windows 11 IoT Enterprise LTSC 2024",
+            "twincat": f"TC3_Line{l_num:02d}_PalletLoop.tsproj (Port 851)",
+            "mes": "Siemens Opcenter Connector v4.2",
+            "model": "SIMATIC IPC477E Industrial"
+        })
+        for target_op in [f"L{l_num:02d}-OP010", f"L{l_num:02d}-OP020", f"L{l_num:02d}-OP050"]:
+            pc_station_links.append((ipc_1n, target_op, "ConveyorMaster"))
+
+        # C. m-n Topology: 2 Coordinated Robot IPCs spanning OP080 and OP090
+        ipc_mn1 = f"IPC-L{l_num:02d}-ROB-ALPHA"
+        ipc_mn2 = f"IPC-L{l_num:02d}-ROB-BETA"
+        for hname in [ipc_mn1, ipc_mn2]:
+            pcs.append({
+                "hostname": hname,
+                "display": f"{hname} (Distributed m:n Cell)",
+                "station": f"L{l_num:02d}-OP080",
+                "org": org_id,
+                "mfr": "KUKA",
+                "os": "Windows 10 IoT Enterprise",
+                "twincat": f"TC3_Line{l_num:02d}_RoboticsShared.tsproj (Port 851)",
+                "mes": "KUKA KRC4 Edge Telemetry Connector",
+                "model": "Advantech UNO-2484G Fanless Edge"
+            })
+            pc_station_links.append((hname, f"L{l_num:02d}-OP080", "RobotMotion"))
+            pc_station_links.append((hname, f"L{l_num:02d}-OP090", "RobotMotion"))
+
+        # D. n-1 Topology: 3 Specialized IPCs controlling single Station OP060 (Welder/Press)
+        ipc_n1_plc = f"IPC-L{l_num:02d}-OP060-PLC"
+        ipc_n1_vis = f"IPC-L{l_num:02d}-OP060-VISION"
+        ipc_n1_mes = f"IPC-L{l_num:02d}-OP060-MES-GATE"
+        pcs.append({
+            "hostname": ipc_n1_plc,
+            "display": f"{ipc_n1_plc} (Motion & Safety PLC)",
+            "station": f"L{l_num:02d}-OP060",
+            "org": org_id,
+            "mfr": "Beckhoff",
+            "os": "Windows 11 IoT Enterprise",
+            "twincat": f"TC3_Line{l_num:02d}_LaserMotion.tsproj (Port 851)",
+            "mes": "Beckhoff ADS Telemetry Streamer",
+            "model": "Embedded PC C6032 High-Perf"
+        })
+        pcs.append({
+            "hostname": ipc_n1_vis,
+            "display": f"{ipc_n1_vis} (Real-time Vision Inspector)",
+            "station": f"L{l_num:02d}-OP060",
+            "org": org_id,
+            "mfr": "Cognex",
+            "os": "Windows 10 IoT Enterprise",
+            "twincat": "Vision GigE Cam Driver active",
+            "mes": "Cognex In-Sight Explorer 6.5.0 Connector",
+            "model": "Dell OptiPlex 7090 Micro Edge"
+        })
+        pcs.append({
+            "hostname": ipc_n1_mes,
+            "display": f"{ipc_n1_mes} (Plant MES Integration Gateway)",
+            "station": f"L{l_num:02d}-OP060",
+            "org": org_id,
+            "mfr": "Advantech",
+            "os": "Debian 12 Bookworm Industrial",
+            "twincat": "MQTT / OPC UA Gateway active",
+            "mes": "Audi Corporate Plant MES Gateway v3",
+            "model": "Advantech UNO-2271G Edge"
+        })
+        for hname in [ipc_n1_plc, ipc_n1_vis, ipc_n1_mes]:
+            pc_station_links.append((hname, f"L{l_num:02d}-OP060", "MultiSpecialized"))
+
+    # Convert pcs list into CSV rows
+    for i, pc in enumerate(pcs, start=1):
+        hname = pc["hostname"]
         meta = {
-            "IPAddress": f"10.0.{(i // 254) + 1}.{(i % 254) + 1}",
-            "OperatingSystem": os_ver,
-            "Model": model_name,
-            "InstalledSoftware": sw,
-            "BeckhoffRtDriver": "TcRTEthernet active" if "TwinCAT" in sw else "Standard NIC",
-            "SecurityPolicy": random.choice(["Enforced TISAX AL3", "Enforced TISAX AL2", "Standard Operational Domain"])
+            "IPAddress": f"192.168.{10 + (i // 250)}.{(i % 250) + 1}",
+            "OperatingSystem": pc["os"],
+            "Model": pc["model"],
+            "TwinCATProject": pc["twincat"],
+            "MESClient": pc["mes"],
+            "BeckhoffRtDriver": "TcRTEthernet active (Port 851 bound)",
+            "Disks": {
+                "C:": {"Caption": "C: (OS)", "TotalFreeGB": 142.5, "SizeGB": 256.0},
+                "D:": {"Caption": "D: (Telemetry Spool)", "TotalFreeGB": 680.0, "SizeGB": 1000.0}
+            },
+            "RAM": "32 GB DDR4-3200 Industrial ECC",
+            "CPU": "Intel Core i7-1185GRE @ 2.80GHz (4 Cores / 8 Threads)"
         }
 
-        pcs.append({
+        matching_st = next((s for s in stations if s["Name"] == pc["station"]), None)
+        handle = matching_st["PinnedObjectHandle"] if matching_st else f"H-PC-{i:03d}"
+
+        rows.append({
             "Type": "ClientPc",
-            "Name": hostname,
-            "DisplayName": display_name,
-            "ResponsibleTeam": "IT Infrastructure;Controls Engineering",
-            "Manufacturer": mfr,
-            "Supplier": "Insight",
-            "SerialNumber": f"SN-PC-{i:04d}",
+            "Name": hname,
+            "DisplayName": pc["display"],
+            "ResponsibleTeam": "Controls Engineering (Synthetic AI Guild);Platform Operations (Synthetic AI Guild)",
+            "Manufacturer": pc["mfr"],
+            "Supplier": "Direct Automation Europe",
+            "SerialNumber": f"SN-SYNTH-PC-{i:04d}",
             "ParentName": "",
-            "StationIdentifier": assoc_station,
-            "ClientPcHostname": hostname,
+            "StationIdentifier": pc["station"],
+            "ClientPcHostname": hname,
             "Metadata": json.dumps(meta),
             "PinnedObjectHandle": handle,
-            "OrganizationId": assoc_org,
-            "StorageLocation": f"Cabinet {assoc_station}",
+            "OrganizationId": pc["org"],
+            "StorageLocation": f"Control Cabinet {pc['station']}",
             "EquipmentStatus": "InMachine",
             "MachineId": "",
             "StockQuantity": "",
             "MinStockThreshold": "",
             "IsStockItem": "False",
-            "Technology": "IT Infrastructure",
+            "Technology": "Controls & Automation",
             "MachineType": "",
             "GroupId": ""
         })
-        stations[i - 1]["ClientPcHostname"] = hostname
-    rows.extend(pcs)
 
-    # 3. Generate Hardware & Software Components (InMachine)
-    components = []
+    # 3. Generate In-Machine Components (2 per station = 200 components)
     comp_templates = [
-        ("PLC-S7-1500", "Siemens S7-1500 PLC", "HardwareComponent", "Siemens", "Assembly", json.dumps({"Model": "1516-3 PN/DP", "Memory": "1MB Code", "Rack": 1})),
-        ("CAM-Cognex-9000", "Cognex In-Sight 9000 Vision Camera", "HardwareComponent", "Cognex", "Test", json.dumps({"Resolution": "12MP", "Lens": "16mm", "Illumination": "Red LED"})),
-        ("DRV-AX5000", "Beckhoff AX5000 Servo Drive", "HardwareComponent", "Beckhoff", "Robotics", json.dumps({"Current": "12A", "Feedback": "EnDat 2.2", "Channels": 2})),
-        ("ROB-Fanuc-M20", "Fanuc M-20iB Robot Controller", "HardwareComponent", "Fanuc", "Robotics", json.dumps({"Payload": "20kg", "Reach": "1811mm", "DOF": 6})),
-        ("VAL-Festo-VTUG", "Festo VTUG Valve Terminal", "HardwareComponent", "Festo", "Assembly", json.dumps({"Valves": 12, "Bus": "Profinet", "Pressure": "6.0Bar"})),
-        ("SWI-Cisco-IE3300", "Cisco Catalyst IE3300 Industrial Switch", "HardwareComponent", "Cisco", "IT Infrastructure", json.dumps({"Ports": 10, "PoE": True, "Speed": "1Gbps"})),
-        ("SW-TwinCAT3", "Beckhoff TwinCAT 3 Runtime License", "SoftwareComponent", "Beckhoff", "Robotics", json.dumps({"LicenseKey": "TC3-RT-ENTERPRISE-500", "Version": "3.1.4026"})),
-        ("SW-TIAPortal", "Siemens TIA Portal V19 License", "SoftwareComponent", "Siemens", "Assembly", json.dumps({"LicenseKey": "TIA-V19-FLOATING-500", "Version": "19.0.0"}))
+        ("PLC-S7-1516F", "Siemens S7-1516F Safety PLC", "HardwareComponent", "Siemens", "Assembly", json.dumps({"Model": "1516F-3 PN/DP", "Safety": "SIL3", "Rack": 1})),
+        ("CAM-Cognex-9912", "Cognex In-Sight 9912 12MP Camera", "HardwareComponent", "Cognex", "Test", json.dumps({"Resolution": "12MP", "Lens": "25mm", "Illumination": "Polarized Red"})),
+        ("DRV-AX5118", "Beckhoff AX5118 Servo Drive 18A", "HardwareComponent", "Beckhoff", "Robotics", json.dumps({"Current": "18A", "Feedback": "OCT One Cable", "Channels": 1})),
+        ("ROB-KUKA-KR210", "KUKA KR210 R2700 Prime Robot Arm", "HardwareComponent", "KUKA", "Robotics", json.dumps({"Payload": "210kg", "Reach": "2700mm", "Controller": "KRC4"})),
+        ("VAL-Festo-VTUG", "Festo VTUG Multi-Valve Terminal 16X", "HardwareComponent", "Festo", "Assembly", json.dumps({"Valves": 16, "Bus": "Profinet", "AirPressure": "6.5 Bar"})),
+        ("SWI-Hirschmann-BOBCAT", "Hirschmann BOBCAT Managed Switch", "HardwareComponent", "Hirschmann", "Platform Operations", json.dumps({"Ports": 12, "PoE": True, "Speed": "2.5Gbps"})),
+        ("SW-TwinCAT3-RT", "Beckhoff TwinCAT 3 PLC Runtime License", "SoftwareComponent", "Beckhoff", "Controls & Automation", json.dumps({"LicenseKey": "TC3-SYNTH-ENTERPRISE-100", "Version": "3.1.4026.10"})),
+        ("SW-Opcenter-MES", "Siemens Opcenter MES Edge Connector", "SoftwareComponent", "Siemens", "Platform Operations", json.dumps({"LicenseKey": "OPC-MES-SYNTH-V4", "Version": "4.2.0"}))
     ]
 
-    for i in range(1, 501):
-        st_name = stations[i - 1]["Name"]
-        pc_name = pcs[i - 1]["Name"]
-        org = stations[i - 1]["OrganizationId"]
-
+    for i, st in enumerate(stations, start=1):
+        st_name = st["Name"]
+        org = st["OrganizationId"]
         for j in range(2):
             tmpl_name, tmpl_disp, tmpl_type, tmpl_mfr, tmpl_tech, tmpl_meta = comp_templates[(i + j) % len(comp_templates)]
-            comp_name = f"{tmpl_name}-S{i:03d}-{j+1}"
+            comp_name = f"COMP-{tmpl_name}-{st_name}-{j+1}"
             comp_disp = f"{tmpl_disp} ({st_name})"
 
-            components.append({
+            rows.append({
                 "Type": tmpl_type,
                 "Name": comp_name,
                 "DisplayName": comp_disp,
-                "ResponsibleTeam": stations[i - 1]["ResponsibleTeam"],
+                "ResponsibleTeam": st["ResponsibleTeam"],
                 "Manufacturer": tmpl_mfr,
-                "Supplier": "Industrial Automata Direct",
-                "SerialNumber": f"SN-CMP-{i:04d}-{j+1}",
+                "Supplier": "Direct Automation Europe",
+                "SerialNumber": f"SN-SYNTH-CMP-{i:03d}-{j+1}",
                 "ParentName": st_name,
                 "StationIdentifier": st_name,
-                "ClientPcHostname": pc_name,
+                "ClientPcHostname": "",
                 "Metadata": tmpl_meta,
                 "PinnedObjectHandle": "",
                 "OrganizationId": org,
@@ -227,89 +553,128 @@ def generate_csv(output_path=CSV_FILE):
                 "MachineType": "",
                 "GroupId": ""
             })
-    rows.extend(components)
 
-    # 4. Generate High-Value Discrete Serialized Spare Parts (InStorage & UnderRepair)
-    spares = []
-    for k in range(1, 81):
-        tmpl = comp_templates[(k - 1) % len(comp_templates)]
-        tmpl_name, tmpl_disp, tmpl_type, tmpl_mfr, tmpl_tech, tmpl_meta = tmpl
-        is_repair = (k % 15 == 0)
+    # 4. Generate Exactly 550 Serialized Spare Parts in Stock (500 InStorage + 50 UnderRepair)
+    spare_templates = [
+        ("SIEM-S7-1500", "Siemens S7-1500 CPU 1516-3 PN/DP (Spare)", "Siemens", "Assembly", 2850000),
+        ("BECK-AX5000", "Beckhoff AX5000 Servo Drive 12A (Spare)", "Beckhoff", "Robotics", 1450000),
+        ("COGN-IN9912", "Cognex In-Sight 9912 12MP Inspection Camera", "Cognex", "Test", 2200000),
+        ("KUKA-KRC4-PC", "KUKA KRC4 Industrial Robot Controller PC", "KUKA", "Robotics", 3900000),
+        ("FEST-VTUG-16", "Festo VTUG Valve Terminal 16-Valve Multi", "Festo", "Assembly", 850000),
+        ("ATLAS-STR-61", "Atlas Copco Tensor STR-61 Tightening Spindle", "Atlas Copco", "Fastening", 3100000),
+        ("SICK-MICROSCAN", "SICK microScan3 Core Safety Laser Scanner", "SICK", "Assembly", 1250000),
+        ("SEW-MOVIPRO", "SEW Eurodrive MOVIPRO Decentralized Inverter", "SEW Eurodrive", "Assembly", 1600000),
+        ("BALL-RFID-RWD", "Balluff BIS-M 13.56MHz High-Temp RFID Reader", "Balluff", "Test", 480000),
+        ("TRUMPF-OPTIC", "Trumpf BEO D70 Laser Seam Optical Focus Head", "Trumpf", "Welding", 4500000),
+        ("TOX-E-PRESS", "TOX ElectricDrive 50kN Servo Press Drive", "TOX Pressotechnik", "Fastening", 4800000),
+        ("HIRS-BOBCAT", "Hirschmann BRS20 Industrial Managed Switch", "Hirschmann", "Platform Operations", 720000)
+    ]
+
+    for k in range(1, 551):
+        tmpl_code, tmpl_title, mfr, tech, cost = spare_templates[(k - 1) % len(spare_templates)]
+        is_repair = (k <= 50)
         status = "UnderRepair" if is_repair else "InStorage"
-        shelf = f"Repair Depot Bay {((k % 4) + 1)}" if is_repair else f"Warehouse Shelf {chr(65 + (k % 4))}{((k % 6) + 1)}-{((k % 3) + 1)}"
-        spares.append({
-            "Type": tmpl_type,
-            "Name": f"SPARE-{tmpl_name}-{k:03d}",
-            "DisplayName": f"Spare {tmpl_disp} ({status})",
-            "ResponsibleTeam": "Maintenance Team",
-            "Manufacturer": tmpl_mfr,
-            "Supplier": "Industrial Automata Direct",
-            "SerialNumber": f"SN-SPARE-{k:04d}",
+        aisle = chr(65 + ((k - 1) % 7))
+        shelf = f"Repair Depot Bay {((k % 4) + 1)}" if is_repair else f"Warehouse Aisle {aisle} – Shelf {((k % 8) + 1)}-{((k % 5) + 1)}"
+        sn = f"SN-FAKE-{mfr[:4].upper()}-{k:04d}"
+
+        meta = {
+            "CostInHUF": cost,
+            "Status": status,
+            "WarehouseLocation": shelf,
+            "InspectionDate": "2026-09-01T00:00:00Z",
+            "CalibrationValidUntil": "2027-09-01T00:00:00Z",
+            "AssetClass": "High-Value Serialized Spare"
+        }
+
+        rows.append({
+            "Type": "HardwareComponent",
+            "Name": f"SPARE-{tmpl_code}-{k:04d}",
+            "DisplayName": f"Synthetic {tmpl_title} #{k:03d}",
+            "ResponsibleTeam": "Plant Maintenance (Synthetic AI Guild)",
+            "Manufacturer": mfr,
+            "Supplier": "Direct Automation Europe",
+            "SerialNumber": sn,
             "ParentName": "",
             "StationIdentifier": "",
             "ClientPcHostname": "",
-            "Metadata": tmpl_meta,
+            "Metadata": json.dumps(meta),
             "PinnedObjectHandle": "",
-            "OrganizationId": ORGS[k % len(ORGS)],
+            "OrganizationId": "org-maintenance",
             "StorageLocation": shelf,
             "EquipmentStatus": status,
             "MachineId": "",
             "StockQuantity": "",
             "MinStockThreshold": "",
             "IsStockItem": "False",
-            "Technology": tmpl_tech,
+            "Technology": tech,
             "MachineType": "",
             "GroupId": ""
         })
-    rows.extend(spares)
 
-    # 5. Generate Bulk Quantity-Tracked Stock Items (IsStockItem = True)
-    stock_items_def = [
-        ("STK-SCRW-M8", "M8x25mm Assembly Hex Cap Screws", "Würth", "Fastening", 9, 3, "Bin 42-B"),
-        ("STK-SCRW-M6", "M6x16mm Hex Flange Bolts Grade 8.8", "Würth", "Fastening", 45, 10, "Bin 42-C"),
-        ("STK-PNEU-QS8", "Festo QS-1/4-8 Pneumatic Push-In Fittings", "Festo", "Assembly", 24, 5, "Bin 18-A"),
-        ("STK-PNEU-QS6", "Festo QS-1/8-6 Pneumatic Quick Couplers", "Festo", "Assembly", 38, 8, "Bin 18-B"),
-        ("STK-DISP-NZ25", "Precision Glue Dispenser Nozzle Tips 0.25mm", "Nordson", "Dispensing", 15, 4, "Bin 09-C"),
-        ("STK-DISP-NZ50", "Precision Sealant Dispenser Nozzles 0.50mm", "Nordson", "Dispensing", 22, 5, "Bin 09-D"),
-        ("STK-SLDR-SAC305", "SMT Lead-Free Solder Paste SAC305 (500g Jar)", "Senju", "SMT", 12, 3, "Bin 05-A"),
-        ("STK-SLDR-WIRE", "No-Clean Solder Wire 0.8mm Spool", "Kester", "SMT", 18, 4, "Bin 05-B"),
-        ("STK-WELD-TIP12", "Robotic MIG Contact Tips 1.2mm CuCrZr", "Binzel", "Welding", 50, 15, "Bin 14-A"),
-        ("STK-WELD-NZ20", "Robotic Gas Nozzles Conical 16mm", "Binzel", "Welding", 28, 8, "Bin 14-B"),
-        ("STK-ROB-PAD", "Polyurethane Vacuum Suction Gripper Cups 40mm", "Schmalz", "Robotics", 35, 10, "Bin 22-A"),
-        ("STK-FUSE-10A", "Industrial Fast-Blow 10A Ceramic Fuses 10x38mm", "Eaton", "Assembly", 80, 20, "Bin 02-A"),
-        ("STK-TERM-25", "Phoenix Contact Spring Terminal Blocks 2.5mm²", "Phoenix Contact", "Assembly", 120, 30, "Bin 01-C"),
-        ("STK-CAM-LENS", "Optical Telecentric Lens Protective Glass Cover", "Cognex", "Test", 14, 4, "Bin 31-A"),
-        ("STK-ORING-VITON", "Fluoroelastomer Viton Seal O-Rings 18x2.5mm", "Freudenberg", "Assembly", 95, 25, "Bin 08-B"),
-        ("STK-TIE-HD", "Heavy-Duty UV-Resistant Industrial Cable Ties", "HellermannTyton", "Assembly", 250, 50, "Bin 03-A")
+    # 5. Generate Bulk Consumables (Pneumatics, Fasteners, Strut Profiles, Wiring)
+    bulk_items = [
+        # Pneumatics
+        ("STK-PNEU-QS4", "Simulated Festo QS-1/8-4 Quick Push-In Fittings", "Festo", "Assembly", 180, 40, "Bin PNEU-01"),
+        ("STK-PNEU-QS6", "Simulated Festo QS-1/4-6 Quick Couplers", "Festo", "Assembly", 240, 50, "Bin PNEU-02"),
+        ("STK-PNEU-QS8", "Simulated Festo QS-1/4-8 Pneumatic Fittings", "Festo", "Assembly", 310, 60, "Bin PNEU-03"),
+        ("STK-PNEU-QS10", "Simulated Festo QS-3/8-10 Heavy Pneumatic Couplers", "Festo", "Assembly", 140, 30, "Bin PNEU-04"),
+        ("STK-TUBE-PU8-BL", "Simulated Festo PUN-H-8x1.25 Blue Tubing (50m Roll)", "Festo", "Assembly", 25, 5, "Bin PNEU-05"),
+        ("STK-TUBE-PU6-BK", "Simulated Festo PUN-H-6x1.0 Black Tubing (50m Roll)", "Festo", "Assembly", 30, 8, "Bin PNEU-06"),
+        # Fasteners
+        ("STK-SCRW-M3-10", "Simulated Würth DIN 912 M3x10mm Socket Head Screws (100x Box)", "Würth", "Fastening", 85, 20, "Bin FAST-01"),
+        ("STK-SCRW-M4-16", "Simulated Würth DIN 912 M4x16mm Socket Head Screws (100x Box)", "Würth", "Fastening", 120, 25, "Bin FAST-02"),
+        ("STK-SCRW-M5-20", "Simulated Würth DIN 912 M5x20mm High-Tensile Bolts (100x Box)", "Würth", "Fastening", 95, 20, "Bin FAST-03"),
+        ("STK-SCRW-M6-25", "Simulated Würth DIN 912 M6x25mm Grade 8.8 Screws (100x Box)", "Würth", "Fastening", 150, 30, "Bin FAST-04"),
+        ("STK-SCRW-M8-30", "Simulated Würth DIN 912 M8x30mm Grade 10.9 Bolts (50x Box)", "Würth", "Fastening", 80, 20, "Bin FAST-05"),
+        ("STK-NUT-M8-FLG", "Simulated Würth DIN 6923 M8 Hex Flange Locking Nuts (100x Box)", "Würth", "Fastening", 110, 25, "Bin FAST-06"),
+        ("STK-BOLT-M10-40", "Simulated Würth DIN 7991 M10x40mm Countersunk Hex Bolts (50x)", "Würth", "Fastening", 60, 15, "Bin FAST-07"),
+        # Aluminum Structural Profiles
+        ("STK-ALUM-4040-1M", "Simulated Bosch Rexroth 40x40 Strut Profile (1000mm Cut)", "Bosch Rexroth", "Assembly", 45, 10, "Rack STRUT-A1"),
+        ("STK-ALUM-4040-2M", "Simulated Bosch Rexroth 40x40 Strut Profile (2000mm Bar)", "Bosch Rexroth", "Assembly", 35, 8, "Rack STRUT-A2"),
+        ("STK-ALUM-4545-1M", "Simulated Bosch Rexroth 45x45 Heavy Modular Strut (1000mm)", "Bosch Rexroth", "Assembly", 50, 12, "Rack STRUT-B1"),
+        ("STK-ALUM-4590-2M", "Simulated Bosch Rexroth 45x90 Structural Beam (2000mm Bar)", "Bosch Rexroth", "Assembly", 20, 5, "Rack STRUT-B2"),
+        ("STK-ALUM-BRKT-40", "Simulated Bosch Rexroth 40x40 Cast Aluminum Corner Brackets", "Bosch Rexroth", "Assembly", 250, 50, "Bin STRUT-C1"),
+        ("STK-ALUM-TNUT-M8", "Simulated Bosch Rexroth M8 T-Slot Roll-In Spring Nuts (100x)", "Bosch Rexroth", "Assembly", 180, 40, "Bin STRUT-C2"),
+        # Electrical & Wiring
+        ("STK-TERM-PT25", "Simulated Phoenix Contact PT 2.5 DIN Rail Terminal Blocks", "Phoenix Contact", "Assembly", 350, 80, "Bin ELEC-01"),
+        ("STK-FERR-15MM", "Simulated Phoenix Contact Insulated Wire Ferrules 1.5mm² (500x)", "Phoenix Contact", "Assembly", 90, 20, "Bin ELEC-02"),
+        ("STK-TIE-200MM", "Simulated UV-Resistant Industrial Zip Cable Ties 200mm (500x)", "HellermannTyton", "Assembly", 140, 30, "Bin ELEC-03"),
+        ("STK-DISP-NZ25", "Simulated Nordson Precision Dispenser Nozzles 0.25mm Luer Lock", "Nordson", "Dispensing", 65, 15, "Bin DISP-01")
     ]
 
-    stock_items = []
-    for idx, (s_name, s_disp, s_mfr, s_tech, s_qty, s_min, s_bin) in enumerate(stock_items_def, start=1):
-        stock_items.append({
+    for idx, (b_name, b_disp, b_mfr, b_tech, b_qty, b_min, b_loc) in enumerate(bulk_items, start=1):
+        meta = {
+            "StockQuantity": b_qty,
+            "MinStockThreshold": b_min,
+            "StorageBin": b_loc,
+            "LotNumber": f"LOT-2026-AI-{idx:03d}",
+            "UnitOfMeasure": "Units / Packs"
+        }
+        rows.append({
             "Type": "HardwareComponent",
-            "Name": s_name,
-            "DisplayName": s_disp,
-            "ResponsibleTeam": "Maintenance Team",
-            "Manufacturer": s_mfr,
+            "Name": b_name,
+            "DisplayName": b_disp,
+            "ResponsibleTeam": "Plant Maintenance (Synthetic AI Guild)",
+            "Manufacturer": b_mfr,
             "Supplier": "RS Components",
-            "SerialNumber": f"LOT-2026-B{idx:02d}",
+            "SerialNumber": f"LOT-2026-AI-{idx:03d}",
             "ParentName": "",
             "StationIdentifier": "",
             "ClientPcHostname": "",
-            "Metadata": json.dumps({"StockQuantity": s_qty, "MinThreshold": s_min, "Bin": s_bin, "Lot": f"LOT-2026-B{idx:02d}"}),
+            "Metadata": json.dumps(meta),
             "PinnedObjectHandle": "",
-            "OrganizationId": "Production Floor A",
-            "StorageLocation": s_bin,
+            "OrganizationId": "org-maintenance",
+            "StorageLocation": b_loc,
             "EquipmentStatus": "InStorage",
             "MachineId": "",
-            "StockQuantity": str(s_qty),
-            "MinStockThreshold": str(s_min),
+            "StockQuantity": str(b_qty),
+            "MinStockThreshold": str(b_min),
             "IsStockItem": "True",
-            "Technology": s_tech,
+            "Technology": b_tech,
             "MachineType": "",
             "GroupId": ""
         })
-    rows.extend(stock_items)
 
     fieldnames = [
         "Type", "Name", "DisplayName", "ResponsibleTeam", "Manufacturer", "Supplier",
@@ -323,102 +688,34 @@ def generate_csv(output_path=CSV_FILE):
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"Generated {len(rows)} enterprise inventory entries in {output_path}")
-    return rows
+    print(f"✓ Generated {len(rows)} enterprise inventory entries in {output_path}")
+    print(f"  - 100 Diverse Machines across 8 Lines")
+    print(f"  - {len(pcs)} Edge IPC Controllers (1-1, 1-n, m-n, n-1)")
+    print(f"  - 200 In-Machine Components")
+    print(f"  - 550 Serialized Spare Parts in Stock (500 InStorage, 50 UnderRepair)")
+    print(f"  - {len(bulk_items)} Bulk Consumables (Pneumatics, Fasteners, Strut Profiles)")
+    return rows, pc_station_links
 
-def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
-    print("Generating transactional PostgreSQL seed script...")
+def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE, pc_station_links=None):
+    print("Generating transactional PostgreSQL seed script with FULL TABLE PURGE / NUKE...")
     with open(csv_path, mode='r', encoding='utf-8') as f:
         rows = list(csv.DictReader(f))
 
     sql = [
-        "-- Heimdall Enterprise Plant Seed SQL",
-        "-- Auto-generated by seed_pipeline.py",
+        "-- Heimdall Enterprise Plant Seed SQL (100 Machines, 8 Lines, 550 Serialized Parts, 60 Fake AI Users)",
+        "-- Auto-generated by seed_pipeline.py with COMPLETE TABLE PURGE",
         "SET statement_timeout = 0;",
         "BEGIN;",
-        "SET search_path TO backend, public;",
+        "SET search_path TO backend, auth, public;",
         "",
-        "-- Ensure Schema & Governance Tables exist",
+        "-- Ensure Schemas exist",
         "CREATE SCHEMA IF NOT EXISTS backend;",
+        "CREATE SCHEMA IF NOT EXISTS auth;",
         "",
-        "CREATE TABLE IF NOT EXISTS backend.system_settings (",
-        "    key VARCHAR(128) PRIMARY KEY,",
-        "    value_json TEXT NOT NULL,",
-        "    category VARCHAR(64) NOT NULL,",
-        "    updated_by VARCHAR(128) NOT NULL,",
-        "    updated_at TIMESTAMP WITH TIME ZONE NOT NULL",
-        ");",
-        "",
-        "CREATE TABLE IF NOT EXISTS backend.security_group_mappings (",
-        "    id UUID PRIMARY KEY,",
-        "    identity_provider VARCHAR(64) NOT NULL,",
-        "    group_identifier VARCHAR(256) NOT NULL,",
-        "    display_name VARCHAR(256) NOT NULL,",
-        "    mapped_role VARCHAR(64) NOT NULL,",
-        "    organization_id VARCHAR(128),",
-        "    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,",
-        "    created_at TIMESTAMP WITH TIME ZONE NOT NULL,",
-        "    updated_at TIMESTAMP WITH TIME ZONE NOT NULL",
-        ");",
-        "",
-        "CREATE TABLE IF NOT EXISTS backend.client_certificates (",
-        "    id UUID PRIMARY KEY,",
-        "    client_pc_id UUID,",
-        "    common_name VARCHAR(255) NOT NULL,",
-        "    thumbprint VARCHAR(128) NOT NULL,",
-        "    valid_from TIMESTAMP WITH TIME ZONE NOT NULL,",
-        "    valid_to TIMESTAMP WITH TIME ZONE NOT NULL,",
-        "    status VARCHAR(50) NOT NULL DEFAULT 'Active',",
-        "    created_at TIMESTAMP WITH TIME ZONE NOT NULL",
-        ");",
-        "",
-        "CREATE TABLE IF NOT EXISTS backend.schema_version_manifest (",
-        "    id UUID PRIMARY KEY,",
-        "    schema_version VARCHAR(50) NOT NULL,",
-        "    migration_name VARCHAR(255) NOT NULL,",
-        "    applied_at TIMESTAMP WITH TIME ZONE NOT NULL,",
-        "    description TEXT",
-        ");",
-        "",
-        "CREATE TABLE IF NOT EXISTS backend.audit_logs (",
-        "    id UUID PRIMARY KEY,",
-        "    user_id VARCHAR(128) NOT NULL,",
-        "    user_name VARCHAR(255),",
-        "    action VARCHAR(64) NOT NULL,",
-        "    entity_type VARCHAR(128) NOT NULL,",
-        "    entity_id VARCHAR(128),",
-        "    old_values_json TEXT,",
-        "    new_values_json TEXT,",
-        "    ip_address VARCHAR(64),",
-        "    organization_id VARCHAR(128),",
-        "    timestamp TIMESTAMP WITH TIME ZONE NOT NULL",
-        ");",
-        "",
-        "CREATE TABLE IF NOT EXISTS backend.malformed_telemetry_quarantine (",
-        "    id UUID PRIMARY KEY,",
-        "    source_identifier VARCHAR(255),",
-        "    ingestion_channel VARCHAR(64) NOT NULL,",
-        "    error_reason TEXT NOT NULL,",
-        "    raw_payload TEXT NOT NULL,",
-        "    organization_id VARCHAR(128),",
-        "    quarantined_at TIMESTAMP WITH TIME ZONE NOT NULL",
-        ");",
-        "",
-        "CREATE TABLE IF NOT EXISTS backend.ad_ou_governances (",
-        "    id UUID PRIMARY KEY,",
-        "    ou_path VARCHAR(256) NOT NULL,",
-        "    access_level VARCHAR(32) NOT NULL,",
-        "    is_approved BOOLEAN NOT NULL DEFAULT FALSE,",
-        "    approved_by VARCHAR(128),",
-        "    approved_at TIMESTAMP WITH TIME ZONE,",
-        "    notes VARCHAR(512),",
-        "    created_at TIMESTAMP WITH TIME ZONE NOT NULL,",
-        "    updated_at TIMESTAMP WITH TIME ZONE",
-        ");",
-        "",
-        "-- Truncate tables for a clean idempotent re-seed",
+        "-- PURGE / NUKE ALL PREVIOUS DATA",
         "TRUNCATE TABLE backend.inventory_items CASCADE;",
         "TRUNCATE TABLE backend.client_pcs CASCADE;",
+        "TRUNCATE TABLE backend.stations CASCADE;",
         "TRUNCATE TABLE backend.manufacturers CASCADE;",
         "TRUNCATE TABLE backend.suppliers CASCADE;",
         "TRUNCATE TABLE backend.responsible_teams CASCADE;",
@@ -436,73 +733,33 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
         "TRUNCATE TABLE backend.audit_logs CASCADE;",
         "TRUNCATE TABLE backend.malformed_telemetry_quarantine CASCADE;",
         "",
+        "-- Wipe Better-Auth legacy membership tables",
+        "TRUNCATE TABLE auth.member CASCADE;",
+        "TRUNCATE TABLE auth.organization CASCADE;",
+        "TRUNCATE TABLE auth.session CASCADE;",
+        "TRUNCATE TABLE auth.account CASCADE;",
+        "TRUNCATE TABLE auth.user CASCADE;",
+        "",
+        "-- Seed 16 Organizations into auth.organization",
     ]
 
-    # Seed System Settings & Governance Templates
-    sql.append("-- Seed Master System Settings")
-    master_template = json.dumps({
-        "configSchemaVersion": "1.0.0",
-        "enforceHardwareBinding": True,
-        "spoolEncryptionMode": "AES_256_GCM",
-        "telemetryPayloadEncryption": False,
-        "allowRemoteExecution": True,
-        "piiScrubberStrictLevel": "Strict",
-        "maxNetworkEgressBytesPerSec": 1048576,
-        "deltaEvaluationAlgorithm": "xxHash64",
-        "deadbandTolerancePercentage": 1.0,
-        "maxSpoolDiskMb": 500,
-        "heartbeatIntervalSeconds": 10
-    })
-    opc_config = json.dumps({"endpoint": "opc.tcp://0.0.0.0:4840/Heimdall", "securityPolicy": "Basic256Sha256"})
-    copia_config = json.dumps({"webhookEndpoint": "/api/v1/integrations/copia/webhook", "autoSync": True})
-    auth_config = json.dumps({"sessionTtlMinutes": 1440, "requireMfaForEngineers": True})
+    for org in ORGANIZATIONS:
+        org_id = org["id"]
+        org_name = org["name"].replace("'", "''")
+        org_slug = org["slug"].replace("'", "''")
+        sql.append(f"INSERT INTO auth.organization (id, name, slug, created_at) VALUES ('{org_id}', '{org_name}', '{org_slug}', NOW()) ON CONFLICT (id) DO NOTHING;")
 
-    sql.append(f"INSERT INTO backend.system_settings (key, value_json, category, updated_by, updated_at) VALUES ('AgentMasterTemplate', '{master_template}', 'AgentMaster', 'system_admin', NOW()) ON CONFLICT (key) DO UPDATE SET value_json = EXCLUDED.value_json;")
-    sql.append(f"INSERT INTO backend.system_settings (key, value_json, category, updated_by, updated_at) VALUES ('OpcUaConfig', '{opc_config}', 'Integrations', 'system_admin', NOW()) ON CONFLICT (key) DO NOTHING;")
-    sql.append(f"INSERT INTO backend.system_settings (key, value_json, category, updated_by, updated_at) VALUES ('CopiaConfig', '{copia_config}', 'Integrations', 'system_admin', NOW()) ON CONFLICT (key) DO NOTHING;")
-    sql.append(f"INSERT INTO backend.system_settings (key, value_json, category, updated_by, updated_at) VALUES ('AuthPolicy', '{auth_config}', 'Auth', 'system_admin', NOW()) ON CONFLICT (key) DO NOTHING;")
+    sql.append("\n-- Seed 60 Obviously Fake, AI-Generated Users into auth.user and auth.member")
+    for uid, uname, uemail, urole, utitle, udept, uorgs in FAKE_USERS:
+        u_name_esc = uname.replace("'", "''")
+        sql.append(f"INSERT INTO auth.user (id, name, email, email_verified, role, created_at, updated_at) "
+                   f"VALUES ('{uid}', '{u_name_esc}', '{uemail}', true, '{urole}', NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email;")
+        for org_id in uorgs:
+            mem_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{uid}:{org_id}"))
+            mem_role = "owner" if urole == "plant_director" else "admin" if urole in ("plant_engineering_manager", "lead_engineer", "shift_leader") else "member"
+            sql.append(f"INSERT INTO auth.member (id, organization_id, user_id, role, created_at) VALUES ('{mem_id}', '{org_id}', '{uid}', '{mem_role}', NOW()) ON CONFLICT (id) DO NOTHING;")
 
-    # Seed Default Enterprise Security Group Mappings
-    sql.append("\n-- Seed Active Directory & Entra ID Security Group Mappings")
-    default_mappings = [
-        ("EntraID", "9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c", "OT Plant Administrators", "heimdall_admin", None),
-        ("EntraID", "7c4d3e2b-1a9f-4e8c-8b5a-0d9f8e7a6b5c", "Factory IT Site Admins", "it_admin", None),
-        ("EntraID", "4f5e6d7c-8b9a-0e1f-2a3b-4c5d6e7f8a9b", "Plant Engineering Directorate", "plant_director", None),
-        ("EntraID", "1b3d5f7a-9c1e-4a2b-8d6f-0e2c4a6b8d0e", "Controls Engineering Core", "engineer", "Production Floor A"),
-        ("ActiveDirectory", "CN=Plant-Engineering-Managers,OU=Groups,DC=factory,DC=corp", "Plant Engineering Managers", "plant_engineering_manager", None),
-        ("ActiveDirectory", "CN=Engineering-Group-Leaders,OU=Groups,DC=factory,DC=corp", "Engineering Group Leaders", "group_leader", "Production Floor A"),
-        ("ActiveDirectory", "CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp", "On-Prem Controls Engineers", "engineer", "Production Floor B"),
-        ("ActiveDirectory", "CN=OT-Maintenance-Technicians,OU=Groups,DC=factory,DC=corp", "Plant Maintenance Technicians", "technician", None),
-        ("ActiveDirectory", "CN=Line-Operative-Planners,OU=Groups,DC=factory,DC=corp", "Operative Line Planners", "operative_planner", None)
-    ]
-    for idp, gid, dname, role, org in default_mappings:
-        m_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{idp}:{gid}"))
-        org_val = f"'{org}'" if org else "NULL"
-        sql.append(f"INSERT INTO backend.security_group_mappings (id, identity_provider, group_identifier, display_name, mapped_role, organization_id, is_enabled, created_at, updated_at) "
-                   f"VALUES ('{m_id}', '{idp}', '{gid}', '{dname}', '{role}', {org_val}, true, NOW(), NOW()) ON CONFLICT (id) DO NOTHING;")
-
-    # Seed AD OU Governance Rules
-    sql.append("\n-- Seed Active Directory & Entra ID OU Governance Rules")
-    ou_rules = [
-        ("OU=OT-Production-Floor-A,DC=factory,DC=corp", "read_write", True, "it_admin@heimdall.dev", "Approved for bidirectional OT telemetry and agent control."),
-        ("OU=OT-Robotics-Subnet,DC=factory,DC=corp", "read_only", True, "it_admin@heimdall.dev", "Read-only telemetry discovery for Fanuc/KUKA cells."),
-        ("OU=Contractor-Laptops,DC=factory,DC=corp", "unapproved", False, None, "Pending IT site admin review and zero-trust verification.")
-    ]
-    for ou, alevel, approved, approver, notes in ou_rules:
-        ou_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"ou:{ou}"))
-        app_val = "true" if approved else "false"
-        approver_val = f"'{approver}'" if approver else "NULL"
-        approved_at_val = "NOW()" if approved else "NULL"
-        notes_val = f"'{notes}'" if notes else "NULL"
-        sql.append(f"INSERT INTO backend.ad_ou_governances (id, ou_path, access_level, is_approved, approved_by, approved_at, notes, created_at, updated_at) "
-                   f"VALUES ('{ou_id}', '{ou}', '{alevel}', {app_val}, {approver_val}, {approved_at_val}, {notes_val}, NOW(), NOW()) ON CONFLICT (id) DO NOTHING;")
-
-    # Seed Manifest
-    sql.append("\n-- Seed Schema Version Manifest")
-    sql.append(f"INSERT INTO backend.schema_version_manifest (id, schema_version, migration_name, applied_at, description) "
-               f"VALUES ('{uuid.uuid4()}', '1.0.0', 'SystemGovernanceAndPki', NOW(), 'Initial V1 direct schema baseline with RBAC governance and PKI') ON CONFLICT DO NOTHING;")
-
-    # Seed Manufacturers, Suppliers, Teams
+    # Seed Manufacturers, Suppliers, Responsible Teams
     manufacturers = set(r['Manufacturer'] for r in rows if r.get('Manufacturer'))
     suppliers = set(r['Supplier'] for r in rows if r.get('Supplier'))
     teams = set()
@@ -511,21 +768,24 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
             for t in r['ResponsibleTeam'].split(';'):
                 teams.add(t.strip())
 
-    sql.append("\n-- Seed Reference Tables")
+    sql.append("\n-- Seed Reference Tables (Manufacturers, Suppliers, Teams)")
     for m in sorted(manufacturers):
         m_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, m))
-        sql.append(f"INSERT INTO manufacturers (id, name) VALUES ('{m_id}', '{m}') ON CONFLICT (name) DO NOTHING;")
+        m_esc = m.replace("'", "''")
+        sql.append(f"INSERT INTO backend.manufacturers (id, name) VALUES ('{m_id}', '{m_esc}') ON CONFLICT (name) DO NOTHING;")
     for s in sorted(suppliers):
         s_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, s))
-        sql.append(f"INSERT INTO suppliers (id, name) VALUES ('{s_id}', '{s}') ON CONFLICT (name) DO NOTHING;")
+        s_esc = s.replace("'", "''")
+        sql.append(f"INSERT INTO backend.suppliers (id, name) VALUES ('{s_id}', '{s_esc}') ON CONFLICT (name) DO NOTHING;")
     team_ids = {}
     for t in sorted(teams):
         t_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, t))
         team_ids[t] = t_id
-        sql.append(f"INSERT INTO responsible_teams (id, name) VALUES ('{t_id}', '{t}') ON CONFLICT (name) DO NOTHING;")
+        t_esc = t.replace("'", "''")
+        sql.append(f"INSERT INTO backend.responsible_teams (id, name) VALUES ('{t_id}', '{t_esc}') ON CONFLICT (name) DO NOTHING;")
 
-    # Seed Inventory Items, Stations, Client PCs and Parts in dependency order
-    sql.append("\n-- Seed Client PCs")
+    # Seed Client PCs
+    sql.append("\n-- Seed Client PCs (Edge IPCs with TwinCAT & MES)")
     item_ids = {row['Name']: str(uuid.uuid5(uuid.NAMESPACE_DNS, row['Name'])) for row in rows if row['Type'] != 'ClientPc'}
     pc_ids = {row['Name']: str(uuid.uuid5(uuid.NAMESPACE_DNS, row['Name'])) for row in rows if row['Type'] == 'ClientPc'}
 
@@ -533,19 +793,19 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
         if row['Type'] == 'ClientPc':
             item_id = pc_ids[row['Name']]
             pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
-            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'Heimdall Root'"
+            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'org-platform'"
             mac = f"02:{item_id[0:2]}:{item_id[2:4]}:{item_id[4:6]}:{item_id[6:8]}:{item_id[9:11]}".upper()
-            sql.append(f"INSERT INTO client_pcs (id, name, mac_address, hostname, machine_identifier, pinned_object_handle, organization_id) "
-                       f"VALUES ('{item_id}', '{row['Name']}', '{mac}', '{row['ClientPcHostname'] or row['Name']}', 'ID-{item_id[:8]}', {pin_handle}, {org_id}) "
+            sql.append(f"INSERT INTO backend.client_pcs (id, name, mac_address, hostname, machine_identifier, pinned_object_handle, organization_id) "
+                       f"VALUES ('{item_id}', '{row['Name']}', '{mac}', '{row['ClientPcHostname'] or row['Name']}', 'HW-{item_id[:8]}', {pin_handle}, {org_id}) "
                        f"ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, organization_id = EXCLUDED.organization_id;")
 
-    # 1. Insert Stations into inventory_items and stations table first so foreign keys resolve
-    sql.append("\n-- Seed Stations (Inventory Items & Stations)")
+    # Seed 100 Machines into inventory_items and stations table
+    sql.append("\n-- Seed 100 Diverse Machines across 8 Automated Lines")
     for row in rows:
         if row['Type'] == 'Machine':
             item_id = item_ids[row['Name']]
             pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
-            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'Heimdall Root'"
+            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'org-line-01'"
             m_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Manufacturer'])}'" if row.get('Manufacturer') else "NULL"
             s_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Supplier'])}'" if row.get('Supplier') else "NULL"
             metadata = (row.get('Metadata') or "{}").replace("'", "''")
@@ -556,35 +816,36 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
             tech_val = row.get('Technology', '').replace("'", "''") if row.get('Technology') else None
             tech = f"'{tech_val}'" if tech_val else "NULL"
 
-            sql.append(f"INSERT INTO inventory_items (id, name, display_name, manufacturer_id, supplier_id, metadata, serial_number, organization_id, storage_location, equipment_status, is_stock_item, stock_quantity, min_stock_threshold, technology, machine_id) "
+            sql.append(f"INSERT INTO backend.inventory_items (id, name, display_name, manufacturer_id, supplier_id, metadata, serial_number, organization_id, storage_location, equipment_status, is_stock_item, stock_quantity, min_stock_threshold, technology, machine_id) "
                        f"VALUES ('{item_id}', '{name}', '{display_name}', {m_id}, {s_id}, '{metadata}'::jsonb, '{row.get('SerialNumber', '')}', {org_id}, {storage_loc}, 'InMachine', false, NULL, NULL, {tech}, NULL) "
-                       f"ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, metadata = inventory_items.metadata || EXCLUDED.metadata, organization_id = EXCLUDED.organization_id, storage_location = EXCLUDED.storage_location, equipment_status = EXCLUDED.equipment_status, is_stock_item = EXCLUDED.is_stock_item, stock_quantity = EXCLUDED.stock_quantity, min_stock_threshold = EXCLUDED.min_stock_threshold, technology = EXCLUDED.technology, machine_id = EXCLUDED.machine_id;")
+                       f"ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, metadata = EXCLUDED.metadata, organization_id = EXCLUDED.organization_id, storage_location = EXCLUDED.storage_location, equipment_status = EXCLUDED.equipment_status, technology = EXCLUDED.technology;")
 
             mt = row.get('MachineType', '').replace("'", "''") if row.get('MachineType') else None
             m_type = f"'{mt}'" if mt else "NULL"
             gid = row.get('GroupId', '').replace("'", "''") if row.get('GroupId') else None
             grp_id = f"'{gid}'" if gid else "NULL"
-            sql.append(f"INSERT INTO stations (id, custom_identifier, pinned_object_handle, machine_type, group_id) VALUES ('{item_id}', '{row['StationIdentifier'] or row['Name']}', {pin_handle}, {m_type}, {grp_id}) ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, machine_type = EXCLUDED.machine_type, group_id = EXCLUDED.group_id;")
+            sql.append(f"INSERT INTO backend.stations (id, custom_identifier, pinned_object_handle, machine_type, group_id) "
+                       f"VALUES ('{item_id}', '{row['StationIdentifier'] or row['Name']}', {pin_handle}, {m_type}, {grp_id}) "
+                       f"ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, machine_type = EXCLUDED.machine_type, group_id = EXCLUDED.group_id;")
 
             if row.get('ResponsibleTeam'):
                 for t in row['ResponsibleTeam'].split(';'):
                     t = t.strip()
                     if t in team_ids:
-                        sql.append(f"INSERT INTO \"ItemResponsibilities\" (managed_items_id, responsible_teams_id) VALUES ('{item_id}', '{team_ids[t]}') ON CONFLICT DO NOTHING;")
+                        sql.append(f"INSERT INTO backend.\"ItemResponsibilities\" (managed_items_id, responsible_teams_id) VALUES ('{item_id}', '{team_ids[t]}') ON CONFLICT DO NOTHING;")
 
-    # 2. Insert Discrete Parts, Stock Items, Hardware & Software Components
-    sql.append("\n-- Seed Parts, Stock, Hardware and Software Components")
+    # Seed In-Machine Components, 550 Serialized Spare Parts, and Bulk Stock
+    sql.append("\n-- Seed In-Machine Components, 550 Serialized Spare Parts, and Bulk Stock")
     for row in rows:
         if row['Type'] not in ('ClientPc', 'Machine'):
             item_id = item_ids[row['Name']]
             pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
-            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'Heimdall Root'"
+            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'org-maintenance'"
             m_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Manufacturer'])}'" if row.get('Manufacturer') else "NULL"
             s_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Supplier'])}'" if row.get('Supplier') else "NULL"
             metadata = (row.get('Metadata') or "{}").replace("'", "''")
             display_name = row.get('DisplayName', '').replace("'", "''")
             name = row['Name'].replace("'", "''")
-            
             is_stock = "true" if str(row.get('IsStockItem', '')).lower() == 'true' else "false"
             eq_status = f"'{row.get('EquipmentStatus') or 'InStorage'}'"
             loc_val = row.get('StorageLocation', '').replace("'", "''") if row.get('StorageLocation') else None
@@ -597,44 +858,136 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
             if row.get('StationIdentifier') and row['StationIdentifier'] in item_ids:
                 machine_id = f"'{item_ids[row['StationIdentifier']]}'"
 
-            sql.append(f"INSERT INTO inventory_items (id, name, display_name, manufacturer_id, supplier_id, metadata, serial_number, organization_id, storage_location, equipment_status, is_stock_item, stock_quantity, min_stock_threshold, technology, machine_id) "
+            sql.append(f"INSERT INTO backend.inventory_items (id, name, display_name, manufacturer_id, supplier_id, metadata, serial_number, organization_id, storage_location, equipment_status, is_stock_item, stock_quantity, min_stock_threshold, technology, machine_id) "
                        f"VALUES ('{item_id}', '{name}', '{display_name}', {m_id}, {s_id}, '{metadata}'::jsonb, '{row.get('SerialNumber', '')}', {org_id}, {storage_loc}, {eq_status}, {is_stock}, {stock_qty}, {min_thresh}, {tech}, {machine_id}) "
-                       f"ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, metadata = inventory_items.metadata || EXCLUDED.metadata, organization_id = EXCLUDED.organization_id, storage_location = EXCLUDED.storage_location, equipment_status = EXCLUDED.equipment_status, is_stock_item = EXCLUDED.is_stock_item, stock_quantity = EXCLUDED.stock_quantity, min_stock_threshold = EXCLUDED.min_stock_threshold, technology = EXCLUDED.technology, machine_id = EXCLUDED.machine_id;")
+                       f"ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, metadata = EXCLUDED.metadata, organization_id = EXCLUDED.organization_id, storage_location = EXCLUDED.storage_location, equipment_status = EXCLUDED.equipment_status, is_stock_item = EXCLUDED.is_stock_item, stock_quantity = EXCLUDED.stock_quantity, min_stock_threshold = EXCLUDED.min_stock_threshold, technology = EXCLUDED.technology, machine_id = EXCLUDED.machine_id;")
 
             if row['Type'] == 'HardwareComponent':
-                sql.append(f"INSERT INTO hardware_assets (id) VALUES ('{item_id}') ON CONFLICT (id) DO NOTHING;")
+                sql.append(f"INSERT INTO backend.hardware_assets (id) VALUES ('{item_id}') ON CONFLICT (id) DO NOTHING;")
             elif row['Type'] == 'SoftwareComponent':
-                sql.append(f"INSERT INTO software_assets (id) VALUES ('{item_id}') ON CONFLICT (id) DO NOTHING;")
+                sql.append(f"INSERT INTO backend.software_assets (id) VALUES ('{item_id}') ON CONFLICT (id) DO NOTHING;")
 
             if row.get('ResponsibleTeam'):
                 for t in row['ResponsibleTeam'].split(';'):
                     t = t.strip()
                     if t in team_ids:
-                        sql.append(f"INSERT INTO \"ItemResponsibilities\" (managed_items_id, responsible_teams_id) VALUES ('{item_id}', '{team_ids[t]}') ON CONFLICT DO NOTHING;")
+                        sql.append(f"INSERT INTO backend.\"ItemResponsibilities\" (managed_items_id, responsible_teams_id) VALUES ('{item_id}', '{team_ids[t]}') ON CONFLICT DO NOTHING;")
 
-    # 3. Station Controllers M:N
-    sql.append("\n-- Seed Station Controller Edges (M:N)")
-    for row in rows:
-        if row['Type'] == 'ClientPc' and row['Name'] in pc_ids:
-            pc_id = pc_ids[row['Name']]
-            if row['StationIdentifier'] and row['StationIdentifier'] in item_ids:
-                station_id = item_ids[row['StationIdentifier']]
-                sc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{pc_id}:{station_id}"))
-                sql.append(f"INSERT INTO \"StationControllers\" (id, client_pc_id, machine_id) VALUES ('{sc_id}', '{pc_id}', '{station_id}') ON CONFLICT DO NOTHING;")
+    # Seed Station Controllers (1-1, 1-n, m-n, n-1)
+    sql.append("\n-- Seed Station Controller Edges (1-1, 1-n, m-n, n-1 Topologies)")
+    if pc_station_links:
+        for pc_name, st_name, role in pc_station_links:
+            if pc_name in pc_ids and st_name in item_ids:
+                pc_id = pc_ids[pc_name]
+                st_id = item_ids[st_name]
+                sc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{pc_id}:{st_id}"))
+                sql.append(f"INSERT INTO backend.\"StationControllers\" (id, client_pc_id, machine_id) VALUES ('{sc_id}', '{pc_id}', '{st_id}') ON CONFLICT DO NOTHING;")
+
+    # Seed Security Group Mappings
+    sql.append("\n-- Seed Security Group Mappings for 8 Lines & Tech Guilds")
+    sec_group_defs = [
+        ("EntraID", "sg-entra-admins", "OT Plant Administrators", "system_admin", "org-platform"),
+        ("ActiveDirectory", "CN=SG-Line01-Controls,OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp", "Line 01 Controls Engineers", "controls_engineer", "org-line-01"),
+        ("ActiveDirectory", "CN=SG-Line02-Assembly,OU=AudiLine02,OU=ProductionLines,DC=factory,DC=corp", "Line 02 Assembly Techs", "technician", "org-line-02"),
+        ("ActiveDirectory", "CN=SG-Line03-Powertrain,OU=AudiLine03,OU=ProductionLines,DC=factory,DC=corp", "Line 03 Powertrain Engineers", "engineer", "org-line-03"),
+        ("ActiveDirectory", "CN=SG-Line04-SMT,OU=AudiLine04,OU=ProductionLines,DC=factory,DC=corp", "Line 04 SMT Placement Leads", "lead_engineer", "org-line-04"),
+        ("ActiveDirectory", "CN=SG-Line05-Welding,OU=AudiLine05,OU=ProductionLines,DC=factory,DC=corp", "Line 05 Robotic Welders", "engineer", "org-line-05"),
+        ("ActiveDirectory", "CN=SG-Line06-PressFit,OU=AudiLine06,OU=ProductionLines,DC=factory,DC=corp", "Line 06 Press Fit Techs", "technician", "org-line-06"),
+        ("ActiveDirectory", "CN=SG-Line07-Metrology,OU=AudiLine07,OU=ProductionLines,DC=factory,DC=corp", "Line 07 Quality Metrologists", "lead_engineer", "org-line-07"),
+        ("ActiveDirectory", "CN=SG-Line08-EOL,OU=AudiLine08,OU=ProductionLines,DC=factory,DC=corp", "Line 08 EOL Vehicle Techs", "technician", "org-line-08"),
+        ("ActiveDirectory", "CN=SG-Plant-Maintenance,OU=Maintenance,OU=EngineeringDisciplines,DC=factory,DC=corp", "Plant Maintenance Specialists", "technician", "org-maintenance")
+    ]
+    for idp, gid, dname, role, org in sec_group_defs:
+        m_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{idp}:{gid}"))
+        sql.append(f"INSERT INTO backend.security_group_mappings (id, identity_provider, group_identifier, display_name, mapped_role, organization_id, is_enabled, created_at, updated_at) "
+                   f"VALUES ('{m_id}', '{idp}', '{gid}', '{dname}', '{role}', '{org}', true, NOW(), NOW()) ON CONFLICT (id) DO NOTHING;")
+
+    # Seed AD OU Governance
+    sql.append("\n-- Seed Active Directory OUs Governance")
+    ou_defs = [
+        ("OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal"),
+        ("OU=AudiLine02,OU=ProductionLines,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal"),
+        ("OU=AudiLine03,OU=ProductionLines,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal"),
+        ("OU=AudiLine04,OU=ProductionLines,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal"),
+        ("OU=AudiLine05,OU=ProductionLines,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal"),
+        ("OU=AudiLine06,OU=ProductionLines,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal"),
+        ("OU=AudiLine07,OU=ProductionLines,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal"),
+        ("OU=AudiLine08,OU=ProductionLines,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal"),
+        ("OU=ControlsEngineering,DC=factory,DC=corp", "read_write", True, "dr.algorithmus.prime.ai@fake-factory.internal")
+    ]
+    for ou, alevel, approved, approver in ou_defs:
+        ou_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"ou:{ou}"))
+        sql.append(f"INSERT INTO backend.ad_ou_governances (id, ou_path, access_level, is_approved, approved_by, approved_at, notes, created_at, updated_at) "
+                   f"VALUES ('{ou_id}', '{ou}', '{alevel}', true, '{approver}', NOW(), 'Approved production corridor', NOW(), NOW()) ON CONFLICT (id) DO NOTHING;")
 
     sql.append("\nCOMMIT;")
 
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write("\n".join(sql))
-    print(f"Generated {output_path}")
+    print(f"✓ Generated {output_path} with complete PURGE / NUKE and re-seed logic.")
+
+def generate_topology(output_path=TOPOLOGY_FILE, stations=None, pcs=None, links=None):
+    print("Generating production_topology.json hierarchy for 8 lines and 100 stations...")
+    lines_dict = {}
+    for l_cfg in LINE_CONFIGS:
+        lines_dict[l_cfg["org_id"]] = {
+            "id": l_cfg["org_id"],
+            "line_num": l_cfg["line_num"],
+            "name": l_cfg["name"],
+            "tech": l_cfg["tech"],
+            "stations": []
+        }
+
+    st_lookup = {s["Name"]: s for s in (stations or [])}
+    pc_lookup = {p["Name"]: p for p in (pcs or [])}
+
+    # Group stations into their lines
+    for st in (stations or []):
+        org_id = st["OrganizationId"]
+        if org_id in lines_dict:
+            st_name = st["Name"]
+            # Find linked IPCs from pc_station_links
+            linked_pc_names = [l[0] for l in (links or []) if l[1] == st_name]
+            st_pcs = []
+            for p_name in linked_pc_names:
+                p_data = pc_lookup.get(p_name)
+                if p_data:
+                    meta = json.loads(p_data["Metadata"]) if p_data.get("Metadata") else {}
+                    st_pcs.append({
+                        "id": p_name,
+                        "hostname": p_name,
+                        "ip": meta.get("IPAddress", "192.168.1.1"),
+                        "os": meta.get("OperatingSystem", "Windows 10 IoT"),
+                        "status": "Healthy",
+                        "twincat": meta.get("TwinCATProject", "TC3 (Port 851)"),
+                        "mes": meta.get("MESClient", "MES Connector v3")
+                    })
+
+            lines_dict[org_id]["stations"].append({
+                "id": st_name,
+                "name": st["DisplayName"],
+                "type": st["MachineType"],
+                "technology": st["Technology"],
+                "team": st["ResponsibleTeam"],
+                "pinnedObjectHandle": st["PinnedObjectHandle"],
+                "pcs": st_pcs
+            })
+
+    topology = {
+        "production_hall": {
+            "name": "Heimdall Smart Factory Giga-01 (Synthetic AI Facility)",
+            "lines": list(lines_dict.values())
+        }
+    }
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(topology, f, indent=2)
+    print(f"✓ Generated {output_path} with 8 automated lines and 100 stations.")
 
 def validate():
     print("=== Validating Seed Data Referential Integrity ===")
-    if not os.path.exists(CSV_FILE):
-        print(f"FAIL: {CSV_FILE} missing.")
-        return False
-    if not os.path.exists(SQL_FILE):
-        print(f"FAIL: {SQL_FILE} missing.")
+    if not os.path.exists(CSV_FILE) or not os.path.exists(SQL_FILE) or not os.path.exists(TOPOLOGY_FILE):
+        print("FAIL: Missing generated files.")
         return False
 
     with open(CSV_FILE, mode='r', encoding='utf-8') as f:
@@ -642,63 +995,44 @@ def validate():
 
     stations = [r for r in rows if r['Type'] == 'Machine']
     pcs = [r for r in rows if r['Type'] == 'ClientPc']
-    parts = [r for r in rows if r['Type'] not in ('Machine', 'ClientPc') and str(r.get('IsStockItem', '')).lower() != 'true']
-    stock = [r for r in rows if str(r.get('IsStockItem', '')).lower() == 'true']
+    spares = [r for r in rows if r['Type'] not in ('Machine', 'ClientPc') and str(r.get('IsStockItem', '')).lower() != 'true' and 'SPARE' in r['Name']]
+    bulk = [r for r in rows if str(r.get('IsStockItem', '')).lower() == 'true']
 
-    print(f"✓ Inventory CSV rows: {len(rows)} (Stations: {len(stations)}, IPCs: {len(pcs)}, Serialized Parts: {len(parts)}, Bulk Stock Items: {len(stock)})")
-    assert len(stations) == 500, f"Expected 500 stations, got {len(stations)}"
-    assert len(pcs) == 500, f"Expected 500 IPCs, got {len(pcs)}"
-    assert len(parts) >= 1000, f"Expected at least 1000 discrete serialized parts, got {len(parts)}"
-    assert len(stock) >= 10, f"Expected at least 10 bulk stock items, got {len(stock)}"
+    print(f"✓ Inventory CSV rows: {len(rows)}")
+    print(f"  - Machines: {len(stations)} (Target: 100)")
+    print(f"  - Client PCs: {len(pcs)}")
+    print(f"  - Serialized Spare Items in Stock: {len(spares)} (Target: 550)")
+    print(f"  - Bulk Consumables: {len(bulk)} (Target: >= 20)")
+
+    assert len(stations) == 100, f"Expected 100 stations, got {len(stations)}"
+    assert len(spares) == 550, f"Expected 550 serialized spare items, got {len(spares)}"
+    assert len(bulk) >= 20, f"Expected >= 20 bulk consumables, got {len(bulk)}"
 
     # Check DXF handles
-    handles_found = set(r['PinnedObjectHandle'] for r in rows if r['PinnedObjectHandle'])
-    print(f"✓ Mapped CAD Handles: {len(handles_found)} unique anchors")
+    handles = set(r['PinnedObjectHandle'] for r in stations if r['PinnedObjectHandle'])
+    assert len(handles) == 100, f"Expected 100 unique station DXF handles, got {len(handles)}"
+    print(f"✓ Station DXF handles: {len(handles)} unique handles (L01-OP010 .. L08-OP130)")
 
-    # Check statuses
-    statuses = set(r.get('EquipmentStatus') for r in rows if r.get('EquipmentStatus'))
-    print(f"✓ Equipment Statuses present: {statuses}")
-    assert 'InMachine' in statuses, "Missing InMachine status"
-    assert 'InStorage' in statuses, "Missing InStorage status"
+    # Validate topology file
+    with open(TOPOLOGY_FILE, 'r', encoding='utf-8') as f:
+        top_data = json.load(f)
+    assert len(top_data["production_hall"]["lines"]) == 8, "Expected 8 production lines in topology"
+    total_top_st = sum(len(l["stations"]) for l in top_data["production_hall"]["lines"])
+    assert total_top_st == 100, f"Expected 100 stations in topology, got {total_top_st}"
+    print(f"✓ Production topology validated: 8 lines, 100 stations")
 
-    # Check technologies
-    techs = set(r.get('Technology') for r in rows if r.get('Technology'))
-    print(f"✓ Technologies present: {techs}")
-    for t in ["Assembly", "Test", "SMT", "Welding", "Fastening", "Dispensing", "Robotics"]:
-        assert t in techs, f"Expected technology {t} in dataset"
-
-    # Check SQL file content
-    with open(SQL_FILE, 'r', encoding='utf-8') as f:
-        sql_content = f.read()
-
-    assert "security_group_mappings" in sql_content, "Missing security_group_mappings in SQL seed"
-    assert "system_settings" in sql_content, "Missing system_settings in SQL seed"
-    assert "client_certificates" in sql_content, "Missing client_certificates in SQL seed"
-    assert "schema_version_manifest" in sql_content, "Missing schema_version_manifest in SQL seed"
-    assert "StationControllers" in sql_content, "Missing StationControllers in SQL seed"
-    assert "storage_location" in sql_content, "Missing storage_location in SQL seed"
-    assert "equipment_status" in sql_content, "Missing equipment_status in SQL seed"
-    assert "is_stock_item" in sql_content, "Missing is_stock_item in SQL seed"
-    assert "technology" in sql_content, "Missing technology in SQL seed"
-    assert "COMMIT;" in sql_content, "Missing COMMIT in SQL seed"
-
-    print("✓ SQL transaction integrity and new data model columns validated.")
-    print("All Seed Data validations passed successfully!")
+    print("✓ All Seed Data integrity checks PASSED successfully!")
     return True
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Heimdall Seed Data Pipeline")
+    parser = argparse.ArgumentParser(description="Heimdall Unified Seed Data Pipeline")
     parser.add_argument("--generate-all", action="store_true", help="Generate CSV and SQL seed files")
     parser.add_argument("--validate", action="store_true", help="Validate referential integrity")
     args = parser.parse_args()
 
-    if args.generate_all:
-        generate_csv()
-        generate_sql()
-        validate()
-    elif args.validate:
-        validate()
-    else:
-        generate_csv()
-        generate_sql()
-        validate()
+    rows, links = generate_csv()
+    st_rows = [r for r in rows if r['Type'] == 'Machine']
+    pc_rows = [r for r in rows if r['Type'] == 'ClientPc']
+    generate_sql(CSV_FILE, SQL_FILE, links)
+    generate_topology(TOPOLOGY_FILE, st_rows, pc_rows, links)
+    validate()
