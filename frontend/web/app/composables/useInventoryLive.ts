@@ -30,9 +30,9 @@ export const useInventoryLive = () => {
       try {
         const maintenanceService = getMaintenanceService()
         maintenanceEventUnsub = maintenanceService.subscribeToEvents((event) => {
-          if (event.type === 'InventoryUpdated' || event.type === 'TelemetryReceived') {
-            lastEvent.value = event
-            isLiveConnected.value = true
+          lastEvent.value = event
+          isLiveConnected.value = true
+          if (event.type === 'InventoryUpdated') {
             notifySubscribers()
           }
         })

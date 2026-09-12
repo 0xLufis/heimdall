@@ -65,7 +65,7 @@ const activeTab = computed<'all' | 'hardware' | 'software' | 'parts' | 'stock'>(
 const masterInventory = ref<any[]>([])
 const initialLoading = ref(true)
 const backgroundSyncing = ref(false)
-const loading = computed(() => initialLoading.value || backgroundSyncing.value)
+const loading = computed(() => initialLoading.value)
 
 // 4 background pre-views created from master inventory
 const backgroundViews = computed(() => {
@@ -292,8 +292,12 @@ onMounted(() => {
   fetchMasterInventory()
 })
 
+let updateDebounceTimer: any = null
 onInventoryUpdate(() => {
-  fetchMasterInventory()
+  if (updateDebounceTimer) clearTimeout(updateDebounceTimer)
+  updateDebounceTimer = setTimeout(() => {
+    fetchMasterInventory()
+  }, 1000)
 })
 </script>
 

@@ -75,12 +75,6 @@ const tableSubtitle = computed(() => {
           </p>
         </div>
       </div>
-      
-      <!-- Non-intrusive syncing indicator (zero flicker) -->
-      <div v-if="loading && items.length > 0" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-[10px] font-bold uppercase tracking-wider">
-        <Loader2 class="w-3 h-3 animate-spin text-indigo-400" />
-        <span>Syncing...</span>
-      </div>
     </CardHeader>
     
     <CardContent class="p-0">
