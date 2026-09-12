@@ -38,42 +38,42 @@ public class InventoryController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetInventory()
     {
-        var tree = await _assetRepository.GetInventoryTreeAsync();
+        var tree = await _cache.GetOrSetAsync("inventory:tree", () => _assetRepository.GetInventoryTreeAsync(), TimeSpan.FromMinutes(10));
         return Ok(tree);
     }
 
     [HttpGet("machines")]
     public async Task<ActionResult<IEnumerable<Machine>>> GetMachines()
     {
-        var machines = await _assetRepository.GetMachinesAsync();
+        var machines = await _cache.GetOrSetAsync("inventory:machines", () => _assetRepository.GetMachinesAsync(), TimeSpan.FromMinutes(10));
         return Ok(machines);
     }
 
     [HttpGet("teams")]
     public async Task<ActionResult<IEnumerable<ResponsibleTeam>>> GetTeams()
     {
-        var teams = await _assetRepository.GetTeamsAsync();
+        var teams = await _cache.GetOrSetAsync("inventory:teams", () => _assetRepository.GetTeamsAsync(), TimeSpan.FromHours(1));
         return Ok(teams);
     }
 
     [HttpGet("manufacturers")]
     public async Task<ActionResult<IEnumerable<Manufacturer>>> GetManufacturers()
     {
-        var manufacturers = await _assetRepository.GetManufacturersAsync();
+        var manufacturers = await _cache.GetOrSetAsync("inventory:manufacturers", () => _assetRepository.GetManufacturersAsync(), TimeSpan.FromHours(1));
         return Ok(manufacturers);
     }
 
     [HttpGet("suppliers")]
     public async Task<ActionResult<IEnumerable<Supplier>>> GetSuppliers()
     {
-        var suppliers = await _assetRepository.GetSuppliersAsync();
+        var suppliers = await _cache.GetOrSetAsync("inventory:suppliers", () => _assetRepository.GetSuppliersAsync(), TimeSpan.FromHours(1));
         return Ok(suppliers);
     }
 
     [HttpGet("client-pcs")]
     public async Task<ActionResult<IEnumerable<ClientPc>>> GetClientPcs()
     {
-        var pcs = await _assetRepository.GetClientPcsAsync();
+        var pcs = await _cache.GetOrSetAsync("inventory:client_pcs", () => _assetRepository.GetClientPcsAsync(), TimeSpan.FromMinutes(2));
         return Ok(pcs);
     }
 
@@ -104,14 +104,14 @@ public class InventoryController : ControllerBase
     [HttpGet("parts")]
     public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetParts()
     {
-        var parts = await _assetRepository.GetPartsAsync();
+        var parts = await _cache.GetOrSetAsync("inventory:parts", () => _assetRepository.GetPartsAsync(), TimeSpan.FromMinutes(10));
         return Ok(parts);
     }
 
     [HttpGet("stock")]
     public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetStock()
     {
-        var stock = await _assetRepository.GetStockAsync();
+        var stock = await _cache.GetOrSetAsync("inventory:stock", () => _assetRepository.GetStockAsync(), TimeSpan.FromMinutes(10));
         return Ok(stock);
     }
 
@@ -163,8 +163,7 @@ public class InventoryController : ControllerBase
         item.Id = Guid.NewGuid();
         var created = await _assetRepository.CreateAsync(item);
         
-        await _cache.RemoveAsync("inventory:tree");
-        await _cache.RemoveAsync("inventory:metadata_keys");
+        await _cache.RemoveByPatternAsync("inventory:*");
 
         return CreatedAtAction(nameof(GetInventory), new { id = created.Id }, created);
     }
@@ -176,7 +175,7 @@ public class InventoryController : ControllerBase
         var success = await _assetRepository.DeleteAsync(id);
         if (!success) return NotFound();
 
-        await _cache.RemoveAsync("inventory:tree");
+        await _cache.RemoveByPatternAsync("inventory:*");
         return NoContent();
     }
 }

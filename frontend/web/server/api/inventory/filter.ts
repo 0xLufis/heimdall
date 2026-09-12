@@ -1,4 +1,5 @@
 import { defineEventHandler, readBody, getQuery, getMethod, getHeader } from 'h3'
+import { getCachedJson, setCachedJson } from '../../utils/redis'
 
 // Resilient default seed inventory if backend is offline or starting up
 const SEED_INVENTORY = [
@@ -315,24 +316,36 @@ export default defineEventHandler(async (event) => {
   } = payload
 
   let allItems: any[] = []
+  const cacheKey = 'heimdall:nitro:inventory_all'
 
-  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
-  const forwardHeaders: Record<string, string> = {}
-  const cookie = getHeader(event, 'cookie')
-  if (cookie) forwardHeaders.cookie = cookie
-  const authorization = getHeader(event, 'authorization')
-  if (authorization) forwardHeaders.authorization = authorization
-
+  // 1. Try Redis distributed cache first
   try {
-    const raw = await $fetch<any[]>(`${backendBase}/api/v1/inventory`, {
-      headers: forwardHeaders
-    })
-    if (raw && Array.isArray(raw) && raw.length > 0) {
-      allItems = flattenTreeNodes(raw)
+    const cached = await getCachedJson<any[]>(cacheKey)
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      allItems = cached
     }
   } catch {
-    // Graceful fallback
+    // Graceful fallback to backend fetch
   }
+
+  if (allItems.length === 0) {
+    const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
+    const forwardHeaders: Record<string, string> = {}
+    const cookie = getHeader(event, 'cookie')
+    if (cookie) forwardHeaders.cookie = cookie
+    const authorization = getHeader(event, 'authorization')
+    if (authorization) forwardHeaders.authorization = authorization
+
+    try {
+      const raw = await $fetch<any[]>(`${backendBase}/api/v1/inventory`, {
+        headers: forwardHeaders
+      })
+      if (raw && Array.isArray(raw) && raw.length > 0) {
+        allItems = flattenTreeNodes(raw)
+      }
+    } catch {
+      // Graceful fallback
+    }
 
   // Also query Client PCs to dynamically ingest live agent telemetry & reported PC hardware
   try {
@@ -413,8 +426,9 @@ export default defineEventHandler(async (event) => {
     // Ignore if ClientPc endpoint not available
   }
 
-  if (allItems.length === 0) {
-    allItems = [...SEED_INVENTORY]
+    if (allItems.length === 0) {
+      allItems = [...SEED_INVENTORY]
+    }
   }
 
   // Deduplicate items by ID and guarantee normalization
@@ -426,6 +440,13 @@ export default defineEventHandler(async (event) => {
     }
   }
   let items = Array.from(uniqueItemsMap.values())
+
+  // Save to Redis cache for fast subsequent requests (avoiding DB hits)
+  try {
+    await setCachedJson(cacheKey, items, 60)
+  } catch {
+    // Ignore cache set failure
+  }
 
   // Compute global inventory totals before filtering
   const totalGlobalCount = items.length

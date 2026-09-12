@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ChevronRight, Cpu, Layers, HardDrive, Edit3, ArrowUpRight } from 'lucide-vue-next'
+import { ChevronRight, Cpu, Layers, HardDrive, Edit3, ArrowUpRight, Loader2 } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '~/components/ui/table'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
+import { Skeleton } from '~/components/ui/skeleton'
 
 const props = defineProps<{
   items: any[]
@@ -74,6 +75,12 @@ const tableSubtitle = computed(() => {
           </p>
         </div>
       </div>
+      
+      <!-- Non-intrusive syncing indicator (zero flicker) -->
+      <div v-if="loading && items.length > 0" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-[10px] font-bold uppercase tracking-wider">
+        <Loader2 class="w-3 h-3 animate-spin text-indigo-400" />
+        <span>Syncing...</span>
+      </div>
     </CardHeader>
     
     <CardContent class="p-0">
@@ -106,7 +113,47 @@ const tableSubtitle = computed(() => {
         </TableHeader>
         
         <TableBody>
-          <template v-if="items.length === 0 && !loading && !isChild">
+          <!-- Skeleton Loading State when initial load and no items yet -->
+          <template v-if="loading && items.length === 0 && !isChild">
+            <TableRow v-for="n in 5" :key="'skel-' + n" class="border-b border-slate-800/60 hover:bg-transparent">
+              <TableCell class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <Skeleton class="w-6 h-6 rounded-lg bg-slate-800/80" />
+                  <div class="space-y-2">
+                    <Skeleton class="h-4 w-44 rounded bg-slate-800/80" />
+                    <div class="flex gap-2">
+                      <Skeleton class="h-3 w-14 rounded-full bg-slate-800/60" />
+                      <Skeleton class="h-3 w-20 rounded-full bg-slate-800/60" />
+                    </div>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell v-if="columns.manufacturer" class="px-6 py-4">
+                <Skeleton class="h-3.5 w-24 rounded bg-slate-800/70" />
+              </TableCell>
+              <TableCell class="px-6 py-4">
+                <Skeleton class="h-3.5 w-28 rounded bg-slate-800/70" />
+              </TableCell>
+              <TableCell v-if="columns.specs" class="px-6 py-4">
+                <div class="flex gap-1.5">
+                  <Skeleton class="h-4 w-14 rounded-full bg-slate-800/60" />
+                  <Skeleton class="h-4 w-16 rounded-full bg-slate-800/60" />
+                </div>
+              </TableCell>
+              <TableCell v-if="columns.tags" class="px-6 py-4">
+                <Skeleton class="h-4 w-20 rounded bg-slate-800/60" />
+              </TableCell>
+              <TableCell v-if="columns.purchaseDate" class="px-6 py-4">
+                <Skeleton class="h-3.5 w-20 rounded bg-slate-800/70" />
+              </TableCell>
+              <TableCell v-if="columns.cost" class="px-6 py-4 text-right">
+                <Skeleton class="h-4 w-20 rounded ml-auto bg-slate-800/70" />
+              </TableCell>
+              <TableCell class="w-12"></TableCell>
+            </TableRow>
+          </template>
+
+          <template v-else-if="items.length === 0 && !isChild">
             <TableRow>
               <TableCell colspan="8" class="h-32 text-center text-slate-500 uppercase font-black text-xs tracking-widest">
                 No {{ type }} assets found matching criteria.

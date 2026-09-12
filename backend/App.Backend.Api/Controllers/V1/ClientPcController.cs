@@ -1,3 +1,4 @@
+using App.Backend.Api.Services;
 using App.Infrastructure.Repositories;
 using App.Shared.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -15,16 +16,30 @@ public class ClientPcController : ControllerBase
 {
     private readonly IControllerRepository _repository;
     private readonly ILogger<ClientPcController> _logger;
+    private readonly ICacheService? _cache;
 
-    public ClientPcController(IControllerRepository repository, ILogger<ClientPcController> logger)
+    public ClientPcController(
+        IControllerRepository repository, 
+        ILogger<ClientPcController> logger,
+        ICacheService? cache = null)
     {
         _repository = repository;
         _logger = logger;
+        _cache = cache;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<App.Backend.Api.Dtos.ClientPcDto>>> GetClientPcs()
     {
+        if (_cache != null)
+        {
+            var cached = await _cache.GetAsync<List<App.Backend.Api.Dtos.ClientPcDto>>("inventory:client_pcs");
+            if (cached != null)
+            {
+                return Ok(cached);
+            }
+        }
+
         var pcs = await _repository.GetAllAsync();
         var dtos = pcs.Select(c => new App.Backend.Api.Dtos.ClientPcDto
         {
@@ -54,6 +69,11 @@ public class ClientPcController : ControllerBase
             SystemMetadata = c.SystemMetadata,
             ResourceAverages = c.ResourceAverages
         }).ToList();
+
+        if (_cache != null)
+        {
+            await _cache.SetAsync("inventory:client_pcs", dtos, TimeSpan.FromMinutes(2));
+        }
 
         return Ok(dtos);
     }

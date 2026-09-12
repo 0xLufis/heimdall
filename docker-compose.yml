@@ -129,6 +129,7 @@ services:
       - DATABASE_URL=postgresql://dotnet_backend:your_backend_pw@postgres:5432/heimdall_dev_db
       - BACKEND_API_URL=http://backend:5099
       - SIGNALR_HUB_URL=http://localhost:5099/hubs/maintenance
+      - REDIS_URL=redis://:heimdall_redis_dev_secret@redis:6379
       - BETTER_AUTH_SECRET=heimdall-dev-secret-key-32-chars-min-security
     volumes:
       - ./frontend/web:/app
@@ -137,6 +138,7 @@ services:
     depends_on:
       - backend
       - postgres
+      - redis
     networks:
       - heimdall_dev_net
     restart: unless-stopped

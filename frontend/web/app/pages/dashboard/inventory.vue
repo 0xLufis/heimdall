@@ -62,8 +62,23 @@ const activeTab = computed<'all' | 'hardware' | 'software' | 'parts' | 'stock'>(
   }
 })
 
-const loading = ref(false)
-const items = ref<any[]>([])
+const masterInventory = ref<any[]>([])
+const initialLoading = ref(true)
+const backgroundSyncing = ref(false)
+const loading = computed(() => initialLoading.value || backgroundSyncing.value)
+
+// 4 background pre-views created from master inventory
+const backgroundViews = computed(() => {
+  const all = masterInventory.value
+  return {
+    all,
+    hardware: all.filter(i => (i.itemType || '').toLowerCase() === 'hardware'),
+    software: all.filter(i => (i.itemType || '').toLowerCase() === 'software'),
+    parts: all.filter(i => !i.isStockItem && (i.itemType || '').toLowerCase() !== 'software'),
+    stock: all.filter(i => i.isStockItem === true)
+  }
+})
+
 const currentQuery = ref('')
 const kpis = ref({
   totalGlobalCount: 0,
@@ -78,6 +93,57 @@ const showTreeModal = ref(false)
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const selectedEditItem = ref<any | null>(null)
+
+// Instant in-memory filtered items with combinable Classification x Tracking (ZERO flicker, ZERO roundtrips on click)
+const filteredItems = computed(() => {
+  let list = masterInventory.value
+
+  // 1. Classification facet (Hardware, Software, or All)
+  if (classification.value === 'hardware') {
+    list = backgroundViews.value.hardware
+  } else if (classification.value === 'software') {
+    list = backgroundViews.value.software
+  }
+
+  // 2. Tracking facet (Serialized Parts, Bulk Stock, or All)
+  if (tracking.value === 'serialized') {
+    list = list.filter(i => !i.isStockItem)
+  } else if (tracking.value === 'stock') {
+    list = list.filter(i => i.isStockItem === true)
+  }
+
+  // 3. Instant client-side OmniSearch & keyword filtering
+  if (currentQuery.value && currentQuery.value.trim()) {
+    const q = currentQuery.value.toLowerCase().trim()
+    const tokens = q.split(/\s+/).filter(Boolean)
+    list = list.filter(item => {
+      const blob = [
+        item.name,
+        item.displayName,
+        item.serialNumber,
+        item.customIdentifier,
+        item.manufacturer?.name,
+        item.storageLocation,
+        item.technology,
+        item.equipmentStatus,
+        ...(item.responsibleTeams?.map((t: any) => t.name) || []),
+        ...Object.entries(item.metadata || {}).map(([k, v]) => `${k}:${v}`)
+      ].filter(Boolean).join(' ').toLowerCase()
+
+      return tokens.every(tok => {
+        if (tok.includes(':')) {
+          const [, val] = tok.split(':')
+          if (val) return blob.includes(val.replace(/^["']|["']$/g, ''))
+        }
+        return blob.includes(tok)
+      })
+    })
+  }
+
+  return list
+})
+
+const items = computed(() => filteredItems.value)
 
 // Pagination State (supports 5, 10, 50, 100, 1000, and custom)
 const currentPage = ref(1)
@@ -106,9 +172,9 @@ const setPage = (page: number) => {
   }
 }
 
+// Reset page when switching views in memory (no network calls on tab/mode clicks!)
 watch([pageSize, customPageSize, classification, tracking], () => {
   currentPage.value = 1
-  fetchData()
 })
 
 const inventorySearchConfig = computed<SearchInstanceConfig>(() => ({
@@ -152,29 +218,27 @@ const resetColumns = () => {
 }
 
 const onSearch = (q: string) => {
-  // Prevent single-character queries from triggering lookup
-  const hasTags = q.includes(':')
-  const freeText = q.replace(/(\w+):"[^"]*"|(\w+):\S+/g, '').trim()
-  if (!hasTags && freeText.length === 1) {
-    return
-  }
   currentQuery.value = q
-  fetchData(q)
+  currentPage.value = 1
 }
 
-const fetchData = async (q: string = currentQuery.value) => {
-  loading.value = true
+// Query master inventory (uses Redis on server/backend, cached in memory on client)
+const fetchMasterInventory = async () => {
+  if (masterInventory.value.length === 0) {
+    initialLoading.value = true
+  } else {
+    backgroundSyncing.value = true
+  }
   try {
     const res = await $fetch<any>('/api/inventory/filter', {
       method: 'GET',
       params: {
-        query: q,
-        classification: classification.value,
-        tracking: tracking.value
+        classification: 'all',
+        tracking: 'all'
       }
     })
     if (res) {
-      items.value = res.items || []
+      masterInventory.value = res.items || []
       if (res.kpis) {
         kpis.value = res.kpis
       }
@@ -182,7 +246,8 @@ const fetchData = async (q: string = currentQuery.value) => {
   } catch (e) {
     console.error('Error fetching inventory:', e)
   } finally {
-    loading.value = false
+    initialLoading.value = false
+    backgroundSyncing.value = false
   }
 }
 
@@ -197,7 +262,7 @@ const addComponent = async (type: string, formData: any) => {
       method: 'POST',
       body: formData,
     })
-    await fetchData()
+    await fetchMasterInventory()
   } catch (e) {
     console.error('Error adding component:', e)
   }
@@ -219,16 +284,16 @@ const handleSaveEdit = async (updatedItem: any) => {
   } catch (e) {
     console.error('Error updating inventory item:', e)
   } finally {
-    await fetchData()
+    await fetchMasterInventory()
   }
 }
 
 onMounted(() => {
-  fetchData('')
+  fetchMasterInventory()
 })
 
 onInventoryUpdate(() => {
-  fetchData(currentQuery.value)
+  fetchMasterInventory()
 })
 </script>
 
