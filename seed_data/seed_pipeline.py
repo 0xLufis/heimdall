@@ -71,9 +71,10 @@ def generate_csv(output_path=CSV_FILE):
     for i in range(1, 501):
         line_idx = (i - 1) % len(LINES)
         line_name = LINES[line_idx]
-        op_num = ((i - 1) % 33 + 1) * 10
-        st_name = f"L{(line_idx+1):02d}-OP{op_num}"
-        st_display = f"{line_name} - Station {op_num}"
+        station_idx = (i - 1) // len(LINES) + 1
+        op_num = station_idx * 10
+        st_name = f"L{(line_idx+1):02d}-OP{op_num:03d}"
+        st_display = f"{line_name} - Station {op_num:03d}"
         st_team = random.choice(TEAMS) + ";" + random.choice(TEAMS)
         mfr = random.choice(["Siemens", "Beckhoff", "Fanuc", "Festo", "Omron", "Cognex", "KUKA"])
         sup = random.choice(SUPPLIERS)
@@ -403,6 +404,18 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
         "    quarantined_at TIMESTAMP WITH TIME ZONE NOT NULL",
         ");",
         "",
+        "CREATE TABLE IF NOT EXISTS backend.ad_ou_governances (",
+        "    id UUID PRIMARY KEY,",
+        "    ou_path VARCHAR(256) NOT NULL,",
+        "    access_level VARCHAR(32) NOT NULL,",
+        "    is_approved BOOLEAN NOT NULL DEFAULT FALSE,",
+        "    approved_by VARCHAR(128),",
+        "    approved_at TIMESTAMP WITH TIME ZONE,",
+        "    notes VARCHAR(512),",
+        "    created_at TIMESTAMP WITH TIME ZONE NOT NULL,",
+        "    updated_at TIMESTAMP WITH TIME ZONE",
+        ");",
+        "",
         "-- Truncate tables for a clean idempotent re-seed",
         "TRUNCATE TABLE backend.inventory_items CASCADE;",
         "TRUNCATE TABLE backend.client_pcs CASCADE;",
@@ -416,6 +429,7 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
         "TRUNCATE TABLE backend.maintenance_tickets CASCADE;",
         "TRUNCATE TABLE backend.ticket_comments CASCADE;",
         "TRUNCATE TABLE backend.security_group_mappings CASCADE;",
+        "TRUNCATE TABLE backend.ad_ou_governances CASCADE;",
         "TRUNCATE TABLE backend.system_settings CASCADE;",
         "TRUNCATE TABLE backend.client_certificates CASCADE;",
         "TRUNCATE TABLE backend.schema_version_manifest CASCADE;",
@@ -467,6 +481,22 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
         sql.append(f"INSERT INTO backend.security_group_mappings (id, identity_provider, group_identifier, display_name, mapped_role, organization_id, is_enabled, created_at, updated_at) "
                    f"VALUES ('{m_id}', '{idp}', '{gid}', '{dname}', '{role}', {org_val}, true, NOW(), NOW()) ON CONFLICT (id) DO NOTHING;")
 
+    # Seed AD OU Governance Rules
+    sql.append("\n-- Seed Active Directory & Entra ID OU Governance Rules")
+    ou_rules = [
+        ("OU=OT-Production-Floor-A,DC=factory,DC=corp", "read_write", True, "it_admin@heimdall.dev", "Approved for bidirectional OT telemetry and agent control."),
+        ("OU=OT-Robotics-Subnet,DC=factory,DC=corp", "read_only", True, "it_admin@heimdall.dev", "Read-only telemetry discovery for Fanuc/KUKA cells."),
+        ("OU=Contractor-Laptops,DC=factory,DC=corp", "unapproved", False, None, "Pending IT site admin review and zero-trust verification.")
+    ]
+    for ou, alevel, approved, approver, notes in ou_rules:
+        ou_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"ou:{ou}"))
+        app_val = "true" if approved else "false"
+        approver_val = f"'{approver}'" if approver else "NULL"
+        approved_at_val = "NOW()" if approved else "NULL"
+        notes_val = f"'{notes}'" if notes else "NULL"
+        sql.append(f"INSERT INTO backend.ad_ou_governances (id, ou_path, access_level, is_approved, approved_by, approved_at, notes, created_at, updated_at) "
+                   f"VALUES ('{ou_id}', '{ou}', '{alevel}', {app_val}, {approver_val}, {approved_at_val}, {notes_val}, NOW(), NOW()) ON CONFLICT (id) DO NOTHING;")
+
     # Seed Manifest
     sql.append("\n-- Seed Schema Version Manifest")
     sql.append(f"INSERT INTO backend.schema_version_manifest (id, schema_version, migration_name, applied_at, description) "
@@ -494,24 +524,61 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
         team_ids[t] = t_id
         sql.append(f"INSERT INTO responsible_teams (id, name) VALUES ('{t_id}', '{t}') ON CONFLICT (name) DO NOTHING;")
 
-    # Seed Inventory Items and Client PCs
-    sql.append("\n-- Seed Inventory Items & Client PCs")
-    item_ids = {}
-    pc_ids = {}
+    # Seed Inventory Items, Stations, Client PCs and Parts in dependency order
+    sql.append("\n-- Seed Client PCs")
+    item_ids = {row['Name']: str(uuid.uuid5(uuid.NAMESPACE_DNS, row['Name'])) for row in rows if row['Type'] != 'ClientPc'}
+    pc_ids = {row['Name']: str(uuid.uuid5(uuid.NAMESPACE_DNS, row['Name'])) for row in rows if row['Type'] == 'ClientPc'}
 
     for row in rows:
-        item_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, row['Name']))
-        pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
-        org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'Heimdall Root'"
-
         if row['Type'] == 'ClientPc':
-            pc_ids[row['Name']] = item_id
+            item_id = pc_ids[row['Name']]
+            pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
+            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'Heimdall Root'"
             mac = f"02:{item_id[0:2]}:{item_id[2:4]}:{item_id[4:6]}:{item_id[6:8]}:{item_id[9:11]}".upper()
             sql.append(f"INSERT INTO client_pcs (id, name, mac_address, hostname, machine_identifier, pinned_object_handle, organization_id) "
                        f"VALUES ('{item_id}', '{row['Name']}', '{mac}', '{row['ClientPcHostname'] or row['Name']}', 'ID-{item_id[:8]}', {pin_handle}, {org_id}) "
                        f"ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, organization_id = EXCLUDED.organization_id;")
-        else:
-            item_ids[row['Name']] = item_id
+
+    # 1. Insert Stations into inventory_items and stations table first so foreign keys resolve
+    sql.append("\n-- Seed Stations (Inventory Items & Stations)")
+    for row in rows:
+        if row['Type'] == 'Machine':
+            item_id = item_ids[row['Name']]
+            pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
+            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'Heimdall Root'"
+            m_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Manufacturer'])}'" if row.get('Manufacturer') else "NULL"
+            s_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Supplier'])}'" if row.get('Supplier') else "NULL"
+            metadata = (row.get('Metadata') or "{}").replace("'", "''")
+            display_name = row.get('DisplayName', '').replace("'", "''")
+            name = row['Name'].replace("'", "''")
+            loc_val = row.get('StorageLocation', '').replace("'", "''") if row.get('StorageLocation') else None
+            storage_loc = f"'{loc_val}'" if loc_val else "NULL"
+            tech_val = row.get('Technology', '').replace("'", "''") if row.get('Technology') else None
+            tech = f"'{tech_val}'" if tech_val else "NULL"
+
+            sql.append(f"INSERT INTO inventory_items (id, name, display_name, manufacturer_id, supplier_id, metadata, serial_number, organization_id, storage_location, equipment_status, is_stock_item, stock_quantity, min_stock_threshold, technology, machine_id) "
+                       f"VALUES ('{item_id}', '{name}', '{display_name}', {m_id}, {s_id}, '{metadata}'::jsonb, '{row.get('SerialNumber', '')}', {org_id}, {storage_loc}, 'InMachine', false, NULL, NULL, {tech}, NULL) "
+                       f"ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, metadata = inventory_items.metadata || EXCLUDED.metadata, organization_id = EXCLUDED.organization_id, storage_location = EXCLUDED.storage_location, equipment_status = EXCLUDED.equipment_status, is_stock_item = EXCLUDED.is_stock_item, stock_quantity = EXCLUDED.stock_quantity, min_stock_threshold = EXCLUDED.min_stock_threshold, technology = EXCLUDED.technology, machine_id = EXCLUDED.machine_id;")
+
+            mt = row.get('MachineType', '').replace("'", "''") if row.get('MachineType') else None
+            m_type = f"'{mt}'" if mt else "NULL"
+            gid = row.get('GroupId', '').replace("'", "''") if row.get('GroupId') else None
+            grp_id = f"'{gid}'" if gid else "NULL"
+            sql.append(f"INSERT INTO stations (id, custom_identifier, pinned_object_handle, machine_type, group_id) VALUES ('{item_id}', '{row['StationIdentifier'] or row['Name']}', {pin_handle}, {m_type}, {grp_id}) ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, machine_type = EXCLUDED.machine_type, group_id = EXCLUDED.group_id;")
+
+            if row.get('ResponsibleTeam'):
+                for t in row['ResponsibleTeam'].split(';'):
+                    t = t.strip()
+                    if t in team_ids:
+                        sql.append(f"INSERT INTO \"ItemResponsibilities\" (managed_items_id, responsible_teams_id) VALUES ('{item_id}', '{team_ids[t]}') ON CONFLICT DO NOTHING;")
+
+    # 2. Insert Discrete Parts, Stock Items, Hardware & Software Components
+    sql.append("\n-- Seed Parts, Stock, Hardware and Software Components")
+    for row in rows:
+        if row['Type'] not in ('ClientPc', 'Machine'):
+            item_id = item_ids[row['Name']]
+            pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
+            org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'Heimdall Root'"
             m_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Manufacturer'])}'" if row.get('Manufacturer') else "NULL"
             s_id = f"'{uuid.uuid5(uuid.NAMESPACE_DNS, row['Supplier'])}'" if row.get('Supplier') else "NULL"
             metadata = (row.get('Metadata') or "{}").replace("'", "''")
@@ -527,26 +594,14 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
             tech_val = row.get('Technology', '').replace("'", "''") if row.get('Technology') else None
             tech = f"'{tech_val}'" if tech_val else "NULL"
             machine_id = "NULL"
-            if row.get('StationIdentifier') and row['StationIdentifier'] in item_ids and row['Type'] != 'Machine':
+            if row.get('StationIdentifier') and row['StationIdentifier'] in item_ids:
                 machine_id = f"'{item_ids[row['StationIdentifier']]}'"
 
             sql.append(f"INSERT INTO inventory_items (id, name, display_name, manufacturer_id, supplier_id, metadata, serial_number, organization_id, storage_location, equipment_status, is_stock_item, stock_quantity, min_stock_threshold, technology, machine_id) "
                        f"VALUES ('{item_id}', '{name}', '{display_name}', {m_id}, {s_id}, '{metadata}'::jsonb, '{row.get('SerialNumber', '')}', {org_id}, {storage_loc}, {eq_status}, {is_stock}, {stock_qty}, {min_thresh}, {tech}, {machine_id}) "
                        f"ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, metadata = inventory_items.metadata || EXCLUDED.metadata, organization_id = EXCLUDED.organization_id, storage_location = EXCLUDED.storage_location, equipment_status = EXCLUDED.equipment_status, is_stock_item = EXCLUDED.is_stock_item, stock_quantity = EXCLUDED.stock_quantity, min_stock_threshold = EXCLUDED.min_stock_threshold, technology = EXCLUDED.technology, machine_id = EXCLUDED.machine_id;")
 
-    # TPT Table Extensions
-    sql.append("\n-- Seed Derived TPT Tables")
-    for row in rows:
-        if row['Name'] in item_ids:
-            item_id = item_ids[row['Name']]
-            pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
-            if row['Type'] == 'Machine':
-                mt = row.get('MachineType', '').replace("'", "''") if row.get('MachineType') else None
-                m_type = f"'{mt}'" if mt else "NULL"
-                gid = row.get('GroupId', '').replace("'", "''") if row.get('GroupId') else None
-                grp_id = f"'{gid}'" if gid else "NULL"
-                sql.append(f"INSERT INTO stations (id, custom_identifier, pinned_object_handle, machine_type, group_id) VALUES ('{item_id}', '{row['StationIdentifier'] or row['Name']}', {pin_handle}, {m_type}, {grp_id}) ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, machine_type = EXCLUDED.machine_type, group_id = EXCLUDED.group_id;")
-            elif row['Type'] == 'HardwareComponent':
+            if row['Type'] == 'HardwareComponent':
                 sql.append(f"INSERT INTO hardware_assets (id) VALUES ('{item_id}') ON CONFLICT (id) DO NOTHING;")
             elif row['Type'] == 'SoftwareComponent':
                 sql.append(f"INSERT INTO software_assets (id) VALUES ('{item_id}') ON CONFLICT (id) DO NOTHING;")
@@ -557,7 +612,7 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE):
                     if t in team_ids:
                         sql.append(f"INSERT INTO \"ItemResponsibilities\" (managed_items_id, responsible_teams_id) VALUES ('{item_id}', '{team_ids[t]}') ON CONFLICT DO NOTHING;")
 
-    # Station Controllers M:N
+    # 3. Station Controllers M:N
     sql.append("\n-- Seed Station Controller Edges (M:N)")
     for row in rows:
         if row['Type'] == 'ClientPc' and row['Name'] in pc_ids:
