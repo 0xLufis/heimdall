@@ -269,6 +269,8 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseWebSockets();
+
 app.MapControllers();
 app.MapHub<MaintenanceHub>("/hubs/maintenance");
 app.MapGrpcService<SystemInfoCollectorService>();

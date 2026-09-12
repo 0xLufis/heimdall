@@ -1,4 +1,4 @@
-import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr'
+import { HubConnection, HubConnectionBuilder, LogLevel, HttpTransportType } from '@microsoft/signalr'
 import type {
   IMaintenanceService,
   MaintenanceTicket,
@@ -23,7 +23,13 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
       try {
         const config = useRuntimeConfig?.()
         const configuredUrl = config?.public?.signalrHubUrl as string | undefined
-        this.hubUrl = configuredUrl || '/hubs/maintenance'
+        if (configuredUrl) {
+          this.hubUrl = configuredUrl
+        } else if (window.location.port === '3000') {
+          this.hubUrl = `${window.location.protocol}//${window.location.hostname}:5099/hubs/maintenance`
+        } else {
+          this.hubUrl = '/hubs/maintenance'
+        }
       } catch {
         this.hubUrl = '/hubs/maintenance'
       }
@@ -37,7 +43,10 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
     try {
       this.isConnecting = true
       this.hubConnection = new HubConnectionBuilder()
-        .withUrl(this.hubUrl)
+        .withUrl(this.hubUrl, {
+          transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling,
+          withCredentials: true
+        })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
         .configureLogging(LogLevel.Warning)
         .build()

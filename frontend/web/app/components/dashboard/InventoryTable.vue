@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { ChevronRight, Cpu, Layers, HardDrive, Edit3, ArrowUpRight } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '~/components/ui/table'
@@ -8,7 +8,9 @@ import { Button } from '~/components/ui/button'
 
 const props = defineProps<{
   items: any[]
-  type: 'hardware' | 'software' | 'hierarchy' | 'parts' | 'stock' | string
+  type?: 'hardware' | 'software' | 'hierarchy' | 'parts' | 'stock' | string
+  classification?: string
+  tracking?: string
   loading: boolean
   columns: Record<string, boolean>
   isChild?: boolean
@@ -28,6 +30,32 @@ const formatCurrency = (val: any) => {
   if (!val && val !== 0) return '-'
   return new Intl.NumberFormat('hu-HU').format(val)
 }
+
+const tableTitle = computed(() => {
+  const c = (props.classification || props.type || 'all').toLowerCase()
+  const t = (props.tracking || 'all').toLowerCase()
+
+  if (c === 'hardware' && t === 'stock') return 'Hardware Consumable Stock & Parts'
+  if (c === 'hardware' && t === 'serialized') return 'Serialized Hardware Equipment & Discrete Parts'
+  if (c === 'software' && t === 'stock') return 'Software License Pools & Seat Stock'
+  if (c === 'software' && t === 'serialized') return 'Serialized Software Licenses & Deployments'
+  if (c === 'hardware') return 'Hardware Asset Registry'
+  if (c === 'software') return 'Software Licenses & Packages'
+  if (t === 'stock') return 'Bulk Consumable Stock Inventory'
+  if (t === 'serialized' || t === 'parts') return 'Serialized Parts & High-Value Equipment'
+  return 'Unified Asset & Inventory Registry'
+})
+
+const tableSubtitle = computed(() => {
+  const c = (props.classification || 'all').toLowerCase()
+  const t = (props.tracking || 'all').toLowerCase()
+  const filterDesc = [
+    c !== 'all' ? (c === 'hardware' ? 'Hardware' : 'Software') : null,
+    t !== 'all' ? (t === 'serialized' ? 'Serialized Parts' : 'Bulk Stock') : null
+  ].filter(Boolean).join(' • ')
+
+  return `${props.items.length} assets listed ${filterDesc ? `(${filterDesc})` : '(All Categories)'} • Click any row to edit`
+})
 </script>
 
 <template>
@@ -39,10 +67,10 @@ const formatCurrency = (val: any) => {
         </div>
         <div>
           <CardTitle class="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">
-            {{ type === 'software' ? 'Software Licenses & Packages' : type === 'parts' ? 'Serialized Parts & High-Value Equipment' : type === 'stock' ? 'Bulk Stock Inventory & Consumables' : 'Hardware Asset Registry' }}
+            {{ tableTitle }}
           </CardTitle>
           <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-            {{ items.length }} {{ type }} assets deployed in active infrastructure • Click any row to edit
+            {{ tableSubtitle }}
           </p>
         </div>
       </div>
@@ -116,14 +144,21 @@ const formatCurrency = (val: any) => {
                           variant="outline" 
                           class="text-[7.5px] font-black uppercase tracking-widest px-3 py-1 rounded-full border-slate-700 text-indigo-400 bg-indigo-500/10 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm"
                         >
-                          {{ item.itemType || type }}
+                          {{ item.itemType || 'Hardware' }}
                         </Badge>
                         <Badge 
                           v-if="item.isStockItem"
                           variant="outline" 
                           class="text-[7.5px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border-purple-500/30 text-purple-300 bg-purple-950/40 inline-flex items-center gap-1 leading-none shadow-sm"
                         >
-                          Stock: {{ item.stockQuantity ?? 9 }} units
+                          Stock: {{ item.stockQuantity ?? 1 }} units
+                        </Badge>
+                        <Badge 
+                          v-else
+                          variant="outline" 
+                          class="text-[7.5px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border-teal-500/30 text-teal-300 bg-teal-950/40 inline-flex items-center gap-1 leading-none shadow-sm"
+                        >
+                          Serialized Part
                         </Badge>
                         <Badge 
                           v-if="item.equipmentStatus"

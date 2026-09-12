@@ -203,6 +203,7 @@ const SEED_INVENTORY = [
     purchaseDate: '2023-04-12T00:00:00Z',
     manufacturer: { id: 'mfr-siemens', name: 'Siemens' },
     responsibleTeams: [{ id: 'team-mech', name: 'Mechanical Maintenance' }],
+    isStockItem: false,
     metadata: { Version: '4.9.2', LicenseType: 'Floating', Seats: '5' }
   },
   {
@@ -216,6 +217,7 @@ const SEED_INVENTORY = [
     purchaseDate: '2024-02-10T00:00:00Z',
     manufacturer: { id: 'mfr-cognex', name: 'Cognex' },
     responsibleTeams: [{ id: 'team-quality', name: 'Quality Automation' }],
+    isStockItem: false,
     metadata: { Version: '3.2.0', Module: 'OCR & Defect Detection' }
   },
   {
@@ -229,6 +231,7 @@ const SEED_INVENTORY = [
     purchaseDate: '2022-11-20T00:00:00Z',
     manufacturer: { id: 'mfr-microsoft', name: 'Microsoft' },
     responsibleTeams: [{ id: 'team-it', name: 'Industrial IT' }],
+    isStockItem: false,
     metadata: { Build: '19044.2965', Architecture: 'x64' }
   }
 ]
@@ -259,7 +262,7 @@ function flattenTreeNodes(nodes: any[]): any[] {
       purchaseDate: node.purchaseDate || node.PurchaseDate,
       manufacturer: node.manufacturer || node.Manufacturer,
       responsibleTeams: node.responsibleTeams || node.ResponsibleTeams || [],
-      isStockItem: node.isStockItem ?? node.IsStockItem ?? false,
+      isStockItem: Boolean(node.isStockItem ?? node.IsStockItem ?? false),
       equipmentStatus: node.equipmentStatus ?? node.EquipmentStatus ?? (node.machineId ? 'InMachine' : 'InStorage'),
       storageLocation: node.storageLocation ?? node.StorageLocation ?? 'Warehouse Shelf',
       stockQuantity: node.stockQuantity ?? node.StockQuantity ?? 1,
@@ -303,6 +306,8 @@ export default defineEventHandler(async (event) => {
   const {
     query = '',
     type = 'all',
+    classification = 'all',
+    tracking = 'all',
     sortBy = 'name',
     sortOrder = 'asc',
     manufacturerId = '',
@@ -349,6 +354,12 @@ export default defineEventHandler(async (event) => {
           purchaseDate: pc.lastSeen || new Date().toISOString(),
           manufacturer: { name: 'Advantech / Industrial IPC' },
           responsibleTeams: pc.responsibleTeams || [],
+          isStockItem: false,
+          equipmentStatus: 'InMachine',
+          storageLocation: 'Production Line Control Cabinet',
+          stockQuantity: 1,
+          minStockThreshold: 1,
+          technology: 'Assembly',
           telemetry: {
             cpuUsagePercent: pc.resourceAverages?.cpuUsageAverage ?? (isOnline ? 18.5 : 0),
             ramUsagePercent: pc.resourceAverages?.ramUsageAverage ?? (isOnline ? 42.1 : 0),
@@ -378,6 +389,12 @@ export default defineEventHandler(async (event) => {
               purchaseDate: pc.lastSeen || new Date().toISOString(),
               manufacturer: { name: hw.manufacturer?.name || 'OEM' },
               responsibleTeams: pc.responsibleTeams || [],
+              isStockItem: false,
+              equipmentStatus: 'InMachine',
+              storageLocation: `${pc.hostname} Internal Chassis`,
+              stockQuantity: 1,
+              minStockThreshold: 1,
+              technology: 'Assembly',
               telemetry: {
                 isOnline,
                 host: pc.hostname
@@ -400,33 +417,58 @@ export default defineEventHandler(async (event) => {
     allItems = [...SEED_INVENTORY]
   }
 
-  // Deduplicate items by ID
+  // Deduplicate items by ID and guarantee normalization
   const uniqueItemsMap = new Map<string, any>()
   for (const item of allItems) {
     if (item.id && !uniqueItemsMap.has(item.id)) {
+      item.isStockItem = Boolean(item.isStockItem)
       uniqueItemsMap.set(item.id, item)
     }
   }
   let items = Array.from(uniqueItemsMap.values())
 
-  // Compute global inventory totals before type filtering
+  // Compute global inventory totals before filtering
   const totalGlobalCount = items.length
   const totalGlobalHardware = items.filter(i => i.itemType === 'hardware').length
   const totalGlobalSoftware = items.filter(i => i.itemType === 'software').length
+  const totalGlobalParts = items.filter(i => !i.isStockItem && i.itemType !== 'software').length
+  const totalGlobalStock = items.filter(i => i.isStockItem === true).length
   const totalGlobalCost = items.reduce((sum, item) => sum + (item.costInHUF || 0), 0)
 
-  // Filter by Type
+  // Resolve classification (Hardware vs Software vs All) and tracking (Serialized vs Bulk Stock vs All)
+  let effectiveClass = (classification || 'all').toLowerCase()
+  let effectiveTracking = (tracking || 'all').toLowerCase()
+
+  // Backwards compatibility if legacy 'type' parameter is passed without classification/tracking
   if (type && type !== 'all' && type !== 'hierarchy') {
     const t = type.toLowerCase()
+    if (t === 'hardware' || t === 'software') {
+      if (effectiveClass === 'all') effectiveClass = t
+    } else if (t === 'parts' || t === 'serialized') {
+      if (effectiveTracking === 'all') effectiveTracking = 'serialized'
+    } else if (t === 'stock') {
+      if (effectiveTracking === 'all') effectiveTracking = 'stock'
+    }
+  }
+
+  // Filter by Classification (Nature)
+  if (effectiveClass !== 'all') {
     items = items.filter(item => {
       const itemType = (item.itemType || '').toLowerCase()
-      if (t === 'parts') {
-        return !item.isStockItem && itemType !== 'software'
+      return itemType === effectiveClass
+    })
+  }
+
+  // Filter by Tracking (Management Mode)
+  if (effectiveTracking !== 'all') {
+    items = items.filter(item => {
+      if (effectiveTracking === 'serialized' || effectiveTracking === 'parts') {
+        return item.isStockItem !== true
       }
-      if (t === 'stock') {
+      if (effectiveTracking === 'stock') {
         return item.isStockItem === true
       }
-      return itemType === t
+      return true
     })
   }
 
@@ -448,10 +490,15 @@ export default defineEventHandler(async (event) => {
     items = items.filter(item => {
       // Check explicit tag matches
       for (const [tagKey, tagVal] of Object.entries(tagMatches)) {
-        if (tagKey === 'type') {
-          if (tagVal === 'parts' && item.isStockItem) return false
+        if (tagKey === 'type' || tagKey === 'class') {
+          if (tagVal === 'hardware' && item.itemType?.toLowerCase() !== 'hardware') return false
+          if (tagVal === 'software' && item.itemType?.toLowerCase() !== 'software') return false
+          if ((tagVal === 'parts' || tagVal === 'serialized') && item.isStockItem) return false
           if (tagVal === 'stock' && !item.isStockItem) return false
-          if (tagVal !== 'parts' && tagVal !== 'stock' && !item.itemType?.toLowerCase().includes(tagVal)) return false
+        }
+        if (tagKey === 'tracking') {
+          if ((tagVal === 'parts' || tagVal === 'serialized') && item.isStockItem) return false
+          if (tagVal === 'stock' && !item.isStockItem) return false
         }
         if ((tagKey === 'manufacturer' || tagKey === 'mfr') && !item.manufacturer?.name?.toLowerCase().includes(tagVal)) return false
         if (tagKey === 'station' && !item.metadata?.Station?.toLowerCase().includes(tagVal) && !item.customIdentifier?.toLowerCase().includes(tagVal) && !item.storageLocation?.toLowerCase().includes(tagVal)) return false
@@ -531,6 +578,8 @@ export default defineEventHandler(async (event) => {
       totalGlobalCount,
       totalGlobalHardware,
       totalGlobalSoftware,
+      totalGlobalParts,
+      totalGlobalStock,
       totalGlobalCost
     }
   }

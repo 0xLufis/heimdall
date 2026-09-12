@@ -30,7 +30,38 @@ definePageMeta({
 
 const { isLiveConnected, lastSyncedAt, onInventoryUpdate } = useInventoryLive()
 
-const activeTab = ref<'hardware' | 'software' | 'parts' | 'stock'>('hardware')
+// Dual orthogonal dimensions: Classification (Hardware vs Software) x Tracking (Serialized Parts vs Bulk Stock)
+const classification = ref<'all' | 'hardware' | 'software'>('all')
+const tracking = ref<'all' | 'serialized' | 'stock'>('all')
+
+const activeTab = computed<'all' | 'hardware' | 'software' | 'parts' | 'stock'>({
+  get() {
+    if (classification.value === 'hardware' && tracking.value === 'all') return 'hardware'
+    if (classification.value === 'software' && tracking.value === 'all') return 'software'
+    if (classification.value === 'all' && tracking.value === 'serialized') return 'parts'
+    if (classification.value === 'all' && tracking.value === 'stock') return 'stock'
+    return 'all'
+  },
+  set(val) {
+    if (val === 'hardware') {
+      classification.value = 'hardware'
+      tracking.value = 'all'
+    } else if (val === 'software') {
+      classification.value = 'software'
+      tracking.value = 'all'
+    } else if (val === 'parts') {
+      classification.value = 'all'
+      tracking.value = 'serialized'
+    } else if (val === 'stock') {
+      classification.value = 'all'
+      tracking.value = 'stock'
+    } else {
+      classification.value = 'all'
+      tracking.value = 'all'
+    }
+  }
+})
+
 const loading = ref(false)
 const items = ref<any[]>([])
 const currentQuery = ref('')
@@ -75,15 +106,16 @@ const setPage = (page: number) => {
   }
 }
 
-watch([pageSize, customPageSize, activeTab], () => {
+watch([pageSize, customPageSize, classification, tracking], () => {
   currentPage.value = 1
+  fetchData()
 })
 
 const inventorySearchConfig = computed<SearchInstanceConfig>(() => ({
   instanceId: 'inventory',
-  placeholder: `Search ${activeTab.value} by name, model, serial, spec (e.g. manufacturer:Siemens)...`,
+  placeholder: 'Search inventory by name, serial, model, manufacturer, location, spec...',
   defaultEndpoints: ['/api/proxy/inventory/search'],
-  defaultTags: [{ key: 'type', value: activeTab.value }],
+  defaultTags: [], // Kept empty to prevent stale tag pills breaking category switching
   enableAutoTagging: true
 }))
 
@@ -137,17 +169,14 @@ const fetchData = async (q: string = currentQuery.value) => {
       method: 'GET',
       params: {
         query: q,
-        type: activeTab.value
+        classification: classification.value,
+        tracking: tracking.value
       }
     })
     if (res) {
       items.value = res.items || []
       if (res.kpis) {
-        kpis.value = {
-          ...res.kpis,
-          totalGlobalParts: items.value.filter(i => !i.isStockItem && i.itemType !== 'software').length,
-          totalGlobalStock: items.value.filter(i => i.isStockItem).length
-        }
+        kpis.value = res.kpis
       }
     }
   } catch (e) {
@@ -194,10 +223,6 @@ const handleSaveEdit = async (updatedItem: any) => {
   }
 }
 
-watch(activeTab, () => {
-  fetchData()
-})
-
 onMounted(() => {
   fetchData('')
 })
@@ -222,37 +247,69 @@ onInventoryUpdate(() => {
         </p>
 
         <!-- KPI Metric Badges -->
+        <!-- KPI Metric Badges (Interactive Filters) -->
         <div class="flex flex-wrap items-center gap-3 mt-4">
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+          <button 
+            type="button"
+            @click="classification = 'all'; tracking = 'all'"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
+            :class="classification === 'all' && tracking === 'all' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-sm ring-1 ring-indigo-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+          >
             <Layers class="w-3.5 h-3.5 text-indigo-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Total:</span>
+            <span class="text-[10px] font-bold uppercase">Total:</span>
             <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalCount || items.length }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+          </button>
+
+          <button 
+            type="button"
+            @click="classification = (classification === 'hardware' ? 'all' : 'hardware')"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
+            :class="classification === 'hardware' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-sm ring-1 ring-emerald-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+          >
             <Cpu class="w-3.5 h-3.5 text-emerald-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Hardware:</span>
-            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalHardware || items.filter(i => i.itemType !== 'software').length }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+            <span class="text-[10px] font-bold uppercase">Hardware:</span>
+            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalHardware }}</span>
+          </button>
+
+          <button 
+            type="button"
+            @click="classification = (classification === 'software' ? 'all' : 'software')"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
+            :class="classification === 'software' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm ring-1 ring-blue-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+          >
             <HardDrive class="w-3.5 h-3.5 text-blue-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Software:</span>
-            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalSoftware || items.filter(i => i.itemType === 'software').length }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+            <span class="text-[10px] font-bold uppercase">Software:</span>
+            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalSoftware }}</span>
+          </button>
+
+          <button 
+            type="button"
+            @click="tracking = (tracking === 'serialized' ? 'all' : 'serialized')"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
+            :class="tracking === 'serialized' ? 'bg-teal-600/20 border-teal-500 text-teal-300 shadow-sm ring-1 ring-teal-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+          >
             <Wrench class="w-3.5 h-3.5 text-teal-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Parts:</span>
-            <span class="font-mono font-black text-slate-200">{{ items.filter(i => !i.isStockItem && i.itemType !== 'software').length }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+            <span class="text-[10px] font-bold uppercase">Serialized:</span>
+            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalParts }}</span>
+          </button>
+
+          <button 
+            type="button"
+            @click="tracking = (tracking === 'stock' ? 'all' : 'stock')"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all cursor-pointer"
+            :class="tracking === 'stock' ? 'bg-purple-600/20 border-purple-500 text-purple-300 shadow-sm ring-1 ring-purple-500/50' : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'"
+          >
             <Boxes class="w-3.5 h-3.5 text-purple-400" />
-            <span class="text-[10px] font-bold text-slate-500 uppercase">Stock:</span>
-            <span class="font-mono font-black text-slate-200">{{ items.filter(i => i.isStockItem).length }}</span>
-          </div>
+            <span class="text-[10px] font-bold uppercase">Bulk Stock:</span>
+            <span class="font-mono font-black text-slate-200">{{ kpis.totalGlobalStock }}</span>
+          </button>
+
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
             <DollarSign class="w-3.5 h-3.5 text-amber-400" />
             <span class="text-[10px] font-bold text-slate-500 uppercase">Valuation:</span>
             <span class="font-mono font-black text-slate-200">{{ formatCurrency(kpis.totalGlobalCost) }} HUF</span>
           </div>
+
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
             <span class="size-2 rounded-full" :class="isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500'" />
             <span class="text-[10px] font-bold uppercase tracking-widest" :class="isLiveConnected ? 'text-emerald-400' : 'text-emerald-500'">
@@ -262,41 +319,73 @@ onInventoryUpdate(() => {
         </div>
       </div>
       
-      <!-- Primary View Switcher & Action Button -->
+      <!-- Primary View Switcher: Combinable Classification x Tracking -->
       <div class="flex flex-wrap items-center gap-3 shrink-0">
-        <!-- View Mode Switcher: Hardware, Software, Parts, Stock (Hierarchy removed) -->
-        <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex gap-1">
+        <!-- Classification Facet -->
+        <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-1">
+          <span class="text-[9px] font-black uppercase text-slate-500 px-2 tracking-wider">Class:</span>
           <Button 
             variant="ghost" 
-            @click="activeTab = 'hardware'" 
-            :class="activeTab === 'hardware' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
+            size="sm"
+            @click="classification = 'all'" 
+            :class="classification === 'all' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8"
           >
+            All
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            @click="classification = 'hardware'" 
+            :class="classification === 'hardware' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8 flex items-center gap-1.5"
+          >
+            <Cpu class="w-3 h-3" />
             Hardware
           </Button>
           <Button 
             variant="ghost" 
-            @click="activeTab = 'software'" 
-            :class="activeTab === 'software' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
+            size="sm"
+            @click="classification = 'software'" 
+            :class="classification === 'software' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8 flex items-center gap-1.5"
           >
+            <HardDrive class="w-3 h-3" />
             Software
           </Button>
+        </div>
+
+        <!-- Tracking Facet -->
+        <div class="bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-1">
+          <span class="text-[9px] font-black uppercase text-slate-500 px-2 tracking-wider">Tracking:</span>
           <Button 
             variant="ghost" 
-            @click="activeTab = 'parts'" 
-            :class="activeTab === 'parts' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
+            size="sm"
+            @click="tracking = 'all'" 
+            :class="tracking === 'all' ? 'bg-purple-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8"
           >
-            Parts (Serialized)
+            All
           </Button>
           <Button 
             variant="ghost" 
-            @click="activeTab = 'stock'" 
-            :class="activeTab === 'stock' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-9"
+            size="sm"
+            @click="tracking = 'serialized'" 
+            :class="tracking === 'serialized' ? 'bg-purple-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8 flex items-center gap-1.5"
           >
-            Stock (Bulk)
+            <Wrench class="w-3 h-3" />
+            Serialized
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            @click="tracking = 'stock'" 
+            :class="tracking === 'stock' ? 'bg-purple-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all h-8 flex items-center gap-1.5"
+          >
+            <Boxes class="w-3 h-3" />
+            Bulk Stock
           </Button>
         </div>
 
@@ -379,6 +468,8 @@ onInventoryUpdate(() => {
     <DashboardInventoryTable 
       :items="paginatedItems" 
       :type="activeTab" 
+      :classification="classification"
+      :tracking="tracking"
       :loading="loading"
       :columns="columns"
       @edit="handleEditItem"
