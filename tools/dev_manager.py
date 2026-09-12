@@ -103,7 +103,7 @@ def watch_status(interval=2.0):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Heimdall Dev Manager")
-    parser.add_argument("command", choices=["status", "watch", "check-health", "test"], help="Dev manager command")
+    parser.add_argument("command", choices=["status", "watch", "check-health", "test", "test-windows"], help="Dev manager command")
     parser.add_argument("--interval", type=float, default=2.0, help="Refresh interval in seconds for watch mode")
     args = parser.parse_args()
 
@@ -116,3 +116,6 @@ if __name__ == "__main__":
         sys.exit(0 if ok else 1)
     elif args.command == "test":
         run_tests()
+    elif args.command == "test-windows":
+        script = os.path.join(os.path.dirname(__file__), "test_windows_agent.py")
+        subprocess.run([sys.executable, script])

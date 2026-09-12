@@ -234,7 +234,14 @@ class IndustrialFleetSimulator:
         self.grpc_host = grpc_host
         self.fault_rate = fault_rate
         self.client = client
-        self.csv_path = csv_path or os.path.join(os.path.dirname(__file__), '../../seed_data/inventory_seed.csv')
+        candidate_paths = [
+            os.environ.get("CSV_PATH"),
+            csv_path,
+            os.path.join(os.path.dirname(__file__), '../../seed_data/inventory_seed.csv'),
+            '/workspace/seed_data/inventory_seed.csv',
+            'seed_data/inventory_seed.csv'
+        ]
+        self.csv_path = next((p for p in candidate_paths if p and os.path.exists(p)), None)
         self.nodes = self.load_nodes()
         if self.client:
             matched = [n for n in self.nodes if n.hostname.upper() == self.client.upper()]
@@ -281,7 +288,7 @@ class IndustrialFleetSimulator:
         except Exception as e:
             pass
 
-        if os.path.exists(self.csv_path):
+        if self.csv_path and os.path.exists(self.csv_path):
             with open(self.csv_path, mode='r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
@@ -304,16 +311,27 @@ class IndustrialFleetSimulator:
                             os_name=os_name
                         ))
         if not nodes:
-            # Fallback synthetic nodes
-            for i in range(1, 51):
-                nodes.append(IndustrialDeviceNode(
-                    hostname=f"CPC-{i:03d}",
-                    machine_identifier=f"ID-CPC{i:03d}",
-                    mac_address=f"02:AA:BB:{i//256:02X}:{i%256:02X}:01",
-                    ip_address=f"10.0.1.{i}",
-                    profile=DeviceProfile.TWINCAT_IPC if i % 2 == 0 else DeviceProfile.SIMATIC_IPC,
-                    os_name="Windows 10 IoT"
-                ))
+            # Canonical 56 plant IPCs across 8 lines (7 per line)
+            for l_num in range(1, 9):
+                vlan = 100 + l_num
+                line_specs = [
+                    (f"IPC-L{l_num:02d}-OP030-DEDICATED", DeviceProfile.TWINCAT_IPC, "Windows 10 IoT Enterprise 2021 LTSC"),
+                    (f"IPC-L{l_num:02d}-CONVEYOR-MAIN", DeviceProfile.SIMATIC_IPC, "Windows 11 IoT Enterprise LTSC 2024"),
+                    (f"IPC-L{l_num:02d}-ROB-ALPHA", DeviceProfile.ROBOT_CELL, "Windows 10 IoT Enterprise"),
+                    (f"IPC-L{l_num:02d}-ROB-BETA", DeviceProfile.ROBOT_CELL, "Windows 10 IoT Enterprise"),
+                    (f"IPC-L{l_num:02d}-OP060-PLC", DeviceProfile.TWINCAT_IPC, "Windows 11 IoT Enterprise"),
+                    (f"IPC-L{l_num:02d}-OP060-VISION", DeviceProfile.VISION_SENSOR, "Windows 10 IoT Enterprise"),
+                    (f"IPC-L{l_num:02d}-OP060-MES-GATE", DeviceProfile.LINUX_EDGE, "Debian 12 Bookworm Industrial")
+                ]
+                for idx, (hn, prof, os_n) in enumerate(line_specs, start=1):
+                    nodes.append(IndustrialDeviceNode(
+                        hostname=hn,
+                        machine_identifier=f"HW-{hn}",
+                        mac_address=f"02:65:54:{l_num:02X}:{vlan:02X}:{idx:02X}",
+                        ip_address=f"192.168.{vlan}.{10 + idx}",
+                        profile=prof,
+                        os_name=os_n
+                    ))
         return nodes
 
     def send_node_heartbeat(self, stub, node: IndustrialDeviceNode):

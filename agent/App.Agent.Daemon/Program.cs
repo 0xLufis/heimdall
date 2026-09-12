@@ -13,8 +13,15 @@ AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 
-// Ensure it only listens on localhost for security
-builder.WebHost.UseUrls("http://localhost:5998");
+// Enable Windows Service lifecycle management when running on Windows
+if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+{
+    builder.Host.UseWindowsService();
+}
+
+// Configurable binding address (defaults to localhost:5998; can be set to http://0.0.0.0:5998 for container/endpoint testing)
+var agentUrls = Environment.GetEnvironmentVariable("AGENT_URLS") ?? "http://localhost:5998";
+builder.WebHost.UseUrls(agentUrls);
 
 builder.Services.AddSingleton<ConfigurationService>();
 builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler>();

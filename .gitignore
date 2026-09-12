@@ -78,3 +78,13 @@ __pycache__/
 # ==========================================
 GEMINI.md
 *gemini.md
+
+# ==========================================
+# Windows VM Container Storage & Images
+# ==========================================
+infra/windows/storage/
+infra/windows/shared/agent/
+*.iso
+*.qcow2
+*.img
+

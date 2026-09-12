@@ -149,6 +149,7 @@ services:
       context: .
       dockerfile: agent/Dockerfile.dev
     container_name: heimdall_agent
+    hostname: EDGE-AGENT-LOCAL
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_USE_POLLING_FILE_WATCHER=1
@@ -176,10 +177,46 @@ services:
     environment:
       - GRPC_HOST=backend:5001
       - HTTP_PORT=5055
+      - CSV_PATH=/workspace/seed_data/inventory_seed.csv
+    volumes:
+      - ./seed_data:/workspace/seed_data:ro
+      - ./fixtures:/workspace/fixtures:ro
     depends_on:
       - backend
     networks:
       - heimdall_dev_net
+    restart: unless-stopped
+
+  # 8. Windows Edge Agent Test Environment (Windows 10 LTSC on KVM)
+  windows-agent:
+    build:
+      context: ./infra/windows
+      dockerfile: Dockerfile
+    container_name: heimdall_windows_agent
+    environment:
+      VERSION: "${WIN_VERSION:-10l}"
+      RAM_SIZE: "${WIN_RAM:-3G}"
+      CPU_CORES: "${WIN_CPU:-2}"
+      DISK_SIZE: "${WIN_DISK:-20G}"
+      USERNAME: "Docker"
+      PASSWORD: "Password123!"
+    devices:
+      - /dev/kvm
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "8006:8006"       # Web VNC viewer
+      - "3389:3389/tcp"   # RDP
+      - "5985:5985"       # WinRM HTTP
+      - "5998:5998"       # Agent Configurator API
+      - "2222:22"         # OpenSSH
+    volumes:
+      - ./infra/windows/storage:/storage
+      - ./infra/windows/shared:/shared
+    networks:
+      - heimdall_dev_net
+    profiles:
+      - windows
     restart: unless-stopped
 
 networks:

@@ -5,7 +5,7 @@ services:
       dockerfile: simulators/fleet/Dockerfile.simulated-pc
     container_name: heimdall_sim_pc_robotics
     environment:
-      - SIMULATED_HOSTNAME=CPC-L06-ROB-01
+      - SIMULATED_HOSTNAME=IPC-L06-ROB-ALPHA
       - BACKEND_GRPC_HOST=heimdall_backend:5001
       - AD_SERVICE_URL=http://heimdall_frontend:3000/api/ad-mock
       - REPORT_INTERVAL_SEC=10
@@ -21,7 +21,7 @@ services:
       dockerfile: simulators/fleet/Dockerfile.simulated-pc
     container_name: heimdall_sim_pc_fastening
     environment:
-      - SIMULATED_HOSTNAME=CPC-L06-SCR-01
+      - SIMULATED_HOSTNAME=IPC-L06-OP030-DEDICATED
       - BACKEND_GRPC_HOST=heimdall_backend:5001
       - AD_SERVICE_URL=http://heimdall_frontend:3000/api/ad-mock
       - REPORT_INTERVAL_SEC=10
@@ -37,7 +37,7 @@ services:
       dockerfile: simulators/fleet/Dockerfile.simulated-pc
     container_name: heimdall_sim_pc_vision
     environment:
-      - SIMULATED_HOSTNAME=CPC-L09-VIS-01
+      - SIMULATED_HOSTNAME=IPC-L07-OP060-VISION
       - BACKEND_GRPC_HOST=heimdall_backend:5001
       - AD_SERVICE_URL=http://heimdall_frontend:3000/api/ad-mock
       - REPORT_INTERVAL_SEC=10
