@@ -21,39 +21,52 @@ Welcome to the Heimdall technical documentation suite. The documentation is orga
   * Decoupled `IIdentityDirectoryService` provider specification (Better-Auth database, LDAP, Entra ID).
   * Alternative endpoint management mechanisms: autonomous gRPC self-registration, subnet mDNS/ARP scanning, and CMDB inventory sync.
 
-* [Edge Agent & Protocol Drivers](architecture/EDGE_AGENT_AND_PROTOCOLS.md)
+* [Edge Agent, Signed Plugins & Protocol Drivers](architecture/EDGE_AGENT_AND_PROTOCOLS.md)
   * Edge daemon lifecycle, scheduling jitter, and background worker loops.
+  * Cryptographically signed plugin verification pipeline (RSA-2048) and process sandboxing (`sandboxes/{pluginId}`).
+  * Secured local Extension REST API (`/api/v1/extensions/*`) and custom hardware sensor attachment to station component trees.
   * Declarative Recipe JSON Schema and Multi-Recipe Runtime Merger DAG algorithm (CSTK deduplication).
   * Deadband & Delta Evaluator (Absolute, Percentage, `xxHash64` memory hashing, heartbeat TTL).
   * 4-tier dynamic bandwidth throttler, token bucket rate limiter, and adaptive Zstandard compression.
   * Store-and-forward local SQLite WAL spooling with exponential backoff jitter.
   * Comprehensive protocol driver specifications: Beckhoff TwinCAT ADS, EtherCAT master/slave diagnostics, TcOpen OOP `_data` payload standard, standalone `FB_HeimdallTelemetryBridge`, OPC UA, Modbus TCP (endianness conversions), and native OS probes.
 
+* [Predictive Maintenance, SPC Goals & Fleet Analytics](architecture/PREDICTIVE_MAINTENANCE_AND_ANALYTICS.md)
+  * Fleet degradation modeling, remaining useful life (RUL) estimates, and MTBF/MTTR computations.
+  * Statistical Process Control (SPC) KPI Goals: Target Mean, Upper Control Limit (UCL), and Lower Control Limit (LCL).
+  * Dedicated Grafana Mass Telemetry integration and Prometheus/OData live stream exporters.
+
 * [Security, Encryption & Compliance](architecture/SECURITY_AND_COMPLIANCE.md)
   * Industrial threat model and defense-in-depth security architecture.
   * Field-level authenticated encryption at rest via AES-256-GCM (96-bit nonces, 128-bit authentication tags).
   * Edge cryptographic envelope storage: Windows DPAPI and Linux HKDF-SHA256 machine binding.
   * Signed remote command execution pipeline with fail-secure validation.
+  * Production-grade Diagnostic Snapshot engine sealed with immutable SHA-256 digests.
   * PII and personal data exclusion engine: directory blacklists, sensitive file filters, process argument scrubber.
   * TISAX (VDA ISA 6.0 Level 3) and GDPR compliance control mappings and verification methods.
   * System audit trails, security event logging, and dead-letter telemetry quarantine.
 
 * [Frontend, Real-Time PWA & Spatial UI](architecture/FRONTEND_AND_PWA.md)
   * Nuxt application architecture and Nitro BFF reverse proxying with automatic tenant header injection.
+  * Descriptive Computer Science route structure and elimination of redundant `index.vue` files.
+  * Global application-wide right-click context menu with viewport-safe positioning and deep domain navigation.
+  * Interactive hero metric card filtering with toggle-off states, active rings, and active filter chip bars.
+  * Intuitive page header click-to-reset actions clearing search queries, URL state, and refreshing live data.
   * Live maintenance ticketing Kanban board with native HTML5 drag-and-drop mechanics.
   * Real-time SignalR WebSocket hub integration (`/hubs/maintenance`) with mobile vibration notifications.
   * Offline-first Progressive Web App architecture with dual-store IndexedDB caching and background sync replay.
   * Interactive AutoCAD DXF spatial floor plan engine, vector SVG rendering, and machine handle pinning.
   * Dynamic 5-tab asset template editor with variable interpolation pipes and dynamic system tokens.
   * OmniSearch multi-attribute engine with regex entity extraction and Damerau-Levenshtein fuzzy matching.
-  * Component catalog and composable API reference (`useMaintenance`, `useOmniSearch`, etc.).
+  * Component catalog and composable API reference (`useMaintenance`, `useOmniSearch`, `useGlobalContextMenu`, etc.).
 
 ---
 
 ## Interface & API Reference
 
 * [API & Interface Reference](api/API_REFERENCE.md)
-  * REST Web API (`/api/v1/*`): Complete endpoints, query parameters, request bodies, and response JSON schemas for Stations, Controllers, Maintenance Tickets, Inventory, Dashboard, and Commands.
+  * REST Web API (`/api/v1/*`): Complete endpoints, query parameters, request bodies, and response JSON schemas for Stations, Controllers, Maintenance Tickets, Inventory, Dashboard, Commands, and Diagnostic Snapshots.
+  * Edge Extension REST API (`/api/v1/extensions/*`): Dynamic hardware sensor registration, telemetry, and event ingestion.
   * Copia Automation Git webhook integration specification.
   * gRPC Telemetry Ingestion Service (`heimdall.telemetry.v1.SystemInfoCollector`): Complete Protobuf definition and RPC methods.
   * SignalR WebSocket Hub method signatures and client callback events.

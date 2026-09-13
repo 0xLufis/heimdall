@@ -254,12 +254,59 @@ Supports explicit key-value queries:
   * `query`: Current search string.
   * `results`: Search result items with match scoring.
   * `performSearch(text)`: Executes fuzzy search query.
+* **`useGlobalContextMenu()`**: Manages application-wide right-click context menu state, viewport bounding, and target entity context data.
 * **`useAssetReferenceCache()`**: Caches manufacturers, suppliers, and known metadata keys across form modals.
 * **`useDashboard()`**: Provides summary KPI metrics, active edge node counts, and alert feeds.
 
 ### Core Components:
-* **`InteractiveMap.vue`**: SVG vector map renderer with zoom/pan and clickable anchor pins.
+* **`InteractiveMapCanvas.vue`**: AutoCAD DXF vector map renderer with zoom/pan, context menus, and clickable anchor pins.
+* **`GlobalContextMenu.vue`**: Viewport-clamped context menu providing deep entity navigation and native browser menu pass-through.
+* **`TicketMetricsOverview.vue`**: Interactive hero metrics banner with accessible click-to-filter, active rings, and clear toggling.
 * **`ClientDetailsModal.vue`**: Detailed inspector modal for IPC nodes displaying hardware specs, software packages, and disk storage bars.
 * **`AssetTabbedEditor.vue`**: 5-tab dynamic asset creation and editing modal.
 * **`QrScannerModal.vue`**: Camera-based barcode and QR code scanner for mobile floor inspections.
 * **`Search.vue`**: Debounced search input with dynamic tag suggestions.
+
+---
+
+## 9. Global Application Context Menu & Interaction System
+
+The platform provides a unified right-click context menu mounted at the root (`app.vue`) via `GlobalContextMenu.vue` and `useGlobalContextMenu.ts`:
+- **Boundary-Aware Clamping**: Dynamically checks window inner width and height, shifting the menu upward or leftward if rendered near viewport edges to prevent clipping.
+- **Deep Domain Navigation**:
+  - **Go to Machine**: Routes directly to `/dashboard/machines?id=...` with automatic scrolling and search filtering.
+  - **Go to Node / Controller**: Routes to `/dashboard/clients?selected=...`.
+  - **Go to Owner Team / Person**: Filters incidents by team or assigned engineer (`/dashboard/tickets?team=...`).
+  - **Go to Ticket**: Navigates to open tickets or triggers incident creation prefilled with equipment metadata.
+  - **Live Telemetry & Diagnostics**: Navigates to `/dashboard/telemetry` for live sensor stream inspection.
+  - **Inspect Component Tree**: Opens the Station Component Tree modal directly.
+  - **Copy Identifier / Handle**: One-click clipboard copy with animated visual feedback.
+- **Native Browser Pass-Through**:
+  - Contains an explicit menu action **"Open Browser Context Menu"** to reveal native browser options.
+  - **Shift + Right-Click Bypass**: Holding `Shift` while right-clicking unconditionally opens the native browser menu anywhere in the application.
+
+---
+
+## 10. Dashboard Route Architecture & Interactive Hero Filtering
+
+### 10.1 Descriptive Computer Science Naming (Zero `index.vue`)
+To eliminate ambiguous file tabs in development environments, all dashboard pages use clean, descriptive CS names while preserving 100% URL route parity via Nuxt 4 routing and aliases:
+- `/dashboard` ➔ `pages/dashboard/overview.vue` (with `alias: ['/dashboard']`)
+- `/dashboard/analytics` ➔ `pages/dashboard/analytics.vue`
+- `/dashboard/clients` ➔ `pages/dashboard/clients.vue`
+- `/dashboard/telemetry` ➔ `pages/dashboard/telemetry/stream.vue` (with `alias: ['/dashboard/telemetry']`)
+- `/dashboard/admin` ➔ `pages/dashboard/admin/system-settings.vue` (with `alias: ['/dashboard/admin']`)
+
+### 10.2 Interactive Hero Metrics Filtering (`TicketMetricsOverview.vue`)
+- Incident metric cards (Total Open, Critical, Pending Parts, Overdue SLA, Resolved, SLA Health) serve as accessible toggle buttons (`role="button"`, `tabindex="0"`, Enter/Space keybindings).
+- Clicking applies the corresponding filter with an active colored ring (`ring-2 ring-indigo-500`, `ring-rose-500`, etc.) and slight elevation.
+- Clicking an active card toggles the filter off.
+- An active filter chip bar renders below the cards displaying matched incident counts and a direct "Clear Filter" button.
+
+### 10.3 Intuitive Page Header Click-to-Reset Actions
+Clicking any page header title or icon block across dashboard views (`tickets.vue`, `machines.vue`, `clients.vue`, `analytics.vue`, `map.vue`, `stream.vue`) acts as an intuitive reset action:
+- Clears active search queries and filter chips.
+- Cleans URL query parameters (e.g. `?id=...`, `?selected=...`).
+- Restores default view modes (e.g. list, grid).
+- Triggers fresh live data fetching and SignalR re-synchronization.
+

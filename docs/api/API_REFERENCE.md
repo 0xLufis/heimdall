@@ -131,6 +131,28 @@ Queues a signed operational command for an edge agent daemon.
 }
 ```
 
+#### `POST /api/v1/ClientPc/{id}/snapshot`
+Triggers an immediate, immutable diagnostic snapshot capture for an edge IPC controller. Dispatches a signed `TRIGGER_DIAGNOSTIC_SNAPSHOT` command, seals the captured JSON payload with a SHA-256 cryptographic digest, and logs a non-repudiable audit event.
+* **Response `200 OK`**:
+```json
+{
+  "id": "7b1c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
+  "clientPcId": "e14b99f2-2b63-4c91-923a-59b43d2c1102",
+  "hostname": "IPC-L01-01",
+  "machineIdentifier": "LINE-01-OP10",
+  "capturedByUserId": "usr-admin-01",
+  "capturedByUserName": "Admin User",
+  "capturedAtUtc": "2026-09-13T22:30:00Z",
+  "payloadHashSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "payloadSizeBytes": 14258,
+  "snapshotPayloadJson": "{ ... }"
+}
+```
+
+#### `GET /api/v1/ClientPc/{id}/snapshots`
+Retrieves historical diagnostic snapshots for an IPC node, ordered newest first.
+* **Response `200 OK`**: Returns array of `DiagnosticSnapshotSummaryDto`.
+
 ---
 
 ### 1.4 Maintenance Tickets (`/api/v1/tickets`)
@@ -644,3 +666,103 @@ sequenceDiagram
     Hub-->>-Subscribers: Real-Time Event: StatusChanged
     API-->>-Client: 204 NoContent
 ```
+
+---
+
+## 6. Edge Extension REST API & Plugin Management
+
+### 6.1 Edge Extension REST API (Local Daemon Interface)
+Hosted on the edge compute node (default port `5180` or daemon internal loopback) for external hardware/software integrations. Requires `X-Extension-Key: <token>` or `Authorization: Bearer <token>` matching `ExtensionApiKey`.
+
+#### `GET /api/v1/agent/status`
+Retrieves agent health, uptime, active driver counts, and registered extension statistics.
+* **Response `200 OK`**:
+```json
+{
+  "status": "Healthy",
+  "version": "0.1.0-alpha",
+  "activeExtensions": 2,
+  "registeredComponents": 4,
+  "lastSyncUtc": "2026-09-13T22:30:00Z"
+}
+```
+
+#### `POST /api/v1/extensions/components`
+Registers or updates custom peripheral sensors, test benches, or field equipment attached to the host IPC.
+* **Request Body**:
+```json
+{
+  "componentId": "sensor-laser-head-01",
+  "name": "High-Precision Laser Head",
+  "componentType": "LaserOptic",
+  "parentComponentName": "OP20-Weld",
+  "metadata": {
+    "wavelengthNm": 1064,
+    "maxPowerKw": 4.5
+  }
+}
+```
+* **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "componentId": "sensor-laser-head-01",
+  "attachedToParent": "OP20-Weld"
+}
+```
+
+#### `POST /api/v1/extensions/telemetry`
+Ingests custom time-series tags into the agent telemetry pipeline.
+* **Request Body**:
+```json
+{
+  "componentId": "sensor-laser-head-01",
+  "timestampUtc": "2026-09-13T22:30:05Z",
+  "tags": {
+    "OpticTemperatureC": 34.2,
+    "FocalOffsetMm": 0.04
+  }
+}
+```
+* **Response `200 OK`**: `{"success": true, "buffered": true}`
+
+#### `POST /api/v1/extensions/events`
+Streams operational alarms, interlock triggers, or hardware fault events.
+* **Request Body**:
+```json
+{
+  "componentId": "sensor-laser-head-01",
+  "severity": "Warning",
+  "code": "W_OPTIC_DIRT_HIGH",
+  "message": "Protective glass contamination index exceeded 85%"
+}
+```
+* **Response `200 OK`**: `{"success": true}`
+
+#### `POST /api/v1/agent/sync`
+Triggers immediate gRPC push of buffered telemetry, registered components, and events to the central backend.
+* **Response `200 OK`**: `{"success": true, "flushedRecords": 42}`
+
+### 6.2 Plugin Management Endpoints (`/api/v1/plugins`)
+
+#### `POST /api/v1/plugins/install`
+Installs and signs a plugin package bundle for edge distribution. Validates and signs manifest files using the master RSA-2048 signing authority.
+* **Request Body**:
+```json
+{
+  "pluginId": "beckhoff-ads-advanced",
+  "version": "1.2.0",
+  "packageUrl": "https://artifacts.heimdall.internal/plugins/beckhoff-ads-advanced-1.2.0.tar.gz"
+}
+```
+* **Response `200 OK`**:
+```json
+{
+  "pluginId": "beckhoff-ads-advanced",
+  "version": "1.2.0",
+  "payloadHash": "3f79...8b21",
+  "signature": "MEUCIQD...==",
+  "status": "SignedAndQueued"
+}
+```
+
