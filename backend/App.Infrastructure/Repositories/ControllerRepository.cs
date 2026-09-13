@@ -1,3 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -189,5 +196,161 @@ public class ControllerRepository : IControllerRepository
             .OrderByDescending(c => c.LastOnline)
             .Take(count)
             .ToListAsync();
+    }
+
+    public async Task<DiagnosticSnapshot> CreateDiagnosticSnapshotAsync(Guid clientPcId, string userId, string? userName, string? orgId)
+    {
+        var pc = await _context.ClientPcs
+            .Include(c => c.ControlledMachines)
+            .Include(c => c.ResponsibleTeams)
+            .Include(c => c.InventoryItems)
+            .Include(c => c.Events)
+            .FirstOrDefaultAsync(c => c.Id == clientPcId);
+
+        if (pc == null)
+        {
+            throw new KeyNotFoundException($"ClientPc with ID '{clientPcId}' not found.");
+        }
+
+        var snapshotId = Guid.NewGuid();
+        var capturedAt = DateTimeOffset.UtcNow;
+
+        var snapshotData = new
+        {
+            SnapshotId = snapshotId,
+            ClientPcId = pc.Id,
+            Hostname = pc.Hostname ?? pc.Name,
+            pc.MachineIdentifier,
+            pc.MacAddress,
+            pc.IpAddress,
+            pc.LastOnline,
+            CapturedAtUtc = capturedAt,
+            CapturedBy = new { UserId = userId, UserName = userName },
+            ResourceMetrics = new
+            {
+                CpuUsageAverage = pc.ResourceAverages?.CpuUsageAverage ?? 0,
+                RamUsageAverage = pc.ResourceAverages?.RamUsageAverage ?? 0,
+                Disk = pc.FreeDiskSpace != null ? new
+                {
+                    pc.FreeDiskSpace.TotalFreeGB,
+                    pc.FreeDiskSpace.OsDriveFreeGB,
+                    pc.FreeDiskSpace.Drives
+                } : null
+            },
+            HardwareComponents = pc.InventoryItems.Select(i => new
+            {
+                i.Id,
+                i.Name,
+                i.DisplayName,
+                ItemType = i.GetType().Name,
+                i.Technology,
+                Metadata = i.Metadata
+            }).ToList(),
+            ControlledStations = pc.ControlledMachines.Select(m => new
+            {
+                m.Id,
+                m.Name,
+                m.CustomIdentifier,
+                m.MachineType
+            }).ToList(),
+            RecentEvents = pc.Events.OrderByDescending(e => e.Timestamp).Take(25).Select(e => new
+            {
+                e.Id,
+                e.Source,
+                e.Level,
+                e.Message,
+                e.Timestamp
+            }).ToList(),
+            SystemMetadata = pc.SystemMetadata
+        };
+
+        string jsonPayload = JsonSerializer.Serialize(snapshotData, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        // Compute SHA-256 integrity hash
+        byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(jsonPayload));
+        string payloadHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+
+        var snapshot = new DiagnosticSnapshot
+        {
+            Id = snapshotId,
+            ClientPcId = pc.Id,
+            Hostname = pc.Hostname ?? pc.Name,
+            MachineIdentifier = pc.MachineIdentifier,
+            CapturedByUserId = userId,
+            CapturedByUserName = userName,
+            CapturedAtUtc = capturedAt,
+            SnapshotPayloadJson = jsonPayload,
+            PayloadHashSha256 = payloadHash,
+            OrganizationId = orgId ?? pc.OrganizationId
+        };
+
+        _context.DiagnosticSnapshots.Add(snapshot);
+
+        // Record AuditLog for compliance
+        var auditLog = new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            UserName = userName,
+            Action = "DIAGNOSTIC_SNAPSHOT",
+            EntityType = "ClientPc",
+            EntityId = pc.Id.ToString(),
+            NewValuesJson = JsonSerializer.Serialize(new
+            {
+                SnapshotId = snapshot.Id,
+                Hostname = snapshot.Hostname,
+                PayloadHash = payloadHash,
+                ComponentsCount = pc.InventoryItems.Count
+            }),
+            OrganizationId = orgId ?? pc.OrganizationId,
+            Timestamp = DateTimeOffset.UtcNow
+        };
+        _context.AuditLogs.Add(auditLog);
+
+        // Record operational AgentEvent
+        var agentEvent = new AgentEvent
+        {
+            Id = Guid.NewGuid(),
+            ClientPcId = pc.Id,
+            Source = "DiagnosticSnapshot",
+            Level = "Information",
+            Message = $"Diagnostic snapshot '{snapshot.Id}' captured by {userName ?? userId} (SHA256: {payloadHash[..12]}...)",
+            Timestamp = DateTime.UtcNow,
+            OrganizationId = orgId ?? pc.OrganizationId
+        };
+        _context.AgentEvents.Add(agentEvent);
+
+        // Queue command for edge agent to immediately re-sync state
+        var cmd = new QueuedAgentCommand
+        {
+            Id = Guid.NewGuid(),
+            ClientPcId = pc.Id,
+            Type = "TRIGGER_DIAGNOSTIC_SNAPSHOT",
+            Payload = JsonSerializer.Serialize(new { SnapshotId = snapshot.Id }),
+            CreatedAt = DateTimeOffset.UtcNow,
+            OrganizationId = orgId ?? pc.OrganizationId
+        };
+        _context.QueuedAgentCommands.Add(cmd);
+
+        await _context.SaveChangesAsync();
+        return snapshot;
+    }
+
+    public async Task<List<DiagnosticSnapshot>> GetSnapshotsByClientPcIdAsync(Guid clientPcId, int limit = 20)
+    {
+        return await _context.DiagnosticSnapshots
+            .Where(s => s.ClientPcId == clientPcId)
+            .OrderByDescending(s => s.CapturedAtUtc)
+            .Take(limit)
+            .ToListAsync();
+    }
+
+    public async Task<DiagnosticSnapshot?> GetSnapshotByIdAsync(Guid snapshotId)
+    {
+        return await _context.DiagnosticSnapshots
+            .FirstOrDefaultAsync(s => s.Id == snapshotId);
     }
 }

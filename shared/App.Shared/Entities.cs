@@ -1028,5 +1028,57 @@ public class AdOuGovernance
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+/// <summary>
+/// Represents an immutable point-in-time diagnostic snapshot of an industrial controller / endpoint.
+/// Captures complete resource telemetry, hardware component states, active processes, and event logs.
+/// Includes a SHA-256 cryptographic digest for tamper-detection.
+/// </summary>
+[Table("diagnostic_snapshots")]
+public class DiagnosticSnapshot
+{
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; } = Guid.NewGuid();
 
+    [Required]
+    [Column("client_pc_id")]
+    public Guid ClientPcId { get; set; }
 
+    public ClientPc? ClientPc { get; set; }
+
+    [Required]
+    [MaxLength(255)]
+    [Column("hostname")]
+    public string Hostname { get; set; } = string.Empty;
+
+    [MaxLength(255)]
+    [Column("machine_identifier")]
+    public string? MachineIdentifier { get; set; }
+
+    [Required]
+    [MaxLength(128)]
+    [Column("captured_by_user_id")]
+    public string CapturedByUserId { get; set; } = "system";
+
+    [MaxLength(255)]
+    [Column("captured_by_user_name")]
+    public string? CapturedByUserName { get; set; }
+
+    [Column("captured_at_utc")]
+    public DateTimeOffset CapturedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Raw JSON payload capturing complete diagnostic state.</summary>
+    [Required]
+    [Column("snapshot_payload_json")]
+    public string SnapshotPayloadJson { get; set; } = string.Empty;
+
+    /// <summary>SHA-256 cryptographic digest of SnapshotPayloadJson ensuring tamper detection.</summary>
+    [Required]
+    [MaxLength(64)]
+    [Column("payload_hash_sha256")]
+    public string PayloadHashSha256 { get; set; } = string.Empty;
+
+    [MaxLength(128)]
+    [Column("organization_id")]
+    public string? OrganizationId { get; set; }
+}

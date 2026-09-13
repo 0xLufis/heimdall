@@ -13,4 +13,7 @@ public interface IControllerRepository
     Task<int> GetCountAsync();
     Task<int> GetActiveCountAsync(TimeSpan activeThreshold);
     Task<List<ClientPc>> GetRecentClientsAsync(int count);
+    Task<DiagnosticSnapshot> CreateDiagnosticSnapshotAsync(Guid clientPcId, string userId, string? userName, string? orgId);
+    Task<List<DiagnosticSnapshot>> GetSnapshotsByClientPcIdAsync(Guid clientPcId, int limit = 20);
+    Task<DiagnosticSnapshot?> GetSnapshotByIdAsync(Guid snapshotId);
 }
