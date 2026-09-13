@@ -72,7 +72,8 @@ export default defineNuxtConfig({
   nitro: {
     // Ensure the pg module is externalized correctly for the server to avoid driver issues
     externals: {
-      external: ['pg']
+      external: ['pg'],
+      trace: false
     },
     routeRules: {
       '/**': {
