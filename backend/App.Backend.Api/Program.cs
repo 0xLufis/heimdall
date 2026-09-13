@@ -110,6 +110,8 @@ builder.Services.AddScoped<IAssetRepository, AssetRepository>();
 builder.Services.AddScoped<IMaintenanceTicketRepository, MaintenanceTicketRepository>();
 builder.Services.AddScoped<OpcUaGatewayService>();
 builder.Services.AddScoped<CopiaIntegrationService>();
+builder.Services.AddScoped<ReportExportService>();
+builder.Services.AddScoped<PredictiveMaintenanceService>();
 
 // --- 3. Authentication & Authorization ---
 builder.Services.AddAuthentication("BetterAuth")
