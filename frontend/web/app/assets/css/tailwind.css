@@ -6,6 +6,71 @@
 @theme {
   --font-sans: "Geist", Arial, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Industrial Tool Steel & Neutral Enclosure Remap for Slate (eliminates navy blue cast site-wide) */
+  --color-slate-50: #f4f5f6;
+  --color-slate-100: #e5e7eb;
+  --color-slate-200: #cbd1d6;
+  --color-slate-300: #9ea7b0;
+  --color-slate-400: #828a94;
+  --color-slate-500: #5f6772;
+  --color-slate-600: #464d57;
+  --color-slate-700: #313740;
+  --color-slate-800: #232730;
+  --color-slate-900: #15181e;
+  --color-slate-950: #0c0e12;
+
+  /* Industrial Tool Steel & Titanium Remap for Indigo (balanced neutral graphite, 0 blue bias) */
+  --color-indigo-50: #f4f5f6;
+  --color-indigo-100: #e5e7eb;
+  --color-indigo-200: #d1d5db;
+  --color-indigo-300: #9ca3af;
+  --color-indigo-400: #889098;
+  --color-indigo-500: #687078;
+  --color-indigo-600: #4a5058;
+  --color-indigo-700: #383e44;
+  --color-indigo-800: #2a2e34;
+  --color-indigo-900: #1d2024;
+  --color-indigo-950: #111316;
+
+  /* Industrial Anodized Sage & Grey-Green Remap for Blue (eliminates electric blue) */
+  --color-blue-50: #f3f6f4;
+  --color-blue-100: #e3e8e4;
+  --color-blue-200: #c6d0c7;
+  --color-blue-300: #9eb1a0;
+  --color-blue-400: #768f79;
+  --color-blue-500: #57715b;
+  --color-blue-600: #445847;
+  --color-blue-700: #354437;
+  --color-blue-800: #29342b;
+  --color-blue-900: #1f2720;
+  --color-blue-950: #121713;
+
+  /* Industrial Slate-Cadet Remap for Sky (eliminates bright sky blue) */
+  --color-sky-50: #f4f6f7;
+  --color-sky-100: #e4e7eb;
+  --color-sky-200: #c8ced4;
+  --color-sky-300: #a2abb5;
+  --color-sky-400: #7b8692;
+  --color-sky-500: #5c6773;
+  --color-sky-600: #454f59;
+  --color-sky-700: #353d45;
+  --color-sky-800: #262c32;
+  --color-sky-900: #1a1e22;
+  --color-sky-950: #0f1214;
+
+  /* Industrial Muted Teal & Sage-Patina Remap for Cyan (eliminates neon cyan) */
+  --color-cyan-50: #f2f7f6;
+  --color-cyan-100: #e0ece9;
+  --color-cyan-200: #bfd6d1;
+  --color-cyan-300: #93b9b2;
+  --color-cyan-400: #6d9a92;
+  --color-cyan-500: #4f7e76;
+  --color-cyan-600: #3c635c;
+  --color-cyan-700: #304f4a;
+  --color-cyan-800: #273e3a;
+  --color-cyan-900: #1e2e2b;
+  --color-cyan-950: #101918;
 }
 
 @import "./themes.css";
@@ -53,38 +118,38 @@
 }
 
 .dark {
-  --background: #020617;
-  --foreground: #f8fafc;
-  --card: #0f172a;
-  --card-foreground: #f8fafc;
-  --popover: #0f172a;
-  --popover-foreground: #f8fafc;
-  --primary: #6366f1;
+  --background: #0c0e12;
+  --foreground: #f4f5f6;
+  --card: #15181e;
+  --card-foreground: #f4f5f6;
+  --popover: #15181e;
+  --popover-foreground: #f4f5f6;
+  --primary: #495464;
   --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  --secondary-foreground: #f1f5f9;
-  --muted: #0f172a;
-  --muted-foreground: #94a3b8;
-  --accent: #1e293b;
-  --accent-foreground: #f8fafc;
-  --destructive: #f43f5e;
-  --border: #1e293b;
-  --input: #1e293b;
-  --ring: #6366f1;
+  --secondary: #1c2027;
+  --secondary-foreground: #e2e8f0;
+  --muted: #161920;
+  --muted-foreground: #8b949e;
+  --accent: #1c2027;
+  --accent-foreground: #f4f5f6;
+  --destructive: #992828;
+  --border: #232730;
+  --input: #232730;
+  --ring: #495464;
 
-  --sidebar: #020617;
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #6366f1;
+  --sidebar: #0c0e12;
+  --sidebar-foreground: #f4f5f6;
+  --sidebar-primary: #495464;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #0f172a;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #6366f1;
-  --chart-1: #6366f1;
-  --chart-2: #06b6d4;
-  --chart-3: #10b981;
-  --chart-4: #f59e0b;
-  --chart-5: #f43f5e;
+  --sidebar-accent: #15181e;
+  --sidebar-accent-foreground: #f4f5f6;
+  --sidebar-border: #232730;
+  --sidebar-ring: #495464;
+  --chart-1: #57715b;
+  --chart-2: #495464;
+  --chart-3: #a37238;
+  --chart-4: #78716c;
+  --chart-5: #992828;
 }
 
 @theme inline {
@@ -132,7 +197,7 @@
   * {
     @apply border-border outline-ring/50;
     scrollbar-width: thin;
-    scrollbar-color: rgba(99, 102, 241, 0.25) transparent;
+    scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
   }
   body {
     @apply bg-background text-foreground;
@@ -140,7 +205,7 @@
   }
 }
 
-/* Beautiful Custom Scrollbar Styling */
+/* Beautiful Custom Scrollbar Styling - Clean Industrial Graphite */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -151,13 +216,13 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(130, 143, 159, 0.25);
   border-radius: 9999px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(130, 143, 159, 0.5);
 }
 
 ::-webkit-scrollbar-corner {
@@ -166,7 +231,7 @@
 
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
+  scrollbar-color: rgba(98, 111, 128, 0.35) transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -175,42 +240,40 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(21, 24, 30, 0.5);
   border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(99, 102, 241, 0.45), rgba(79, 70, 229, 0.65));
+  background: rgba(130, 143, 159, 0.35);
   border-radius: 9999px;
-  box-shadow: 0 0 6px rgba(99, 102, 241, 0.25);
   transition: all 0.2s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(129, 140, 248, 0.8), rgba(99, 102, 241, 0.95));
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+  background: rgba(130, 143, 159, 0.6);
 }
 
-/* Industrial Badge Styles matching system-settings and security-groups standards */
+/* Industrial Badge Styles matching muted slate/teal/sage/amber/terracotta palette */
 @utility badge-cyan {
-  @apply bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-xs font-medium;
+  @apply bg-teal-950/50 text-teal-300 border border-teal-600/30 text-xs font-medium;
 }
 @utility badge-emerald {
-  @apply bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-medium;
+  @apply bg-emerald-950/50 text-emerald-300 border border-emerald-600/30 text-xs font-medium;
 }
 @utility badge-amber {
-  @apply bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-medium;
+  @apply bg-amber-950/50 text-amber-300 border border-amber-600/30 text-xs font-medium;
 }
 @utility badge-rose {
-  @apply bg-rose-500/15 text-rose-300 border border-rose-500/30 text-xs font-medium;
+  @apply bg-rose-950/50 text-rose-300 border border-rose-600/30 text-xs font-medium;
 }
 @utility badge-indigo {
-  @apply bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 text-xs font-medium;
+  @apply bg-slate-800/80 text-slate-300 border border-slate-700/60 text-xs font-medium;
 }
 @utility badge-purple {
-  @apply bg-purple-500/15 text-purple-300 border border-purple-500/30 text-xs font-medium;
+  @apply bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 text-xs font-medium;
 }
 @utility badge-slate {
-  @apply bg-slate-800/80 text-slate-300 border border-slate-700 text-xs font-medium;
+  @apply bg-slate-900/80 text-slate-300 border border-slate-800 text-xs font-medium;
 }
 

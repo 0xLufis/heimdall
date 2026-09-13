@@ -18,32 +18,92 @@ import {
   Plus
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
+import RbacButton from '~/components/common/RbacButton.vue'
 import { Badge } from '~/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '~/components/ui/card'
 import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
 import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
+import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
 import { useAuthSession } from '~/composables/useAuthSession'
+import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
+import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
+import { useRoute, useRouter } from 'vue-router'
 import type { SearchInstanceConfig } from '~/types/search'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
 
+const route = useRoute()
+const router = useRouter()
 const { user, canApproveLineStops, isOperativePlanner, isEngineer } = useAuthSession()
+const { openContextMenu } = useGlobalContextMenu()
 
 // Switchable view states
 const activeView = ref<'machines' | 'lines' | 'technologies'>('machines')
 const loading = ref(false)
 const searchQuery = ref('')
 
+const resetMachinesView = () => {
+  searchQuery.value = ''
+  activeView.value = 'machines'
+  router.push('/dashboard/machines')
+  fetchData()
+}
+
+const handleMachineContextMenu = (m: any, e: MouseEvent) => {
+  const pref = resolvePreferredTechnician(m.id, m.machineType, m.groupId, [], [])
+  openContextMenu(e, {
+    entityType: 'machine',
+    entityId: m.id,
+    entityName: m.displayName || m.name || m.customIdentifier,
+    handle: m.pinnedObjectHandle || undefined,
+    machineId: m.id,
+    machineName: m.name || m.customIdentifier,
+    controllerId: m.controllers?.[0]?.id,
+    controllerHostname: m.controllers?.[0]?.hostname,
+    ownerTeam: m.responsibleTeams?.[0] ? { name: m.responsibleTeams[0].name } : undefined,
+    ownerPerson: (m as any).preferredTechnicianName ? { name: (m as any).preferredTechnicianName } : (pref?.technicianName ? { name: pref.technicianName } : undefined)
+  })
+}
+
+watch(() => route.query, (q) => {
+  if (q.id) {
+    searchQuery.value = q.id as string
+  } else if (q.search) {
+    searchQuery.value = q.search as string
+  }
+  if (q.tree) {
+    openTreeForStation(q.tree as string)
+  }
+}, { immediate: true })
+
 // Raw data states
 const machines = ref<any[]>([])
 const lines = ref<any[]>([])
 const technologies = ref<any[]>([])
+const lineKpis = ref<Record<string, any>>({})
 
 // Modal state
 const selectedTreeStationId = ref<string>('')
 const isTreeModalOpen = ref(false)
+
+const isQuickViewModalOpen = ref(false)
+const quickViewTargetController = ref<any>(null)
+
+const openQuickView = (ctrl: any) => {
+  quickViewTargetController.value = {
+    id: ctrl.id || ctrl.hostname,
+    name: ctrl.name || ctrl.hostname,
+    hostname: ctrl.hostname,
+    ipAddress: ctrl.ipAddress || '192.168.1.100',
+    isOnline: ctrl.isOnline ?? true,
+    macAddress: ctrl.macAddress || '00:00:00:00:00:00',
+    vlanId: ctrl.vlanId || 100,
+    machineType: 'IndustrialController'
+  }
+  isQuickViewModalOpen.value = true
+}
 
 const openTreeForStation = (stationId: string) => {
   selectedTreeStationId.value = stationId
@@ -61,11 +121,21 @@ const machinesSearchConfig: SearchInstanceConfig = {
 const fetchData = async () => {
   loading.value = true
   try {
-    const [machRes, lineRes, techRes] = await Promise.allSettled([
+    const [machRes, lineRes, techRes, kpiRes] = await Promise.allSettled([
       $fetch<any[]>('/api/proxy/v1/machine'),
       $fetch<any[]>('/api/proxy/v1/machine/by-line'),
-      $fetch<any[]>('/api/proxy/v1/machine/by-technology')
+      $fetch<any[]>('/api/proxy/v1/machine/by-technology'),
+      $fetch<any[]>('/api/analytics/kpis')
     ])
+
+    if (kpiRes.status === 'fulfilled' && Array.isArray(kpiRes.value)) {
+      const map: Record<string, any> = {}
+      for (const k of kpiRes.value) {
+        map[k.lineName] = k
+        map[k.lineId] = k
+      }
+      lineKpis.value = map
+    }
 
     if (machRes.status === 'fulfilled' && Array.isArray(machRes.value)) {
       machines.value = machRes.value
@@ -263,15 +333,22 @@ onMounted(() => {
     <!-- Header Area with View Mode Switchers -->
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800">
       <div>
-        <div class="flex items-center gap-3">
-          <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+        <div
+          role="button"
+          tabindex="0"
+          @click="resetMachinesView"
+          @keydown.enter="resetMachinesView"
+          class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-slate-900/60"
+          title="Click to reset filters and refresh production machinery"
+        >
+          <div class="p-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 group-hover:scale-105 group-hover:bg-zinc-700 transition-all">
             <Factory class="h-6 w-6" />
           </div>
           <div>
-            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-100 group-hover:text-white transition-colors">
               Production Machinery & Lines
             </h1>
-            <p class="text-sm text-slate-400 mt-0.5">
+            <p class="text-sm text-slate-400 mt-0.5 group-hover:text-slate-300 transition-colors">
               Stations, manufacturing cells, production lines, and engineering discipline technologies
             </p>
           </div>
@@ -279,21 +356,39 @@ onMounted(() => {
 
         <!-- Global Summary Badges -->
         <div class="flex flex-wrap items-center gap-2 mt-4">
-          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
-            <Factory class="w-3.5 h-3.5 text-indigo-400" />
-            <span class="text-slate-400">Stations:</span>
+          <button
+            type="button"
+            @click="activeView = 'machines'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'machines' ? 'bg-zinc-800 border-zinc-600 text-white shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
+            title="Switch to Machines view"
+          >
+            <Factory class="w-3.5 h-3.5 text-zinc-400" />
+            <span>Stations:</span>
             <span class="font-mono font-semibold text-slate-200">{{ machines.length }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
-            <Layers class="w-3.5 h-3.5 text-blue-400" />
-            <span class="text-slate-400">Lines:</span>
+          </button>
+          <button
+            type="button"
+            @click="activeView = 'lines'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'lines' ? 'bg-zinc-800 border-zinc-600 text-white shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
+            title="Switch to Lines view"
+          >
+            <Layers class="w-3.5 h-3.5 text-zinc-400" />
+            <span>Lines:</span>
             <span class="font-mono font-semibold text-slate-200">{{ lines.length }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
+          </button>
+          <button
+            type="button"
+            @click="activeView = 'technologies'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'technologies' ? 'bg-zinc-800 border-zinc-600 text-white shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
+            title="Switch to Technologies view"
+          >
             <Cpu class="w-3.5 h-3.5 text-teal-400" />
-            <span class="text-slate-400">Technologies:</span>
+            <span>Technologies:</span>
             <span class="font-mono font-semibold text-slate-200">{{ technologies.length }}</span>
-          </div>
+          </button>
           <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
             <span class="size-2 rounded-full bg-emerald-400 animate-pulse" />
             <span class="text-emerald-400">
@@ -305,12 +400,12 @@ onMounted(() => {
 
       <!-- 3 View Mode Switcher -->
       <div class="flex flex-wrap items-center gap-2 shrink-0">
-        <div class="bg-slate-900 p-1 rounded-lg border border-slate-800 shadow-sm flex gap-1">
+        <div class="bg-zinc-900/90 p-1 rounded-lg border border-zinc-800 shadow-sm flex gap-1">
           <Button
             variant="ghost"
             size="sm"
             @click="activeView = 'machines'"
-            :class="activeView === 'machines' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeView === 'machines' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
             class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
           >
             <Factory class="w-3.5 h-3.5" />
@@ -321,7 +416,7 @@ onMounted(() => {
             variant="ghost"
             size="sm"
             @click="activeView = 'lines'"
-            :class="activeView === 'lines' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeView === 'lines' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
             class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
           >
             <Layers class="w-3.5 h-3.5" />
@@ -332,7 +427,7 @@ onMounted(() => {
             variant="ghost"
             size="sm"
             @click="activeView = 'technologies'"
-            :class="activeView === 'technologies' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeView === 'technologies' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
             class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
           >
             <Cpu class="w-3.5 h-3.5" />
@@ -361,16 +456,17 @@ onMounted(() => {
         <Card
           v-for="mach in filteredMachines"
           :key="mach.id"
+          @contextmenu="handleMachineContextMenu(mach, $event)"
           class="bg-slate-900 border-slate-800 hover:border-slate-700 transition-all rounded-xl shadow-sm overflow-hidden group flex flex-col justify-between"
         >
           <CardHeader class="p-4 sm:p-5 border-b border-slate-800">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-center gap-2.5">
-                <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <div class="p-2 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700">
                   <Factory class="w-4 h-4" />
                 </div>
                 <div>
-                  <CardTitle class="text-sm font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors">
+                  <CardTitle class="text-sm font-semibold text-slate-100 group-hover:text-white transition-colors">
                     {{ mach.name }}
                   </CardTitle>
                   <CardDescription class="text-xs text-slate-400 font-mono mt-0.5">
@@ -399,7 +495,7 @@ onMounted(() => {
               <!-- Controller PCs associated -->
               <div class="space-y-1.5">
                 <div class="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                  <Monitor class="w-3.5 h-3.5 text-blue-400" />
+                  <Monitor class="w-3.5 h-3.5 text-zinc-400" />
                   <span>Host Controller IPCs ({{ mach.controllers?.length || 0 }})</span>
                 </div>
 
@@ -407,34 +503,51 @@ onMounted(() => {
                   <div
                     v-for="c in mach.controllers"
                     :key="c.id || c.hostname"
-                    class="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 flex items-center gap-1.5"
+                    @click="openQuickView(c)"
+                    class="px-2 py-0.5 rounded-md bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-300 flex items-center gap-1.5 cursor-pointer hover:border-zinc-700 hover:text-white transition-all shadow-xs"
+                    title="Click to launch Remote Quick View (VNC / DameWare)"
                   >
                     <span class="size-1.5 rounded-full bg-emerald-400" />
                     <span>{{ c.hostname }}</span>
-                    <span v-if="c.ipAddress" class="text-slate-500">({{ c.ipAddress }})</span>
+                    <span v-if="c.ipAddress" class="text-zinc-500">({{ c.ipAddress }})</span>
+                    <Monitor class="w-3 h-3 text-zinc-500 hover:text-emerald-400 ml-0.5" />
                   </div>
                 </div>
-                <div v-else class="text-xs text-slate-500 italic">
+                <div v-else class="text-xs text-zinc-500 italic">
                   No dedicated IPC assigned
                 </div>
               </div>
             </div>
 
             <!-- Card Bottom Actions -->
-            <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                @click="openTreeForStation(mach.id)"
-                class="h-8 px-3 border-slate-800 bg-slate-950 text-indigo-400 hover:text-indigo-300 hover:border-indigo-500/30 text-xs font-medium rounded-lg gap-1.5 shadow-sm"
-              >
-                <FolderTree class="w-3.5 h-3.5" />
-                <span>Visualise Tree</span>
-              </Button>
+            <div class="pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  @click="openTreeForStation(mach.id)"
+                  class="h-8 px-2.5 border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-medium rounded-lg gap-1.5 shadow-sm"
+                >
+                  <FolderTree class="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Tree</span>
+                </Button>
+
+                <Button
+                  v-if="mach.controllers && mach.controllers.length > 0"
+                  variant="outline"
+                  size="sm"
+                  @click="openQuickView(mach.controllers[0])"
+                  class="h-8 px-2.5 border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-medium rounded-lg gap-1.5 shadow-sm"
+                  title="Remote Quick View (VNC / DameWare)"
+                >
+                  <Monitor class="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Quick View</span>
+                </Button>
+              </div>
 
               <NuxtLink
                 :to="`/dashboard/inventory?query=station:${encodeURIComponent(mach.name)}`"
-                class="text-xs text-slate-400 hover:text-slate-200 font-medium flex items-center gap-1"
+                class="text-xs text-zinc-400 hover:text-zinc-200 font-medium flex items-center gap-1"
               >
                 <span>Parts</span>
                 <ChevronRight class="w-3.5 h-3.5" />
@@ -452,39 +565,63 @@ onMounted(() => {
       </div>
 
       <div v-for="line in filteredLines" :key="line.lineId || line.lineName" class="space-y-3">
-        <Card class="bg-slate-900 border-slate-800 rounded-xl shadow-sm overflow-hidden">
-          <CardHeader class="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/90">
+        <Card class="bg-zinc-900 border-zinc-800 rounded-xl shadow-sm overflow-hidden">
+          <CardHeader class="p-4 sm:p-5 border-b border-zinc-800 bg-zinc-900/90">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div class="flex items-center gap-3">
-                <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <div class="p-2 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700">
                   <Layers class="w-5 h-5" />
                 </div>
                 <div>
-                  <CardTitle class="text-base font-semibold text-slate-100 flex items-center gap-2">
+                  <CardTitle class="text-base font-semibold text-zinc-100 flex items-center gap-2">
                     <span>{{ line.lineName }}</span>
-                    <Badge variant="outline" class="text-xs font-mono font-medium text-blue-400 border-blue-500/30 bg-blue-950/20 px-2 py-0.5 rounded-md">
+                    <Badge variant="outline" class="text-xs font-mono font-medium text-zinc-300 border-zinc-700 bg-zinc-900/60 px-2 py-0.5 rounded-md">
                       Manufacturing Line
                     </Badge>
                   </CardTitle>
-                  <CardDescription class="text-xs text-slate-400 mt-0.5">
+                  <CardDescription class="text-xs text-zinc-400 mt-0.5">
                     {{ line.machineCount }} Stations Deployed • {{ line.controllersCount || 0 }} Industrial PCs
                   </CardDescription>
+
+                  <!-- Operational KPI Row (PM-003) -->
+                  <div v-if="lineKpis[line.lineName] || lineKpis[line.id]" class="mt-2.5 flex flex-wrap items-center gap-2 text-xs font-mono">
+                    <span class="px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-300">
+                      OEE: <strong class="text-emerald-400">{{ (lineKpis[line.lineName] || lineKpis[line.id]).oee }}%</strong>
+                    </span>
+                    <span class="px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-300">
+                      Avail: <strong class="text-emerald-400">{{ (lineKpis[line.lineName] || lineKpis[line.id]).availability }}%</strong>
+                    </span>
+                    <span class="px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-300">
+                      MTBF: <strong class="text-zinc-200">{{ (lineKpis[line.lineName] || lineKpis[line.id]).mtbfHours }}h</strong>
+                    </span>
+                    <span class="px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-300">
+                      MTTR: <strong class="text-zinc-200">{{ (lineKpis[line.lineName] || lineKpis[line.id]).mttrMinutes }}m</strong>
+                    </span>
+                    <NuxtLink
+                      to="/dashboard/analytics"
+                      class="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors ml-1"
+                    >
+                      <span>Analytics Hub</span>
+                      <ChevronRight class="w-3.5 h-3.5" />
+                    </NuxtLink>
+                  </div>
                 </div>
               </div>
 
               <!-- Operative Planner Line Stop Action -->
               <div class="flex items-center gap-2">
-                <Button
-                  v-if="canApproveLineStops || isOperativePlanner"
+                <RbacButton
+                  :has-permission="canApproveLineStops || isOperativePlanner"
+                  :tooltip="'Requires Operative Planner, Plant Director, or Plant Engineering Manager privilege to initiate line stops.'"
                   variant="outline"
                   size="sm"
                   @click="requestLineStop(line.lineName)"
-                  :class="lineStopRequested[line.lineName] ? 'border-rose-500 text-rose-400 bg-rose-950/30' : 'border-slate-800 text-slate-400 hover:text-rose-400'"
+                  :class="lineStopRequested[line.lineName] ? 'border-rose-500 text-rose-400 bg-rose-950/30' : 'border-zinc-800 text-zinc-400 hover:text-rose-400'"
                   class="h-8 px-3 text-xs font-medium rounded-lg gap-1.5"
                 >
                   <AlertOctagon class="w-3.5 h-3.5" />
                   <span>{{ lineStopRequested[line.lineName] ? 'Line Stop Pending' : 'Request Line Stop' }}</span>
-                </Button>
+                </RbacButton>
               </div>
             </div>
           </CardHeader>
@@ -493,28 +630,28 @@ onMounted(() => {
           <CardContent class="p-0">
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse">
-                <thead class="bg-slate-950/60 border-b border-slate-800">
+                <thead class="bg-zinc-950/80 border-b border-zinc-800">
                   <tr>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Station Identity</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Technology</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Host Controllers</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right">Actions</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Station Identity</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Technology</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Host Controllers</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-400 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800">
+                <tbody class="divide-y divide-zinc-800">
                   <tr
                     v-for="mach in line.machines"
                     :key="mach.id"
-                    class="hover:bg-slate-800/40 transition-colors"
+                    class="hover:bg-zinc-800/40 transition-colors"
                   >
                     <td class="px-4 py-3">
                       <div class="flex items-center gap-2.5">
                         <div class="size-2 rounded-full bg-emerald-400" />
                         <div>
-                          <div class="text-xs font-semibold text-slate-200">
+                          <div class="text-xs font-semibold text-zinc-200">
                             {{ mach.name }}
                           </div>
-                          <div class="text-xs text-slate-400 mt-0.5">
+                          <div class="text-xs text-zinc-400 mt-0.5">
                             {{ mach.displayName || mach.customIdentifier }}
                           </div>
                         </div>
@@ -522,7 +659,7 @@ onMounted(() => {
                     </td>
 
                     <td class="px-4 py-3">
-                      <Badge variant="outline" class="text-xs font-mono font-medium text-teal-400 border-teal-500/30 bg-teal-950/20 px-2 py-0.5 rounded-md">
+                      <Badge variant="outline" class="text-xs font-mono font-medium text-emerald-400/90 border-emerald-500/30 bg-emerald-950/20 px-2 py-0.5 rounded-md">
                         {{ mach.machineType || 'Assembly' }}
                       </Badge>
                     </td>
@@ -532,26 +669,42 @@ onMounted(() => {
                         <span
                           v-for="c in mach.controllers"
                           :key="c.id || c.hostname"
-                          class="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-xs font-mono text-slate-400"
+                          @click="openQuickView(c)"
+                          class="px-2 py-0.5 rounded-md bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-300 cursor-pointer hover:border-zinc-700 hover:text-white transition-all shadow-xs flex items-center gap-1"
+                          title="Click to launch Remote Quick View"
                         >
-                          {{ c.hostname }}
+                          <span class="size-1.5 rounded-full bg-emerald-400" />
+                          <span>{{ c.hostname }}</span>
                         </span>
-                        <span v-if="!mach.controllers?.length" class="text-xs font-mono text-slate-500 italic">
+                        <span v-if="!mach.controllers?.length" class="text-xs font-mono text-zinc-500 italic">
                           None
                         </span>
                       </div>
                     </td>
 
                     <td class="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        @click="openTreeForStation(mach.id)"
-                        class="h-7 px-2 text-indigo-400 hover:text-indigo-300 text-xs font-medium rounded-md gap-1"
-                      >
-                        <FolderTree class="w-3.5 h-3.5" />
-                        <span>Tree</span>
-                      </Button>
+                      <div class="flex items-center justify-end gap-1.5">
+                        <Button
+                          v-if="mach.controllers?.length"
+                          variant="ghost"
+                          size="sm"
+                          @click="openQuickView(mach.controllers[0])"
+                          class="h-7 px-2 text-emerald-400 hover:text-emerald-300 text-xs font-medium rounded-md gap-1"
+                          title="Launch Remote Quick View"
+                        >
+                          <Monitor class="w-3.5 h-3.5" />
+                          <span>Quick View</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          @click="openTreeForStation(mach.id)"
+                          class="h-7 px-2 text-zinc-400 hover:text-white text-xs font-medium rounded-md gap-1"
+                        >
+                          <FolderTree class="w-3.5 h-3.5" />
+                          <span>Tree</span>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -618,7 +771,7 @@ onMounted(() => {
                 variant="outline"
                 size="sm"
                 @click="openTreeForStation(mach.id)"
-                class="h-7 px-2.5 border-slate-800 bg-slate-900 text-indigo-400 hover:text-indigo-300 text-xs font-medium rounded-md gap-1 shadow-sm"
+                class="h-7 px-2.5 border-slate-800 bg-slate-900 text-zinc-300 hover:text-white text-xs font-medium rounded-md gap-1 shadow-sm"
               >
                 <FolderTree class="w-3.5 h-3.5" />
                 <span>Tree</span>
@@ -634,6 +787,13 @@ onMounted(() => {
       :open="isTreeModalOpen"
       :station-id="selectedTreeStationId"
       @update:open="isTreeModalOpen = $event"
+    />
+
+    <!-- Remote Quick View Modal (VNC / DameWare MRC / RDP) -->
+    <RemoteQuickViewModal
+      :controller="quickViewTargetController"
+      :open="isQuickViewModalOpen"
+      @update:open="isQuickViewModalOpen = $event"
     />
   </div>
 </template>

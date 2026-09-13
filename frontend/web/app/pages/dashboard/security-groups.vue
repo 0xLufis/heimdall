@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
+import RbacButton from '@/components/common/RbacButton.vue'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 import { 
   ShieldCheckIcon, 
   PlusIcon, 
@@ -347,10 +349,15 @@ onMounted(() => {
           <RefreshCwIcon class="h-4 w-4 mr-2" :class="{ 'animate-spin': loading }" />
           Refresh
         </Button>
-        <Button size="sm" @click="isCreating = !isCreating">
+        <RbacButton
+          size="sm"
+          :has-permission="canApproveOus"
+          :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
+          @click="isCreating = !isCreating"
+        >
           <PlusIcon class="h-4 w-4 mr-2" />
           Add Group Mapping
-        </Button>
+        </RbacButton>
       </div>
     </div>
 
@@ -478,9 +485,16 @@ onMounted(() => {
                   </button>
                 </td>
                 <td class="px-4 py-3 text-right">
-                  <Button variant="ghost" size="icon" class="h-8 w-8 text-destructive hover:text-destructive" @click="deleteMapping(m.id)">
+                  <RbacButton
+                    :has-permission="canApproveOus"
+                    :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
+                    variant="ghost"
+                    size="icon"
+                    class="h-8 w-8 text-destructive hover:text-destructive"
+                    @click="deleteMapping(m.id)"
+                  >
                     <Trash2Icon class="h-4 w-4" />
-                  </Button>
+                  </RbacButton>
                 </td>
               </tr>
               <tr v-if="mappings.length === 0">
@@ -583,37 +597,42 @@ onMounted(() => {
                   <div v-else class="italic text-[11px]">Pending IT Approval</div>
                 </td>
                 <td class="px-4 py-3 text-right">
-                  <div v-if="canApproveOus" class="inline-flex items-center gap-1.5">
-                    <Button 
+                  <div class="inline-flex items-center gap-1.5">
+                    <RbacButton 
                       size="sm" 
                       variant="outline" 
                       class="h-7 text-[11px] hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-500/50"
+                      :has-permission="canApproveOus"
+                      :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
                       :disabled="approvingOuPath === ou.ouPath || (ou.accessLevel === 'read_write' && ou.isApproved)"
                       @click="handleSetOuGovernance(ou.ouPath, 'read_write')"
                     >
                       <CheckCircle2Icon class="h-3.5 w-3.5 mr-1 text-emerald-400" />
                       Approve R/W
-                    </Button>
-                    <Button 
+                    </RbacButton>
+                    <RbacButton 
                       size="sm" 
                       variant="outline" 
                       class="h-7 text-[11px] hover:bg-amber-500/20 hover:text-amber-400 hover:border-amber-500/50"
+                      :has-permission="canApproveOus"
+                      :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
                       :disabled="approvingOuPath === ou.ouPath || (ou.accessLevel === 'read_only' && ou.isApproved)"
                       @click="handleSetOuGovernance(ou.ouPath, 'read_only')"
                     >
                       Read-Only
-                    </Button>
-                    <Button 
+                    </RbacButton>
+                    <RbacButton 
                       size="sm" 
                       variant="ghost" 
                       class="h-7 text-[11px] text-destructive hover:text-destructive"
+                      :has-permission="canApproveOus"
+                      :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
                       :disabled="approvingOuPath === ou.ouPath || (!ou.isApproved && ou.accessLevel === 'unapproved')"
                       @click="handleSetOuGovernance(ou.ouPath, 'unapproved')"
                     >
                       Revoke
-                    </Button>
+                    </RbacButton>
                   </div>
-                  <span v-else class="text-xs text-muted-foreground italic">Read-only</span>
                 </td>
               </tr>
               <tr v-if="ousList.length === 0">

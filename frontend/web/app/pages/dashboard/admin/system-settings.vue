@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
+import RbacButton from '@/components/common/RbacButton.vue'
+import RbacTooltip from '@/components/common/RbacTooltip.vue'
+import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +39,7 @@ import {
 
 definePageMeta({
   layout: 'shadcn-dashboard',
+  alias: ['/dashboard/admin']
 })
 
 const activeTab = ref<'auth' | 'vlan-ad-import' | 'certificates' | 'integrations' | 'agent-master'>('auth')
@@ -45,6 +49,7 @@ const pushingPolicy = ref(false)
 const syncingCerts = ref(false)
 const message = ref('')
 const error = ref('')
+const { canAdministerSystem, canManageActiveDirectory, isSystemAdmin } = useRbacPermission()
 
 // Master Fleet Policy
 const masterPolicy = ref({
@@ -504,10 +509,16 @@ onMounted(() => {
           <RefreshCwIcon class="h-4 w-4 mr-2" :class="{ 'animate-spin': loading }" />
           Refresh Configuration
         </Button>
-        <Button size="sm" @click="saveCurrentCategory" :disabled="saving" class="bg-indigo-600 hover:bg-indigo-500 text-white">
+        <RbacButton
+          size="sm"
+          capability="canAdministerSystem"
+          @click="saveCurrentCategory"
+          :disabled="saving"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white"
+        >
           <SaveIcon class="h-4 w-4 mr-2" />
           Save Policy Changes
-        </Button>
+        </RbacButton>
       </div>
     </div>
 
@@ -604,11 +615,14 @@ onMounted(() => {
                 When enabled, users with role <code class="text-purple-300">heimdall_admin</code> automatically inherit full IT Site Admin privileges (<code class="text-cyan-300">it_site_admin</code> / <code class="text-cyan-300">it_admin</code>), allowing them to approve/revoke Active Directory & Entra ID OUs for Read/Write host ingestion and govern PKI mTLS root certificate rules.
               </p>
             </div>
-            <input
-              type="checkbox"
-              v-model="adminRoleDelegation.heimdallAdminIsPseudoItAdmin"
-              class="h-5 w-5 rounded border-slate-700 text-cyan-600 focus:ring-cyan-500 shrink-0 cursor-pointer"
-            />
+            <RbacTooltip :disabled="!isSystemAdmin" :tooltip="RBAC_TOOLTIPS.SYSTEM_ADMIN">
+              <input
+                type="checkbox"
+                :disabled="!isSystemAdmin"
+                v-model="adminRoleDelegation.heimdallAdminIsPseudoItAdmin"
+                class="h-5 w-5 rounded border-slate-700 text-cyan-600 focus:ring-cyan-500 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </RbacTooltip>
           </div>
 
           <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-4">
@@ -620,11 +634,14 @@ onMounted(() => {
                 Allows <code class="text-amber-300">engineering_admin</code> users to manage application accounts directly in <code class="text-slate-300">/dashboard/users</code> without accessing Identity Studio.
               </p>
             </div>
-            <input
-              type="checkbox"
-              v-model="adminRoleDelegation.allowEngineeringAdminUserCreation"
-              class="h-5 w-5 rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer"
-            />
+            <RbacTooltip :disabled="!isSystemAdmin" :tooltip="RBAC_TOOLTIPS.SYSTEM_ADMIN">
+              <input
+                type="checkbox"
+                :disabled="!isSystemAdmin"
+                v-model="adminRoleDelegation.allowEngineeringAdminUserCreation"
+                class="h-5 w-5 rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </RbacTooltip>
           </div>
         </CardContent>
       </Card>
@@ -953,10 +970,15 @@ onMounted(() => {
                 Discover factory floor IPCs, PLCs, and edge nodes grouped by network VLAN via corporate Active Directory OUs.
               </CardDescription>
             </div>
-            <Button size="sm" class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow-md shadow-cyan-950/40" @click="adHostModalOpen = true">
+            <RbacButton
+              size="sm"
+              capability="canManageActiveDirectory"
+              class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow-md shadow-cyan-950/40"
+              @click="adHostModalOpen = true"
+            >
               <SparklesIcon class="h-4 w-4 mr-1.5" />
               Launch Host Ingestion Wizard
-            </Button>
+            </RbacButton>
           </div>
         </CardHeader>
         <CardContent class="space-y-6">
@@ -1047,10 +1069,15 @@ onMounted(() => {
                 <DownloadIcon class="h-3.5 w-3.5 mr-1.5" />
                 Export Root Certificate (.crt)
               </Button>
-              <Button size="sm" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium" @click="rootCertModalOpen = true">
+              <RbacButton
+                size="sm"
+                capability="canManageActiveDirectory"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium"
+                @click="rootCertModalOpen = true"
+              >
                 <ShieldAlertIcon class="h-3.5 w-3.5 mr-1.5" />
                 Install External Root CA
-              </Button>
+              </RbacButton>
             </div>
           </div>
         </CardHeader>
@@ -1102,14 +1129,26 @@ onMounted(() => {
               </CardDescription>
             </div>
             <div class="flex items-center gap-2">
-              <Button size="sm" variant="outline" class="border-indigo-500/40 text-indigo-400 text-xs" @click="triggerOuCertificateSync" :disabled="syncingCerts">
+              <RbacButton
+                size="sm"
+                capability="canManageActiveDirectory"
+                variant="outline"
+                class="border-indigo-500/40 text-indigo-400 text-xs"
+                @click="triggerOuCertificateSync"
+                :disabled="syncingCerts"
+              >
                 <RefreshCwIcon class="h-3.5 w-3.5 mr-1.5" :class="{ 'animate-spin': syncingCerts }" />
                 {{ syncingCerts ? 'Enrolling...' : 'Synchronize Fleet Certificates' }}
-              </Button>
-              <Button size="sm" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs" @click="openNewOuRule">
+              </RbacButton>
+              <RbacButton
+                size="sm"
+                capability="canManageActiveDirectory"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs"
+                @click="openNewOuRule"
+              >
                 <PlusIcon class="h-3.5 w-3.5 mr-1.5" />
                 Define OU Enrollment Rule
-              </Button>
+              </RbacButton>
             </div>
           </div>
         </CardHeader>
@@ -1138,12 +1177,12 @@ onMounted(() => {
                     </Badge>
                   </td>
                   <td class="px-4 py-3 text-right space-x-1">
-                    <Button variant="ghost" size="sm" class="h-8 px-2 text-indigo-400 hover:text-indigo-300" @click="openEditOuRule(rule)">
+                    <RbacButton capability="canManageActiveDirectory" variant="ghost" size="sm" class="h-8 px-2 text-indigo-400 hover:text-indigo-300" @click="openEditOuRule(rule)">
                       Edit
-                    </Button>
-                    <Button variant="ghost" size="sm" class="h-8 px-2 text-rose-400 hover:text-rose-300" @click="deleteOuRule(rule.id)">
+                    </RbacButton>
+                    <RbacButton capability="canManageActiveDirectory" variant="ghost" size="sm" class="h-8 px-2 text-rose-400 hover:text-rose-300" @click="deleteOuRule(rule.id)">
                       <Trash2Icon class="h-4 w-4" />
-                    </Button>
+                    </RbacButton>
                   </td>
                 </tr>
               </tbody>
@@ -1165,10 +1204,10 @@ onMounted(() => {
         <CardContent class="space-y-4">
           <div class="flex gap-2 p-3 bg-slate-950 rounded-lg border border-slate-800">
             <Input v-model="newCertCN" placeholder="Enter Common Name (e.g. CPC-010-Heimdall-Node)..." class="text-sm bg-slate-900 border-slate-800 text-slate-100" />
-            <Button size="sm" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs" @click="issueCertificate" :disabled="issuingCert || !newCertCN">
+            <RbacButton size="sm" capability="canManageActiveDirectory" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs" @click="issueCertificate" :disabled="issuingCert || !newCertCN">
               <PlusIcon class="h-4 w-4 mr-1.5" />
               Generate Client Certificate
-            </Button>
+            </RbacButton>
           </div>
 
           <div class="overflow-x-auto rounded-lg border border-slate-800">
@@ -1198,8 +1237,9 @@ onMounted(() => {
                     </Badge>
                   </td>
                   <td class="px-4 py-3 text-right">
-                    <Button 
+                    <RbacButton 
                       v-if="c.status === 'Active'"
+                      capability="canManageActiveDirectory"
                       variant="ghost" 
                       size="sm" 
                       class="text-rose-400 hover:text-rose-300 text-xs h-8 px-2" 
@@ -1207,7 +1247,7 @@ onMounted(() => {
                     >
                       <BanIcon class="h-3.5 w-3.5 mr-1" />
                       Revoke
-                    </Button>
+                    </RbacButton>
                   </td>
                 </tr>
               </tbody>
@@ -1230,10 +1270,10 @@ onMounted(() => {
                 Enforces cryptographically signed baseline configurations, disk spool encryption, and execution constraints across all IPCs.
               </CardDescription>
             </div>
-            <Button size="sm" class="bg-purple-600 hover:bg-purple-500 text-white text-xs" @click="saveCurrentCategory">
+            <RbacButton size="sm" capability="canAdministerSystem" class="bg-purple-600 hover:bg-purple-500 text-white text-xs" @click="saveCurrentCategory">
               <SendIcon class="h-3.5 w-3.5 mr-1.5" />
               Push Policy to Fleet
-            </Button>
+            </RbacButton>
           </div>
         </CardHeader>
         <CardContent class="space-y-6">

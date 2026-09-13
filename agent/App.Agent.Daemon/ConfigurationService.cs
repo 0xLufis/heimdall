@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
+using App.Agent.Daemon.Interfaces;
+
 namespace App.Agent.Daemon;
 
 public class AgentConfig
@@ -30,9 +32,21 @@ public class AgentConfig
     public double DeadbandTolerancePercentage { get; set; } = 1.0;
     public int MaxSpoolDiskMb { get; set; } = 500;
     public int HeartbeatIntervalSeconds { get; set; } = 10;
+    public int HardwarePollIntervalSeconds { get; set; } = 30; // Min 10-30s cache TTL for stable hardware metrics (POLL-001/002)
+
+    // Plugin & Extension Architecture
+    public string Environment { get; set; } = "Production"; // Production | Development
+    public bool AllowUnsignedPlugins { get; set; } = false; // Forced false in Production
+    public string ExtensionApiKey { get; set; } = string.Empty;
+    public string PluginsDirectory { get; set; } = "plugins";
+    public string SandboxesDirectory { get; set; } = "sandboxes";
+    public int PluginExecutionTimeoutSeconds { get; set; } = 30;
+    public int DefaultExtensionTtlSeconds { get; set; } = 3600;
+    public int ExtensionPayloadMaxBytes { get; set; } = 1048576; // 1 MB
+    public bool RequireLoopbackForExtensions { get; set; } = false;
 }
 
-public class ConfigurationService
+public class ConfigurationService : IConfigurationService
 {
     private readonly ILogger<ConfigurationService> _logger;
     private readonly string _configPath;
@@ -193,7 +207,7 @@ public class ConfigurationService
         }
     }
 
-    public bool UpdateConfigSigned(string jsonConfig, string signatureBase64)
+    public bool UpdateConfigSigned(string jsonConfig, string? signatureBase64)
     {
         if (!VerifySignature(jsonConfig, signatureBase64))
         {

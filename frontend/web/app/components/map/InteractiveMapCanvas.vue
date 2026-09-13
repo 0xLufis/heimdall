@@ -19,7 +19,9 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'object-clicked', handle: string, blockName: string): void
   (e: 'object-dblclicked', handle: string, blockName: string): void
+  (e: 'object-contextmenu', handle: string, blockName: string, event: MouseEvent): void
   (e: 'map-clicked'): void
+  (e: 'map-contextmenu', event: MouseEvent): void
 }>()
 
 const svgContainer = ref<SVGSVGElement | null>(null)
@@ -75,6 +77,17 @@ const handleEntityDblClick = (entity: any, e: MouseEvent) => {
   emit('object-dblclicked', handle, name)
 }
 
+const handleEntityContextMenu = (entity: any, e: MouseEvent) => {
+  e.stopPropagation()
+  const handle = entity.handle || entity.block || entity.name || 'UNKNOWN_HANDLE'
+  const name = entity.name || entity.block || entity.text || 'Station Block'
+  emit('object-contextmenu', handle, name, e)
+}
+
+const handleMapContextMenu = (e: MouseEvent) => {
+  emit('map-contextmenu', e)
+}
+
 const resetView = () => {
   loadAndParseDxf(props.dxfUrl)
 }
@@ -99,14 +112,14 @@ const formatPolylinePoints = (vertices: any[] = []) => {
 
 const getBlockColor = (blockName: string) => {
   const b = (blockName || '').toUpperCase()
-  if (b.includes('VISION')) return '#38bdf8' // Sky Blue
-  if (b.includes('WELD')) return '#eab308' // Yellow
-  if (b.includes('PACK')) return '#f97316' // Orange
-  if (b.includes('SCREW') || b.includes('ROBOT')) return '#a855f7' // Purple
-  if (b.includes('DISPENS') || b.includes('CHEMICAL')) return '#f43f5e' // Rose
-  if (b.includes('TEST') || b.includes('INSPECT')) return '#10b981' // Emerald
-  if (b.includes('CNC') || b.includes('MECH')) return '#3b82f6' // Blue
-  return '#6366f1' // Indigo default
+  if (b.includes('VISION')) return '#4f7e76' // Muted Teal
+  if (b.includes('WELD')) return '#c28532' // Industrial Amber/Gold
+  if (b.includes('PACK')) return '#bf682e' // Industrial Terracotta/Bronze
+  if (b.includes('SCREW') || b.includes('ROBOT')) return '#6c657a' // Muted Slate/Steel
+  if (b.includes('DISPENS') || b.includes('CHEMICAL')) return '#a63d40' // Industrial Oxide Red
+  if (b.includes('TEST') || b.includes('INSPECT')) return '#445847' // Anodized Sage
+  if (b.includes('CNC') || b.includes('MECH')) return '#57715b' // Muted Machine Green
+  return '#5c6773' // Tool Steel default
 }
 
 const getBadgeWidth = (text: string) => {
@@ -151,11 +164,12 @@ watch(() => props.dxfUrl, (newUrl) => {
       @mouseleave="handleMouseUp"
       @wheel="handleWheel"
       @click="emit('map-clicked')"
+      @contextmenu="handleMapContextMenu($event)"
     >
       <defs>
         <!-- CAD Grid Background Pattern -->
         <pattern id="cad-grid-pattern" width="25" height="25" patternUnits="userSpaceOnUse">
-          <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#1e293b" stroke-width="0.4" stroke-dasharray="2,2" />
+          <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#232730" stroke-width="0.4" stroke-dasharray="2,2" />
         </pattern>
       </defs>
 
@@ -168,10 +182,10 @@ watch(() => props.dxfUrl, (newUrl) => {
           <polyline
             v-if="(entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') && entity.vertices"
             :points="formatPolylinePoints(entity.vertices)"
-            :stroke="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '#475569' : entity.layer === 'WALKWAYS' ? '#334155' : '#1e293b'"
+            :stroke="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '#474d57' : entity.layer === 'WALKWAYS' ? '#313740' : '#232730'"
             :stroke-width="entity.layer === 'BUILDING' || entity.layer === 'WALLS' ? '2.2' : '1.0'"
             :stroke-dasharray="entity.layer === 'WALKWAYS' ? '4,4' : 'none'"
-            :fill="entity.layer === 'FLOOR' ? 'rgba(30, 41, 59, 0.2)' : 'none'"
+            :fill="entity.layer === 'FLOOR' ? 'rgba(35, 39, 48, 0.3)' : 'none'"
             stroke-linejoin="round"
             stroke-linecap="round"
           />
@@ -185,7 +199,7 @@ watch(() => props.dxfUrl, (newUrl) => {
             :y1="entity.vertices[0].y"
             :x2="entity.vertices[1].x"
             :y2="entity.vertices[1].y"
-            :stroke="entity.layer === 'CONVEYORS' ? '#38bdf8' : entity.layer === 'SAFETY' ? '#eab308' : '#334155'"
+            :stroke="entity.layer === 'CONVEYORS' ? '#4f7e76' : entity.layer === 'SAFETY' ? '#c28532' : '#313740'"
             :stroke-width="entity.layer === 'CONVEYORS' ? '1.4' : '0.8'"
             :stroke-dasharray="entity.layer === 'SAFETY' ? '3,3' : entity.layer === 'CONVEYORS' ? '6,3' : 'none'"
           />
@@ -200,6 +214,7 @@ watch(() => props.dxfUrl, (newUrl) => {
             @mouseleave="hoveredEntity = null"
             @click="handleEntityClick(entity, $event)"
             @dblclick="handleEntityDblClick(entity, $event)"
+            @contextmenu="handleEntityContextMenu(entity, $event)"
           >
             <!-- Highlight Ring -->
             <circle
@@ -207,24 +222,24 @@ watch(() => props.dxfUrl, (newUrl) => {
               :cx="entity.center.x"
               :cy="entity.center.y"
               :r="(entity.radius || 10) + 6"
-              class="fill-indigo-500/20 stroke-indigo-400 stroke-2 animate-pulse"
+              class="fill-teal-500/20 stroke-teal-400 stroke-2 animate-pulse"
             />
             <!-- Vessel Body -->
             <circle
               :cx="entity.center.x"
               :cy="entity.center.y"
               :r="entity.radius || 10"
-              fill="#082f49"
-              :stroke="isHighlighted(entity) ? '#38bdf8' : '#0284c7'"
+              fill="#151e1c"
+              :stroke="isHighlighted(entity) ? '#6d9a92' : '#3c635c'"
               stroke-width="1.8"
-              class="transition-colors group-hover:stroke-sky-300"
+              class="transition-colors group-hover:stroke-teal-300"
             />
             <!-- Center Core -->
             <circle
               :cx="entity.center.x"
               :cy="entity.center.y"
               r="2.5"
-              fill="#38bdf8"
+              fill="#6d9a92"
             />
             <!-- Handle Label (Only shown on Hover or Search/Highlight) -->
             <g v-if="entity.handle && shouldShowLabel(entity)" class="pointer-events-none">
@@ -284,6 +299,7 @@ watch(() => props.dxfUrl, (newUrl) => {
             @mouseleave="hoveredEntity = null"
             @click="handleEntityClick(entity, $event)"
             @dblclick="handleEntityDblClick(entity, $event)"
+            @contextmenu="handleEntityContextMenu(entity, $event)"
           >
             <!-- Highlight Glow Ring -->
             <rect
@@ -303,8 +319,8 @@ watch(() => props.dxfUrl, (newUrl) => {
               width="20"
               height="20"
               rx="4"
-              :fill="isHighlighted(entity) ? '#312e81' : '#0f172a'"
-              :stroke="isHighlighted(entity) ? '#818cf8' : getBlockColor(entity.name)"
+              :fill="isHighlighted(entity) ? '#2a2e34' : '#15181e'"
+              :stroke="isHighlighted(entity) ? '#889098' : getBlockColor(entity.name)"
               stroke-width="1.4"
               class="transition-colors group-hover:stroke-white shadow-md"
             />
@@ -316,7 +332,7 @@ watch(() => props.dxfUrl, (newUrl) => {
               width="13"
               height="13"
               rx="2.5"
-              :fill="isHighlighted(entity) ? '#4338ca' : '#1e293b'"
+              :fill="isHighlighted(entity) ? '#383e44' : '#232730'"
               class="transition-colors"
             />
 

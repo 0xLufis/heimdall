@@ -66,7 +66,11 @@ describe('AppSidebar', () => {
         expect(wrapper.text()).toContain(group.heading)
       }
       group.items.forEach(item => {
-        expect(wrapper.text()).toContain(item.title)
+        if (item.hideWhenUnauthorized) {
+          expect(wrapper.text()).not.toContain(item.title)
+        } else {
+          expect(wrapper.text()).toContain(item.title)
+        }
       })
     })
 

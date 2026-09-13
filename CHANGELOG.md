@@ -8,6 +8,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Cryptographically Signed Agent Plugins & Sandboxing (`App.Agent.Daemon` & `App.Backend.Api`)**:
+  - Master RSA-2048 signing authority in `PluginService.cs` (`RSA-SHA256` with `Pkcs1` padding) and manifest verification in `PluginManager.cs`.
+  - Fail-secure verification rejecting unsigned plugins in Production (`ErrorCode.PluginSignatureInvalid`) and sandboxing in Development (`sandboxes/{pluginId}`).
+  - Sensitive environment variable scrubbing (`HEIMDALL_AGENT_KEY`, `HEIMDALL_MASTER_PRIVATE_KEY`, `HEIMDALL_ENCRYPTION_KEY`) and directory containment checking (`PathSanitizer.IsWithinRoot`).
+- **Secured Edge Extension REST API & Component Hierarchy Integration**:
+  - Minimal API endpoints in `ExtensionApiEndpoints.cs` (`/api/v1/agent/status`, `/api/v1/extensions/components`, `/api/v1/extensions/telemetry`, `/api/v1/extensions/events`, `/api/v1/agent/sync`) guarded by `ExtensionAuthFilter`.
+  - Sensor attachment into the station inventory graph (`BaseInventoryItem.ParentId`) via `ExtensionComponentContributor.cs` and `SystemInfoCollectorService.cs`.
+  - Station Component Tree modal (`StationComponentTreeModal.vue`) displaying trust badges (`[Signed]`, `[Dev Sandbox]`), technology pills, and JSON payload inspection.
+- **Production-Grade Industrial Diagnostic Snapshot Engine**:
+  - Full end-to-end `DiagnosticSnapshot` database entity with SHA-256 integrity hash verification (`PayloadHashSha256`), byte-precise measurement, and complete JSON diagnostic payload storage.
+  - Audit logging and agent event recording for TISAX ISA 5.1 and NIS2 compliance.
+  - Edge dispatch using `QueuedAgentCommand` with command name `TRIGGER_DIAGNOSTIC_SNAPSHOT`.
+  - Frontend snapshot interface at `/dashboard/telemetry` with real async execution, SHA-256 hash badge, payload inspection modal, direct JSON file download, and historical snapshot drawer.
+- **Statistical Process Control (SPC) KPI Goals & Grafana Mass Telemetry Workspace**:
+  - Configurable SPC limits in `KpiGraphBuilder.vue` (Target Mean, Upper Control Limit UCL, Lower Control Limit LCL).
+  - Radial compliance gauges, bullet charts, and trend overlays with automatic status evaluation (`Within Limits`, `UCL Exceeded`, `Below LCL`).
+  - Dedicated Grafana mass telemetry embed at `/dashboard/analytics` (`GrafanaMassTelemetryEmbed.vue`) with kiosk mode, quick-copy Prometheus scrape (`/api/v1/ReportExport/grafana/metrics`), and OData stream endpoints.
+- **Application Right-Click Context Menu (`GlobalContextMenu.vue` & `useGlobalContextMenu.ts`)**:
+  - Application-wide context menu mounted at root with boundary-safe viewport clamping.
+  - Deep domain navigation: "Go to Machine", "Go to Node / Controller", "Go to Owner Team / Person", "Go to Ticket / Report Incident", "Live Telemetry", "Inspect Component Tree".
+  - Native browser context menu pass-through item and `Shift + Right-Click` bypass.
+  - Integrated across CAD Map (`InteractiveMapCanvas.vue`), Controller Grid (`ControllerGrid.vue`), and Machinery Catalog (`machines.vue`).
+- **Interactive Hero Metrics Filtering & Intuitive Header Resets**:
+  - Hero cards on `/dashboard/tickets` (`TicketMetricsOverview.vue`) with accessible button semantics, click-to-filter, toggle-off, active colored rings, and dynamic filter chip bar.
+  - Consistent page header click actions across dashboard pages (`tickets.vue`, `machines.vue`, `clients.vue`, `analytics.vue`, `map.vue`, `telemetry/stream.vue`) to reset filters/queries and refresh live state.
+  - Summary badges on `machines.vue` and backlog age distribution cards on `FleetAnalyticsSummary.vue` made interactive.
+- **Predictive Maintenance & Fleet Analytics Engine (`backend/App.Backend.Api/Services/PredictiveMaintenanceService.cs`)**:
+  - Statistical Z-score anomaly detector calculating rolling mean and standard deviation over sliding windows ($|z| > 2.5\sigma$ warning, $|z| > 3.0\sigma$ critical).
+  - MTBF (Mean Time Between Failures) and MTTR (Mean Time to Repair) reliability modeling.
+  - Remaining Useful Life (RUL) 0–100% health score index dynamic degradation calculations.
+  - `AnalyticsController.cs` REST API with endpoints `/api/v1/Analytics/fleet-summary`, `/trends`, `/kpis`, and `/powerbi/config`.
+  - Nuxt 4 Analytics Hub at `/dashboard/analytics` with 4 interactive tabs: `FleetAnalyticsSummary.vue`, `TelemetryTrendVisualizer.vue`, `KpiGraphBuilder.vue` (with local storage pinning), and `PowerBiTileEmbed.vue` (with simulated fallback and one-click Grafana/PowerQuery endpoints).
+- **Live Telemetry & Enterprise Export Pipelines (`backend/App.Backend.Api/Services/`)**:
+  - Live OPC UA node manager in `OpcUaGatewayService.cs` with dynamic tag subscription and node writing.
+  - Copia Automation Git webhook integration in `CopiaIntegrationService.cs` with HMAC-SHA256 signature validation.
+  - ClosedXML streaming mass `.xlsx` report generator in `ReportExportService.cs` and `ReportExportController.cs`.
+  - Live SignalR gauge visualizer in `/dashboard/telemetry/index.vue`.
+- **RBAC UI Permissions Hardening & Tooltip System**:
+  - Created `<RbacButton>` and `<RbacTooltip>` with Radix-Vue pointer-events wrapper to prevent click-through while displaying informative hover tooltips when permissions are lacking.
+  - Hardened navigation links in `AppSidebar.vue` and `SidebarNavLink.vue` (`hideIfUnauthorized` / `disableIfUnauthorized`).
+  - Enforced RBAC across Controllers (`EXEC_COMMAND`, `RESTART_AGENT`), Machines (`UPDATE_MACHINE`), Governance settings (`SYSTEM_ADMIN`), Users & Security Groups, and Telemetry Configuration.
+- **Remote Quick View & Industrial Palette Overhaul (`frontend/web/`)**:
+  - `RemoteQuickViewModal.vue` providing embedded HTML5 VNC viewport and DameWare (`dwmrc://`) deep-link protocol launch.
+  - Overhauled color palette in `tailwind.css` replacing neon accents with muted industrial tones (grey-greens, warm taupes, desaturated slates).
+- **Code-to-Sequence-Diagram Generator CLI (`tools/generate_sequence_diagrams.py`)**: Automated Python CLI tool parsing C# controllers, services, gRPC contracts, and SignalR hubs to generate and validate Mermaid sequence diagrams with `--check` and `--update-docs` flags.
+- **Master Sequence Diagram Gallery (`docs/architecture/SEQUENCE_DIAGRAMS.md`)**: Comprehensive visual reference gallery documenting 6 end-to-end flows: telemetry ingestion, incident ticketing lifecycle, Active Directory OU discovery, PKI mTLS enrollment, station component graph traversal, and agent command execution loops.
+- **Canonical Plant Dataset Alignment**: Refactored `ticketsStore.ts` (extracted `initialTickets.ts`), `machineGroupsStore.ts`, `technicianRulesStore.ts`, `devTicketGenerator.ts`, and `organizations.get.ts` to dynamically source entities from `fixtures/enterprise_plant_dataset.json` with robust backwards-compatible fallbacks.
 - **Telemetry Policy Engine Drag-and-Drop**: Visual rule priority reordering for Organizational Unit (OU) and Tag recipe assignments in `/dashboard/telemetry/configure` with `GripVertical` drag handles, real-time 1-based (`#1`, `#2`, ...) priority re-indexing, drop indicators, and automatic policy persistence.
 - **Point-of-Click Drag Anchoring (`reorderList.ts`)**: `setDragImageAtClickPoint` utility with global `pointerdown` tracking to overcome Linux Chromium's `clientX = 0` dragstart bug, using offscreen DOM clone rendering to force Blink engines to honor exact click offsets. Applied across telemetry rule cards and Kanban incident ticket cards.
 - **FMFD ("Find My Field Data") Search & Shortcuts**:
@@ -29,6 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit tests for multi-tenant query filters, fail-secure signature verification, and offline telemetry spooler.
 
 ### Changed
+- **Dashboard File Naming & Route Consolidation**:
+  - Purged redundant `index.vue` files across `pages/dashboard/` into descriptive Computer Science names (`overview.vue`, `analytics.vue`, `clients.vue`, `stream.vue`, `system-settings.vue`) while preserving 100% URL route parity via Nuxt file routes and aliases.
+  - Decoupled `SystemInfoService` into modular contributors (`IComponentContributor`, `ExtensionComponentContributor`).
 - **UI/UX Design System Unification**: Standardized color palette, header typography, card styling, and status badge color conventions across all dashboard pages (`system-settings.vue`, `security-groups.vue`, `tickets.vue`, `users.vue`, `machines.vue`, `inventory.vue`, `organizations.vue`, `help.vue`, `telemetry/configure.vue`, `telemetry/templates.vue`, etc.).
 - **Incident Kanban Drag Mechanics**: Upgraded `TicketKanbanBoard.vue` drag-and-drop handling using `setDragImageAtClickPoint` to preserve exact cursor anchor positions during status transitions.
 - **Repository SQL Tracking & Gitignore**: Configured `.gitignore` to ignore generated `*.sql` database dumps while strictly preserving EF Core and Drizzle schema migrations. Untracked `seed_data/incremental_seed.sql` from git history while preserving local disk copy.
@@ -39,6 +89,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configured max database connections to 300 in PostgreSQL container to accommodate Npgsql's connection pool size of 250.
 - Deduplicated `MaintenanceTicket` entity configuration in `AppDbContext.cs`.
 - Added missing B-tree indexes on `maintenance_tickets(status, priority, created_at, assigned_to, organization_id)` and `agent_events(client_pc_id, timestamp)`.
+
+### Removed
+- **Mock Diagnostic Snapshot**: Removed mock `setTimeout` simulation in `/dashboard/telemetry`.
+- **Redundant Admin Redirect**: Deleted 14-line `pages/dashboard/admin/index.vue` redirect in favor of alias in `system-settings.vue`.
+- **Duplicate Nitro API Route Handlers**: Purged 6 redundant flat-file routes (`machine-groups.get.ts`, `machine-groups.post.ts`, `technicians/absences.get.ts`, `technicians/absences.post.ts`, `technicians/rules.get.ts`, `technicians/rules.post.ts`) in favor of directory-based route standards.
+- **Redundant Dataset Fixtures**: Deleted duplicate copy at `frontend/web/fixtures/enterprise_plant_dataset.json` and unified fixture output to root `fixtures/enterprise_plant_dataset.json`.
+- **Obsolete Documentation**: Deleted pre-alpha `SCHEDULE.md` and relocated defense slide deck to `docs/presentation.md`.
+- **Orphaned Bytecode Caches**: Purged unversioned root and seed `__pycache__` directories.
+
+### Fixed
+- **Python Fleet Simulator Test Alignment**: Resolved legacy hostname discrepancies (`CPC-*` -> `IPC-L01-*`) and updated hardware assertions across `test_mock_cmi_runner.py` and `test_simulated_pc_integration.py` (9/9 tests passing).
+- **Active Directory OU Organization Tagging**: Connected plant organizations tab to Active Directory OU discovery so tenant cards dynamically render matching OU paths and VLAN tags.
 
 ## [0.1.0-alpha] - 2026-09-02
 

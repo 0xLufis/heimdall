@@ -19,7 +19,7 @@ except ImportError:
 
 class MockCmiEngine:
     def __init__(self, hostname: Optional[str] = None):
-        self.hostname = (hostname or os.environ.get('SIMULATED_HOSTNAME') or 'CPC-L06-ROB-01').strip()
+        self.hostname = (hostname or os.environ.get('SIMULATED_HOSTNAME') or 'IPC-L01-OP030-DEDICATED').strip()
         self.pc = get_client_pc_by_hostname(self.hostname)
         if not self.pc:
             pcs = get_all_client_pcs()

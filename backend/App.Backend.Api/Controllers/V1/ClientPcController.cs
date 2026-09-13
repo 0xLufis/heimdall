@@ -135,4 +135,103 @@ public class ClientPcController : ControllerBase
         if (!deleted) return NotFound();
         return NoContent();
     }
+
+    [HttpPost("{id}/snapshot")]
+    [Authorize(Policy = "EndpointConfigManagement")]
+    public async Task<ActionResult<App.Backend.Api.Dtos.DiagnosticSnapshotDetailDto>> CaptureDiagnosticSnapshot(Guid id)
+    {
+        try
+        {
+            string userId = User.Identity?.Name ?? "system";
+            string? userName = User.FindFirst("name")?.Value ?? User.Identity?.Name ?? "System Engineer";
+            string? orgId = Request.Headers["X-Organization-Id"].FirstOrDefault();
+
+            var snapshot = await _repository.CreateDiagnosticSnapshotAsync(id, userId, userName, orgId);
+
+            _logger.LogInformation("Captured diagnostic snapshot '{SnapshotId}' for ClientPc '{ClientPcId}' ({Hostname})",
+                snapshot.Id, id, snapshot.Hostname);
+
+            return Ok(new App.Backend.Api.Dtos.DiagnosticSnapshotDetailDto
+            {
+                Id = snapshot.Id,
+                ClientPcId = snapshot.ClientPcId,
+                Hostname = snapshot.Hostname,
+                MachineIdentifier = snapshot.MachineIdentifier,
+                CapturedByUserId = snapshot.CapturedByUserId,
+                CapturedByUserName = snapshot.CapturedByUserName,
+                CapturedAtUtc = snapshot.CapturedAtUtc,
+                PayloadHashSha256 = snapshot.PayloadHashSha256,
+                PayloadSizeBytes = System.Text.Encoding.UTF8.GetByteCount(snapshot.SnapshotPayloadJson),
+                SnapshotPayloadJson = snapshot.SnapshotPayloadJson
+            });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Client PC '{id}' was not found." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to capture diagnostic snapshot for ClientPc '{ClientPcId}'", id);
+            return StatusCode(500, new { message = "Failed to capture diagnostic snapshot.", error = ex.Message });
+        }
+    }
+
+    [HttpGet("{id}/snapshots")]
+    public async Task<ActionResult<IEnumerable<App.Backend.Api.Dtos.DiagnosticSnapshotSummaryDto>>> GetDiagnosticSnapshots(Guid id)
+    {
+        var snapshots = await _repository.GetSnapshotsByClientPcIdAsync(id);
+        var dtos = snapshots.Select(s => new App.Backend.Api.Dtos.DiagnosticSnapshotSummaryDto
+        {
+            Id = s.Id,
+            ClientPcId = s.ClientPcId,
+            Hostname = s.Hostname,
+            MachineIdentifier = s.MachineIdentifier,
+            CapturedByUserId = s.CapturedByUserId,
+            CapturedByUserName = s.CapturedByUserName,
+            CapturedAtUtc = s.CapturedAtUtc,
+            PayloadHashSha256 = s.PayloadHashSha256,
+            PayloadSizeBytes = System.Text.Encoding.UTF8.GetByteCount(s.SnapshotPayloadJson)
+        }).ToList();
+
+        return Ok(dtos);
+    }
+
+    [HttpGet("{id}/snapshots/{snapshotId}")]
+    public async Task<ActionResult<App.Backend.Api.Dtos.DiagnosticSnapshotDetailDto>> GetDiagnosticSnapshot(Guid id, Guid snapshotId)
+    {
+        var snapshot = await _repository.GetSnapshotByIdAsync(snapshotId);
+        if (snapshot == null || snapshot.ClientPcId != id)
+        {
+            return NotFound(new { message = $"Snapshot '{snapshotId}' was not found for this node." });
+        }
+
+        return Ok(new App.Backend.Api.Dtos.DiagnosticSnapshotDetailDto
+        {
+            Id = snapshot.Id,
+            ClientPcId = snapshot.ClientPcId,
+            Hostname = snapshot.Hostname,
+            MachineIdentifier = snapshot.MachineIdentifier,
+            CapturedByUserId = snapshot.CapturedByUserId,
+            CapturedByUserName = snapshot.CapturedByUserName,
+            CapturedAtUtc = snapshot.CapturedAtUtc,
+            PayloadHashSha256 = snapshot.PayloadHashSha256,
+            PayloadSizeBytes = System.Text.Encoding.UTF8.GetByteCount(snapshot.SnapshotPayloadJson),
+            SnapshotPayloadJson = snapshot.SnapshotPayloadJson
+        });
+    }
+
+    [HttpGet("{id}/snapshots/{snapshotId}/download")]
+    public async Task<IActionResult> DownloadDiagnosticSnapshot(Guid id, Guid snapshotId)
+    {
+        var snapshot = await _repository.GetSnapshotByIdAsync(snapshotId);
+        if (snapshot == null || snapshot.ClientPcId != id)
+        {
+            return NotFound(new { message = $"Snapshot '{snapshotId}' was not found for this node." });
+        }
+
+        byte[] payloadBytes = System.Text.Encoding.UTF8.GetBytes(snapshot.SnapshotPayloadJson);
+        string filename = $"diagnostic_snapshot_{snapshot.Hostname}_{snapshot.CapturedAtUtc:yyyyMMdd_HHmmss}.json";
+
+        return File(payloadBytes, "application/json", filename);
+    }
 }

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { getPlantMachineGroups } from './datasetLoader'
 
 export interface MachineGroupEntry {
   id: string
@@ -13,7 +14,7 @@ export interface MachineGroupEntry {
   leadEngineerName?: string
 }
 
-let groups: MachineGroupEntry[] = [
+const FALLBACK_GROUPS: MachineGroupEntry[] = [
   {
     id: 'grp-plant',
     name: 'Battery Assembly Plant 01',
@@ -55,6 +56,33 @@ let groups: MachineGroupEntry[] = [
     leadEngineerName: 'Engineer Sally'
   }
 ]
+
+function loadInitialGroups(): MachineGroupEntry[] {
+  const result: MachineGroupEntry[] = [...FALLBACK_GROUPS]
+  try {
+    const datasetGroups = getPlantMachineGroups()
+    if (datasetGroups && datasetGroups.length > 0) {
+      for (const g of datasetGroups) {
+        if (!result.some(existing => existing.id === g.id)) {
+          result.push({
+            id: g.id,
+            name: g.name,
+            description: g.description,
+            parentId: g.parentId ?? null,
+            machineIds: [...g.machineIds],
+            machineTypes: g.machineTypes ? [...g.machineTypes] : [],
+            color: g.color
+          })
+        }
+      }
+    }
+  } catch {
+    // Dataset not available, use fallback
+  }
+  return result
+}
+
+let groups: MachineGroupEntry[] = loadInitialGroups()
 
 export function getAllGroups(): MachineGroupEntry[] {
   return groups

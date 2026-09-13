@@ -113,6 +113,15 @@ export interface PlantClientPc {
   osVersion: string
   cmiHardware: PlantCmiHardware
   installedPackages: string[]
+  isOnline?: boolean
+}
+
+export interface PlantMachine {
+  id: string
+  name: string
+  displayName?: string
+  groupId?: string
+  machineType?: string
 }
 
 export interface PlantActiveDirectoryOU {
@@ -173,6 +182,7 @@ function findDatasetFile(): string | null {
     path.resolve(process.cwd(), '../fixtures/enterprise_plant_dataset.json'),
     path.resolve(process.cwd(), '../../fixtures/enterprise_plant_dataset.json'),
     '/app/fixtures/enterprise_plant_dataset.json',
+    path.resolve(import.meta.dirname || '', '../../../fixtures/enterprise_plant_dataset.json'),
     path.resolve(import.meta.dirname || '', '../../fixtures/enterprise_plant_dataset.json')
   ]
 
@@ -227,6 +237,25 @@ export function getPlantActiveDirectoryOUs(): PlantActiveDirectoryOU[] {
 
 export function getPlantMachineGroups(): PlantMachineGroup[] {
   return getEnterpriseDataset().machineGroups
+}
+
+export function getPlantMachines(): PlantMachine[] {
+  const groups = getPlantMachineGroups()
+  const machines: PlantMachine[] = []
+  for (const g of groups) {
+    for (let i = 0; i < g.machineIds.length; i++) {
+      const id = g.machineIds[i]
+      const mType = g.machineTypes?.[i % (g.machineTypes?.length || 1)] || 'AutomationStation'
+      machines.push({
+        id,
+        name: id,
+        displayName: `${g.name} - ${id}`,
+        groupId: g.id,
+        machineType: mType
+      })
+    }
+  }
+  return machines
 }
 
 export function getPlantTechnicianRules(): PlantTechnicianRule[] {

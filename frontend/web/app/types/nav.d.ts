@@ -5,6 +5,9 @@ export interface NavLink {
   new?: boolean
   external?: boolean
   target?: string
+  requiredCapability?: string
+  requiredTooltip?: string
+  hideWhenUnauthorized?: boolean
 }
 
 export interface NavSectionTitle {

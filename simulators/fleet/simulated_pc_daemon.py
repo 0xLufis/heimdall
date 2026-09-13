@@ -30,7 +30,7 @@ import system_info_pb2_grpc
 from dataset_loader import get_client_pc_by_hostname, load_enterprise_dataset
 from mock_cmi_runner import MockCmiEngine
 
-SIMULATED_HOSTNAME = os.environ.get('SIMULATED_HOSTNAME', 'CPC-L06-ROB-01')
+SIMULATED_HOSTNAME = os.environ.get('SIMULATED_HOSTNAME', 'IPC-L01-OP030-DEDICATED')
 BACKEND_GRPC_HOST = os.environ.get('BACKEND_GRPC_HOST', 'localhost:5001')
 AD_SERVICE_URL = os.environ.get('AD_SERVICE_URL', 'http://localhost:3000/api/ad-mock')
 DIAGNOSTIC_PORT = int(os.environ.get('DIAGNOSTIC_PORT', '8080'))

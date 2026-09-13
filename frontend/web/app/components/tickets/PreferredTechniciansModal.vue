@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '~/components/ui/select'
 import SearchableTargetCombobox, { type TargetItem } from '~/components/common/SearchableTargetCombobox.vue'
+import RbacTooltip from '~/components/common/RbacTooltip.vue'
 import { useAuthSession, DEMO_PERSONAS, type DemoPersona } from '~/composables/useAuthSession'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -183,8 +184,10 @@ async function loadAttendanceData() {
       }
     }
     if (candData && candData.length > 0) {
-      const names = candData.map(c => c.name)
-      knownTechnicians.value = [...new Set([...names, ...knownTechnicians.value])]
+      const names = candData.map(c => c.name).filter(Boolean)
+      if (names.length > 0) {
+        knownTechnicians.value = [...new Set(names)]
+      }
     }
   } finally {
     attendanceLoading.value = false
@@ -821,19 +824,21 @@ const scopeColor: Record<string, string> = {
               </div>
 
               <div class="flex gap-2">
-                <button
-                  type="button"
-                  @click="ruleForm.scopeType = 'Technology'; ruleForm.target = ''"
-                  :disabled="dedicationTier === 'shift'"
-                  :class="[
-                    'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5',
-                    dedicationTier === 'shift' ? 'opacity-40 cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600' :
-                    ruleForm.scopeType === 'Technology' ? scopeColor['Technology'] : 'border-slate-700 bg-slate-900 text-slate-500 hover:text-slate-300'
-                  ]"
-                >
-                  <Layers class="w-3 h-3" />
-                  <span>Technology</span>
-                </button>
+                <RbacTooltip :disabled="dedicationTier === 'shift'" tooltip="Technology scope restricted to Group Leaders & Managers">
+                  <button
+                    type="button"
+                    @click="ruleForm.scopeType = 'Technology'; ruleForm.target = ''"
+                    :disabled="dedicationTier === 'shift'"
+                    :class="[
+                      'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5',
+                      dedicationTier === 'shift' ? 'opacity-40 cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600' :
+                      ruleForm.scopeType === 'Technology' ? scopeColor['Technology'] : 'border-slate-700 bg-slate-900 text-slate-500 hover:text-slate-300'
+                    ]"
+                  >
+                    <Layers class="w-3 h-3" />
+                    <span>Technology</span>
+                  </button>
+                </RbacTooltip>
 
                 <button
                   type="button"

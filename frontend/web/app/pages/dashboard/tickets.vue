@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import {
   Plus, Camera, RefreshCw, WifiOff, LayoutList, Columns,
-  Activity, QrCode, Users, FolderTree, History, CheckCircle2, Wrench
+  Activity, QrCode, Users, FolderTree, History, CheckCircle2, Wrench,
+  Filter, X
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -25,6 +27,9 @@ import type { MaintenanceTicket, TicketStatus } from '~/types/maintenance'
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
+
+const router = useRouter()
+const route = useRoute()
 
 const {
   tickets,
@@ -56,6 +61,46 @@ const prefilledGroupId = ref('')
 // ── Tag Filtering ──────────────────────────────────────────────────────────
 const selectedTags = ref<string[]>([])
 
+// ── Metric Filter from Hero Cards ──────────────────────────────────────────
+const activeMetricFilter = ref<'open' | 'critical' | 'pending_parts' | 'overdue' | 'resolved' | 'sla' | null>(null)
+
+const activeMetricFilterLabel = computed(() => {
+  switch (activeMetricFilter.value) {
+    case 'open': return 'Active Open Incidents'
+    case 'critical': return 'Critical & High Alerts'
+    case 'pending_parts': return 'Pending Parts'
+    case 'overdue': return 'Overdue SLA'
+    case 'resolved': return 'Resolved & Closed'
+    case 'sla': return 'SLA Health Incidents'
+    default: return ''
+  }
+})
+
+const onMetricFilterChange = (filter: string | null) => {
+  activeMetricFilter.value = filter as any
+  if (filter === 'resolved') {
+    activeViewMode.value = 'resolved'
+  } else if (activeViewMode.value === 'resolved' && filter !== null) {
+    activeViewMode.value = 'list'
+  }
+}
+
+const clearMetricFilter = () => {
+  activeMetricFilter.value = null
+  if (activeViewMode.value === 'resolved') {
+    activeViewMode.value = 'list'
+  }
+}
+
+const resetPageFilters = () => {
+  activeMetricFilter.value = null
+  selectedTags.value = []
+  prefilledStationId.value = ''
+  activeViewMode.value = 'list'
+  router.push('/dashboard/tickets')
+  fetchTickets()
+}
+
 const availableTags = computed(() => {
   const set = new Set<string>()
   for (const t of tickets.value) {
@@ -68,12 +113,82 @@ const availableTags = computed(() => {
   return Array.from(set)
 })
 
+watch(() => [route.query, tickets.value], () => {
+  const q = route.query
+  if (q.stationId) {
+    prefilledStationId.value = q.stationId as string
+  }
+  if (q.create === 'true') {
+    showCreateModal.value = true
+  }
+  if (q.ticketId) {
+    const match = tickets.value.find(t => t.id === q.ticketId)
+    if (match) onSelectTicket(match)
+  }
+  if (q.team) {
+    const teamStr = String(q.team)
+    if (!selectedTags.value.includes(teamStr)) {
+      selectedTags.value.push(teamStr)
+    }
+  }
+  if (q.technician) {
+    const techStr = String(q.technician)
+    if (!selectedTags.value.includes(techStr)) {
+      selectedTags.value.push(techStr)
+    }
+  }
+}, { immediate: true })
+
 const displayedTickets = computed(() => {
-  if (selectedTags.value.length === 0) return tickets.value
-  return tickets.value.filter(t => {
-    if (!t.tags || !Array.isArray(t.tags)) return false
-    return selectedTags.value.some(sel => t.tags!.includes(sel))
-  })
+  let list = tickets.value
+  const q = route.query
+
+  if (q.stationId && q.create !== 'true') {
+    const target = (q.stationId as string).toLowerCase()
+    list = list.filter(t => 
+      t.stationId?.toLowerCase() === target ||
+      t.machineId?.toLowerCase() === target ||
+      t.title?.toLowerCase().includes(target) ||
+      (t.tags && t.tags.some(tag => tag.toLowerCase() === target))
+    )
+  }
+
+  if (q.technician) {
+    const tech = (q.technician as string).toLowerCase()
+    list = list.filter(t => t.assignedTechnicianName?.toLowerCase().includes(tech))
+  }
+
+  if (selectedTags.value.length > 0) {
+    list = list.filter(t => {
+      if (!t.tags || !Array.isArray(t.tags)) return false
+      return selectedTags.value.some(sel => t.tags!.includes(sel))
+    })
+  }
+
+  if (activeMetricFilter.value) {
+    switch (activeMetricFilter.value) {
+      case 'open':
+        list = list.filter(t => t.status === 'Open' || t.status === 'In_Progress' || t.status === 'Pending_Parts')
+        break
+      case 'critical':
+        list = list.filter(t => (t.severity || '').toLowerCase() === 'critical' || (t.severity || '').toLowerCase() === 'high' || (t.title || '').toLowerCase().includes('critical'))
+        break
+      case 'pending_parts':
+        list = list.filter(t => t.status === 'Pending_Parts')
+        break
+      case 'overdue':
+        list = list.filter(t => (t as any).isOverdue || (t.tags && t.tags.includes('Overdue')))
+        break
+      case 'resolved':
+        list = list.filter(t => t.status === 'Resolved' || t.status === 'Closed')
+        break
+      case 'sla':
+        list = list.filter(t => (t as any).slaDueAt || (t as any).isOverdue)
+        break
+    }
+  }
+
+  return list
 })
 
 // ── Action Handlers ────────────────────────────────────────────────────────
@@ -123,13 +238,20 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
   <div class="space-y-6 pb-12">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
-      <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+      <div
+        role="button"
+        tabindex="0"
+        @click="resetPageFilters"
+        @keydown.enter="resetPageFilters"
+        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-slate-900/60"
+        title="Click to reset filters and refresh tickets"
+      >
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 group-hover:bg-indigo-500/20 transition-all">
           <Wrench class="size-6" />
         </div>
         <div>
           <div class="flex items-center gap-2.5">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-100 group-hover:text-white transition-colors">
               Maintenance & Incident Management
             </h1>
             <Badge
@@ -141,7 +263,7 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
               <span>{{ pendingOfflineCount }} Offline Queued</span>
             </Badge>
           </div>
-          <p class="text-sm text-slate-400 mt-0.5">
+          <p class="text-sm text-slate-400 mt-0.5 group-hover:text-slate-300 transition-colors">
             Plant floor incident lifecycle, 4-tier templates, technician delegation, and machine groups
           </p>
         </div>
@@ -253,7 +375,30 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
     </div>
 
     <!-- Metrics Cards Overview -->
-    <TicketMetricsOverview :metrics="metrics || undefined" />
+    <TicketMetricsOverview
+      :metrics="metrics || undefined"
+      :active-filter="activeMetricFilter"
+      @filter-change="onMetricFilterChange"
+    />
+
+    <!-- Active Metric Filter Chip Bar -->
+    <div
+      v-if="activeMetricFilter"
+      class="flex items-center justify-between px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 animate-in fade-in duration-200 shadow-sm"
+    >
+      <div class="flex items-center gap-2">
+        <Filter class="size-3.5 text-indigo-400" />
+        <span>Filtering by: <strong class="text-white capitalize">{{ activeMetricFilterLabel }}</strong></span>
+        <span class="text-slate-400">({{ displayedTickets.length }} incident{{ displayedTickets.length === 1 ? '' : 's' }} matched)</span>
+      </div>
+      <button
+        @click="clearMetricFilter"
+        class="text-xs text-indigo-300 hover:text-white flex items-center gap-1 font-medium px-2 py-0.5 rounded hover:bg-indigo-500/20 transition-colors"
+      >
+        <X class="size-3.5" />
+        <span>Clear Filter</span>
+      </button>
+    </div>
 
     <!-- Tag Cloud Filter Bar -->
     <div v-if="availableTags.length > 0" class="p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-sm">

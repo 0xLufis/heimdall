@@ -191,7 +191,7 @@ public class ActiveDirectoryController : ControllerBase
     {
         if (request.Hosts == null || request.Hosts.Count == 0)
         {
-            return BadRequest(new { Message = "No hosts provided for import." });
+            return BadRequest(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.MissingRequiredField, "No hosts provided for import."));
         }
 
         await using var db = await _dbContextFactory.CreateDbContextAsync();
@@ -210,11 +210,9 @@ public class ActiveDirectoryController : ControllerBase
             var gov = governances.FirstOrDefault(g => g.OuPath.Equals(ouPath, StringComparison.OrdinalIgnoreCase));
             if (gov == null || !gov.IsApproved || !string.Equals(gov.AccessLevel, "read_write", StringComparison.OrdinalIgnoreCase))
             {
-                return StatusCode(StatusCodes.Status403Forbidden, new
-                {
-                    Message = $"Active Directory Organizational Unit '{ouPath}' is not approved for Read/Write in Heimdall. Approval by an IT Administrator is required.",
-                    OuPath = ouPath
-                });
+                return StatusCode(StatusCodes.Status403Forbidden, new App.Shared.Errors.ApiError(
+                    App.Shared.Errors.ErrorCode.OuNotApproved,
+                    $"Active Directory Organizational Unit '{ouPath}' is not approved for Read/Write in Heimdall. Approval by an IT Administrator is required."));
             }
         }
 

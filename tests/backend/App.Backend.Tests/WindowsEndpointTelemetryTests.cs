@@ -87,20 +87,24 @@ public class WindowsEndpointTelemetryTests : IClassFixture<CustomWebApplicationF
             })
         });
 
-        // 3. Beckhoff RT Driver component (Win32_PnPEntity)
+        // 3. Device Driver component
         request.Components.Add(new InventoryComponent
         {
-            Name = "Beckhoff RT Drivers",
-            Technology = "Agent",
+            Name = "Drivers",
+            Technology = "Kernel",
             Type = "driver",
             DataJson = JsonSerializer.Serialize(new[]
             {
                 new
                 {
-                    DeviceName = "TwinCAT Real-Time Driver",
+                    DeviceName = "Fieldbus Interface Driver",
                     Service = "TcRTime",
                     DriverVersion = "3.1.4024.55",
-                    Provider = "Beckhoff Automation GmbH",
+                    Provider = "Hardware Automation",
+                    HardwareId = @"PCI\VEN_15BC&DEV_0100&SUBSYS_000115BC&REV_01",
+                    DeviceId = @"PCI\VEN_15BC&DEV_0100&SUBSYS_000115BC&REV_01\4&1B2D5A4&0&00E4",
+                    InfName = "oem42.inf",
+                    Category = "Fieldbus",
                     Status = "Running",
                     IsBound = true
                 }

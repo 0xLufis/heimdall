@@ -326,8 +326,15 @@ public class AssetRepository : IAssetRepository
             {
                 item.Id,
                 item.Name,
+                item.DisplayName,
                 item.SerialNumber,
-                item.ItemType
+                item.ItemType,
+                item.Technology,
+                item.ParentId,
+                item.Metadata,
+                IsSigned = item.Metadata != null && item.Metadata.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && item.Metadata.RootElement.TryGetProperty("IsSigned", out var isSig) && isSig.ValueKind == System.Text.Json.JsonValueKind.True,
+                IsSandboxed = item.Metadata != null && item.Metadata.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && item.Metadata.RootElement.TryGetProperty("IsSandboxed", out var isSb) && isSb.ValueKind == System.Text.Json.JsonValueKind.True,
+                CustomData = item.Metadata != null && item.Metadata.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && item.Metadata.RootElement.TryGetProperty("Data", out var dt) ? dt : (object?)null
             }).ToList()
         }).ToList();
 

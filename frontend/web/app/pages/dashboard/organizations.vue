@@ -3,13 +3,17 @@ import { ref, watch, onMounted } from 'vue'
 import { authClient } from '~/utils/auth-client'
 import { Plus, Users, Trash2, Building2 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
+import RbacButton from '~/components/common/RbacButton.vue'
 import { Input } from '~/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '~/components/ui/dialog'
 import DashboardOrgCard from '~/components/dashboard/OrgCard.vue'
+import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
+
+const { canAdministerSystem } = useRbacPermission()
 
 const loading = ref(true)
 const creating = ref(false)
@@ -186,7 +190,7 @@ onMounted(() => {
     <!-- Header Area -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+        <div class="p-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300">
           <Building2 class="size-6" />
         </div>
         <div>
@@ -200,19 +204,20 @@ onMounted(() => {
       </div>
 
       <div class="flex items-center gap-3">
-        <Button
+        <RbacButton
+          capability="canAdministerSystem"
           @click="showCreateModal = true"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3.5 h-8 text-xs font-medium shadow-sm transition-colors border-0"
+          class="bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg px-3.5 h-8 text-xs font-medium shadow-sm transition-colors border border-zinc-600/50"
         >
           <Plus class="size-3.5 mr-1.5" />
           <span>Create Organization</span>
-        </Button>
+        </RbacButton>
       </div>
     </div>
 
     <!-- Organizations Grid -->
     <div v-if="loading && orgs.length === 0" class="flex flex-col items-center justify-center py-24 gap-3">
-      <div class="animate-spin rounded-full size-8 border-b-2 border-indigo-500"></div>
+      <div class="animate-spin rounded-full size-8 border-b-2 border-zinc-400"></div>
       <p class="text-xs font-medium text-slate-400">Loading organizations...</p>
     </div>
 
@@ -224,7 +229,7 @@ onMounted(() => {
       <p class="text-slate-400 mt-1 max-w-sm mx-auto text-xs">Configure your first organization to establish secure operational boundaries.</p>
       <Button
         @click="showCreateModal = true"
-        class="mt-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 h-8 font-medium text-xs shadow-sm transition-colors"
+        class="mt-5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg px-4 h-8 font-medium text-xs shadow-sm transition-colors border border-zinc-600/50"
       >
         Create Organization
       </Button>
@@ -246,7 +251,7 @@ onMounted(() => {
       <DialogContent class="max-w-md bg-slate-900 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-xl shadow-2xl">
         <DialogHeader class="p-6 border-b border-slate-800">
           <DialogTitle class="text-base font-bold text-slate-100 flex items-center gap-2.5">
-            <div class="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-400">
+            <div class="p-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300">
               <Building2 class="size-4" />
             </div>
             {{ editingOrg ? 'Edit Organization' : 'Create Organization' }}
@@ -289,7 +294,7 @@ onMounted(() => {
               type="submit"
               size="sm"
               :disabled="creating"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg h-8 text-xs font-medium px-4 shadow-sm transition-colors"
+              class="bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg h-8 text-xs font-medium px-4 shadow-sm transition-colors border border-zinc-600/50"
             >
               {{ creating ? 'Saving...' : (editingOrg ? 'Update Organization' : 'Create Organization') }}
             </Button>
@@ -303,7 +308,7 @@ onMounted(() => {
       <DialogContent class="max-w-xl bg-slate-900 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-xl shadow-2xl">
         <DialogHeader class="p-6 border-b border-slate-800">
           <DialogTitle class="text-base font-bold text-slate-100 flex items-center gap-2.5">
-            <div class="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-400">
+            <div class="p-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300">
               <Users class="size-4" />
             </div>
             Organization Members
@@ -315,7 +320,7 @@ onMounted(() => {
 
         <div class="p-6 space-y-4">
           <div v-if="loadingMembers" class="flex flex-col items-center justify-center py-10 gap-2.5">
-            <div class="size-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <div class="size-6 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin"></div>
             <span class="text-xs font-medium text-slate-400">Retrieving roster...</span>
           </div>
           <div v-else class="space-y-2.5 max-h-[260px] overflow-y-auto pr-1">
@@ -362,7 +367,7 @@ onMounted(() => {
               />
               <select
                 v-model="inviteRole"
-                class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 text-xs text-slate-300 h-8 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 text-xs text-slate-300 h-8 focus:outline-none focus:ring-1 focus:ring-zinc-500 font-medium"
               >
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
@@ -372,7 +377,7 @@ onMounted(() => {
                 size="sm"
                 @click="handleInviteMember"
                 :disabled="inviting || !inviteEmail"
-                class="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                class="h-8 px-3 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 transition-colors border border-zinc-600/50"
               >
                 {{ inviting ? '...' : 'Invite' }}
               </Button>

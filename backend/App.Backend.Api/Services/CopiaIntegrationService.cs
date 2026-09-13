@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using App.Shared.Data;
 using App.Shared.Entities;
@@ -6,9 +8,20 @@ using Microsoft.Extensions.Logging;
 
 namespace App.Backend.Api.Services;
 
+public record CopiaCommitRecord(
+    string RepositoryName,
+    string Branch,
+    string CommitHash,
+    string Author,
+    string Message,
+    IReadOnlyList<string> ChangedPlcFiles,
+    DateTimeOffset Timestamp
+);
+
 /// <summary>
-/// Stub service for parsing Copia Webhooks (Git-based automation version control for PLCs).
-/// Extracts repository events, commits, and links software versions to SoftwareAssets in the database.
+/// Copia Automation Webhook Service (Git-based automation version control for PLCs & Industrial IPCs).
+/// Handles HMAC-SHA256 signature verification, branch commits, diff metadata extraction,
+/// and automatic version synchronization with SoftwareAssets in the database.
 /// </summary>
 public class CopiaIntegrationService
 {
@@ -22,11 +35,38 @@ public class CopiaIntegrationService
     }
 
     /// <summary>
+    /// Validates an incoming Copia HMAC-SHA256 signature.
+    /// </summary>
+    public bool VerifyWebhookSignature(string payload, string signatureHeader, string secret)
+    {
+        if (string.IsNullOrWhiteSpace(signatureHeader) || string.IsNullOrWhiteSpace(secret))
+            return false;
+
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+        var computedSignature = "sha256=" + Convert.ToHexString(hashBytes).ToLowerInvariant();
+
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(computedSignature),
+            Encoding.UTF8.GetBytes(signatureHeader.Trim())
+        );
+    }
+
+    /// <summary>
     /// Processes an incoming Copia webhook event.
     /// </summary>
-    public async Task<bool> ProcessWebhookAsync(string eventType, string jsonPayload, CancellationToken cancellationToken = default)
+    public async Task<bool> ProcessWebhookAsync(string eventType, string jsonPayload, string? signature = null, string? secret = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Copia Integration: Processing event '{EventType}'", eventType);
+
+        if (!string.IsNullOrEmpty(signature) && !string.IsNullOrEmpty(secret))
+        {
+            if (!VerifyWebhookSignature(jsonPayload, signature, secret))
+            {
+                _logger.LogWarning("Copia Integration: Invalid HMAC signature rejected");
+                return false;
+            }
+        }
 
         try
         {
@@ -66,7 +106,32 @@ public class CopiaIntegrationService
             ? refProp.GetString() ?? "refs/heads/main"
             : "refs/heads/main";
 
-        _logger.LogInformation("Copia Push Event: Repository '{Repo}', Ref '{Ref}', Commit '{Commit}'", repoName, refName, commitHash);
+        string author = "Copia Developer";
+        string message = "Automated PLC Logic Commit";
+        var changedFiles = new List<string>();
+
+        if (root.TryGetProperty("commits", out var commits) && commits.ValueKind == JsonValueKind.Array && commits.GetArrayLength() > 0)
+        {
+            var headCommit = commits[commits.GetArrayLength() - 1];
+            if (headCommit.TryGetProperty("author", out var authObj) && authObj.TryGetProperty("email", out var emailProp))
+            {
+                author = emailProp.GetString() ?? author;
+            }
+            if (headCommit.TryGetProperty("message", out var msgProp))
+            {
+                message = msgProp.GetString() ?? message;
+            }
+            if (headCommit.TryGetProperty("modified", out var modFiles) && modFiles.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var f in modFiles.EnumerateArray())
+                {
+                    if (f.GetString() is { } fStr) changedFiles.Add(fStr);
+                }
+            }
+        }
+
+        _logger.LogInformation("Copia Push Event: Repository '{Repo}', Ref '{Ref}', Commit '{Commit}', Author '{Author}', Files: {FileCount}",
+            repoName, refName, commitHash, author, changedFiles.Count);
 
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         var asset = await dbContext.SoftwareAssets.FirstOrDefaultAsync(s => s.Name == repoName, cancellationToken);

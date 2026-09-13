@@ -29,7 +29,7 @@ async function handleReset(e: Event) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-6 selection:bg-indigo-500 selection:text-white">
+  <div class="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-6 selection:bg-zinc-700 selection:text-white">
     <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-8">
       
       <NuxtLink to="/auth/login" class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors mb-6">
@@ -38,7 +38,7 @@ async function handleReset(e: Event) {
       </NuxtLink>
 
       <div class="flex items-center gap-3 mb-6">
-        <div class="p-3 rounded-2xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20">
+        <div class="p-3 rounded-2xl bg-zinc-800 text-zinc-300 border border-zinc-700">
           <KeyRound class="w-6 h-6" />
         </div>
         <div>
@@ -73,7 +73,7 @@ async function handleReset(e: Event) {
             variant="ghost" 
             size="sm" 
             @click="activeTab = 'email'"
-            :class="activeTab === 'email' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
+            :class="activeTab === 'email' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-slate-500 hover:text-slate-300'"
             class="flex-1 rounded-lg text-[10px] font-black uppercase"
           >
             <Mail class="w-3.5 h-3.5 mr-1.5" />
@@ -84,7 +84,7 @@ async function handleReset(e: Event) {
             variant="ghost" 
             size="sm" 
             @click="activeTab = 'key'"
-            :class="activeTab === 'key' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'"
+            :class="activeTab === 'key' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-slate-500 hover:text-slate-300'"
             class="flex-1 rounded-lg text-[10px] font-black uppercase"
           >
             <ShieldAlert class="w-3.5 h-3.5 mr-1.5" />
@@ -121,7 +121,7 @@ async function handleReset(e: Event) {
         <Button 
           type="submit" 
           :disabled="isLoading"
-          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest py-6 h-auto rounded-2xl shadow-xl shadow-indigo-600/20"
+          class="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-black uppercase tracking-widest py-6 h-auto rounded-2xl shadow-md border border-zinc-600/50"
         >
           {{ isLoading ? 'Verifying Identity...' : 'Dispatch Reset Token' }}
         </Button>

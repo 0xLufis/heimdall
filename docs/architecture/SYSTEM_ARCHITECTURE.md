@@ -254,3 +254,26 @@ Modifications to maintenance tickets or incoming critical alarms trigger real-ti
 1. Controller or service updates entity in the database.
 2. Relevant cache keys are evicted.
 3. `IHubContext<MaintenanceHub, IMaintenanceClient>` broadcasts the event (`TicketStatusUpdated`, `TicketCreated`, `CriticalAlertRaised`) to subscribers in the target organization's SignalR group.
+
+
+### 4.3 Central Telemetry & Maintenance Interaction Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor EdgeNode as Edge Agent Daemon (C# / TwinCAT)
+    participant GrpcEndpoint as SystemInfoCollectorService (gRPC)
+    participant Repo as ClientPcRepository (PostgreSQL)
+    participant Cache as CacheService (L1 Memory / L2 Redis)
+    participant Hub as MaintenanceHub (SignalR WebSocket)
+    actor Browser as Nuxt Web Dashboard (Vue 3 / Pinia)
+
+    EdgeNode->>+GrpcEndpoint: ReportSystemInfo(SystemInfoRequest)
+    GrpcEndpoint->>Repo: UpsertClientPcTelemetryAsync(snapshot)
+    Repo-->>GrpcEndpoint: Entity committed
+    GrpcEndpoint->>Cache: SetAsync("telemetry:snapshot:{hostname}", snapshot, 5 min)
+    GrpcEndpoint->>+Hub: Clients.All.TelemetryReceived(hostname, mac, summary)
+    Hub-->>-Browser: WebSocket Broadcast
+    Browser->>Browser: Update reactive canvas & spatial view
+    GrpcEndpoint-->>-EdgeNode: SystemInfoResponse(success=true)
+```

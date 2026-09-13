@@ -159,6 +159,7 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<MalformedTelemetryRecord> MalformedTelemetryRecords { get; set; }
     public DbSet<AdOuGovernance> AdOuGovernances { get; set; }
+    public DbSet<DiagnosticSnapshot> DiagnosticSnapshots { get; set; }
     
     // Auth Sets (Managed by Better-Auth, excluded from migrations)
     public DbSet<AuthUser> AuthUsers { get; set; }
@@ -393,6 +394,17 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => new { e.ClientPcId, e.Timestamp });
             entity.HasIndex(e => e.Level);
             entity.HasIndex(e => e.OrganizationId);
+        });
+
+        modelBuilder.Entity<DiagnosticSnapshot>(entity =>
+        {
+            entity.ToTable("diagnostic_snapshots");
+            entity.HasIndex(e => new { e.ClientPcId, e.CapturedAtUtc });
+            entity.HasIndex(e => e.OrganizationId);
+            entity.HasOne(e => e.ClientPc)
+                  .WithMany()
+                  .HasForeignKey(e => e.ClientPcId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Configure HardwareComponent

@@ -457,11 +457,10 @@ def generate_fixtures():
         }
     }
 
-    # Save to both locations
+    # Save to canonical location
     p1 = os.path.abspath('fixtures/enterprise_plant_dataset.json')
-    p2 = os.path.abspath('frontend/web/fixtures/enterprise_plant_dataset.json')
 
-    for p in [p1, p2]:
+    for p in [p1]:
         os.makedirs(os.path.dirname(p), exist_ok=True)
         with open(p, 'w', encoding='utf-8') as f:
             json.dump(dataset, f, indent=2)

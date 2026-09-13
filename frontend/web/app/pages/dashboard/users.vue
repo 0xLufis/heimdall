@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { authClient } from "~/utils/auth-client"
 import { Button } from '@/components/ui/button'
+import RbacButton from '@/components/common/RbacButton.vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCcwIcon, UserPlusIcon, SearchIcon, ShieldAlertIcon, FingerprintIcon, Users } from 'lucide-vue-next'
+import { useRbacPermission } from '~/composables/useRbacPermission'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -17,7 +19,7 @@ const searchQuery = ref('')
 const roleFilter = ref('all')
 const statusFilter = ref('all')
 
-const { canManageUsers } = useAuthSession()
+const { canManageUsers, isSystemAdmin } = useRbacPermission()
 
 const availableRoles = [
   "system_admin",
@@ -156,16 +158,16 @@ onMounted(() => {
           <RefreshCcwIcon class="size-3.5" :class="{ 'animate-spin': loading }" />
           <span>Refresh</span>
         </Button>
-        <NuxtLink to="/admin/studio" target="_blank">
+        <NuxtLink v-if="isSystemAdmin" to="/admin/studio" target="_blank">
           <Button variant="outline" size="sm" class="gap-1.5 border-slate-800 bg-slate-900 hover:bg-slate-800 text-indigo-400 hover:text-indigo-300 rounded-lg h-8 text-xs font-medium transition-colors">
             <FingerprintIcon class="size-3.5" />
             <span>Identity Studio</span>
           </Button>
         </NuxtLink>
-        <Button size="sm" class="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 rounded-lg h-8 px-3.5 text-xs font-medium shadow-sm transition-colors">
+        <RbacButton capability="canManageUsers" size="sm" class="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 rounded-lg h-8 px-3.5 text-xs font-medium shadow-sm transition-colors">
           <UserPlusIcon class="size-3.5" />
           <span>Invite User</span>
-        </Button>
+        </RbacButton>
       </div>
     </div>
 

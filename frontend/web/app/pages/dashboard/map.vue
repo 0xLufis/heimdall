@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import InteractiveMapCanvas from '~/components/map/InteractiveMapCanvas.vue'
 import MapPinningDialog from '~/components/dashboard/MapPinningDialog.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -8,13 +9,30 @@ import { MonitorIcon, MapPinIcon, Cpu, Layers, ChevronDown, Map as MapIcon } fro
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useStations } from '~/composables/useStations'
 import { useControllers } from '~/composables/useControllers'
+import { useGlobalContextMenu, type ContextMenuContextData } from '~/composables/useGlobalContextMenu'
+import { useMaintenance } from '~/composables/useMaintenance'
+import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
 
+const router = useRouter()
 const { stations, fetchStations, updateStationPin } = useStations()
 const { controllers, fetchControllers, updateControllerPin } = useControllers()
+const { openContextMenu } = useGlobalContextMenu()
+const { tickets, fetchTickets } = useMaintenance()
+
+const resetMapView = () => {
+  activePin.value = null
+  activeBlockName.value = null
+  selectedAssetId.value = null
+  currentPlanId.value = 'production_hall'
+  router.push('/dashboard/map')
+  fetchStations()
+  fetchControllers()
+  fetchTickets()
+}
 
 const availableFloorPlans = [
   { id: 'production_hall', name: 'Master Production Hall', url: '/sample/production_hall.dxf', badge: 'Integrated Hall' },
@@ -124,6 +142,79 @@ const handlePinUpdate = async (type: 'machine' | 'client' | 'lateral', targetId:
   }
 }
 
+const handleObjectContextMenu = (handle: string, blockName: string, e: MouseEvent) => {
+  activePin.value = handle
+  activeBlockName.value = blockName
+  scrollToAsset(handle)
+
+  const station = stations.value.find(s => s.pinnedObjectHandle === handle || s.name === handle || s.customIdentifier === handle)
+  const controller = controllers.value.find(c => c.pinnedObjectHandle === handle || c.hostname === handle || c.name === handle)
+
+  let resolvedController = controller
+  if (!resolvedController && station?.controllers && station.controllers.length > 0) {
+    const cid = station.controllers[0].controllerId || (station.controllers[0] as any).id
+    resolvedController = controllers.value.find(c => c.id === cid)
+  }
+
+  let resolvedStation = station
+  if (!resolvedStation && controller?.controlledMachines && controller.controlledMachines.length > 0) {
+    const mid = controller.controlledMachines[0].id
+    resolvedStation = stations.value.find(s => s.id === mid)
+  }
+
+  let ownerTeam: { id?: string; name: string } | undefined
+  if (resolvedStation?.responsibleTeams && resolvedStation.responsibleTeams.length > 0) {
+    ownerTeam = { name: resolvedStation.responsibleTeams[0].name }
+  } else if (resolvedController?.responsibleTeams && resolvedController.responsibleTeams.length > 0) {
+    ownerTeam = { name: resolvedController.responsibleTeams[0].name }
+  }
+
+  let ownerPerson: { id?: string; name: string } | undefined
+  if ((resolvedStation as any)?.preferredTechnicianName) {
+    ownerPerson = { name: (resolvedStation as any).preferredTechnicianName }
+  } else if ((resolvedController as any)?.preferredTechnicianName) {
+    ownerPerson = { name: (resolvedController as any).preferredTechnicianName }
+  } else {
+    const pref = resolvePreferredTechnician(resolvedStation?.id, (resolvedStation as any)?.machineType, undefined, [], [])
+    if (pref?.technicianName) {
+      ownerPerson = { name: pref.technicianName }
+    }
+  }
+
+  const relevantTickets = tickets.value.filter(t => 
+    (resolvedStation && (t.stationId === resolvedStation.id || t.stationId === resolvedStation.customIdentifier)) ||
+    (t.tags && t.tags.includes(handle))
+  )
+
+  const contextData: ContextMenuContextData = {
+    entityType: resolvedStation ? 'machine' : resolvedController ? 'controller' : 'map-node',
+    entityId: resolvedStation?.id || resolvedController?.id || handle,
+    entityName: resolvedStation?.name || resolvedController?.hostname || blockName || handle,
+    handle,
+    machineId: resolvedStation?.id,
+    machineName: resolvedStation?.name || resolvedStation?.customIdentifier,
+    controllerId: resolvedController?.id,
+    controllerHostname: resolvedController?.hostname,
+    ownerTeam,
+    ownerPerson,
+    tickets: relevantTickets.map(t => ({ id: t.id, title: t.title, status: t.status }))
+  }
+
+  openContextMenu(e, contextData)
+}
+
+const handleMapContextMenu = (e: MouseEvent) => {
+  openContextMenu(e, {
+    entityType: 'general',
+    entityName: currentPlan.value.name,
+    handle: currentPlan.value.id
+  })
+}
+
+const handlePinnedAssetContextMenu = (asset: any, e: MouseEvent) => {
+  handleObjectContextMenu(asset.handle, asset.name, e)
+}
+
 const pinnedAssets = computed(() => {
   const list: any[] = []
   controllers.value.forEach(c => {
@@ -165,6 +256,7 @@ const activePinType = computed(() => {
 onMounted(() => {
   if (stations.value.length === 0) fetchStations()
   if (controllers.value.length === 0) fetchControllers()
+  fetchTickets()
 })
 </script>
 
@@ -172,15 +264,22 @@ onMounted(() => {
   <div class="space-y-6 h-full text-slate-100 pb-12">
     <!-- Header with Floor Plan Dropdown Selector -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
-      <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+      <div
+        role="button"
+        tabindex="0"
+        @click="resetMapView"
+        @keydown.enter="resetMapView"
+        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-slate-900/60"
+        title="Click to reset map selection and reload CAD data"
+      >
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 group-hover:bg-indigo-500/20 transition-all">
           <MapIcon class="size-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+          <h1 class="text-2xl font-bold tracking-tight text-slate-100 group-hover:text-white transition-colors">
             Plant Spatial Layout & CAD Mapping
           </h1>
-          <p class="text-sm text-slate-400 mt-0.5">
+          <p class="text-sm text-slate-400 mt-0.5 group-hover:text-slate-300 transition-colors">
             Interactive AutoCAD (DXF) floor plan mapping of machines, sensors, and controllers
           </p>
         </div>
@@ -233,7 +332,9 @@ onMounted(() => {
           :active-pin="activePin"
           @object-clicked="handleObjectClick"
           @object-dblclicked="handleObjectDblClick"
+          @object-contextmenu="handleObjectContextMenu"
           @map-clicked="handleMapClick"
+          @map-contextmenu="handleMapContextMenu"
         />
 
         <!-- Controls Legend Overlay -->
@@ -274,6 +375,7 @@ onMounted(() => {
                 :data-handle="asset.handle"
                 :ref="(el) => setAssetItemRef(asset.id, el)"
                 @click="selectAsset(asset)"
+                @contextmenu.prevent="handlePinnedAssetContextMenu(asset, $event)"
                 :class="(activePin === asset.handle || selectedAssetId === asset.id) ? 'bg-slate-800 border-l-2 border-l-indigo-500 ring-1 ring-indigo-500/20' : 'hover:bg-slate-800/40'"
                 class="p-4 transition-all cursor-pointer group"
               >

@@ -1,28 +1,59 @@
-using App.Shared.Protos;
-using Grpc.Net.Client;
-using Google.Protobuf.WellKnownTypes;
-using Microsoft.Extensions.Logging;
-
-using System.Security.Cryptography.X509Certificates;
-using System.Net.Http;
-using System.Runtime.InteropServices;
-
 namespace App.Agent.Daemon;
 
-public class SystemInfoReporter
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
+using App.Agent.Daemon.Interfaces;
+using App.Agent.Daemon.Reporting;
+using App.Shared.Protos;
+using Google.Protobuf.WellKnownTypes;
+using Grpc.Net.Client;
+using Microsoft.Extensions.Logging;
+
+public class SystemInfoReporter : ISystemInfoReporter
 {
     private readonly ILogger<SystemInfoReporter> _logger;
-    private readonly ConfigurationService _configService;
-    private readonly Infrastructure.Spooling.LocalTelemetrySpooler? _spooler;
+    private readonly IConfigurationService _configService;
+    private readonly List<IComponentContributor> _contributors;
+    private readonly ITelemetrySpooler? _spooler;
+
     private SystemInfoCollector.SystemInfoCollectorClient? _client;
+    private readonly ISystemInfoService? _systemInfoService;
     private string? _lastBackendUrl;
     private string? _lastAuthType;
 
-    public SystemInfoReporter(ILogger<SystemInfoReporter> logger, ConfigurationService configService, Infrastructure.Spooling.LocalTelemetrySpooler? spooler = null)
+    public SystemInfoReporter(
+        ILogger<SystemInfoReporter> logger,
+        IConfigurationService configService,
+        IEnumerable<IComponentContributor>? contributors = null,
+        ITelemetrySpooler? spooler = null,
+        ISystemInfoService? systemInfoService = null)
     {
         _logger = logger;
         _configService = configService;
         _spooler = spooler;
+        _systemInfoService = systemInfoService;
+
+        // Register default contributors if not injected
+        if (contributors != null && contributors.Any())
+        {
+            _contributors = contributors.ToList();
+        }
+        else
+        {
+            _contributors = new List<IComponentContributor>
+            {
+                new HardwareComponentContributor(),
+                new SoftwareComponentContributor(),
+                new PhysicalDrivesComponentContributor(),
+                new DriversComponentContributor(),
+                new EventsComponentContributor()
+            };
+        }
     }
 
     private SystemInfoCollector.SystemInfoCollectorClient GetClient()
@@ -34,13 +65,14 @@ public class SystemInfoReporter
         if (_client == null || _lastBackendUrl != currentUrl || _lastAuthType != currentAuth)
         {
             _logger.LogInformation("Creating gRPC client for {Url} with Auth={Auth}", currentUrl, currentAuth);
-            
+
             var handler = new SocketsHttpHandler
             {
                 EnableMultipleHttp2Connections = true
             };
-            
-            if (currentAuth == "HeimdallCert" || currentAuth == "UserCert")
+
+            var parsedAuth = ParseAuthMode(currentAuth);
+            if (parsedAuth == AuthMode.HeimdallCert || parsedAuth == AuthMode.UserCert)
             {
                 var clientCerts = new X509CertificateCollection();
                 if (!string.IsNullOrEmpty(config.ClientCertificatePath))
@@ -55,16 +87,15 @@ public class SystemInfoReporter
                         _logger.LogError(ex, "Failed to load client certificate from {Path}", config.ClientCertificatePath);
                     }
                 }
-                else if (currentAuth == "UserCert" && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                else if (parsedAuth == AuthMode.UserCert && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    // Fallback to searching machine store if path is empty but UserCert is requested
                     using var store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
                     store.Open(OpenFlags.ReadOnly);
                     var certs = store.Certificates.Find(X509FindType.FindByTimeValid, DateTime.Now, true);
                     if (certs.Count > 0)
                     {
-                         clientCerts.Add(certs[0]);
-                         _logger.LogInformation("Loaded certificate from Windows Machine Store: {Subject}", certs[0].Subject);
+                        clientCerts.Add(certs[0]);
+                        _logger.LogInformation("Loaded certificate from Windows Machine Store: {Subject}", certs[0].Subject);
                     }
                 }
 
@@ -88,10 +119,11 @@ public class SystemInfoReporter
             _lastBackendUrl = currentUrl;
             _lastAuthType = currentAuth;
         }
+
         return _client;
     }
 
-    public ConfigurationService GetConfigService() => _configService;
+    public IConfigurationService GetConfigService() => _configService;
 
     public async Task<SystemInfoResponse?> ReportInfoAsync(SystemInfoData data)
     {
@@ -118,56 +150,34 @@ public class SystemInfoReporter
                 }
             }
 
-            request.Components.Add(new App.Shared.Protos.InventoryComponent
+            // Build inventory components dynamically through contributor pipeline
+            foreach (var contributor in _contributors)
             {
-                Name = "Hardware",
-                Technology = "Agent",
-                Type = "hardware",
-                DataJson = System.Text.Json.JsonSerializer.Serialize(data.Hardware)
-            });
-
-            request.Components.Add(new App.Shared.Protos.InventoryComponent
-            {
-                Name = "Software",
-                Technology = "Agent",
-                Type = "software",
-                DataJson = System.Text.Json.JsonSerializer.Serialize(data.Software)
-            });
-
-            request.Components.Add(new App.Shared.Protos.InventoryComponent
-            {
-                Name = "PhysicalDrives",
-                Technology = "Agent",
-                Type = "hardware",
-                DataJson = System.Text.Json.JsonSerializer.Serialize(data.Disk.PhysicalDrives)
-            });
-
-            if (data.Hardware?.BeckhoffRtDrivers != null && data.Hardware.BeckhoffRtDrivers.Any())
-            {
-                request.Components.Add(new App.Shared.Protos.InventoryComponent
+                if (contributor is IMultiComponentContributor multi)
                 {
-                    Name = "Beckhoff RT Driver",
-                    Technology = "Beckhoff",
-                    Type = "hardware",
-                    DataJson = System.Text.Json.JsonSerializer.Serialize(data.Hardware.BeckhoffRtDrivers)
-                });
-            }
-
-            if (data.Events != null && data.Events.Any())
-            {
-                request.Components.Add(new App.Shared.Protos.InventoryComponent
+                    foreach (var component in multi.CreateComponents(data))
+                    {
+                        if (component != null)
+                        {
+                            request.Components.Add(component);
+                        }
+                    }
+                }
+                else
                 {
-                    Name = "Events",
-                    Technology = "Agent",
-                    Type = "logs",
-                    DataJson = System.Text.Json.JsonSerializer.Serialize(data.Events)
-                });
+                    var component = contributor.CreateComponent(data);
+                    if (component != null)
+                    {
+                        request.Components.Add(component);
+                    }
+                }
             }
 
             var client = GetClient();
             var headers = new Grpc.Core.Metadata();
             var agentKey = Environment.GetEnvironmentVariable("HEIMDALL_AGENT_KEY") ?? "heimdall-dev-agent-key";
             headers.Add("x-agent-key", agentKey);
+
             var response = await client.ReportSystemInfoAsync(request, headers);
 
             if (response.Success)
@@ -219,5 +229,24 @@ public class SystemInfoReporter
             return null;
         }
     }
-}
 
+    public async Task<SystemInfoResponse?> TriggerSyncAsync()
+    {
+        if (_systemInfoService == null)
+        {
+            _logger.LogWarning("Cannot trigger sync: ISystemInfoService not available.");
+            return null;
+        }
+
+        var data = _systemInfoService.GetSystemInfo();
+        return await ReportInfoAsync(data);
+    }
+
+    private static AuthMode ParseAuthMode(string? auth) => auth switch
+    {
+        "HeimdallCert" => AuthMode.HeimdallCert,
+        "UserCert" => AuthMode.UserCert,
+        "ApiKey" => AuthMode.ApiKey,
+        _ => AuthMode.NoAuth
+    };
+}

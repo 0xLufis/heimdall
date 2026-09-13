@@ -20,7 +20,10 @@ import {
   Zap, 
   Tag, 
   X,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  AlertTriangle,
+  Code
 } from 'lucide-vue-next'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -244,6 +247,30 @@ const filteredParts = computed(() => {
     (p.storageLocation || '').toLowerCase().includes(q)
   )
 })
+
+const expandedPayloads = ref<Record<string, boolean>>({})
+const togglePayload = (id: string) => {
+  expandedPayloads.value[id] = !expandedPayloads.value[id]
+}
+
+const getAttachedComponentsForPart = (part: any) => {
+  if (!treeData.value?.controllers) return []
+  const attached: any[] = []
+  for (const c of treeData.value.controllers) {
+    if (!c.hardware) continue
+    for (const h of c.hardware) {
+      if (h.parentId && (h.parentId === part.id || h.parentId === part.name)) {
+        attached.push(h)
+      } else if (h.metadata?.ParentComponentName && (
+        h.metadata.ParentComponentName.toLowerCase() === (part.name || '').toLowerCase() ||
+        h.metadata.ParentComponentName.toLowerCase() === (part.displayName || '').toLowerCase()
+      )) {
+        attached.push(h)
+      }
+    }
+  }
+  return attached
+}
 </script>
 
 <template>
@@ -405,17 +432,43 @@ const filteredParts = computed(() => {
 
                   <!-- Internal Hardware Components of the IPC -->
                   <div v-if="expandedNodes[`ctrl-${ctrl.id}`] && ctrl.hardware?.length > 0" class="mt-2.5 pl-6 border-l border-slate-800/80 space-y-1.5">
-                    <div class="text-[8px] font-black uppercase tracking-wider text-slate-600">Reported Hardware Modules:</div>
+                    <div class="text-[8px] font-black uppercase tracking-wider text-slate-600">Reported Hardware Modules & Extensions:</div>
                     <div 
                       v-for="hw in ctrl.hardware" 
                       :key="hw.id || hw.name"
-                      class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-900/60 border border-slate-850 text-[10px]"
+                      class="flex flex-col p-2 rounded-lg bg-slate-900/60 border border-slate-850 text-[10px] space-y-1"
                     >
-                      <div class="flex items-center gap-2">
-                        <Cpu class="w-3 h-3 text-emerald-400" />
-                        <span class="font-bold text-slate-300">{{ hw.name }}</span>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <Cpu class="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span class="font-bold text-slate-300">{{ hw.name }}</span>
+                          <Badge v-if="hw.technology" variant="outline" class="text-[7.5px] px-1.5 py-0 uppercase font-mono text-slate-400 border-slate-700 bg-slate-800/50">
+                            {{ hw.technology }}
+                          </Badge>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <Badge v-if="hw.isSigned" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-emerald-400 border-emerald-800/60 bg-emerald-950/40 flex items-center gap-1">
+                            <ShieldCheck class="w-2.5 h-2.5" />
+                            <span>Signed</span>
+                          </Badge>
+                          <Badge v-else-if="hw.isSandboxed" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-amber-400 border-amber-800/60 bg-amber-950/40 flex items-center gap-1">
+                            <AlertTriangle class="w-2.5 h-2.5" />
+                            <span>Dev Sandbox</span>
+                          </Badge>
+                          <span class="text-[8px] font-mono uppercase text-slate-500">{{ hw.type || 'Internal' }}</span>
+                          <button 
+                            v-if="hw.customData || hw.metadata" 
+                            type="button" 
+                            @click="togglePayload(hw.id || hw.name)"
+                            class="text-[8px] font-mono text-indigo-400 hover:text-indigo-300 underline underline-offset-2 ml-1"
+                          >
+                            {{ expandedPayloads[hw.id || hw.name] ? 'Hide' : 'Data' }}
+                          </button>
+                        </div>
                       </div>
-                      <span class="text-[8px] font-mono uppercase text-slate-500">{{ hw.type || 'Internal' }}</span>
+                      <div v-if="expandedPayloads[hw.id || hw.name]" class="mt-1 p-2 rounded bg-slate-950 border border-slate-800 text-[9px] font-mono text-slate-300 overflow-x-auto">
+                        <pre>{{ JSON.stringify(hw.customData || hw.metadata, null, 2) }}</pre>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -463,6 +516,50 @@ const filteredParts = computed(() => {
                       <span v-if="part.costInHUF" class="text-[9px] font-mono text-slate-400">
                         {{ new Intl.NumberFormat('hu-HU').format(part.costInHUF) }} HUF
                       </span>
+                    </div>
+                  </div>
+
+                  <!-- Attached Child Plugins/Sensors nested under this Part -->
+                  <div v-if="getAttachedComponentsForPart(part).length > 0" class="mt-2.5 pl-4 border-l-2 border-emerald-800/50 space-y-1.5">
+                    <div class="text-[8px] font-black uppercase tracking-wider text-emerald-500 flex items-center gap-1">
+                      <Zap class="w-2.5 h-2.5" />
+                      <span>Attached Sensor & Plugin Extensions:</span>
+                    </div>
+                    <div 
+                      v-for="childHw in getAttachedComponentsForPart(part)" 
+                      :key="childHw.id || childHw.name"
+                      class="p-2 rounded-lg bg-slate-900/80 border border-emerald-950/80 text-[10px] space-y-1"
+                    >
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <Activity class="w-3 h-3 text-indigo-400" />
+                          <span class="font-bold text-slate-200">{{ childHw.name }}</span>
+                          <Badge v-if="childHw.technology" variant="outline" class="text-[7.5px] px-1.5 py-0 uppercase font-mono text-slate-400 border-slate-700 bg-slate-800/50">
+                            {{ childHw.technology }}
+                          </Badge>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <Badge v-if="childHw.isSigned" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-emerald-400 border-emerald-800/60 bg-emerald-950/40 flex items-center gap-1">
+                            <ShieldCheck class="w-2.5 h-2.5" />
+                            <span>Signed</span>
+                          </Badge>
+                          <Badge v-else-if="childHw.isSandboxed" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-amber-400 border-amber-800/60 bg-amber-950/40 flex items-center gap-1">
+                            <AlertTriangle class="w-2.5 h-2.5" />
+                            <span>Dev Sandbox</span>
+                          </Badge>
+                          <button 
+                            v-if="childHw.customData || childHw.metadata" 
+                            type="button" 
+                            @click="togglePayload(childHw.id || childHw.name)"
+                            class="text-[8px] font-mono text-indigo-400 hover:text-indigo-300 underline underline-offset-2 ml-1"
+                          >
+                            {{ expandedPayloads[childHw.id || childHw.name] ? 'Hide' : 'Data' }}
+                          </button>
+                        </div>
+                      </div>
+                      <div v-if="expandedPayloads[childHw.id || childHw.name]" class="mt-1 p-2 rounded bg-slate-950 border border-slate-800 text-[9px] font-mono text-slate-300 overflow-x-auto">
+                        <pre>{{ JSON.stringify(childHw.customData || childHw.metadata, null, 2) }}</pre>
+                      </div>
                     </div>
                   </div>
                 </div>

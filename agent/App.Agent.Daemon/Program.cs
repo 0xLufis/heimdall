@@ -23,10 +23,33 @@ if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtim
 var agentUrls = Environment.GetEnvironmentVariable("AGENT_URLS") ?? "http://0.0.0.0:5998";
 builder.WebHost.UseUrls(agentUrls);
 
-builder.Services.AddSingleton<ConfigurationService>();
-builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler>();
-builder.Services.AddSingleton<SystemInfoService>();
-builder.Services.AddSingleton<SystemInfoReporter>();
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.IConfigurationService, ConfigurationService>();
+builder.Services.AddSingleton<ConfigurationService>(sp => (ConfigurationService)sp.GetRequiredService<App.Agent.Daemon.Interfaces.IConfigurationService>());
+
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ITelemetrySpooler, App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler>();
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler>(sp => (App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler)sp.GetRequiredService<App.Agent.Daemon.Interfaces.ITelemetrySpooler>());
+
+builder.Services.AddSingleton<App.Agent.Daemon.Extensions.IExtensionRegistry, App.Agent.Daemon.Extensions.ExtensionRegistry>();
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Plugins.IPluginSandboxService, App.Agent.Daemon.Infrastructure.Plugins.PluginSandboxService>();
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Plugins.IPluginManager, App.Agent.Daemon.Infrastructure.Plugins.PluginManager>();
+
+builder.Services.AddSingleton<App.Shared.Drivers.IDriverDiscoveryService, App.Agent.Daemon.Infrastructure.Drivers.DriverDiscoveryService>();
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.IFileSystemScanner, App.Agent.Daemon.Infrastructure.FileSystem.FileSystemScanner>();
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ICommandHandler, App.Agent.Daemon.CommandHandling.CommandHandler>();
+
+builder.Services.AddSingleton<App.Agent.Daemon.Reporting.IComponentContributor, App.Agent.Daemon.Reporting.HardwareComponentContributor>();
+builder.Services.AddSingleton<App.Agent.Daemon.Reporting.IComponentContributor, App.Agent.Daemon.Reporting.SoftwareComponentContributor>();
+builder.Services.AddSingleton<App.Agent.Daemon.Reporting.IComponentContributor, App.Agent.Daemon.Reporting.PhysicalDrivesComponentContributor>();
+builder.Services.AddSingleton<App.Agent.Daemon.Reporting.IComponentContributor, App.Agent.Daemon.Reporting.DriversComponentContributor>();
+builder.Services.AddSingleton<App.Agent.Daemon.Reporting.IComponentContributor, App.Agent.Daemon.Reporting.EventsComponentContributor>();
+builder.Services.AddSingleton<App.Agent.Daemon.Reporting.IComponentContributor, App.Agent.Daemon.Reporting.ExtensionComponentContributor>();
+
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ISystemInfoService, SystemInfoService>();
+builder.Services.AddSingleton<SystemInfoService>(sp => (SystemInfoService)sp.GetRequiredService<App.Agent.Daemon.Interfaces.ISystemInfoService>());
+
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ISystemInfoReporter, SystemInfoReporter>();
+builder.Services.AddSingleton<SystemInfoReporter>(sp => (SystemInfoReporter)sp.GetRequiredService<App.Agent.Daemon.Interfaces.ISystemInfoReporter>());
+
 builder.Services.AddHostedService<Worker>();
 
 var app = builder.Build();
@@ -96,6 +119,8 @@ app.MapPost("/api/config", (ConfigurationService configService, AgentConfig newC
     configService.SaveConfig(config);
     return Results.Ok();
 });
+
+App.Agent.Daemon.Extensions.ExtensionApiEndpoints.MapExtensionApi(app);
 
 app.Run();
 

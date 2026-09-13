@@ -57,6 +57,37 @@ public class FakeControllerRepository : IControllerRepository
     public Task<int> GetCountAsync() => Task.FromResult(Items.Count);
     public Task<int> GetActiveCountAsync(TimeSpan activeThreshold) => Task.FromResult(Items.Count);
     public Task<List<ClientPc>> GetRecentClientsAsync(int count) => Task.FromResult(Items.Take(count).ToList());
+
+    public List<DiagnosticSnapshot> Snapshots { get; set; } = new();
+
+    public Task<DiagnosticSnapshot> CreateDiagnosticSnapshotAsync(Guid clientPcId, string userId, string? userName, string? orgId)
+    {
+        var pc = Items.FirstOrDefault(p => p.Id == clientPcId);
+        var snapshot = new DiagnosticSnapshot
+        {
+            Id = Guid.NewGuid(),
+            ClientPcId = clientPcId,
+            Hostname = pc?.Hostname ?? "FAKE-HOST",
+            CapturedByUserId = userId,
+            CapturedByUserName = userName,
+            CapturedAtUtc = DateTimeOffset.UtcNow,
+            SnapshotPayloadJson = "{}",
+            PayloadHashSha256 = new string('a', 64),
+            OrganizationId = orgId
+        };
+        Snapshots.Add(snapshot);
+        return Task.FromResult(snapshot);
+    }
+
+    public Task<List<DiagnosticSnapshot>> GetSnapshotsByClientPcIdAsync(Guid clientPcId, int limit = 20)
+    {
+        return Task.FromResult(Snapshots.Where(s => s.ClientPcId == clientPcId).Take(limit).ToList());
+    }
+
+    public Task<DiagnosticSnapshot?> GetSnapshotByIdAsync(Guid snapshotId)
+    {
+        return Task.FromResult(Snapshots.FirstOrDefault(s => s.Id == snapshotId));
+    }
 }
 
 public class ClientPcControllerTests

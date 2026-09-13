@@ -299,3 +299,63 @@ During network partitions or central server maintenance, the agent buffers high-
   * Systemd D-Bus interface for service lifecycle tracking.
 * **Process CPU Delta Sampling**:
   Measures process CPU usage by recording user/kernel time deltas divided by system wall-clock elapsed time across sampling intervals, rather than relying on instantaneous, uncalibrated counters.
+
+
+### 1.4 Agent-Backend Communication Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Agent as Edge Agent Daemon
+    participant Grpc as SystemInfoCollector (Port 5001 gRPC)
+    participant DB as PostgreSQL
+    actor Web as Operator Web UI
+
+    loop Baseline Cycle (60s ± 10% Jitter)
+        Agent->>+Grpc: ReportSystemInfo(SystemInfoRequest)
+        Grpc->>DB: Upsert Telemetry & Check Queued Commands
+        DB-->>Grpc: Command List (e.g. UPDATE_CONFIG)
+        Grpc-->>-Agent: SystemInfoResponse(success=true, commands=[...])
+        
+        opt Commands Received
+            Agent->>Agent: Verify Cryptographic Signature (RSA/Ed25519)
+            Agent->>Agent: Apply Recipe Parameters & Restart Drivers
+            Agent->>Grpc: StreamAgentEvents(AgentEventMessage: "Applied")
+        end
+    end
+```
+
+---
+
+## 8. Cryptographically Signed Plugins, Sandboxing & Extension API
+
+### 8.1 Master RSA-2048 Signing & Verification Pipeline
+To prevent unauthorized code execution on critical OT controllers while enabling safe third-party extensibility, the agent implements cryptographic verification for dynamic plugins:
+- **Central Authority**: `PluginService` in the backend API maintains an RSA-2048 signing authority. When a plugin package is published, all files are canonically sorted and hashed using SHA-256 to compute a deterministic `PayloadHash`.
+- **Digital Signatures**: The backend signs the payload hash using `RSA-SHA256` with `Pkcs1` padding.
+- **Agent Verification**: `PluginManager` independently re-hashes extracted files and validates the digital signature against `ServerPublicKey`. Any modification or file tampering fails validation immediately.
+
+### 8.2 Production Fail-Secure vs. Development Sandboxing
+- **Production Mode**: When running in Production (`Environment == "Production"`), unsigned or invalidly signed plugins are strictly rejected with `ErrorCode.PluginSignatureInvalid`. Unsigned execution is impossible.
+- **Development Sandboxing**: In non-production environments with `AllowUnsignedPlugins == true`, developers can test experimental sensor drivers inside an isolated sandbox (`sandboxes/{pluginId}/`).
+
+### 8.3 Secret Scrubbing & Path Traversal Protections
+- **Secret Scrubbing**: Sensitive environment variables (`HEIMDALL_AGENT_KEY`, `HEIMDALL_MASTER_PRIVATE_KEY`, `HEIMDALL_ENCRYPTION_KEY`) are stripped before spawning child plugin processes.
+- **Path Containment**: `PathSanitizer.IsWithinRoot` ensures extraction targets cannot escape the plugin root directory via directory traversal sequences (`../`).
+- **Process Supervision**: Plugin processes run with strict execution timeouts controlled via `CancellationTokenSource`.
+
+### 8.4 Local Extension REST API (`/api/v1/extensions/*`)
+For local applications (e.g., Python vision algorithms, barcode scanners, proprietary C++ test benches), the daemon exposes an authenticated HTTP REST interface:
+- `GET /api/v1/agent/status`: Status check and health reporting.
+- `POST /api/v1/extensions/components`: Register custom hardware sensors or sub-devices.
+- `POST /api/v1/extensions/telemetry`: Push custom time-series measurements.
+- `POST /api/v1/extensions/events`: Stream custom alarms and operational events.
+- `POST /api/v1/agent/sync`: Trigger immediate synchronization to the backend.
+- Guarded by `ExtensionAuthFilter` using constant-time token comparisons (`CryptographicOperations.FixedTimeEquals`).
+
+### 8.5 Component Tree Integration & Inventory Attachment
+Custom components registered via the Extension API are merged into the machine hierarchy:
+- `ExtensionComponentContributor` packages active sensors into the agent's gRPC payload.
+- `SystemInfoCollectorService` links the sensor to its parent equipment using `BaseInventoryItem.ParentId`.
+- The Station Component Tree modal (`StationComponentTreeModal.vue`) displays custom sensors with `[Signed]` and `[Dev Sandbox]` trust badges, allowing operators to inspect dynamic JSON state directly from the CAD map or machinery views.
+

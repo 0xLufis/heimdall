@@ -5,6 +5,10 @@ import { Button } from '~/components/ui/button'
 import { Eye, Ban, CheckCircle2, Users } from 'lucide-vue-next'
 import DashboardUserAvatar from './UserAvatar.vue'
 import DashboardRoleBadge from './RoleBadge.vue'
+import RbacTooltip from '~/components/common/RbacTooltip.vue'
+import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
+
+const { canManageUsers } = useRbacPermission()
 
 defineProps<{
   users: any[],
@@ -52,19 +56,22 @@ function formatDate(date: string | Date) {
             <TableCell class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <DashboardRoleBadge :role="user.role" />
-                <Select 
-                  :model-value="user.role || 'user'" 
-                  @update:model-value="(val) => $emit('update-role', user.id, val)"
-                >
-                  <SelectTrigger class="h-7 w-full max-w-[130px] text-xs bg-slate-950 border-slate-800 font-medium text-slate-300 hover:bg-slate-900 rounded-md transition-colors shadow-sm">
-                    <SelectValue placeholder="Select Role" />
-                  </SelectTrigger>
-                  <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
-                    <SelectItem v-for="role in roles" :key="role" :value="role" class="text-xs focus:bg-slate-800 focus:text-white">
-                      {{ role }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <RbacTooltip :disabled="!canManageUsers" :tooltip="RBAC_TOOLTIPS.USER_MANAGEMENT">
+                  <Select 
+                    :disabled="!canManageUsers"
+                    :model-value="user.role || 'user'" 
+                    @update:model-value="(val) => canManageUsers && $emit('update-role', user.id, val)"
+                  >
+                    <SelectTrigger :disabled="!canManageUsers" class="h-7 w-full max-w-[130px] text-xs bg-slate-950 border-slate-800 font-medium text-slate-300 hover:bg-slate-900 rounded-md transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                      <SelectValue placeholder="Select Role" />
+                    </SelectTrigger>
+                    <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
+                      <SelectItem v-for="role in roles" :key="role" :value="role" class="text-xs focus:bg-slate-800 focus:text-white">
+                        {{ role }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </RbacTooltip>
               </div>
             </TableCell>
             <TableCell class="px-4 py-3 text-xs font-medium">
@@ -92,26 +99,30 @@ function formatDate(date: string | Date) {
                 >
                   <Eye class="size-4" />
                 </Button>
-                <Button 
-                  v-if="!user.banned" 
-                  variant="ghost" 
-                  size="icon"
-                  @click="$emit('ban-user', user.id)" 
-                  class="size-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg"
-                  title="Suspend Account"
-                >
-                  <Ban class="size-4" />
-                </Button>
-                <Button 
-                  v-else 
-                  variant="ghost" 
-                  size="icon"
-                  @click="$emit('unban-user', user.id)" 
-                  class="size-8 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg"
-                  title="Restore Access"
-                >
-                  <CheckCircle2 class="size-4" />
-                </Button>
+                <RbacTooltip :disabled="!canManageUsers" :tooltip="RBAC_TOOLTIPS.USER_MANAGEMENT">
+                  <Button 
+                    v-if="!user.banned" 
+                    variant="ghost" 
+                    size="icon"
+                    :disabled="!canManageUsers"
+                    @click="canManageUsers && $emit('ban-user', user.id)" 
+                    class="size-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg disabled:opacity-40 disabled:pointer-events-none"
+                    title="Suspend Account"
+                  >
+                    <Ban class="size-4" />
+                  </Button>
+                  <Button 
+                    v-else 
+                    variant="ghost" 
+                    size="icon"
+                    :disabled="!canManageUsers"
+                    @click="canManageUsers && $emit('unban-user', user.id)" 
+                    class="size-8 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg disabled:opacity-40 disabled:pointer-events-none"
+                    title="Restore Access"
+                  >
+                    <CheckCircle2 class="size-4" />
+                  </Button>
+                </RbacTooltip>
               </div>
             </TableCell>
           </TableRow>

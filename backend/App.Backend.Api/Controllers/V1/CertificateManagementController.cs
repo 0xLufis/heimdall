@@ -81,7 +81,7 @@ public class CertificateManagementController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.RawPem))
         {
-            return BadRequest(new { Message = "Raw certificate PEM or CRT text is required." });
+            return BadRequest(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.MissingRequiredField, "Raw certificate PEM or CRT text is required."));
         }
 
         try

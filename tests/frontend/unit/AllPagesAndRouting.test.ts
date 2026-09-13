@@ -162,6 +162,51 @@ describe('All Pages, Components, and Table Selectors Test Suite', () => {
     expect(wrapper.text()).toContain('+ Link DXF')
   })
 
+  it('supports clickable cards, keyboard selection, and button actions on ControllerGrid', async () => {
+    const { default: ControllerGrid } = await import('~/components/controllers/ControllerGrid.vue')
+    const mockControllers = [
+      {
+        id: 'c-1',
+        hostname: 'IPC-OP10-MAIN',
+        name: 'IPC-OP10-MAIN',
+        macAddress: '00:1A:2B:3C:4D:5E',
+        pinnedObjectHandle: 'OP10_CAD_BLOCK_01',
+        telemetry: { isOnline: true, cpuUsagePercent: 12, ramUsagePercent: 45 }
+      }
+    ]
+
+    const wrapper = mount(ControllerGrid, {
+      props: { controllers: mockControllers as any, loading: false, selectedId: 'c-1' }
+    })
+
+    const card = wrapper.find('[role="button"]')
+    expect(card.exists()).toBe(true)
+    expect(card.classes()).toContain('cursor-pointer')
+    expect(card.classes()).toContain('border-zinc-500')
+
+    // Clicking card triggers select event
+    await card.trigger('click')
+    expect(wrapper.emitted('select')?.[0]).toEqual([mockControllers[0]])
+
+    // Pressing Enter on card triggers select event
+    await card.trigger('keydown.enter')
+    expect(wrapper.emitted('select')?.length).toBe(2)
+
+    // View map button has hover highlight classes and emits locate-dxf
+    const viewMapBtn = wrapper.find('button[title="Locate on CAD Map"]')
+    expect(viewMapBtn.exists()).toBe(true)
+    expect(viewMapBtn.classes()).toContain('hover:bg-zinc-700')
+    await viewMapBtn.trigger('click')
+    expect(wrapper.emitted('locate-dxf')?.[0]).toEqual(['OP10_CAD_BLOCK_01'])
+
+    // Remote Quick View button has hover highlight classes and emits quick-view
+    const remoteBtn = wrapper.find('button[title="Remote Quick View"]')
+    expect(remoteBtn.exists()).toBe(true)
+    expect(remoteBtn.classes()).toContain('hover:bg-zinc-800')
+    await remoteBtn.trigger('click')
+    expect(wrapper.emitted('quick-view')?.[0]).toEqual([mockControllers[0]])
+  })
+
   it('scrolls to selected PC in Spatial Anchors sidebar when map object is clicked', async () => {
     vi.stubGlobal('$fetch', vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/proxy/ClientPc')) {

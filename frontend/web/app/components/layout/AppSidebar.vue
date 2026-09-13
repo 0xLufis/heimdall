@@ -5,6 +5,7 @@ import { navMenu, navMenuBottom } from '~/constants/menus'
 import { authClient } from "~/utils/auth-client"
 import { useAppSettings } from '~/composables/useAppSettings'
 import { useAuthSession } from '~/composables/useAuthSession'
+import { useRbacPermission } from '~/composables/useRbacPermission'
 
 /**
  * Resolves the appropriate component for a given navigation item.
@@ -19,6 +20,25 @@ function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): an
 }
 
 const { user: authUser, userRole } = useAuthSession()
+const { checkCapability } = useRbacPermission()
+
+/**
+ * Filter navigation groups to hide empty sections if all items are hidden by RBAC
+ */
+const visibleNavMenu = computed(() => {
+  return navMenu.map(group => {
+    const visibleItems = group.items.filter((item: any) => {
+      if (item.hideWhenUnauthorized && item.requiredCapability) {
+        return checkCapability(item.requiredCapability)
+      }
+      return true
+    })
+    return {
+      ...group,
+      items: visibleItems
+    }
+  }).filter(group => group.items.length > 0)
+})
 
 /**
  * Computed property for the user's email.
@@ -72,7 +92,7 @@ const { sidebar } = useAppSettings()
       <Search />
     </SidebarHeader>
     <SidebarContent>
-      <SidebarGroup v-for="(nav, indexGroup) in navMenu" :key="indexGroup">
+      <SidebarGroup v-for="(nav, indexGroup) in visibleNavMenu" :key="indexGroup">
         <SidebarGroupLabel v-if="nav.heading">
           {{ nav.heading }}
         </SidebarGroupLabel>

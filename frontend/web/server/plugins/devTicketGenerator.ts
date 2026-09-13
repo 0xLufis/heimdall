@@ -1,5 +1,6 @@
 import { defineNitroPlugin } from 'nitropack/runtime'
 import { getTicketsStore, addTicketToStore, getTicketSettings, MaintenanceTicket } from '../utils/ticketsStore'
+import { getPlantClientPcs } from '../utils/datasetLoader'
 
 // ---------------------------------------------------------------------------
 // Inline template pool – mirrors the error-template-engine structure.
@@ -89,7 +90,7 @@ const TEMPLATE_POOL: DevTemplate[] = [
 // ---------------------------------------------------------------------------
 // Machine pool for realistic station assignment
 // ---------------------------------------------------------------------------
-const MACHINE_POOL = [
+const FALLBACK_MACHINE_POOL = [
   { stationId: 'L06-OP150',        stationName: 'Line 06 – Battery Module Line',             controllerId: 'CPC-081' },
   { stationId: 'ROBOT-CELL-01',    stationName: 'Robotic Welding Cell 01',                   controllerId: 'CPC-001' },
   { stationId: 'L09-OP270',        stationName: 'Line 09 – Optical Quality Inspection',      controllerId: 'CPC-159' },
@@ -99,6 +100,22 @@ const MACHINE_POOL = [
   { stationId: 'ASSEMBLY-ST-02',   stationName: 'SIMATIC S7 Conveyor Station 02',            controllerId: 'CPC-038' },
   { stationId: 'ROBOT-CELL-04',    stationName: 'Fanuc Palletizing Cell 04',                 controllerId: 'CPC-095' }
 ]
+
+function getMachinePool(): typeof FALLBACK_MACHINE_POOL {
+  try {
+    const pcs = getPlantClientPcs()
+    if (pcs.length > 0) {
+      return pcs.map(pc => ({
+        stationId: pc.hostname,
+        stationName: pc.name,
+        controllerId: pc.machineIdentifier
+      }))
+    }
+  } catch {
+    // Dataset not available, use fallback
+  }
+  return FALLBACK_MACHINE_POOL
+}
 
 // ---------------------------------------------------------------------------
 // Telemetry value ranges [min, max, decimals]
@@ -234,7 +251,8 @@ export default defineNitroPlugin(() => {
 
       // Pick a random error template and a random machine
       const template = TEMPLATE_POOL[Math.floor(Math.random() * TEMPLATE_POOL.length)]
-      const machine  = MACHINE_POOL[Math.floor(Math.random() * MACHINE_POOL.length)]
+      const pool     = getMachinePool()
+      const machine  = pool[Math.floor(Math.random() * pool.length)]
 
       const now          = new Date()
       const dateStr      = now.toISOString().slice(0, 10).replace(/-/g, '')
