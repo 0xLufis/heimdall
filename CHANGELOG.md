@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Hero cards on `/dashboard/tickets` (`TicketMetricsOverview.vue`) with accessible button semantics, click-to-filter, toggle-off, active colored rings, and dynamic filter chip bar.
   - Consistent page header click actions across dashboard pages (`tickets.vue`, `machines.vue`, `clients.vue`, `analytics.vue`, `map.vue`, `telemetry/stream.vue`) to reset filters/queries and refresh live state.
   - Summary badges on `machines.vue` and backlog age distribution cards on `FleetAnalyticsSummary.vue` made interactive.
+- **Milestone 14 Roadmap Definition (`TODO.MD`)**:
+  - Defined `SIM-GATE-001` through `SIM-GATE-003` for environment variable gating (`ENABLE_SIMULATION`, `NUXT_PUBLIC_ENABLE_SIMULATION`) across frontend buttons and backend/Nitro mock endpoints.
+  - Established `PERF-001` through `PERF-004` performance and stability investigations with explicit timebox budgets (8h–16h), stability soak test durations (4h–24h), and latency SLA targets.
 - **Predictive Maintenance & Fleet Analytics Engine (`backend/App.Backend.Api/Services/PredictiveMaintenanceService.cs`)**:
   - Statistical Z-score anomaly detector calculating rolling mean and standard deviation over sliding windows ($|z| > 2.5\sigma$ warning, $|z| > 3.0\sigma$ critical).
   - MTBF (Mean Time Between Failures) and MTTR (Mean Time to Repair) reliability modeling.
@@ -99,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Orphaned Bytecode Caches**: Purged unversioned root and seed `__pycache__` directories.
 
 ### Fixed
+- **Backend DI Captive Dependency Resolution**: Fixed startup crash (exit code 134) in `App.Backend.Api` caused by singleton `PluginService` consuming scoped `AppDbContext`. Refactored `PluginService` to inject `IServiceScopeFactory` and manage transient scopes during database transactions while preserving test constructor overloads. Added `DependencyInjectionIntegrityTests` to validate service descriptor graph on every test build.
 - **Python Fleet Simulator Test Alignment**: Resolved legacy hostname discrepancies (`CPC-*` -> `IPC-L01-*`) and updated hardware assertions across `test_mock_cmi_runner.py` and `test_simulated_pc_integration.py` (9/9 tests passing).
 - **Active Directory OU Organization Tagging**: Connected plant organizations tab to Active Directory OU discovery so tenant cards dynamically render matching OU paths and VLAN tags.
 
