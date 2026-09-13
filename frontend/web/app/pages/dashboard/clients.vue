@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { 
   RefreshCw, Map, Grid, Plus, X, Layers, ChevronDown, 
-  MapPin, CheckCircle2, Link2, Sparkles, ExternalLink 
+  MapPin, CheckCircle2, Link2, Sparkles, ExternalLink, Monitor 
 } from 'lucide-vue-next'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useControllers } from '~/composables/useControllers'
@@ -34,12 +34,21 @@ const commandTargetController = ref<IndustrialController | null>(null)
 const isCommandModalOpen = ref(false)
 const quickViewTargetController = ref<IndustrialController | null>(null)
 const isQuickViewModalOpen = ref(false)
+const searchQuery = ref('')
+
+const resetClientsView = () => {
+  searchQuery.value = ''
+  selectedController.value = null
+  activeMapPin.value = null
+  activeViewMode.value = 'grid'
+  router.push('/dashboard/clients')
+  handleManualSync()
+}
 
 const handleQuickView = (pc: IndustrialController) => {
   quickViewTargetController.value = pc
   isQuickViewModalOpen.value = true
 }
-const searchQuery = ref('')
 
 // Plant CAD Floor Plans Catalog
 const availableFloorPlans = [
@@ -263,13 +272,20 @@ const onSearch = (q: string) => {
   <div class="space-y-6 pb-12">
     <!-- Page Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+      <div
+        role="button"
+        tabindex="0"
+        @click="resetClientsView"
+        @keydown.enter="resetClientsView"
+        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-slate-900/60"
+        title="Click to reset filters and refresh controller fleet"
+      >
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 group-hover:bg-indigo-500/20 transition-all">
           <Monitor class="h-6 w-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-100">Industrial Controller Fleet</h1>
-          <p class="text-sm text-slate-400 mt-0.5">
+          <h1 class="text-2xl font-bold tracking-tight text-slate-100 group-hover:text-white transition-colors">Industrial Controller Fleet</h1>
+          <p class="text-sm text-slate-400 mt-0.5 group-hover:text-slate-300 transition-colors">
             Edge IPC telemetry, multi-runtime diagnostics, AutoCAD DXF tag linking, and signed commands
           </p>
         </div>
@@ -282,8 +298,8 @@ const onSearch = (q: string) => {
             variant="ghost"
             size="sm"
             @click="activeViewMode = 'grid'"
-            :class="activeViewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-            class="h-8 px-3 rounded-md text-xs font-medium"
+            :class="activeViewMode === 'grid' ? 'bg-zinc-700 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-zinc-800/80'"
+            class="h-8 px-3 rounded-md text-xs font-medium transition-all"
           >
             <Grid class="w-3.5 h-3.5 mr-1.5" />
             Grid View
@@ -293,8 +309,8 @@ const onSearch = (q: string) => {
             variant="ghost"
             size="sm"
             @click="activeViewMode = 'map'"
-            :class="activeViewMode === 'map' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-            class="h-8 px-3 rounded-md text-xs font-medium"
+            :class="activeViewMode === 'map' ? 'bg-zinc-700 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-zinc-800/80'"
+            class="h-8 px-3 rounded-md text-xs font-medium transition-all"
           >
             <Map class="w-3.5 h-3.5 mr-1.5" />
             Plant CAD Map
@@ -306,9 +322,9 @@ const onSearch = (q: string) => {
           size="sm"
           @click="handleManualSync"
           :disabled="isLoading"
-          class="h-8 bg-slate-900 border-slate-800 text-slate-300 rounded-lg px-3.5 hover:bg-slate-800 text-xs font-medium transition-all"
+          class="h-8 bg-slate-900 border-slate-800 hover:border-zinc-600 text-slate-300 hover:text-white rounded-lg px-3.5 hover:bg-zinc-800 text-xs font-medium transition-all shadow-xs hover:shadow-sm"
         >
-          <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5 mr-2 text-indigo-400" />
+          <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5 mr-2 text-zinc-400" />
           <span>{{ isLoading ? 'Syncing Fleet...' : 'Sync Telemetry' }}</span>
         </Button>
       </div>
@@ -334,7 +350,7 @@ const onSearch = (q: string) => {
       <button
         type="button"
         @click="handleCloseTelemetry"
-        class="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs font-medium text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all shadow-md"
+        class="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 hover:border-zinc-500 text-xs font-medium text-slate-400 hover:text-white hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg"
       >
         <X class="w-3.5 h-3.5" />
         <span>Close Telemetry</span>
@@ -345,6 +361,7 @@ const onSearch = (q: string) => {
     <template v-if="activeViewMode === 'grid'">
       <ControllerGrid
         :controllers="filteredControllers"
+        :selected-id="selectedController?.id"
         :loading="isLoading"
         @select="handleSelectController"
         @queue-command="handleQueueCommand"
@@ -472,7 +489,7 @@ const onSearch = (q: string) => {
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(130, 143, 159, 0.4);
   border-radius: 9999px;
 }
 </style>

@@ -129,7 +129,7 @@ const copyText = async (text: string, field: string) => {
           </div>
           <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 space-y-2">
             <span class="text-[11px] text-slate-400 uppercase tracking-wider block">Predictive RUL Alert</span>
-            <div class="text-2xl font-bold font-mono text-sky-400">3 Machines</div>
+            <div class="text-2xl font-bold font-mono text-teal-300">3 Machines</div>
             <div class="text-[10px] text-slate-500">Recommended preventive calibration</div>
           </div>
         </div>
@@ -205,7 +205,7 @@ const copyText = async (text: string, field: string) => {
       <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 shadow-sm flex flex-col justify-between">
         <div class="space-y-2">
           <div class="flex items-center gap-2">
-            <Database class="w-4 h-4 text-sky-400" />
+            <Database class="w-4 h-4 text-teal-400" />
             <h4 class="text-xs font-semibold text-slate-100">Machines OData Catalog</h4>
           </div>
           <p class="text-xs text-slate-400">

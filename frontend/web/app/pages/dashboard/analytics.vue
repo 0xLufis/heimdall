@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import FleetAnalyticsSummary, { type FleetSummaryData } from '~/components/analytics/FleetAnalyticsSummary.vue'
 import TelemetryTrendVisualizer from '~/components/analytics/TelemetryTrendVisualizer.vue'
 import KpiGraphBuilder from '~/components/analytics/KpiGraphBuilder.vue'
 import PowerBiTileEmbed from '~/components/analytics/PowerBiTileEmbed.vue'
+import GrafanaMassTelemetryEmbed from '~/components/analytics/GrafanaMassTelemetryEmbed.vue'
 import {
   Activity,
   BarChart3,
@@ -14,16 +16,24 @@ import {
   Sparkles,
   RefreshCw,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Server
 } from 'lucide-vue-next'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
 
-type AnalyticsTab = 'overview' | 'predictive' | 'builder' | 'powerbi'
+const router = useRouter()
+type AnalyticsTab = 'overview' | 'predictive' | 'builder' | 'powerbi' | 'grafana'
 const activeTab = ref<AnalyticsTab>('overview')
 const isLoading = ref(false)
+
+const resetAnalyticsView = () => {
+  activeTab.value = 'overview'
+  router.push('/dashboard/analytics')
+  fetchFleetSummary()
+}
 
 const summaryData = ref<FleetSummaryData>({
   totalMachineHours: 2316,
@@ -78,18 +88,25 @@ onMounted(() => {
     <!-- Header Hero Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-sm">
       <div class="space-y-1">
-        <div class="flex items-center gap-2.5">
-          <div class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300">
+        <div
+          role="button"
+          tabindex="0"
+          @click="resetAnalyticsView"
+          @keydown.enter="resetAnalyticsView"
+          class="flex items-center gap-2.5 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-zinc-800/60"
+          title="Click to reset view and refresh analytics"
+        >
+          <div class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 group-hover:scale-105 group-hover:bg-zinc-700 transition-all">
             <BarChart3 class="w-5 h-5" />
           </div>
           <div>
-            <h2 class="text-lg font-bold text-zinc-100 flex items-center gap-2">
+            <h2 class="text-lg font-bold text-zinc-100 flex items-center gap-2 group-hover:text-white transition-colors">
               <span>Predictive Maintenance & Fleet Analytics</span>
               <Badge variant="outline" class="text-[10px] font-mono border-zinc-700 bg-zinc-950 text-zinc-300">
                 OT Analytics 2.0
               </Badge>
             </h2>
-            <p class="text-xs text-zinc-400">
+            <p class="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
               Fleet-wide machine degradation modeling, statistical Z-score anomaly detection, and enterprise BI connectivity.
             </p>
           </div>
@@ -151,6 +168,16 @@ onMounted(() => {
         <Layers class="w-4 h-4" />
         <span>Power BI & External BI</span>
       </button>
+
+      <button
+        type="button"
+        @click="activeTab = 'grafana'"
+        :class="activeTab === 'grafana' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
+        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0"
+      >
+        <Server class="w-4 h-4" />
+        <span>Grafana Mass Telemetry</span>
+      </button>
     </div>
 
     <!-- Tab 1: Fleet Overview & KPIs -->
@@ -171,6 +198,11 @@ onMounted(() => {
     <!-- Tab 4: Power BI & External BI -->
     <template v-else-if="activeTab === 'powerbi'">
       <PowerBiTileEmbed />
+    </template>
+
+    <!-- Tab 5: Grafana Mass Telemetry -->
+    <template v-else-if="activeTab === 'grafana'">
+      <GrafanaMassTelemetryEmbed />
     </template>
   </div>
 </template>

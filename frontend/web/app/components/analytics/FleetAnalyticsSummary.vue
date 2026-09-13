@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
 import {
@@ -55,6 +56,8 @@ const props = defineProps<{
   summary: FleetSummaryData
 }>()
 
+const router = useRouter()
+
 const totalBacklog = computed(() => {
   const b = props.summary.maintenanceBacklog
   return b.under24Hours + b.oneToThreeDays + b.overThreeDays
@@ -95,7 +98,7 @@ const totalBacklog = computed(() => {
       <Card class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between text-xs text-slate-400">
           <span class="font-medium">Mean Time Between Failures</span>
-          <Clock class="w-4 h-4 text-sky-400" />
+          <Clock class="w-4 h-4 text-teal-400" />
         </div>
         <div class="flex items-baseline gap-2 my-3">
           <span class="text-3xl font-bold font-mono text-white">{{ summary.averageMtbfHours }}</span>
@@ -111,7 +114,7 @@ const totalBacklog = computed(() => {
       <Card class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between text-xs text-slate-400">
           <span class="font-medium">Mean Time to Repair</span>
-          <TrendingDown class="w-4 h-4 text-indigo-400" />
+          <TrendingDown class="w-4 h-4 text-zinc-400" />
         </div>
         <div class="flex items-baseline gap-2 my-3">
           <span class="text-3xl font-bold font-mono text-white">{{ summary.averageMttrMinutes }}</span>
@@ -173,10 +176,15 @@ const totalBacklog = computed(() => {
               <tr
                 v-for="m in summary.topFaultingMachines"
                 :key="m.machineId"
-                class="hover:bg-slate-800/40 transition-colors"
+                @click="router.push(`/dashboard/machines?id=${encodeURIComponent(m.machineId)}`)"
+                class="hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                title="Click to view machine in machinery catalog"
               >
                 <td class="py-3 px-3">
-                  <div class="font-semibold text-slate-200">{{ m.name }}</div>
+                  <div class="font-semibold text-slate-200 group-hover:text-white transition-colors flex items-center gap-1.5">
+                    <span>{{ m.name }}</span>
+                    <ChevronRight class="size-3 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div class="text-[11px] font-mono text-slate-400">{{ m.machineId }}</div>
                 </td>
                 <td class="py-3 px-3 text-slate-300">{{ m.line }}</td>
@@ -211,7 +219,7 @@ const totalBacklog = computed(() => {
         <div>
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
-              <Clock class="w-4 h-4 text-indigo-400" />
+              <Clock class="w-4 h-4 text-zinc-400" />
               <h4 class="text-sm font-semibold text-slate-100">Maintenance Backlog Age</h4>
             </div>
             <span class="text-xs font-mono text-slate-400">{{ totalBacklog }} Open</span>
@@ -225,7 +233,7 @@ const totalBacklog = computed(() => {
               title="Under 24h"
             ></div>
             <div
-              class="bg-sky-500 h-full transition-all"
+              class="bg-teal-600 h-full transition-all"
               :style="{ width: `${(summary.maintenanceBacklog.oneToThreeDays / (totalBacklog || 1)) * 100}%` }"
               title="1 - 3 Days"
             ></div>
@@ -237,34 +245,50 @@ const totalBacklog = computed(() => {
           </div>
 
           <div class="space-y-3 text-xs">
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <NuxtLink
+              to="/dashboard/tickets"
+              class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60 transition-all cursor-pointer group"
+              title="View all incidents under 24 hours"
+            >
               <div class="flex items-center gap-2">
                 <span class="size-2.5 rounded-full bg-emerald-500"></span>
-                <span class="text-slate-300">Under 24 Hours</span>
+                <span class="text-slate-300 group-hover:text-white transition-colors">Under 24 Hours</span>
               </div>
               <span class="font-mono font-bold text-slate-100">{{ summary.maintenanceBacklog.under24Hours }}</span>
-            </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            </NuxtLink>
+            <NuxtLink
+              to="/dashboard/tickets"
+              class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60 transition-all cursor-pointer group"
+              title="View backlog incidents 1 to 3 days old"
+            >
               <div class="flex items-center gap-2">
-                <span class="size-2.5 rounded-full bg-sky-500"></span>
-                <span class="text-slate-300">1 – 3 Days Old</span>
+                <span class="size-2.5 rounded-full bg-teal-500"></span>
+                <span class="text-slate-300 group-hover:text-white transition-colors">1 – 3 Days Old</span>
               </div>
               <span class="font-mono font-bold text-slate-100">{{ summary.maintenanceBacklog.oneToThreeDays }}</span>
-            </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            </NuxtLink>
+            <NuxtLink
+              to="/dashboard/tickets"
+              class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60 transition-all cursor-pointer group"
+              title="View aged backlog incidents over 3 days"
+            >
               <div class="flex items-center gap-2">
                 <span class="size-2.5 rounded-full bg-amber-500"></span>
-                <span class="text-slate-300">Over 3 Days Old</span>
+                <span class="text-slate-300 group-hover:text-white transition-colors">Over 3 Days Old</span>
               </div>
               <span class="font-mono font-bold text-slate-100">{{ summary.maintenanceBacklog.overThreeDays }}</span>
-            </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-rose-950/30 border border-rose-500/30 text-rose-300">
+            </NuxtLink>
+            <NuxtLink
+              to="/dashboard/tickets?critical=true"
+              class="flex items-center justify-between p-2 rounded-lg bg-rose-950/30 border border-rose-500/30 text-rose-300 hover:bg-rose-950/50 hover:border-rose-500/50 transition-all cursor-pointer group"
+              title="Filter to critical SLA breached incidents"
+            >
               <div class="flex items-center gap-2">
-                <ShieldAlert class="w-3.5 h-3.5 text-rose-400" />
-                <span>Critical SLA Breaches</span>
+                <ShieldAlert class="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
+                <span class="group-hover:text-rose-200 transition-colors">Critical SLA Breaches</span>
               </div>
               <span class="font-mono font-bold text-rose-300">{{ summary.maintenanceBacklog.criticalBreached }}</span>
-            </div>
+            </NuxtLink>
           </div>
         </div>
 

@@ -1163,12 +1163,11 @@ const templateCategories = [
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(99, 102, 241, 0.45), rgba(79, 70, 229, 0.65));
+  background: rgba(130, 143, 159, 0.4);
   border-radius: 9999px;
-  box-shadow: 0 0 6px rgba(99, 102, 241, 0.25);
+  transition: all 0.2s ease;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(129, 140, 248, 0.8), rgba(99, 102, 241, 0.95));
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+  background: rgba(130, 143, 159, 0.65);
 }
 </style>

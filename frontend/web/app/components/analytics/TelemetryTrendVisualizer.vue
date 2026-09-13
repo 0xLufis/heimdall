@@ -253,7 +253,7 @@ const meanVal = computed(() => {
       <button
         type="button"
         @click="activeMetric = 'cycle_time'"
-        :class="activeMetric === 'cycle_time' ? 'bg-indigo-950/60 text-indigo-300 border-indigo-500/40' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
+        :class="activeMetric === 'cycle_time' ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
         class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0"
       >
         Cycle Time Jitter (ms)
@@ -261,7 +261,7 @@ const meanVal = computed(() => {
       <button
         type="button"
         @click="activeMetric = 'temperature'"
-        :class="activeMetric === 'temperature' ? 'bg-indigo-950/60 text-indigo-300 border-indigo-500/40' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
+        :class="activeMetric === 'temperature' ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
         class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0"
       >
         Drive Temperature Drift (°C)
@@ -269,7 +269,7 @@ const meanVal = computed(() => {
       <button
         type="button"
         @click="activeMetric = 'vibration'"
-        :class="activeMetric === 'vibration' ? 'bg-indigo-950/60 text-indigo-300 border-indigo-500/40' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
+        :class="activeMetric === 'vibration' ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
         class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0"
       >
         Spindle Harmonic Vibration (mm/s)
@@ -277,7 +277,7 @@ const meanVal = computed(() => {
       <button
         type="button"
         @click="activeMetric = 'error_rate'"
-        :class="activeMetric === 'error_rate' ? 'bg-indigo-950/60 text-indigo-300 border-indigo-500/40' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
+        :class="activeMetric === 'error_rate' ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
         class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0"
       >
         Micro-Fault Frequency (faults/hr)
@@ -292,13 +292,13 @@ const meanVal = computed(() => {
       >
         <defs>
           <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#6366f1" stop-opacity="0.3" />
-            <stop offset="100%" stop-color="#6366f1" stop-opacity="0.0" />
+            <stop offset="0%" stop-color="#57715b" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="#57715b" stop-opacity="0.0" />
           </linearGradient>
         </defs>
 
         <!-- Grid Lines -->
-        <g stroke="#1e293b" stroke-width="1">
+        <g stroke="#232730" stroke-width="1">
           <line :x1="padding.left" :y1="padding.top" :x2="svgWidth - padding.right" :y2="padding.top" />
           <line :x1="padding.left" :y1="padding.top + chartHeight * 0.25" :x2="svgWidth - padding.right" :y2="padding.top + chartHeight * 0.25" />
           <line :x1="padding.left" :y1="padding.top + chartHeight * 0.5" :x2="svgWidth - padding.right" :y2="padding.top + chartHeight * 0.5" />
@@ -321,7 +321,7 @@ const meanVal = computed(() => {
         </text>
 
         <!-- Y-Axis Ticks -->
-        <g fill="#64748b" font-size="9" font-family="monospace" text-anchor="end">
+        <g fill="#828a94" font-size="9" font-family="monospace" text-anchor="end">
           <text :x="padding.left - 8" :y="padding.top + 4">{{ yBounds.max }}</text>
           <text :x="padding.left - 8" :y="padding.top + chartHeight / 2 + 3">{{ Math.round((yBounds.max + yBounds.min) / 2) }}</text>
           <text :x="padding.left - 8" :y="padding.top + chartHeight">{{ yBounds.min }}</text>
@@ -331,7 +331,7 @@ const meanVal = computed(() => {
         <path :d="svgAreaPath" fill="url(#trendGradient)" />
 
         <!-- Line Trend Path -->
-        <path :d="svgPath" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path :d="svgPath" fill="none" stroke="#768f79" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 
         <!-- Telemetry Points & Outlier Markers -->
         <g v-for="(p, i) in trendData.points" :key="i">
@@ -341,7 +341,7 @@ const meanVal = computed(() => {
             :cx="getX(i, trendData.points.length)"
             :cy="getY(p.value)"
             r="2.5"
-            fill="#818cf8"
+            fill="#768f79"
             class="hover:r-4 transition-all cursor-pointer"
             @mouseenter="hoveredPoint = p"
             @mouseleave="hoveredPoint = null"

@@ -39,6 +39,7 @@ import {
 
 definePageMeta({
   layout: 'shadcn-dashboard',
+  alias: ['/dashboard/admin']
 })
 
 const activeTab = ref<'auth' | 'vlan-ad-import' | 'certificates' | 'integrations' | 'agent-master'>('auth')

@@ -7,18 +7,31 @@
   --font-sans: "Geist", Arial, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  /* Industrial Tool Steel & Slate Remap for Indigo (eliminates neon purple-blue) */
-  --color-indigo-50: #f4f5f7;
+  /* Industrial Tool Steel & Neutral Enclosure Remap for Slate (eliminates navy blue cast site-wide) */
+  --color-slate-50: #f4f5f6;
+  --color-slate-100: #e5e7eb;
+  --color-slate-200: #cbd1d6;
+  --color-slate-300: #9ea7b0;
+  --color-slate-400: #828a94;
+  --color-slate-500: #5f6772;
+  --color-slate-600: #464d57;
+  --color-slate-700: #313740;
+  --color-slate-800: #232730;
+  --color-slate-900: #15181e;
+  --color-slate-950: #0c0e12;
+
+  /* Industrial Tool Steel & Titanium Remap for Indigo (balanced neutral graphite, 0 blue bias) */
+  --color-indigo-50: #f4f5f6;
   --color-indigo-100: #e5e7eb;
-  --color-indigo-200: #cbd1d8;
-  --color-indigo-300: #a4afbd;
-  --color-indigo-400: #828f9f;
-  --color-indigo-500: #626f80;
-  --color-indigo-600: #495464;
-  --color-indigo-700: #3a4350;
-  --color-indigo-800: #2c333d;
-  --color-indigo-900: #1f242c;
-  --color-indigo-950: #12151a;
+  --color-indigo-200: #d1d5db;
+  --color-indigo-300: #9ca3af;
+  --color-indigo-400: #889098;
+  --color-indigo-500: #687078;
+  --color-indigo-600: #4a5058;
+  --color-indigo-700: #383e44;
+  --color-indigo-800: #2a2e34;
+  --color-indigo-900: #1d2024;
+  --color-indigo-950: #111316;
 
   /* Industrial Anodized Sage & Grey-Green Remap for Blue (eliminates electric blue) */
   --color-blue-50: #f3f6f4;
@@ -32,6 +45,32 @@
   --color-blue-800: #29342b;
   --color-blue-900: #1f2720;
   --color-blue-950: #121713;
+
+  /* Industrial Slate-Cadet Remap for Sky (eliminates bright sky blue) */
+  --color-sky-50: #f4f6f7;
+  --color-sky-100: #e4e7eb;
+  --color-sky-200: #c8ced4;
+  --color-sky-300: #a2abb5;
+  --color-sky-400: #7b8692;
+  --color-sky-500: #5c6773;
+  --color-sky-600: #454f59;
+  --color-sky-700: #353d45;
+  --color-sky-800: #262c32;
+  --color-sky-900: #1a1e22;
+  --color-sky-950: #0f1214;
+
+  /* Industrial Muted Teal & Sage-Patina Remap for Cyan (eliminates neon cyan) */
+  --color-cyan-50: #f2f7f6;
+  --color-cyan-100: #e0ece9;
+  --color-cyan-200: #bfd6d1;
+  --color-cyan-300: #93b9b2;
+  --color-cyan-400: #6d9a92;
+  --color-cyan-500: #4f7e76;
+  --color-cyan-600: #3c635c;
+  --color-cyan-700: #304f4a;
+  --color-cyan-800: #273e3a;
+  --color-cyan-900: #1e2e2b;
+  --color-cyan-950: #101918;
 }
 
 @import "./themes.css";
@@ -206,7 +245,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(98, 111, 128, 0.4);
+  background: rgba(130, 143, 159, 0.35);
   border-radius: 9999px;
   transition: all 0.2s ease;
 }

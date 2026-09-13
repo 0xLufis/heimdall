@@ -25,18 +25,58 @@ import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
 import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
 import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
 import { useAuthSession } from '~/composables/useAuthSession'
+import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
+import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
+import { useRoute, useRouter } from 'vue-router'
 import type { SearchInstanceConfig } from '~/types/search'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
 
+const route = useRoute()
+const router = useRouter()
 const { user, canApproveLineStops, isOperativePlanner, isEngineer } = useAuthSession()
+const { openContextMenu } = useGlobalContextMenu()
 
 // Switchable view states
 const activeView = ref<'machines' | 'lines' | 'technologies'>('machines')
 const loading = ref(false)
 const searchQuery = ref('')
+
+const resetMachinesView = () => {
+  searchQuery.value = ''
+  activeView.value = 'machines'
+  router.push('/dashboard/machines')
+  fetchData()
+}
+
+const handleMachineContextMenu = (m: any, e: MouseEvent) => {
+  const pref = resolvePreferredTechnician(m.id, m.machineType, m.groupId, [], [])
+  openContextMenu(e, {
+    entityType: 'machine',
+    entityId: m.id,
+    entityName: m.displayName || m.name || m.customIdentifier,
+    handle: m.pinnedObjectHandle || undefined,
+    machineId: m.id,
+    machineName: m.name || m.customIdentifier,
+    controllerId: m.controllers?.[0]?.id,
+    controllerHostname: m.controllers?.[0]?.hostname,
+    ownerTeam: m.responsibleTeams?.[0] ? { name: m.responsibleTeams[0].name } : undefined,
+    ownerPerson: (m as any).preferredTechnicianName ? { name: (m as any).preferredTechnicianName } : (pref?.technicianName ? { name: pref.technicianName } : undefined)
+  })
+}
+
+watch(() => route.query, (q) => {
+  if (q.id) {
+    searchQuery.value = q.id as string
+  } else if (q.search) {
+    searchQuery.value = q.search as string
+  }
+  if (q.tree) {
+    openTreeForStation(q.tree as string)
+  }
+}, { immediate: true })
 
 // Raw data states
 const machines = ref<any[]>([])
@@ -293,15 +333,22 @@ onMounted(() => {
     <!-- Header Area with View Mode Switchers -->
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800">
       <div>
-        <div class="flex items-center gap-3">
-          <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+        <div
+          role="button"
+          tabindex="0"
+          @click="resetMachinesView"
+          @keydown.enter="resetMachinesView"
+          class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-slate-900/60"
+          title="Click to reset filters and refresh production machinery"
+        >
+          <div class="p-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 group-hover:scale-105 group-hover:bg-zinc-700 transition-all">
             <Factory class="h-6 w-6" />
           </div>
           <div>
-            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-100 group-hover:text-white transition-colors">
               Production Machinery & Lines
             </h1>
-            <p class="text-sm text-slate-400 mt-0.5">
+            <p class="text-sm text-slate-400 mt-0.5 group-hover:text-slate-300 transition-colors">
               Stations, manufacturing cells, production lines, and engineering discipline technologies
             </p>
           </div>
@@ -309,21 +356,39 @@ onMounted(() => {
 
         <!-- Global Summary Badges -->
         <div class="flex flex-wrap items-center gap-2 mt-4">
-          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
-            <Factory class="w-3.5 h-3.5 text-indigo-400" />
-            <span class="text-slate-400">Stations:</span>
+          <button
+            type="button"
+            @click="activeView = 'machines'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'machines' ? 'bg-zinc-800 border-zinc-600 text-white shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
+            title="Switch to Machines view"
+          >
+            <Factory class="w-3.5 h-3.5 text-zinc-400" />
+            <span>Stations:</span>
             <span class="font-mono font-semibold text-slate-200">{{ machines.length }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
-            <Layers class="w-3.5 h-3.5 text-blue-400" />
-            <span class="text-slate-400">Lines:</span>
+          </button>
+          <button
+            type="button"
+            @click="activeView = 'lines'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'lines' ? 'bg-zinc-800 border-zinc-600 text-white shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
+            title="Switch to Lines view"
+          >
+            <Layers class="w-3.5 h-3.5 text-zinc-400" />
+            <span>Lines:</span>
             <span class="font-mono font-semibold text-slate-200">{{ lines.length }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
+          </button>
+          <button
+            type="button"
+            @click="activeView = 'technologies'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'technologies' ? 'bg-zinc-800 border-zinc-600 text-white shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
+            title="Switch to Technologies view"
+          >
             <Cpu class="w-3.5 h-3.5 text-teal-400" />
-            <span class="text-slate-400">Technologies:</span>
+            <span>Technologies:</span>
             <span class="font-mono font-semibold text-slate-200">{{ technologies.length }}</span>
-          </div>
+          </button>
           <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
             <span class="size-2 rounded-full bg-emerald-400 animate-pulse" />
             <span class="text-emerald-400">
@@ -391,16 +456,17 @@ onMounted(() => {
         <Card
           v-for="mach in filteredMachines"
           :key="mach.id"
+          @contextmenu="handleMachineContextMenu(mach, $event)"
           class="bg-slate-900 border-slate-800 hover:border-slate-700 transition-all rounded-xl shadow-sm overflow-hidden group flex flex-col justify-between"
         >
           <CardHeader class="p-4 sm:p-5 border-b border-slate-800">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-center gap-2.5">
-                <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <div class="p-2 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700">
                   <Factory class="w-4 h-4" />
                 </div>
                 <div>
-                  <CardTitle class="text-sm font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors">
+                  <CardTitle class="text-sm font-semibold text-slate-100 group-hover:text-white transition-colors">
                     {{ mach.name }}
                   </CardTitle>
                   <CardDescription class="text-xs text-slate-400 font-mono mt-0.5">
@@ -429,7 +495,7 @@ onMounted(() => {
               <!-- Controller PCs associated -->
               <div class="space-y-1.5">
                 <div class="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                  <Monitor class="w-3.5 h-3.5 text-blue-400" />
+                  <Monitor class="w-3.5 h-3.5 text-zinc-400" />
                   <span>Host Controller IPCs ({{ mach.controllers?.length || 0 }})</span>
                 </div>
 
@@ -705,7 +771,7 @@ onMounted(() => {
                 variant="outline"
                 size="sm"
                 @click="openTreeForStation(mach.id)"
-                class="h-7 px-2.5 border-slate-800 bg-slate-900 text-indigo-400 hover:text-indigo-300 text-xs font-medium rounded-md gap-1 shadow-sm"
+                class="h-7 px-2.5 border-slate-800 bg-slate-900 text-zinc-300 hover:text-white text-xs font-medium rounded-md gap-1 shadow-sm"
               >
                 <FolderTree class="w-3.5 h-3.5" />
                 <span>Tree</span>

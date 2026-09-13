@@ -68,6 +68,28 @@ describe('Maintenance Ticketing UI Components', () => {
     expect(wrapper.text()).toContain('90%')
   })
 
+  it('supports interactive filter clicking and toggling on TicketMetricsOverview', async () => {
+    const wrapper = mount(TicketMetricsOverview, {
+      props: { metrics: mockMetrics, activeFilter: null }
+    })
+
+    const cards = wrapper.findAll('[role="button"]')
+    expect(cards.length).toBe(6)
+
+    // Click Critical card (2nd card)
+    await cards[1].trigger('click')
+    expect(wrapper.emitted('filter-change')).toBeTruthy()
+    expect(wrapper.emitted('filter-change')![0]).toEqual(['critical'])
+
+    // When activeFilter is already 'critical', clicking it emits null to toggle off
+    await wrapper.setProps({ activeFilter: 'critical' })
+    expect(cards[1].classes()).toContain('ring-2')
+    expect(cards[1].classes()).toContain('ring-rose-500')
+
+    await cards[1].trigger('click')
+    expect(wrapper.emitted('filter-change')![1]).toEqual([null])
+  })
+
   it('renders TicketList rows and priority badges', () => {
     const wrapper = mount(TicketList, {
       props: { tickets: mockTickets },

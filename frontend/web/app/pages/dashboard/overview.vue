@@ -6,7 +6,8 @@ import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
 import type { SearchInstanceConfig } from '~/types/search'
 
 definePageMeta({
-  layout: 'shadcn-dashboard'
+  layout: 'shadcn-dashboard',
+  alias: ['/dashboard']
 })
 
 const { user, userRole } = useAuthSession()

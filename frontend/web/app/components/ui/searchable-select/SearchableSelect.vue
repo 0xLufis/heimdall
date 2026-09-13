@@ -217,10 +217,10 @@ function handleClear() {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #313740;
   border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #6366f1;
+  background: #4a5058;
 }
 </style>

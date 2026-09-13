@@ -247,6 +247,6 @@ function getLatestTransition(ticket: MaintenanceTicket) {
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.8);
+  background: rgba(130, 143, 159, 0.6);
 }
 </style>

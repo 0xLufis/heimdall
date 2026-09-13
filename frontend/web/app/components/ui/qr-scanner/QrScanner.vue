@@ -202,7 +202,7 @@ onUnmounted(() => {
           <div class="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br"></div>
           
           <!-- Animated laser scanline -->
-          <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent shadow-[0_0_15px_#6366f1] animate-pulse"></div>
+          <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_15px_#57715b] animate-pulse"></div>
         </div>
       </div>
 

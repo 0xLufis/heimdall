@@ -375,7 +375,7 @@ const pinnedObjects = computed(() => {
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(130, 143, 159, 0.4);
   border-radius: 9999px;
 }
 </style>
