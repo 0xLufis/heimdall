@@ -184,5 +184,41 @@ The following subagents are defined for specialized execution of upcoming roadma
 - [x] **DIAG-002**: Generate Master Sequence Diagram Gallery (`docs/architecture/SEQUENCE_DIAGRAMS.md`) with 6 core flow diagrams in GitHub-compatible Mermaid syntax.
 - [x] **DOCS-001**: Update `README.md`, `SYSTEM_ARCHITECTURE.md`, `EDGE_AGENT_AND_PROTOCOLS.md`, `API_REFERENCE.md`, `DEV_GUIDE.md`, and `Home.md` with current metrics (56 IPCs, 100 machines, 8 production corridors, 83 backend tests, 241 frontend unit tests, 9 Python fleet tests).
 
+---
+
+## Milestone 14: Environment-Gated Simulation Controls, Performance & Stability Investigations
+
+### Simulation & Placeholder Feature Gating
+- [ ] **SIM-GATE-001**: Gate all frontend simulation controls and placeholder action buttons behind `NUXT_PUBLIC_ENABLE_SIMULATION` / `ENABLE_SIMULATION` environment variables.
+  - Hide or disable "Fleet Sim" / `SimulatorControlModal` in `tickets.vue`.
+  - Hide or disable "Simulate Traffic", dynamic anomaly injection, and synthetic load generator triggers across telemetry and analytics dashboards.
+  - Disable "Simulate Role Persona" switcher in `useAuthSession.ts`, `PreferredTechniciansModal.vue`, and `/dashboard/settings`.
+  - Hide simulated directory group claims testing panel in `/dashboard/security-groups` when simulation is disabled.
+- [ ] **SIM-GATE-002**: Gate backend & Nitro simulation API endpoints behind `ENABLE_SIMULATION` / `HEIMDALL_ENABLE_SIMULATION`.
+  - Return `403 Forbidden` or `404 Not Found` on `/api/simulator/*` when simulation is disabled.
+  - Disable `/api/ad-mock/*` and Teams OOO simulation endpoints (`/api/integrations/teams/ooo.post.ts`) in non-simulation environments.
+  - Prevent background `devTicketGenerator.ts` poller from initializing unless `ENABLE_SIMULATION=true`.
+  - Disable backend demonstration mock fallbacks (e.g. `AnalyticsController.cs` mock auth fallback) in production runtime configurations.
+- [ ] **SIM-GATE-003**: Centralize environment variable configuration and documentation in `.env.example`, `DEV_GUIDE.md`, and production Docker Compose manifests (`ENABLE_SIMULATION=false` by default in production).
+
+### Performance & Stability Investigations
+- [ ] **PERF-001**: Telemetry Ingestion Throughput & Long-Run Memory Profiling.
+  - **Estimated Investigation Time**: 16 hours (2 Days).
+  - **Stability Soak Duration**: 24-hour continuous stream test under simulated 50–100 edge nodes emitting at 10 Hz.
+  - **Target Metrics & Times**: Ingestion P99 latency < 25ms, zero cumulative managed/unmanaged heap growth (memory leak detection), GC Gen 2 pause times < 15ms.
+- [ ] **PERF-002**: Database Connection Pool Saturation & Query Execution Latency Audit.
+  - **Estimated Investigation Time**: 12 hours (1.5 Days).
+  - **Stability Soak Duration**: 4-hour sustained concurrent read/write test (200 simulated concurrent users).
+  - **Target Metrics & Times**: P95 query execution time < 50ms, maximum connection acquisition wait time < 10ms, zero connection pool exhaustion events (`TimeoutException`).
+- [ ] **PERF-003**: Frontend Long-Session Memory Retention & Stream Render Performance.
+  - **Estimated Investigation Time**: 8 hours (1 Day).
+  - **Stability Soak Duration**: 8-hour continuous live dashboard session (`/dashboard/telemetry`, `/dashboard/overview`).
+  - **Target Metrics & Times**: Chrome memory growth < 100 MB delta over 8 hours, steady 60 FPS UI rendering without dropped frames during high-frequency SignalR message bursts.
+- [ ] **PERF-004**: Edge Daemon Resource Footprint & Disconnect Recovery Timeboxing.
+  - **Estimated Investigation Time**: 8 hours (1 Day).
+  - **Stability Soak Duration**: 12-hour intermittent network flapping test (simulated 10m, 30m, 2h disconnects).
+  - **Target Metrics & Times**: Linux edge daemon RSS memory < 45 MB, CPU utilization < 2.5%, spool-to-cloud backlog drain time < 5 seconds upon link restoration.
+
+
 
 

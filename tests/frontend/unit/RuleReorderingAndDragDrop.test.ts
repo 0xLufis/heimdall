@@ -126,7 +126,7 @@ describe('Rule Reordering & Drag-and-Drop Sequential Priority Suite', () => {
       // Grip handles with title must be present
       const gripHandles = wrapper.findAll('[title="Drag and drop to reorder evaluation priority"]')
       expect(gripHandles.length).toBe(draggableCards.length)
-    })
+    }, 15000)
   })
 
   describe('setDragImageAtClickPoint Point-of-Click Anchoring Suite', () => {

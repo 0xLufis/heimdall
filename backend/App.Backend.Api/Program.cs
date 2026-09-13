@@ -112,7 +112,10 @@ builder.Services.AddScoped<OpcUaGatewayService>();
 builder.Services.AddScoped<CopiaIntegrationService>();
 builder.Services.AddScoped<ReportExportService>();
 builder.Services.AddScoped<PredictiveMaintenanceService>();
-builder.Services.AddSingleton<App.Backend.Api.Services.Plugins.IPluginService, App.Backend.Api.Services.Plugins.PluginService>();
+builder.Services.AddSingleton<App.Backend.Api.Services.Plugins.IPluginService>(sp =>
+    new App.Backend.Api.Services.Plugins.PluginService(
+        sp.GetRequiredService<IServiceScopeFactory>(),
+        sp.GetRequiredService<ILogger<App.Backend.Api.Services.Plugins.PluginService>>()));
 
 // --- 3. Authentication & Authorization ---
 builder.Services.AddAuthentication("BetterAuth")

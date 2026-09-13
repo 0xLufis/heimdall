@@ -14,28 +14,41 @@ using App.Shared.Entities;
 using App.Shared.Plugins;
 using App.Shared.Sanitization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 public class PluginService : IPluginService
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IServiceScopeFactory? _scopeFactory;
+    private readonly AppDbContext? _directDbContext;
     private readonly ILogger<PluginService> _logger;
     private readonly ConcurrentDictionary<string, PluginPackageBundle> _plugins = new(StringComparer.OrdinalIgnoreCase);
     private readonly RSA _rsa;
 
+    [ActivatorUtilitiesConstructor]
+    public PluginService(IServiceScopeFactory scopeFactory, ILogger<PluginService> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+        _rsa = InitRsa();
+    }
+
     public PluginService(AppDbContext dbContext, ILogger<PluginService> logger)
     {
-        _dbContext = dbContext;
+        _directDbContext = dbContext;
         _logger = logger;
+        _rsa = InitRsa();
+    }
 
-        // Initialize RSA cryptographic authority
-        _rsa = RSA.Create(2048);
+    private RSA InitRsa()
+    {
+        var rsa = RSA.Create(2048);
         string? privateKeyPem = Environment.GetEnvironmentVariable("HEIMDALL_MASTER_PRIVATE_KEY");
         if (!string.IsNullOrEmpty(privateKeyPem))
         {
             try
             {
-                _rsa.ImportFromPem(privateKeyPem);
+                rsa.ImportFromPem(privateKeyPem);
                 _logger.LogInformation("Loaded master RSA signing key from environment.");
             }
             catch (Exception ex)
@@ -43,6 +56,22 @@ public class PluginService : IPluginService
                 _logger.LogWarning(ex, "Failed to parse HEIMDALL_MASTER_PRIVATE_KEY PEM. Generated ephemeral key pair.");
             }
         }
+        return rsa;
+    }
+
+    private (AppDbContext Db, IDisposable? Scope) GetDbContext()
+    {
+        if (_directDbContext != null)
+        {
+            return (_directDbContext, null);
+        }
+        if (_scopeFactory != null)
+        {
+            var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            return (db, scope);
+        }
+        throw new InvalidOperationException("Neither AppDbContext nor IServiceScopeFactory was provided to PluginService.");
     }
 
     public string GetMasterPublicKeyPem()
@@ -147,50 +176,66 @@ public class PluginService : IPluginService
         var bundle = await GetPluginBundleAsync(pluginId);
         if (bundle == null) return false;
 
-        var clientPc = await _dbContext.ClientPcs.FindAsync(clientPcId);
-        if (clientPc == null) return false;
-
-        string payloadJson = JsonSerializer.Serialize(bundle);
-        byte[] payloadBytes = Encoding.UTF8.GetBytes(payloadJson);
-        byte[] sigBytes = _rsa.SignData(payloadBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-        string commandSignature = Convert.ToBase64String(sigBytes);
-
-        var command = new QueuedAgentCommand
+        var (db, scope) = GetDbContext();
+        try
         {
-            Id = Guid.NewGuid(),
-            ClientPcId = clientPc.Id,
-            Type = "INSTALL_PLUGIN",
-            Payload = payloadJson,
-            Signature = commandSignature,
-            IsProcessed = false,
-            CreatedAt = DateTime.UtcNow
-        };
+            var clientPc = await db.ClientPcs.FindAsync(clientPcId);
+            if (clientPc == null) return false;
 
-        _dbContext.QueuedAgentCommands.Add(command);
-        await _dbContext.SaveChangesAsync();
+            string payloadJson = JsonSerializer.Serialize(bundle);
+            byte[] payloadBytes = Encoding.UTF8.GetBytes(payloadJson);
+            byte[] sigBytes = _rsa.SignData(payloadBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            string commandSignature = Convert.ToBase64String(sigBytes);
 
-        _logger.LogInformation("Queued INSTALL_PLUGIN command for {PluginId} targeting client PC {ClientPcId} ({Hostname})",
-            pluginId, clientPcId, clientPc.Hostname);
+            var command = new QueuedAgentCommand
+            {
+                Id = Guid.NewGuid(),
+                ClientPcId = clientPc.Id,
+                Type = "INSTALL_PLUGIN",
+                Payload = payloadJson,
+                Signature = commandSignature,
+                IsProcessed = false,
+                CreatedAt = DateTime.UtcNow
+            };
 
-        return true;
+            db.QueuedAgentCommands.Add(command);
+            await db.SaveChangesAsync();
+
+            _logger.LogInformation("Queued INSTALL_PLUGIN command for {PluginId} targeting client PC {ClientPcId} ({Hostname})",
+                pluginId, clientPcId, clientPc.Hostname);
+
+            return true;
+        }
+        finally
+        {
+            scope?.Dispose();
+        }
     }
 
     public async Task<bool> PushPluginToMachineAsync(string pluginId, Guid machineId)
     {
-        var machine = await _dbContext.Machines
-            .Include(m => m.Controllers)
-            .FirstOrDefaultAsync(m => m.Id == machineId);
-
-        if (machine == null || !machine.Controllers.Any()) return false;
-
-        bool pushedAny = false;
-        foreach (var ctrl in machine.Controllers)
+        var (db, scope) = GetDbContext();
+        try
         {
-            bool success = await PushPluginToAgentAsync(pluginId, ctrl.Id);
-            if (success) pushedAny = true;
-        }
+            var machine = await db.Machines
+                .Include(m => m.Controllers)
+                .FirstOrDefaultAsync(m => m.Id == machineId);
 
-        return pushedAny;
+            if (machine == null || !machine.Controllers.Any()) return false;
+
+            bool pushedAny = false;
+            foreach (var ctrl in machine.Controllers)
+            {
+                bool success = await PushPluginToAgentAsync(pluginId, ctrl.Id);
+                if (success) pushedAny = true;
+            }
+
+            return pushedAny;
+        }
+        finally
+        {
+            scope?.Dispose();
+        }
     }
 
     public Task<bool> DeletePluginAsync(string pluginId)
