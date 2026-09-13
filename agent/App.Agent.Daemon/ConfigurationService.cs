@@ -30,6 +30,7 @@ public class AgentConfig
     public double DeadbandTolerancePercentage { get; set; } = 1.0;
     public int MaxSpoolDiskMb { get; set; } = 500;
     public int HeartbeatIntervalSeconds { get; set; } = 10;
+    public int HardwarePollIntervalSeconds { get; set; } = 30; // Min 10-30s cache TTL for stable hardware metrics (POLL-001/002)
 }
 
 public class ConfigurationService

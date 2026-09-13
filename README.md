@@ -57,10 +57,11 @@ heimdall/
 ├── tools/
 │   ├── cad/                 # Synthetic DXF CAD floor plan generator
 │   ├── completions/         # Shell completions (bash/zsh)
-│   └── dev_manager.py       # Unified development service orchestrator & monitor
+│   ├── dev_manager.py       # Unified development service orchestrator & monitor
+│   └── generate_sequence_diagrams.py # Code-to-Mermaid sequence diagram generator
 ├── tests/                   # Unified Verification Suites
-│   ├── backend/             # xUnit integration & unit tests (67 tests)
-│   ├── frontend/unit/       # Vitest unit tests (18 suites, 126 tests)
+│   ├── backend/             # xUnit integration & unit tests (83 tests)
+│   ├── frontend/unit/       # Vitest unit tests (32 suites, 241 tests)
 │   └── e2e/                 # Playwright browser automation tests
 ├── run_dev.sh               # Local development environment launcher script
 └── run_simulators.sh        # Multi-client fleet simulator orchestrator
@@ -232,16 +233,19 @@ source <(./run_dev.sh completion zsh)    # for Zsh
 ## Running Verification Tests
 
 ```bash
-# 1. Run .NET backend unit & integration tests (xUnit, 67 tests)
+# 1. Run .NET backend unit & integration tests (xUnit, 83 tests)
 dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
 
-# 2. Run Nuxt frontend unit test suites (Vitest, 18 suites, 126 tests)
+# 2. Run Nuxt frontend unit test suites (Vitest, 32 suites, 241 tests)
 bun --cwd frontend/web run test:unit
 
 # 3. Run Python fleet simulator & mock CMI runner tests (9 tests)
 ./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
 
-# 4. Run Playwright end-to-end browser tests
+# 4. Run Sequence Diagram validation (Mermaid code-to-diagram check)
+python3 tools/generate_sequence_diagrams.py --check
+
+# 5. Run Playwright end-to-end browser tests
 cd frontend/web && bun x playwright test
 ```
 
@@ -250,7 +254,7 @@ cd frontend/web && bun x playwright test
 ## Enterprise Integrations & Governance
 
 Heimdall includes built-in enterprise tooling for manufacturing IT/OT environments:
-- **Canonical Plant Dataset:** Driven by `fixtures/enterprise_plant_dataset.json`, defining 4 tenant organizations, 6 directory security groups, 8 consolidated users, 6 VLAN-partitioned OUs (VLANs 10–60), and 12 edge client PCs.
+- **Canonical Plant Dataset:** Driven by `fixtures/enterprise_plant_dataset.json`, defining 16 tenant organizations, 10 directory security groups, 60 consolidated users, 14 VLAN-partitioned OUs (VLANs 10–60), 56 edge IPC controllers, and 100 plant machines across 8 automated lines.
 - **Simulated Active Directory & Mock Graph:** Emulates Microsoft Graph (`/api/ad-mock/v1.0/*`) and RFC 4511 LDAP directory search endpoints, plus a standalone Python server on port 5088 (`simulators/active_directory/mock_ad_server.py`).
 - **Mock CMI Runner & Edge PC Containers:** Emulates Windows WMI (`wmic`) and PowerShell (`Get-CimInstance`) queries on Linux edge containers (`simulators/fleet/docker-compose.simulated-pc.yml`), exposing hardware diagnostics on port 8080.
 - **Better-Auth Entra ID / AD Security Group Org Governance:** Evaluates directory claims to dynamically provision organizations and assign tenant roles (`owner`, `admin`, `member`) via `/dashboard/security-groups`.
@@ -274,6 +278,7 @@ Heimdall is designed in accordance with **VDA ISA 6.0 (TISAX High Protection Nee
 Comprehensive technical documentation is maintained in the [`docs/`](docs/Home.md) directory:
 
 - [Documentation Index](docs/Home.md) - Master documentation directory and overview.
+- [Master Sequence Diagrams Gallery](docs/architecture/SEQUENCE_DIAGRAMS.md) - Mermaid sequence diagrams for telemetry, maintenance lifecycle, AD discovery, PKI enrollment, and agent loops.
 - [System Architecture & Data Model](docs/architecture/SYSTEM_ARCHITECTURE.md) - Graph-relational $M:N$ domain model, database schemas, and caching architecture.
 - [Edge Agent & Protocols](docs/architecture/EDGE_AGENT_AND_PROTOCOLS.md) - Edge daemon lifecycle, DAG recipe merger, 4-tier bandwidth throttling, offline SQLite spooling, and industrial protocol drivers (TwinCAT ADS, EtherCAT, OPC UA, Modbus TCP).
 - [Security, Encryption & Compliance](docs/architecture/SECURITY_AND_COMPLIANCE.md) - AES-256-GCM field-level encryption, signed remote command execution, PII exclusion engine, and TISAX (VDA ISA 6.0) / GDPR mappings.
@@ -281,6 +286,7 @@ Comprehensive technical documentation is maintained in the [`docs/`](docs/Home.m
 - [API & Interface Reference](docs/api/API_REFERENCE.md) - Complete REST API endpoints, gRPC telemetry collector protobufs, SignalR hub events, DTOs, and OPC UA address space.
 - [Developer & Operations Guide](docs/guide/DEV_GUIDE.md) - Local setup, environment prerequisites, building, testing, database migrations, and Docker workflows.
 - [User & Operator Guide](docs/guide/USER_GUIDE.md) - Plant floor operator guide for dashboard monitoring, spatial CAD inspection, and mobile maintenance ticketing.
+- [Thesis Presentation Slide Deck](docs/presentation.md) - Comprehensive slide deck for BSc defense.
 
 ---
 

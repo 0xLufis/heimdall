@@ -85,6 +85,9 @@ public class CacheService : ICacheService
         return default;
     }
 
+    // Track payload hashes for Redis write diffing (STAB-003)
+    private static readonly ConcurrentDictionary<string, string> PayloadHashes = new();
+
     public async Task SetAsync<T>(string key, T value, TimeSpan? absoluteExpiration = null, TimeSpan? slidingExpiration = null)
     {
         if (string.IsNullOrEmpty(key) || value == null) return;
@@ -100,16 +103,27 @@ public class CacheService : ICacheService
         _memoryCache.Set(key, value, memOptions);
         LocalKeys.TryAdd(key, 0);
 
-        // 2. Set L2 Distributed Cache (Redis)
+        // 2. Set L2 Distributed Cache (Redis) with SHA-256 write diffing (STAB-003)
         try
         {
             var json = JsonSerializer.Serialize(value, JsonOptions);
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var hashBytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json));
+            var hash = Convert.ToHexString(hashBytes);
+
+            if (PayloadHashes.TryGetValue(key, out var prevHash) && prevHash == hash)
+            {
+                // Payload hash is unchanged; skip redundant Redis serialization and network write
+                return;
+            }
+
             var distOptions = new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = absExp,
                 SlidingExpiration = slidingExpiration
             };
             await _distributedCache.SetStringAsync(key, json, distOptions);
+            PayloadHashes[key] = hash;
         }
         catch (Exception ex)
         {
@@ -139,6 +153,7 @@ public class CacheService : ICacheService
 
         _memoryCache.Remove(key);
         LocalKeys.TryRemove(key, out _);
+        PayloadHashes.TryRemove(key, out _);
 
         try
         {
@@ -154,7 +169,7 @@ public class CacheService : ICacheService
     {
         if (string.IsNullOrEmpty(pattern)) return;
 
-        // Clean from L1 local keys
+        // Clean from L1 local keys and diff hashes
         var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern).Replace("\\*", ".*") + "$";
         var regex = new System.Text.RegularExpressions.Regex(regexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
@@ -164,6 +179,7 @@ public class CacheService : ICacheService
             {
                 _memoryCache.Remove(k);
                 LocalKeys.TryRemove(k, out _);
+                PayloadHashes.TryRemove(k, out _);
             }
         }
 

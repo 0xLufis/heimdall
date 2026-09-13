@@ -22,15 +22,15 @@ class TestSimulatedPcIntegration(unittest.TestCase):
         devices = self.ad_service.get_devices()
         self.assertGreaterEqual(len(devices), 10)
         hostnames = [d['deviceHostName'] for d in devices]
-        self.assertIn('CPC-L06-ROB-01', hostnames)
-        self.assertIn('CPC-L09-VIS-01', hostnames)
-        self.assertIn('CPC-L06-SCR-01', hostnames)
+        self.assertIn('IPC-L01-OP030-DEDICATED', hostnames)
+        self.assertIn('IPC-L01-CONVEYOR-MAIN', hostnames)
+        self.assertIn('IPC-L01-ROB-ALPHA', hostnames)
 
     def test_simulated_pc_state_and_cmi(self):
-        s = SimulatedPcState('CPC-L06-SCR-01')
-        self.assertEqual(s.pc.get('machineType'), 'Screwing Station')
+        s = SimulatedPcState('IPC-L01-ROB-ALPHA')
+        self.assertEqual(s.pc.get('machineType'), 'IndustrialController')
         bios_out = s.engine.execute('wmic bios get SerialNumber /value')
-        self.assertIn('BIOS-L06-SCR-01', bios_out)
+        self.assertIn('BIOS-IPC-L01-ROB-ALPHA', bios_out)
 
     def test_simulated_pc_system_info_request_generation(self):
         req = build_system_info_request()

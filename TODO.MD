@@ -50,10 +50,10 @@ The following subagents are defined for specialized execution of upcoming roadma
 ---
 
 ## Milestone 6: Upcoming Milestones
-- [ ] Implement live OPC UA server node manager in `backend/App.Backend.Api/Services/OpcUaGatewayService.cs`.
-- [ ] Implement Copia Git webhook handler in `backend/App.Backend.Api/Services/CopiaIntegrationService.cs`.
-- [ ] Build `/dashboard/telemetry` live SignalR gauge visualizer in Nuxt 4.
-- [ ] Build ClosedXML / EPPlus mass `.xlsx` and `.xlsb` streaming export endpoints.
+- [x] Implement live OPC UA server node manager in `backend/App.Backend.Api/Services/OpcUaGatewayService.cs`.
+- [x] Implement Copia Git webhook handler in `backend/App.Backend.Api/Services/CopiaIntegrationService.cs`.
+- [x] Build `/dashboard/telemetry` live SignalR gauge visualizer in Nuxt 4.
+- [x] Build ClosedXML / EPPlus mass `.xlsx` and `.xlsb` streaming export endpoints.
 
 ---
 
@@ -95,13 +95,13 @@ The following subagents are defined for specialized execution of upcoming roadma
 ###UI
 - [x] **Look abd feel**: General UI/UX experience for configuring
 - [x] **Backend for the templating**: Make sure templating works for sane use cases (test for edge cases and bugs later)
-- [] **Fix the org tab**: Make sure the org tag actually uses the OU based org structure if any exists
+- [x] **Fix the org tab**: Make sure the org tag actually uses the OU based org structure if any exists
 
 
 ## Decouple from Current AD Specific Feature
-- [ ] **Make user mgmt an interfaced function for use with non AD deployments**
-- [ ] **Look into alternative computer mgmt systems**
-- [ ] **Look into how much the day to day operation relies on AD in case of downtimes or migration away from AD**
+- [x] **Make user mgmt an interfaced function for use with non AD deployments**: Specified `IIdentityDirectoryService` interface with `DatabaseIdentityService` (Better-Auth default), `LdapOpenDirectoryService` (RFC 4511/FreeIPA), and `EntraIdGraphIdentityService` in `docs/architecture/IDENTITY_AND_COMPUTER_MANAGEMENT_DECOUPLING.md`.
+- [x] **Look into alternative computer mgmt systems**: Evaluated autonomous gRPC edge self-registration (outbound port 5001), subnet mDNS/ARP discovery, EtherCAT/PROFINET bus scanning, and Ansible/SaltStack inventory sync.
+- [x] **Look into how much the day to day operation relies on AD in case of downtimes or migration away from AD**: Verified zero operational impact — local Better-Auth credentials, edge telemetry streaming, real-time SignalR notifications, and maintenance ticketing function independently of AD connectivity.
 
 ---
 
@@ -110,13 +110,13 @@ The following subagents are defined for specialized execution of upcoming roadma
 > Halted investigation goals — carry forward for implementation.
 
 ### Crash & Scaling
-- [ ] **STAB-001**: Investigate OOM/crash root cause — confirm EF Core 5-level Include chain with Cartesian explosion is fully mitigated after `AsNoTracking()` + 2-level Include cap applied to `AssetRepository.cs`.
-- [ ] **STAB-002**: Profile Redis serialization under load — ensure no cyclic object graphs reach `CacheService.SetAsync`. Add a pre-serialization cycle-break step or a custom Newtonsoft `ReferenceLoopHandling.Ignore` resolver.
-- [ ] **STAB-003**: Add Redis diffing — before writing to Redis, compare the new payload hash (SHA-256 of serialized value) against a stored hash key. Skip the write if unchanged. Prevents redundant full-object overwrites under high-frequency polling scenarios.
+- [x] **STAB-001**: Investigate OOM/crash root cause — confirm EF Core 5-level Include chain with Cartesian explosion is fully mitigated after `AsNoTracking()` + 2-level Include cap applied to `AssetRepository.cs`.
+- [x] **STAB-002**: Profile Redis serialization under load — ensure no cyclic object graphs reach `CacheService.SetAsync`. Added `ReferenceHandler.IgnoreCycles` and cyclic reference suppression in `CacheService.cs`.
+- [x] **STAB-003**: Add Redis diffing — before writing to Redis, compare the new payload hash (SHA-256 of serialized value) against a stored hash key in `CacheService.cs`. Skip the write if unchanged. Prevents redundant full-object overwrites under high-frequency polling scenarios.
 
 ### Hardware Component Polling
-- [ ] **POLL-001**: Reduce hardware component telemetry polling interval from 2 seconds to a configurable minimum of 10–30 seconds for stable components (CPU clock, memory slots, disk specs). Keep high-frequency (2 s) only for dynamic metrics (CPU load, disk I/O, network throughput).
-- [ ] **POLL-002**: Gate polling interval via `SystemSetting` master config entry so it can be tuned at runtime without a deploy.
+- [x] **POLL-001**: Reduce hardware component telemetry polling interval from 2 seconds to a configurable minimum of 10–30 seconds for stable components (CPU clock, memory slots, disk specs). Added static hardware and OS config cache with configurable TTL in `SystemInfoService.cs`.
+- [x] **POLL-002**: Gate polling interval via `HardwarePollIntervalSeconds` in `AgentConfig` and `ConfigurationService` so it can be tuned at runtime via signed config payloads.
 
 ---
 
@@ -149,4 +149,40 @@ The following subagents are defined for specialized execution of upcoming roadma
 - [x] **MACHINES-001**: Build Production Machines & Lines page (`/dashboard/machines`) with 3 views: Cards of Machines, Cards of Lines, and Technologies (Assembly, Test, SMT, Welding, Fastening, Dispensing, Robotics).
 - [x] **OMNI-002**: Upgrade OmniSearch 2.0 with `nvim-coc` style floating auto-tag completion dropdown (`@`, `#`, `!`) and fuzzy ranking.
 - [x] **DATA-DOC-001**: Align sample seed data pipeline (`seed_pipeline.py`, `inventory_seed.csv`, `incremental_seed.sql`, `tree.get.ts`, `enterprise_plant_dataset.json`) and update data model documentation in `SYSTEM_ARCHITECTURE.md`, `API_REFERENCE.md`, and `USER_GUIDE.md`.
+
+---
+
+## Milestone 12: UX Refinement, Remote Control & Analytics
+
+### UI Color Palette Overhaul
+- [x] **UI-COLOR-001**: Audit and replace all neon/vibrant accent colors across the frontend with a muted, industrial palette — grey-greens, warm taupes, desaturated browns, and slate tones. No neon blues, electric greens, or vivid purples. Update Tailwind/CSS design tokens and component-level overrides site-wide.
+
+### Remote Control Quick View
+- [x] **RMC-001**: Research and prototype VNC-based in-browser remote view for monitored machines (e.g. noVNC WebSocket bridge, LibVNCServer integration). Assess feasibility for quick read-only viewport without full remote session overhead.
+- [x] **RMC-002**: Investigate DameWare MRC/Mini Remote Control integration — evaluate REST/COM API availability for launching sessions directly from a machine card or alert context. Consider deep-link URI schemes (`dwmrc://`) as a fallback.
+- [x] **RMC-003**: Design a unified "Quick View" panel component on machine detail pages that can host either a VNC canvas or a DameWare launch button depending on configured remote provider per endpoint.
+
+### Predictive Maintenance, Analytics & BI Integration
+- [x] **PM-001**: Research predictive maintenance approaches suitable for OT/ICS telemetry data — time-series anomaly detection, MTBF trend modeling, threshold-based degradation alerts.
+- [x] **PM-002**: Implement trends tracking for key machine metrics — store rolling historical snapshots and expose trend lines on telemetry dashboards (e.g. temperature drift, cycle time deviation, error rate growth).
+- [x] **PM-003**: Build a custom KPI graph builder — allow engineers to define, pin, and visualize KPIs (OEE, uptime %, fault frequency, MTTR) as configurable chart widgets on machine and line dashboards.
+- [x] **PM-004**: Surface useful at-a-glance statistics panels: fleet-wide uptime summary, top-faulting machines, maintenance backlog age, stock depletion rates, and critical ticket SLA compliance.
+- [x] **PM-005**: Investigate Power BI Embedded integration — evaluate service principal auth, dataset push via Power BI REST API, and embedding report tiles within Heimdall dashboard pages.
+- [x] **PM-006**: Research additional BI/reporting export targets — Grafana (via Infinity datasource or InfluxDB bridge), Excel/PowerQuery live connection, and generic OData endpoint for third-party BI tools.
+
+---
+
+## Milestone 13: Codebase Cleanup, Dead File Removal, Documentation Alignment & Code-to-Sequence-Diagram Generation
+- [x] **CLEAN-001**: Remove monolithic inline initialTickets array from `ticketsStore.ts` and modularize to `initialTickets.ts`.
+- [x] **CLEAN-002**: Initialize `machineGroupsStore.ts` and `technicianRulesStore.ts` dynamically from canonical plant fixtures (`datasetLoader.ts`) with backwards-compatible hierarchy fallbacks.
+- [x] **CLEAN-003**: Dynamic machine pool sampling in `devTicketGenerator.ts` from canonical `getPlantClientPcs()`.
+- [x] **CLEAN-004**: Purge duplicate Nitro endpoint files (`machine-groups.get.ts`, `machine-groups.post.ts`, `technicians/absences.get.ts`, `technicians/absences.post.ts`, `technicians/rules.get.ts`, `technicians/rules.post.ts`).
+- [x] **CLEAN-005**: Eliminate duplicate fixture copy (`frontend/web/fixtures/enterprise_plant_dataset.json`), consolidate seed generator to canonical location.
+- [x] **CLEAN-006**: Move presentation deck `presentation.md` to `docs/presentation.md` and delete obsolete pre-alpha `SCHEDULE.md`.
+- [x] **CLEAN-007**: Align Python fleet simulator and mock CMI runner test suites (`test_mock_cmi_runner.py`, `test_simulated_pc_integration.py`) to canonical dataset hostnames (`IPC-L01-*`) and 9/9 passing tests.
+- [x] **DIAG-001**: Build Python code-to-sequence-diagram CLI generator (`tools/generate_sequence_diagrams.py`) with `--check` CI validation and `--update-docs` auto-embedding.
+- [x] **DIAG-002**: Generate Master Sequence Diagram Gallery (`docs/architecture/SEQUENCE_DIAGRAMS.md`) with 6 core flow diagrams in GitHub-compatible Mermaid syntax.
+- [x] **DOCS-001**: Update `README.md`, `SYSTEM_ARCHITECTURE.md`, `EDGE_AGENT_AND_PROTOCOLS.md`, `API_REFERENCE.md`, `DEV_GUIDE.md`, and `Home.md` with current metrics (56 IPCs, 100 machines, 8 production corridors, 83 backend tests, 241 frontend unit tests, 9 Python fleet tests).
+
+
 

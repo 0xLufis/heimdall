@@ -25,8 +25,8 @@ heimdall/
 ├── infra/
 │   └── database/            # PostgreSQL 18, Redis 7.4, SSL certs, and seed data
 ├── tests/
-│   ├── backend/             # xUnit backend integration tests (67 tests)
-│   ├── frontend/unit/       # Vitest unit test suites (18 suites, 126 tests)
+│   ├── backend/             # xUnit backend integration tests (83 tests)
+│   ├── frontend/unit/       # Vitest unit test suites (32 suites, 241 tests)
 │   └── e2e/                 # Playwright browser end-to-end tests
 ├── docker-compose.yml       # Full stack local development compose file
 ├── run_dev.sh               # Local development launch script
@@ -156,14 +156,14 @@ docker compose down
 ```bash
 dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
 ```
-Executes 67 tests covering multi-tenancy global query filters, MFA policy rules, Active Directory OU synchronization, entity inheritance, AES-256-GCM encryption roundtrips, PII exclusion rules, and gRPC endpoints.
+Executes 83 tests covering multi-tenancy global query filters, MFA policy rules, Active Directory OU synchronization, entity inheritance, AES-256-GCM encryption roundtrips, PII exclusion rules, predictive maintenance thresholds, and gRPC endpoints.
 
 ### 5.2 Frontend Unit Tests (Vitest)
 ```bash
 cd frontend/web
 bun run test:unit
 ```
-Executes 30 test suites (223 tests) covering rule reordering with drag-and-drop point-of-click anchoring, FMFD search keyboard shortcuts, 8-stage Kanban lifecycle, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, and all page routing.
+Executes 32 test suites (241 tests) covering rule reordering with drag-and-drop point-of-click anchoring, FMFD search keyboard shortcuts, 8-stage Kanban lifecycle, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, remote controller modal quick view, predictive maintenance metrics, and all page routing.
 
 ### 5.3 Python Fleet Simulator & Mock CMI Tests
 ```bash
@@ -177,3 +177,9 @@ cd frontend/web
 bun x playwright test
 ```
 Executes end-to-end browser automation validating MFA policy enforcement, Active Directory host discovery, and security group organization provisioning.
+
+### 5.5 Sequence Diagram Verification
+```bash
+python3 tools/generate_sequence_diagrams.py --check
+```
+Validates that generated sequence diagrams match the C# controllers, gRPC telemetry services, and SignalR hub code contracts. Run with `--update-docs` to synchronize diagrams across system documentation.

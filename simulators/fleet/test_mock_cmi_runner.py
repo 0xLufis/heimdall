@@ -14,37 +14,37 @@ from mock_cmi_runner import MockCmiEngine
 class TestMockCmiRunner(unittest.TestCase):
     def test_dataset_loader_reads_canonical_dataset(self):
         dataset = load_enterprise_dataset()
-        self.assertEqual(dataset.get('metadata', {}).get('plantName'), 'Smart Factory Giga-01')
+        self.assertEqual(dataset.get('metadata', {}).get('plantName'), 'Smart Factory Giga-01 (AI Synthetic Facility)')
         pcs = get_all_client_pcs()
         self.assertGreaterEqual(len(pcs), 10)
 
     def test_mock_cmi_wmic_os_query(self):
-        engine = MockCmiEngine(hostname='CPC-L06-ROB-01')
+        engine = MockCmiEngine(hostname='IPC-L01-OP030-DEDICATED')
         output = engine.execute('wmic os get Caption,Version /value')
-        self.assertIn('Caption=Microsoft Windows 10 IoT Enterprise LTSC', output)
+        self.assertIn('Caption=Microsoft Windows 10 IoT Enterprise 2021 LTSC', output)
         self.assertIn('Version=10.0.19045', output)
 
     def test_mock_cmi_wmic_cpu_query(self):
-        engine = MockCmiEngine(hostname='CPC-L09-VIS-01')
+        engine = MockCmiEngine(hostname='IPC-L01-OP030-DEDICATED')
         output = engine.execute('wmic cpu get Name,NumberOfCores /value')
-        self.assertIn('Name=Intel(R) Core(TM) i9-13900E CPU @ 3.00GHz', output)
-        self.assertIn('NumberOfCores=24', output)
+        self.assertIn('Name=Intel(R) Core(TM) i7-1185GRE @ 2.80GHz', output)
+        self.assertIn('NumberOfCores=8', output)
 
     def test_mock_cmi_wmic_bios_query(self):
-        engine = MockCmiEngine(hostname='CPC-L06-SCR-01')
+        engine = MockCmiEngine(hostname='IPC-L01-ROB-ALPHA')
         output = engine.execute('wmic bios get SerialNumber /value')
-        self.assertIn('SerialNumber=BIOS-L06-SCR-01', output)
+        self.assertIn('SerialNumber=BIOS-IPC-L01-ROB-ALPHA', output)
 
     def test_mock_cmi_powershell_cim_query(self):
-        engine = MockCmiEngine(hostname='CPC-L06-ROB-01')
+        engine = MockCmiEngine(hostname='IPC-L01-OP030-DEDICATED')
         output = engine.execute('Get-CimInstance Win32_BIOS')
         self.assertIn('SerialNumber', output)
-        self.assertIn('BIOS-L06-ROB-01', output)
+        self.assertIn('BIOS-IPC-L01-OP030-DEDICATED', output)
 
     def test_mock_cmi_disk_and_memory(self):
-        engine = MockCmiEngine(hostname='CPC-L03-MIL-01')
+        engine = MockCmiEngine(hostname='IPC-L01-OP030-DEDICATED')
         mem = engine.execute('wmic memorychip get Capacity /value')
-        self.assertIn('Capacity=17179869184', mem)
+        self.assertIn('Capacity=34359738368', mem)
         disk = engine.execute('wmic logicaldisk get Caption,FreeSpace /value')
         self.assertIn('Caption=C:', disk)
 

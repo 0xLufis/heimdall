@@ -624,3 +624,23 @@ Root (i=84)
             ├── ActiveNodesCount (Int32)
             └── SystemHealth (String)
 ```
+
+
+### 2.5 Real-Time Maintenance Event Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Web Client
+    participant API as MaintenanceTicketController
+    participant DB as Database
+    participant Hub as MaintenanceHub (SignalR)
+    actor Subscribers as All Connected Operators
+
+    Client->>+API: PATCH /api/v1/MaintenanceTicket/<built-in function id>/status ("Resolved")
+    API->>DB: UpdateStatusAsync(id, "Resolved")
+    DB-->>API: Updated
+    API->>+Hub: Clients.All.StatusChanged(id, "Resolved")
+    Hub-->>-Subscribers: Real-Time Event: StatusChanged
+    API-->>-Client: 204 NoContent
+```

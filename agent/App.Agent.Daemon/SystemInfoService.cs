@@ -78,10 +78,22 @@ public class EventLogInfo
 public class SystemInfoService
 {
     private readonly ILogger<SystemInfoService> _logger;
+    private readonly ConfigurationService? _configService;
 
-    public SystemInfoService(ILogger<SystemInfoService> logger)
+    // In-memory cache for stable hardware & software metrics (POLL-001/POLL-002)
+    private static HardwareInfo? _cachedHardware;
+    private static DateTimeOffset _hardwareCachedAt = DateTimeOffset.MinValue;
+    private static SoftwareInfo? _cachedSoftware;
+    private static DateTimeOffset _softwareCachedAt = DateTimeOffset.MinValue;
+    private static string? _cachedMachineIdentifier;
+    private static string? _cachedMacAddress;
+
+    public TimeSpan HardwareCacheTtl => TimeSpan.FromSeconds(_configService?.Config.HardwarePollIntervalSeconds ?? 30);
+
+    public SystemInfoService(ILogger<SystemInfoService> logger, ConfigurationService? configService = null)
     {
         _logger = logger;
+        _configService = configService;
     }
 
     public SystemInfoData GetSystemInfo()
@@ -146,6 +158,9 @@ public class SystemInfoService
 
     private string GetMachineIdentifier()
     {
+        if (!string.IsNullOrEmpty(_cachedMachineIdentifier)) return _cachedMachineIdentifier;
+
+        string id = $"{Environment.MachineName}-{Environment.OSVersion}";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             try
@@ -153,7 +168,8 @@ public class SystemInfoService
                 using var searcher = new ManagementObjectSearcher("SELECT UUID FROM Win32_ComputerSystemProduct");
                 foreach (var obj in searcher.Get())
                 {
-                    return obj["UUID"]?.ToString() ?? "Unknown UUID";
+                    id = obj["UUID"]?.ToString() ?? "Unknown UUID";
+                    break;
                 }
             }
             catch { }
@@ -162,32 +178,43 @@ public class SystemInfoService
         {
             try
             {
-                if (File.Exists("/etc/machine-id")) return File.ReadAllText("/etc/machine-id").Trim();
-                if (File.Exists("/var/lib/dbus/machine-id")) return File.ReadAllText("/var/lib/dbus/machine-id").Trim();
+                if (File.Exists("/etc/machine-id")) id = File.ReadAllText("/etc/machine-id").Trim();
+                else if (File.Exists("/var/lib/dbus/machine-id")) id = File.ReadAllText("/var/lib/dbus/machine-id").Trim();
             }
             catch { }
         }
-        return $"{Environment.MachineName}-{Environment.OSVersion}";
+
+        _cachedMachineIdentifier = id;
+        return id;
     }
 
     private string GetMacAddress()
     {
+        if (!string.IsNullOrEmpty(_cachedMacAddress)) return _cachedMacAddress;
+
         var nic = NetworkInterface
             .GetAllNetworkInterfaces()
             .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
             .OrderByDescending(nic => nic.Speed)
             .FirstOrDefault();
 
+        string mac = "00:00:00:00:00:00";
         if (nic != null)
         {
-            return string.Join(":", nic.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")));
+            mac = string.Join(":", nic.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")));
         }
 
-        return "00:00:00:00:00:00";
+        _cachedMacAddress = mac;
+        return mac;
     }
 
     private HardwareInfo GetHardwareConfig()
     {
+        if (_cachedHardware != null && (DateTimeOffset.UtcNow - _hardwareCachedAt) < HardwareCacheTtl)
+        {
+            return _cachedHardware;
+        }
+
         var config = new HardwareInfo();
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -223,6 +250,8 @@ public class SystemInfoService
             config.Ram = GetLinuxRamInfo();
         }
 
+        _cachedHardware = config;
+        _hardwareCachedAt = DateTimeOffset.UtcNow;
         return config;
     }
 
@@ -427,6 +456,11 @@ public class SystemInfoService
 
     private SoftwareInfo GetSoftwareConfig()
     {
+        if (_cachedSoftware != null && (DateTimeOffset.UtcNow - _softwareCachedAt) < HardwareCacheTtl)
+        {
+            return _cachedSoftware;
+        }
+
         var info = new SoftwareInfo
         {
             OsVersion = RuntimeInformation.OSDescription,
@@ -443,6 +477,8 @@ public class SystemInfoService
             catch { }
         }
 
+        _cachedSoftware = info;
+        _softwareCachedAt = DateTimeOffset.UtcNow;
         return info;
     }
 

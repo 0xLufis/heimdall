@@ -6,11 +6,20 @@ Welcome to the Heimdall technical documentation suite. The documentation is orga
 
 ## Architecture & Design
 
+* [Master Sequence Diagrams Gallery](architecture/SEQUENCE_DIAGRAMS.md)
+  * End-to-end visual protocol interactions (Mermaid sequence diagrams).
+  * Edge telemetry ingestion, maintenance ticket lifecycle, Active Directory OU discovery, PKI mTLS auto-enrollment, and agent command execution loops.
+
 * [System Architecture & Data Model](architecture/SYSTEM_ARCHITECTURE.md)
   * Manufacturing plant topology and the graph-relational $M:N$ domain model.
   * Complete entity definitions, constraints, indexes, and database schema isolation (`backend` vs. `auth`).
   * Backend service layers, repository patterns, and hybrid L1/L2 caching with offline resilience.
   * Multi-tenant query isolation via Entity Framework Core Global Query Filters.
+
+* [Identity & Computer Management Decoupling Analysis](architecture/IDENTITY_AND_COMPUTER_MANAGEMENT_DECOUPLING.md)
+  * Active Directory dependency footprint and air-gapped offline operational resilience.
+  * Decoupled `IIdentityDirectoryService` provider specification (Better-Auth database, LDAP, Entra ID).
+  * Alternative endpoint management mechanisms: autonomous gRPC self-registration, subnet mDNS/ARP scanning, and CMDB inventory sync.
 
 * [Edge Agent & Protocol Drivers](architecture/EDGE_AGENT_AND_PROTOCOLS.md)
   * Edge daemon lifecycle, scheduling jitter, and background worker loops.
@@ -77,3 +86,10 @@ Welcome to the Heimdall technical documentation suite. The documentation is orga
 * [TwinCAT 3 POU & Interfaces](plc/)
   * `FB_HeimdallTelemetryBridge.TcPOU`: Standalone TwinCAT 3 Function Block providing lock-free atomic double-buffering.
   * `ITcoHeimdallTelemetry.TcIO`: TcOpen OOP component telemetry interface contract.
+
+---
+
+## Academic & Thesis Assets
+
+* [Thesis Defense Presentation Deck](presentation.md)
+  * Complete 16-slide slide deck for BSc defense at PTE MIK.

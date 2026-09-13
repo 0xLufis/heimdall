@@ -299,3 +299,28 @@ During network partitions or central server maintenance, the agent buffers high-
   * Systemd D-Bus interface for service lifecycle tracking.
 * **Process CPU Delta Sampling**:
   Measures process CPU usage by recording user/kernel time deltas divided by system wall-clock elapsed time across sampling intervals, rather than relying on instantaneous, uncalibrated counters.
+
+
+### 1.4 Agent-Backend Communication Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Agent as Edge Agent Daemon
+    participant Grpc as SystemInfoCollector (Port 5001 gRPC)
+    participant DB as PostgreSQL
+    actor Web as Operator Web UI
+
+    loop Baseline Cycle (60s ± 10% Jitter)
+        Agent->>+Grpc: ReportSystemInfo(SystemInfoRequest)
+        Grpc->>DB: Upsert Telemetry & Check Queued Commands
+        DB-->>Grpc: Command List (e.g. UPDATE_CONFIG)
+        Grpc-->>-Agent: SystemInfoResponse(success=true, commands=[...])
+        
+        opt Commands Received
+            Agent->>Agent: Verify Cryptographic Signature (RSA/Ed25519)
+            Agent->>Agent: Apply Recipe Parameters & Restart Drivers
+            Agent->>Grpc: StreamAgentEvents(AgentEventMessage: "Applied")
+        end
+    end
+```

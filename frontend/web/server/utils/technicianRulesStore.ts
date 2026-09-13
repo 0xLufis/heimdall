@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { getPlantTechnicianRules } from './datasetLoader'
 
 export type ScopeType = 'technology' | 'group' | 'machine'
 export type UserRoleType = 'technician' | 'engineer' | 'shift_leader' | 'group_leader' | 'manager' | 'admin'
@@ -158,7 +159,7 @@ export interface TeamsOooEntry {
   simulated?: boolean
 }
 
-let rules: TechnicianRuleEntry[] = [
+const FALLBACK_RULES: TechnicianRuleEntry[] = [
   {
     id: 'rule-sally-milling',
     name: 'Milling Technology Specialist',
@@ -200,6 +201,39 @@ let rules: TechnicianRuleEntry[] = [
     assignedByUserName: 'András Molnár (Plant Manager)'
   }
 ]
+
+function loadInitialRules(): TechnicianRuleEntry[] {
+  const result: TechnicianRuleEntry[] = [...FALLBACK_RULES]
+  try {
+    const datasetRules = getPlantTechnicianRules()
+    if (datasetRules && datasetRules.length > 0) {
+      for (const r of datasetRules) {
+        if (!result.some(existing => existing.id === r.id)) {
+          const raw = (r.scopeType || '').toLowerCase().trim()
+          const normScope: ScopeType = raw.includes('tech') ? 'technology' : (raw.includes('group') || raw.includes('line')) ? 'group' : 'machine'
+          result.push({
+            id: r.id,
+            name: r.name,
+            technicianId: r.technicianId,
+            technicianName: r.technicianName,
+            technicianEmail: r.technicianEmail,
+            scopeType: normScope,
+            targetId: r.targetId,
+            categoryFilter: r.categoryFilter,
+            backupTechnicianId: r.backupTechnicianId,
+            backupTechnicianName: r.backupTechnicianName,
+            assignedByRole: r.assignedByRole
+          })
+        }
+      }
+    }
+  } catch {
+    // Dataset not available, use fallback
+  }
+  return result
+}
+
+let rules: TechnicianRuleEntry[] = loadInitialRules()
 
 let absences: ShiftAbsenceEntry[] = [
   {
