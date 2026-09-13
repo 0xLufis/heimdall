@@ -23,6 +23,7 @@ import {
   Code
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import RbacButton from '~/components/common/RbacButton.vue'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -290,10 +291,10 @@ function handleImportJson(event: Event) {
           Export
         </Button>
 
-        <Button size="sm" @click="handleCreateNew" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium h-8 px-3.5 shadow-sm transition-all border-0">
+        <RbacButton capability="canManageEndpoints" size="sm" @click="handleCreateNew" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium h-8 px-3.5 shadow-sm transition-all border-0">
           <Plus class="size-3.5 mr-1.5" />
           New Template
-        </Button>
+        </RbacButton>
       </div>
     </div>
 
@@ -389,7 +390,8 @@ function handleImportJson(event: Event) {
           <span v-if="saveSuccess" class="text-xs text-emerald-400 font-medium flex items-center gap-1">
             <CheckCircle2 class="size-4" /> Saved
           </span>
-          <Button
+          <RbacButton
+            capability="canManageEndpoints"
             size="sm"
             @click="handleSave"
             :disabled="isSaving"
@@ -397,7 +399,7 @@ function handleImportJson(event: Event) {
           >
             <Check class="size-3.5 mr-1.5" />
             Save Recipe
-          </Button>
+          </RbacButton>
         </div>
       </CardHeader>
 
@@ -439,10 +441,10 @@ function handleImportJson(event: Event) {
                   Signal drivers, sampling strategies, and bandwidth deadbands
                 </p>
               </div>
-              <Button size="sm" @click="addProbe" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium h-8 px-3 shadow-sm border-0">
+              <RbacButton capability="canManageEndpoints" size="sm" @click="addProbe" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium h-8 px-3 shadow-sm border-0">
                 <Plus class="size-3.5 mr-1" />
                 Add Probe
-              </Button>
+              </RbacButton>
             </div>
 
             <div class="space-y-3">

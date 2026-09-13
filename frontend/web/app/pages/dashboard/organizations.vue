@@ -3,13 +3,17 @@ import { ref, watch, onMounted } from 'vue'
 import { authClient } from '~/utils/auth-client'
 import { Plus, Users, Trash2, Building2 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
+import RbacButton from '~/components/common/RbacButton.vue'
 import { Input } from '~/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '~/components/ui/dialog'
 import DashboardOrgCard from '~/components/dashboard/OrgCard.vue'
+import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
+
+const { canAdministerSystem } = useRbacPermission()
 
 const loading = ref(true)
 const creating = ref(false)
@@ -200,13 +204,14 @@ onMounted(() => {
       </div>
 
       <div class="flex items-center gap-3">
-        <Button
+        <RbacButton
+          capability="canAdministerSystem"
           @click="showCreateModal = true"
           class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3.5 h-8 text-xs font-medium shadow-sm transition-colors border-0"
         >
           <Plus class="size-3.5 mr-1.5" />
           <span>Create Organization</span>
-        </Button>
+        </RbacButton>
       </div>
     </div>
 

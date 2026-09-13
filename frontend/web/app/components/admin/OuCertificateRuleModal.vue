@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import {
   Dialog,
   DialogContent,
@@ -57,13 +57,27 @@ watch(
   { immediate: true },
 )
 
-const sampleOus = [
+const sampleOus = ref<string[]>([
   'OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp',
   'OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp',
   'OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp',
   'OU=Milling,OU=VLAN30-Machining,DC=factory,DC=corp',
   'OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp',
-]
+])
+
+onMounted(async () => {
+  try {
+    const ous = await $fetch<any[]>('/api/activedirectory/ous')
+    if (Array.isArray(ous) && ous.length > 0) {
+      const paths = ous.map((o: any) => o.ouPath || o.path || o.dn).filter(Boolean)
+      if (paths.length > 0) {
+        sampleOus.value = paths.slice(0, 8)
+      }
+    }
+  } catch {
+    // Keep fallback sampleOus
+  }
+})
 
 function selectSampleOu(path: string) {
   ouPath.value = path

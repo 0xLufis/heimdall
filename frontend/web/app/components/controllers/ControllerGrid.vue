@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { IndustrialController } from '~/types/domain'
-import { Monitor, Activity, HardDrive, Cpu, Terminal, ChevronRight, MapPin, Link } from 'lucide-vue-next'
+import { Monitor, Activity, HardDrive, Cpu, Terminal, ChevronRight, MapPin, Link, Lock, Eye } from 'lucide-vue-next'
 import { Badge } from '~/components/ui/badge'
+import RbacTooltip from '~/components/common/RbacTooltip.vue'
+import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 
 const props = defineProps<{
   controllers: IndustrialController[]
@@ -13,7 +15,10 @@ const emit = defineEmits<{
   (e: 'queue-command', controller: IndustrialController): void
   (e: 'link-dxf', controller: IndustrialController): void
   (e: 'locate-dxf', handle: string): void
+  (e: 'quick-view', controller: IndustrialController): void
 }>()
+
+const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
 </script>
 
 <template>
@@ -117,13 +122,18 @@ const emit = defineEmits<{
               >
                 View Map
               </button>
-              <button
-                type="button"
-                @click.stop="emit('link-dxf', pc)"
-                class="px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 hover:text-white transition-all"
-              >
-                {{ pc.pinnedObjectHandle ? 'Edit DXF' : '+ Link DXF' }}
-              </button>
+
+              <RbacTooltip :disabled="!canManageEndpoints" :tooltip="RBAC_TOOLTIPS.ENDPOINT_MANAGEMENT">
+                <button
+                  type="button"
+                  :disabled="!canManageEndpoints"
+                  @click.stop="canManageEndpoints && emit('link-dxf', pc)"
+                  class="px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 hover:text-white transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1"
+                >
+                  <Lock v-if="!canManageEndpoints" class="w-3 h-3 text-amber-400" />
+                  <span>{{ pc.pinnedObjectHandle ? 'Edit DXF' : '+ Link DXF' }}</span>
+                </button>
+              </RbacTooltip>
             </div>
           </div>
 
@@ -145,14 +155,33 @@ const emit = defineEmits<{
 
         <!-- Action Footer -->
         <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between">
-          <button
-            type="button"
-            @click="emit('queue-command', pc)"
-            class="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-400 transition-colors"
-          >
-            <Terminal class="w-3.5 h-3.5" />
-            <span>Queue Command</span>
-          </button>
+          <div class="flex items-center gap-3">
+            <RbacTooltip :disabled="!canExecuteRemote" :tooltip="RBAC_TOOLTIPS.REMOTE_EXECUTION">
+              <button
+                type="button"
+                :disabled="!canExecuteRemote"
+                @click="canExecuteRemote && emit('queue-command', pc)"
+                class="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-400 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <Lock v-if="!canExecuteRemote" class="w-3.5 h-3.5 text-amber-400" />
+                <Terminal v-else class="w-3.5 h-3.5" />
+                <span>Queue Command</span>
+              </button>
+            </RbacTooltip>
+
+            <RbacTooltip :disabled="!canExecuteRemote" :tooltip="RBAC_TOOLTIPS.REMOTE_EXECUTION">
+              <button
+                type="button"
+                :disabled="!canExecuteRemote"
+                @click="canExecuteRemote && emit('quick-view', pc)"
+                class="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-cyan-400 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                title="Remote Quick View"
+              >
+                <Eye class="w-3.5 h-3.5 text-slate-400" />
+                <span>Remote</span>
+              </button>
+            </RbacTooltip>
+          </div>
 
           <button
             type="button"

@@ -12,6 +12,7 @@ import { useStations } from '~/composables/useStations'
 import ControllerGrid from '~/components/controllers/ControllerGrid.vue'
 import ControllerTelemetryCard from '~/components/controllers/ControllerTelemetryCard.vue'
 import ControllerCommandModal from '~/components/controllers/ControllerCommandModal.vue'
+import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
 import InteractiveMapCanvas from '~/components/map/InteractiveMapCanvas.vue'
 import MapPinningDialog from '~/components/dashboard/MapPinningDialog.vue'
 import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
@@ -31,6 +32,13 @@ const activeViewMode = ref<'grid' | 'map'>('grid')
 const selectedController = ref<IndustrialController | null>(null)
 const commandTargetController = ref<IndustrialController | null>(null)
 const isCommandModalOpen = ref(false)
+const quickViewTargetController = ref<IndustrialController | null>(null)
+const isQuickViewModalOpen = ref(false)
+
+const handleQuickView = (pc: IndustrialController) => {
+  quickViewTargetController.value = pc
+  isQuickViewModalOpen.value = true
+}
 const searchQuery = ref('')
 
 // Plant CAD Floor Plans Catalog
@@ -342,6 +350,7 @@ const onSearch = (q: string) => {
         @queue-command="handleQueueCommand"
         @link-dxf="handleOpenPinDialogForPc"
         @locate-dxf="handleLocatePin"
+        @quick-view="handleQuickView"
       />
     </template>
 
@@ -428,6 +437,13 @@ const onSearch = (q: string) => {
       :open="isCommandModalOpen"
       @update:open="isCommandModalOpen = $event"
       @submitted="fetchControllers(false)"
+    />
+
+    <!-- Remote Quick View Modal (VNC / DameWare MRC / RDP) -->
+    <RemoteQuickViewModal
+      :controller="quickViewTargetController"
+      :open="isQuickViewModalOpen"
+      @update:open="isQuickViewModalOpen = $event"
     />
 
     <!-- Spatial DXF Coordinate Mapping & Pinning Modal Dialog -->

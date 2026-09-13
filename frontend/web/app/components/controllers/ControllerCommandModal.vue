@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { IndustrialController } from '~/types/domain'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '~/components/ui/dialog'
 import { Button } from '~/components/ui/button'
+import RbacButton from '~/components/common/RbacButton.vue'
 import { Input } from '~/components/ui/input'
 import { Terminal, Key, ShieldCheck, Loader2 } from 'lucide-vue-next'
 
@@ -142,10 +143,15 @@ const handleQueueCommand = async () => {
           <Button type="button" variant="ghost" @click="emit('update:open', false)" class="text-slate-400 hover:text-white text-xs font-bold uppercase">
             Cancel
           </Button>
-          <Button type="submit" :disabled="isSubmitting" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider px-6 h-11">
+          <RbacButton
+            type="submit"
+            capability="canExecuteRemote"
+            :disabled="isSubmitting"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider px-6 h-11"
+          >
             <Loader2 v-if="isSubmitting" class="w-4 h-4 mr-2 animate-spin" />
             <span>{{ isSubmitting ? 'Signing...' : 'Queue Command' }}</span>
-          </Button>
+          </RbacButton>
         </div>
       </form>
     </DialogContent>

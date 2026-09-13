@@ -35,6 +35,7 @@ import {
 } from 'lucide-vue-next'
 import { reorderAndPrioritize, setDragImageAtClickPoint } from '~/utils/reorderList'
 import { Button } from '@/components/ui/button'
+import RbacButton from '~/components/common/RbacButton.vue'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -851,7 +852,8 @@ async function pushToAllHosts() {
               <RefreshCw class="size-3.5 mr-1" />
               Refresh Nodes
             </Button>
-            <Button
+            <RbacButton
+              capability="canManageEndpoints"
               size="sm"
               @click="pushToFilteredHosts"
               :disabled="filteredAllControllers.length === 0 || isPushingBulk"
@@ -859,15 +861,16 @@ async function pushToAllHosts() {
             >
               <Send class="size-3.5 mr-1.5" />
               Push to Filtered ({{ filteredAllControllers.length }})
-            </Button>
-            <Button
+            </RbacButton>
+            <RbacButton
+              capability="canManageEndpoints"
               size="sm"
               @click="pushToAllHosts"
               :disabled="controllers.length === 0 || isPushingBulk"
               class="bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium px-3 h-8 border border-slate-700 transition-colors"
             >
               Push Entire Fleet ({{ controllers.length }})
-            </Button>
+            </RbacButton>
           </div>
         </div>
 
@@ -1096,7 +1099,8 @@ async function pushToAllHosts() {
 
                 <!-- Action Button -->
                 <TableCell class="px-4 py-3 text-right">
-                  <Button
+                  <RbacButton
+                    capability="canManageEndpoints"
                     size="sm"
                     @click="dispatchConfigToHost(c)"
                     :disabled="dispatchingHostId === c.id"
@@ -1105,7 +1109,7 @@ async function pushToAllHosts() {
                     <RefreshCw v-if="dispatchingHostId === c.id" class="size-3 mr-1 animate-spin" />
                     <Send v-else class="size-3 mr-1" />
                     Push Config
-                  </Button>
+                  </RbacButton>
                 </TableCell>
               </TableRow>
             </template>
