@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using App.Agent.Daemon.Interfaces;
 
 namespace App.Agent.Daemon.Infrastructure.Spooling;
 
@@ -8,14 +9,14 @@ namespace App.Agent.Daemon.Infrastructure.Spooling;
 /// Offline local telemetry spooler buffering telemetry payloads when disconnected from Heimdall backend.
 /// Automatically enforces storage quotas with FIFO eviction (Guideline 21, 22, 23).
 /// </summary>
-public class LocalTelemetrySpooler
+public class LocalTelemetrySpooler : ITelemetrySpooler
 {
     private readonly ILogger<LocalTelemetrySpooler> _logger;
-    private readonly ConfigurationService _configService;
+    private readonly IConfigurationService _configService;
     private readonly string _spoolDir;
     private readonly object _lock = new();
 
-    public LocalTelemetrySpooler(ILogger<LocalTelemetrySpooler> logger, ConfigurationService configService, string? spoolDirectory = null)
+    public LocalTelemetrySpooler(ILogger<LocalTelemetrySpooler> logger, IConfigurationService configService, string? spoolDirectory = null)
     {
         _logger = logger;
         _configService = configService;

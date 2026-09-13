@@ -52,7 +52,7 @@ public class MaintenanceTicketController : ControllerBase
     public async Task<ActionResult<MaintenanceTicket>> GetTicket(Guid id)
     {
         var ticket = await _repository.GetByIdAsync(id);
-        if (ticket == null) return NotFound();
+        if (ticket == null) return NotFound(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.TicketNotFound));
         return Ok(ticket);
     }
 
@@ -72,9 +72,9 @@ public class MaintenanceTicketController : ControllerBase
     [Authorize(Policy = "MaintenanceOperations")]
     public async Task<IActionResult> UpdateTicket(Guid id, MaintenanceTicket ticket)
     {
-        if (id != ticket.Id) return BadRequest();
+        if (id != ticket.Id) return BadRequest(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.InvalidInput, "Route ID does not match ticket ID."));
         var updated = await _repository.UpdateAsync(ticket);
-        if (updated == null) return NotFound();
+        if (updated == null) return NotFound(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.TicketNotFound));
 
         await _cache.RemoveAsync("tickets:all:all");
         await _cache.SetAsync($"tickets:item:{id}", updated, TimeSpan.FromMinutes(5));
@@ -87,7 +87,7 @@ public class MaintenanceTicketController : ControllerBase
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] string status)
     {
         var updated = await _repository.UpdateStatusAsync(id, status);
-        if (updated == null) return NotFound();
+        if (updated == null) return NotFound(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.TicketNotFound));
 
         await _cache.RemoveAsync("tickets:all:all");
         await _cache.SetAsync($"tickets:item:{id}", updated, TimeSpan.FromMinutes(5));
@@ -101,7 +101,7 @@ public class MaintenanceTicketController : ControllerBase
     public async Task<IActionResult> DeleteTicket(Guid id)
     {
         var success = await _repository.DeleteAsync(id);
-        if (!success) return NotFound();
+        if (!success) return NotFound(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.TicketNotFound));
 
         await _cache.RemoveAsync("tickets:all:all");
         await _cache.RemoveAsync($"tickets:item:{id}");

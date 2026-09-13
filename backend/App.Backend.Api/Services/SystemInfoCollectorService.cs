@@ -140,16 +140,71 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
                     TotalFreeGB = request.DiskInfo.TotalFreeGb,
                     OsDriveFreeGB = request.DiskInfo.OsDriveFreeGb,
                     Drives = request.DiskInfo.Drives.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
-                } : null,
-                InventoryItems = request.Components
-                    .Where(c => c.Name != "Events" && c.Name != "OS Environment" && c.Name != "Live Telemetry")
-                    .Select(c => (BaseInventoryItem)new PcHardware
-                    {
-                        Name = c.Name,
-                        Type = c.Type,
-                        Metadata = string.IsNullOrEmpty(c.DataJson) ? null : System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonDocument>(c.DataJson)
-                    }).ToList()
+                } : null
             };
+
+            var items = new List<BaseInventoryItem>();
+            var parentResolutions = new List<(BaseInventoryItem Item, string? ParentName, Guid? ParentId)>();
+
+            foreach (var c in request.Components.Where(c => c.Name != "Events" && c.Name != "OS Environment" && c.Name != "Live Telemetry"))
+            {
+                var item = new PcHardware
+                {
+                    Id = Guid.NewGuid(),
+                    Name = c.Name,
+                    Type = c.Type,
+                    Technology = c.Technology
+                };
+
+                string? parentName = null;
+                Guid? parentId = null;
+
+                if (!string.IsNullOrEmpty(c.DataJson))
+                {
+                    try
+                    {
+                        var doc = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonDocument>(c.DataJson);
+                        item.Metadata = doc;
+
+                        if (doc != null && doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+                        {
+                            if (doc.RootElement.TryGetProperty("ParentComponentName", out var pn) && pn.ValueKind == System.Text.Json.JsonValueKind.String)
+                                parentName = pn.GetString();
+                            if (doc.RootElement.TryGetProperty("ParentComponentId", out var pid) && pid.TryGetGuid(out var pGuid))
+                                parentId = pGuid;
+                        }
+                    }
+                    catch
+                    {
+                        // Keep item without metadata
+                    }
+                }
+
+                items.Add(item);
+                if (!string.IsNullOrEmpty(parentName) || parentId.HasValue)
+                {
+                    parentResolutions.Add((item, parentName, parentId));
+                }
+            }
+
+            // Link parent-child hierarchy across components
+            foreach (var (childItem, parentName, parentId) in parentResolutions)
+            {
+                if (parentId.HasValue)
+                {
+                    childItem.ParentId = parentId.Value;
+                }
+                else if (!string.IsNullOrEmpty(parentName))
+                {
+                    var matchingParent = items.FirstOrDefault(i => string.Equals(i.Name, parentName, StringComparison.OrdinalIgnoreCase) && i.Id != childItem.Id);
+                    if (matchingParent != null)
+                    {
+                        childItem.ParentId = matchingParent.Id;
+                    }
+                }
+            }
+
+            clientPc.InventoryItems = items;
 
             // Map abstract components to properties
             var osComp = request.Components.FirstOrDefault(c => c.Name == "OS Environment");
