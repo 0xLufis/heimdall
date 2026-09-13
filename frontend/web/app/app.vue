@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import GlobalContextMenu from '~/components/common/GlobalContextMenu.vue'
 
 useHead({
   title: 'Heimdall - Maintenance & Telemetry',
@@ -8,7 +9,7 @@ useHead({
     { rel: 'apple-touch-icon', href: '/icons/icon-192x192.png' }
   ],
   meta: [
-    { name: 'theme-color', content: '#0f172a' },
+    { name: 'theme-color', content: '#0c0e12' },
     { name: 'mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }
@@ -48,4 +49,5 @@ onMounted(() => {
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  <GlobalContextMenu />
 </template>

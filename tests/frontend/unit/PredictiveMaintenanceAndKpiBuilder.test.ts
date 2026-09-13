@@ -100,13 +100,18 @@ describe('Predictive Maintenance, Analytics & KPI Builder Test Suite', () => {
       expect(wrapper.text()).toContain('Robotics Welding Quality Rate')
     })
 
-    it('pins new custom KPI widget and saves to storage', async () => {
+    it('pins new custom KPI widget with SPC thresholds and saves to storage', async () => {
       const wrapper = mount(KpiGraphBuilder)
 
       const titleInput = wrapper.find('input[type="text"]')
       await titleInput.setValue('Custom Line 5 OEE')
 
-      const pinButton = wrapper.find('button.bg-indigo-600')
+      expect(wrapper.text()).toContain('KPI Goals & Statistical Process Control (SPC) Limits')
+      expect(wrapper.text()).toContain('Target / Mean')
+      expect(wrapper.text()).toContain('Upper Limit (UCL)')
+      expect(wrapper.text()).toContain('Lower Limit (LCL)')
+
+      const pinButton = wrapper.find('[data-testid="pin-kpi-btn"]')
       await pinButton.trigger('click')
 
       expect(wrapper.text()).toContain('Custom Line 5 OEE')

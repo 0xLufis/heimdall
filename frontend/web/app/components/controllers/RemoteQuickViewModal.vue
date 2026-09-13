@@ -100,11 +100,11 @@ const drawVncFrame = () => {
   const height = canvas.height
 
   // Background
-  ctx.fillStyle = '#090d16'
+  ctx.fillStyle = '#0c0e12'
   ctx.fillRect(0, 0, width, height)
 
   // Subtle grid
-  ctx.strokeStyle = '#1e293b'
+  ctx.strokeStyle = '#232730'
   ctx.lineWidth = 1
   for (let x = 0; x < width; x += 40) {
     ctx.beginPath()
@@ -120,16 +120,16 @@ const drawVncFrame = () => {
   }
 
   // Windows-style / TwinCAT taskbar at bottom
-  ctx.fillStyle = '#0f172a'
+  ctx.fillStyle = '#15181e'
   ctx.fillRect(0, height - 32, width, 32)
-  ctx.strokeStyle = '#334155'
+  ctx.strokeStyle = '#282d37'
   ctx.beginPath()
   ctx.moveTo(0, height - 32)
   ctx.lineTo(width, height - 32)
   ctx.stroke()
 
   // Start button
-  ctx.fillStyle = '#4f46e5'
+  ctx.fillStyle = '#445847'
   ctx.fillRect(4, height - 28, 60, 24)
   ctx.fillStyle = '#ffffff'
   ctx.font = '10px Inter, sans-serif'
@@ -141,36 +141,36 @@ const drawVncFrame = () => {
   const winW = width - 80
   const winH = height - 80
 
-  ctx.fillStyle = '#1e293b'
+  ctx.fillStyle = '#1a1e24'
   ctx.fillRect(winX, winY, winW, winH)
-  ctx.strokeStyle = '#475569'
+  ctx.strokeStyle = '#383e44'
   ctx.strokeRect(winX, winY, winW, winH)
 
   // Window title bar
-  ctx.fillStyle = '#334155'
+  ctx.fillStyle = '#282d37'
   ctx.fillRect(winX, winY, winW, 26)
   ctx.fillStyle = '#e2e8f0'
   ctx.font = 'bold 11px Inter, sans-serif'
   ctx.fillText(`Beckhoff TwinCAT PLC Runtime - ${props.controller?.name || 'IPC'} [RUN MODE]`, winX + 12, winY + 18)
 
   // Inner viewport contents
-  ctx.fillStyle = '#020617'
+  ctx.fillStyle = '#0e1014'
   ctx.fillRect(winX + 8, winY + 34, winW - 16, winH - 42)
 
   // Process status lines
-  ctx.fillStyle = '#38bdf8'
+  ctx.fillStyle = '#768f79'
   ctx.font = '11px monospace'
   ctx.fillText(`Host: ${props.controller?.name} | IP: ${props.controller?.ipAddress} | OS: ${props.controller?.osVersion || 'Windows 10 IoT'}`, winX + 16, winY + 56)
   ctx.fillStyle = '#4ade80'
   ctx.fillText(`Target AMS NetId: 192.168.10.101.1.1 | State: RUN | Cycle: 1.000 ms`, winX + 16, winY + 76)
-  ctx.fillStyle = '#94a3b8'
+  ctx.fillStyle = '#828a94'
   ctx.fillText(`IO Link Master: Channel 01..16 Active | Real-Time Latency: ${latencyMs.value} ms`, winX + 16, winY + 96)
 
   // Memory & task gauge bar
-  ctx.fillStyle = '#1e293b'
+  ctx.fillStyle = '#232730'
   ctx.fillRect(winX + 16, winY + 115, winW - 32, 14)
   const loadFill = Math.min((winW - 32) * 0.42, winW - 32)
-  ctx.fillStyle = '#6366f1'
+  ctx.fillStyle = '#57715b'
   ctx.fillRect(winX + 16, winY + 115, loadFill, 14)
 
   ctx.fillStyle = '#f8fafc'
@@ -179,9 +179,9 @@ const drawVncFrame = () => {
 
   // Read-only watermark badge
   if (isReadOnly.value) {
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)'
+    ctx.fillStyle = 'rgba(21, 24, 30, 0.85)'
     ctx.fillRect(width - 170, 10, 160, 24)
-    ctx.strokeStyle = '#475569'
+    ctx.strokeStyle = '#383e44'
     ctx.strokeRect(width - 170, 10, 160, 24)
     ctx.fillStyle = '#f59e0b'
     ctx.font = '10px Inter, sans-serif'
@@ -364,13 +364,13 @@ onUnmounted(() => {
         <template v-else-if="activeProvider === 'dameware'">
           <div class="p-6 rounded-xl bg-slate-900/80 border border-slate-800 space-y-5">
             <div class="flex items-start gap-4">
-              <div class="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 shrink-0">
+              <div class="p-3 rounded-xl bg-teal-950/40 border border-teal-600/30 text-teal-300 shrink-0">
                 <Radio class="w-6 h-6" />
               </div>
               <div class="space-y-1">
                 <h4 class="text-sm font-semibold text-slate-100">DameWare Mini Remote Control (MRC) Integration</h4>
                 <p class="text-xs text-slate-400 leading-relaxed">
-                  Launch an optimized, native DameWare MRC session using registered deep-link handler URI scheme (<code class="font-mono text-sky-300 text-[11px]">dwmrc://</code>).
+                  Launch an optimized, native DameWare MRC session using registered deep-link handler URI scheme (<code class="font-mono text-teal-300 text-[11px]">dwmrc://</code>).
                   Seamlessly bypasses browser sandbox limitations with zero-install native client bridging.
                 </p>
               </div>
@@ -384,7 +384,7 @@ onUnmounted(() => {
                   <span class="size-1.5 rounded-full bg-emerald-400"></span> DWRCS Service Listening (Port {{ damewarePort }})
                 </span>
               </div>
-              <div class="p-2.5 rounded bg-slate-900 border border-slate-800 text-sky-300 flex items-center justify-between overflow-x-auto gap-2">
+              <div class="p-2.5 rounded bg-slate-900 border border-slate-800 text-teal-300 flex items-center justify-between overflow-x-auto gap-2">
                 <span class="select-all truncate">{{ damewareUri }}</span>
                 <button
                   type="button"
@@ -404,7 +404,7 @@ onUnmounted(() => {
                 :has-permission="canExecuteRemote"
                 capability="canExecuteRemote"
                 @click="handleLaunchDameware"
-                class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md"
+                class="bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm border border-zinc-600/50"
               >
                 <ExternalLink class="w-3.5 h-3.5" />
                 <span>Launch DameWare Client</span>

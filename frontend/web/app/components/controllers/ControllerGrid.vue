@@ -4,10 +4,12 @@ import { Monitor, Activity, HardDrive, Cpu, Terminal, ChevronRight, MapPin, Link
 import { Badge } from '~/components/ui/badge'
 import RbacTooltip from '~/components/common/RbacTooltip.vue'
 import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
+import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
 
 const props = defineProps<{
   controllers: IndustrialController[]
   loading?: boolean
+  selectedId?: string
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +21,22 @@ const emit = defineEmits<{
 }>()
 
 const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
+const { openContextMenu } = useGlobalContextMenu()
+
+const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
+  openContextMenu(e, {
+    entityType: 'controller',
+    entityId: pc.id,
+    entityName: pc.hostname || pc.name,
+    handle: pc.pinnedObjectHandle || undefined,
+    controllerId: pc.id,
+    controllerHostname: pc.hostname,
+    machineId: pc.controlledMachines?.[0]?.id,
+    machineName: pc.controlledMachines?.[0]?.name,
+    ownerTeam: pc.responsibleTeams?.[0] ? { name: pc.responsibleTeams[0].name } : undefined,
+    ownerPerson: (pc as any).preferredTechnicianName ? { name: (pc as any).preferredTechnicianName } : undefined
+  })
+}
 </script>
 
 <template>
@@ -37,14 +55,22 @@ const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
       <div
         v-for="pc in controllers"
         :key="pc.id"
-        class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl p-5 transition-all shadow-sm group flex flex-col justify-between"
+        role="button"
+        tabindex="0"
+        :aria-label="`Select controller ${pc.hostname || pc.name}`"
+        @click="emit('select', pc)"
+        @keydown.enter="emit('select', pc)"
+        @keydown.space.prevent="emit('select', pc)"
+        @contextmenu="handleCardContextMenu(pc, $event)"
+        class="bg-slate-900 border rounded-xl p-5 transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] group flex flex-col justify-between cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50"
+        :class="selectedId === pc.id ? 'border-zinc-500 ring-1 ring-zinc-500/60 bg-slate-900/90 shadow-md' : 'border-slate-800 hover:border-zinc-500/60 hover:bg-slate-900/95'"
       >
         <div>
           <!-- Header -->
           <div class="flex items-start justify-between mb-4">
             <div class="flex items-center gap-3">
-              <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800 group-hover:border-indigo-500/30 transition-colors">
-                <Monitor class="w-5 h-5 text-indigo-400" />
+              <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800 group-hover:border-zinc-600 group-hover:bg-zinc-900/80 transition-colors">
+                <Monitor class="w-5 h-5 text-zinc-400 group-hover:text-zinc-200 transition-colors" />
               </div>
               <div>
                 <h4 class="text-sm font-semibold text-slate-100 group-hover:text-white flex items-center gap-2">
@@ -100,10 +126,10 @@ const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
           <!-- Spatial CAD / DXF Mapping Tag -->
           <div class="mb-4 p-2.5 bg-slate-950/50 rounded-lg border border-slate-800/80 flex items-center justify-between gap-2">
             <div class="flex items-center gap-2 truncate">
-              <MapPin class="size-3.5 text-indigo-400 shrink-0" />
+              <MapPin class="size-3.5 text-zinc-400 shrink-0" />
               <div class="truncate">
                 <span class="text-xs text-slate-400 block">CAD Tag</span>
-                <span v-if="pc.pinnedObjectHandle" class="text-xs font-mono font-medium text-indigo-300 truncate block">
+                <span v-if="pc.pinnedObjectHandle" class="text-xs font-mono font-medium text-zinc-300 truncate block">
                   {{ pc.pinnedObjectHandle }}
                 </span>
                 <span v-else class="text-xs font-mono text-slate-500 block">
@@ -117,7 +143,7 @@ const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
                 v-if="pc.pinnedObjectHandle"
                 type="button"
                 @click.stop="emit('locate-dxf', pc.pinnedObjectHandle)"
-                class="px-2.5 py-1 rounded-md bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-500/30 text-xs font-medium text-indigo-300 transition-all"
+                class="px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/80 hover:border-zinc-400 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-xs hover:shadow-[0_0_10px_rgba(255,255,255,0.08)] active:scale-95 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
                 title="Locate on CAD Map"
               >
                 View Map
@@ -128,7 +154,7 @@ const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
                   type="button"
                   :disabled="!canManageEndpoints"
                   @click.stop="canManageEndpoints && emit('link-dxf', pc)"
-                  class="px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 hover:text-white transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1"
+                  class="px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/80 hover:border-zinc-400 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-xs hover:shadow-[0_0_10px_rgba(255,255,255,0.08)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
                 >
                   <Lock v-if="!canManageEndpoints" class="w-3 h-3 text-amber-400" />
                   <span>{{ pc.pinnedObjectHandle ? 'Edit DXF' : '+ Link DXF' }}</span>
@@ -144,7 +170,7 @@ const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
               <span
                 v-for="st in pc.controlledMachines"
                 :key="st.id"
-                class="px-2 py-0.5 bg-indigo-950/30 text-indigo-300 border border-indigo-500/20 rounded-md text-xs font-mono font-medium"
+                class="px-2 py-0.5 bg-zinc-900 text-zinc-300 border border-zinc-700/60 rounded-md text-xs font-mono font-medium"
               >
                 {{ st.customIdentifier || st.name }}
               </span>
@@ -154,17 +180,17 @@ const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
         </div>
 
         <!-- Action Footer -->
-        <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between">
-          <div class="flex items-center gap-3">
+        <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
             <RbacTooltip :disabled="!canExecuteRemote" :tooltip="RBAC_TOOLTIPS.REMOTE_EXECUTION">
               <button
                 type="button"
                 :disabled="!canExecuteRemote"
-                @click="canExecuteRemote && emit('queue-command', pc)"
-                class="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-400 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                @click.stop="canExecuteRemote && emit('queue-command', pc)"
+                class="px-2.5 py-1.5 rounded-lg bg-zinc-950/70 hover:bg-zinc-800 border border-zinc-800/80 hover:border-zinc-500 text-xs font-medium text-slate-300 hover:text-white shadow-xs hover:shadow-[0_0_10px_rgba(255,255,255,0.08)] transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
               >
                 <Lock v-if="!canExecuteRemote" class="w-3.5 h-3.5 text-amber-400" />
-                <Terminal v-else class="w-3.5 h-3.5" />
+                <Terminal v-else class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200" />
                 <span>Queue Command</span>
               </button>
             </RbacTooltip>
@@ -173,11 +199,11 @@ const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
               <button
                 type="button"
                 :disabled="!canExecuteRemote"
-                @click="canExecuteRemote && emit('quick-view', pc)"
-                class="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-cyan-400 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                @click.stop="canExecuteRemote && emit('quick-view', pc)"
+                class="px-2.5 py-1.5 rounded-lg bg-zinc-950/70 hover:bg-zinc-800 border border-zinc-800/80 hover:border-zinc-500 text-xs font-medium text-slate-300 hover:text-white shadow-xs hover:shadow-[0_0_10px_rgba(255,255,255,0.08)] transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
                 title="Remote Quick View"
               >
-                <Eye class="w-3.5 h-3.5 text-slate-400" />
+                <Eye class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200" />
                 <span>Remote</span>
               </button>
             </RbacTooltip>
@@ -185,11 +211,11 @@ const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
 
           <button
             type="button"
-            @click="emit('select', pc)"
-            class="flex items-center gap-1 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+            @click.stop="emit('select', pc)"
+            class="px-3 py-1.5 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700/80 hover:border-zinc-400 text-xs font-semibold text-zinc-200 hover:text-white shadow-xs hover:shadow-[0_0_12px_rgba(255,255,255,0.12)] transition-all active:scale-95 flex items-center gap-1.5 group/btn focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
           >
             <span>Telemetry</span>
-            <ChevronRight class="w-3.5 h-3.5" />
+            <ChevronRight class="w-3.5 h-3.5 transition-transform duration-150 group-hover/btn:translate-x-0.5" />
           </button>
         </div>
       </div>
