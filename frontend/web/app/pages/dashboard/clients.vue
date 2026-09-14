@@ -346,6 +346,7 @@ const onSearch = (q: string) => {
         @link-dxf="handleOpenPinDialogForPc"
         @locate-map="handleLocatePin"
         @unpin-dxf="handleUnpinPc"
+        @quick-view="handleQuickView"
       />
       <button
         type="button"

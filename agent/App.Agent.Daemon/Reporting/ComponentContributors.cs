@@ -99,3 +99,22 @@ public class EventsComponentContributor : IComponentContributor
         };
     }
 }
+
+/// <summary>
+/// Contributes Beckhoff TwinCAT ADS runtime and OPC UA telemetry.
+/// </summary>
+public class IndustrialOtComponentContributor : IComponentContributor
+{
+    public InventoryComponent? CreateComponent(SystemInfoData data)
+    {
+        if (data.IndustrialOt == null || string.IsNullOrEmpty(data.IndustrialOt.AdsAmsNetId)) return null;
+
+        return new InventoryComponent
+        {
+            Name = "IndustrialOT",
+            Technology = "Beckhoff TwinCAT ADS / OPC UA",
+            Type = "ot_runtime",
+            DataJson = JsonSerializer.Serialize(data.IndustrialOt)
+        };
+    }
+}

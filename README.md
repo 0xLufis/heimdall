@@ -20,12 +20,12 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 - **Graph-Relational Domain Model:** Flexible many-to-many relationship topology linking Production Stations with one or more controlling IPCs/PLCs and equipment interconnects.
 - **Frontend:** Nuxt 4 (Nuxt 4 Directory Structure), Vue 3, Tailwind CSS v4, shadcn-vue, and Vitest.
 - **Client Offloading:** Server-side aggregation, filtering, and caching via Nuxt Nitro BFF (Backend-for-Frontend) routes.
-- **Enterprise Dataset & Simulated AD:** Canonical plant fixtures (`fixtures/enterprise_plant_dataset.json`), mock Microsoft Graph REST endpoints (`/api/ad-mock/v1.0/*`), and RFC 4511 LDAP search engine.
-- **Better-Auth & Entra ID Security Group Org Governance:** Dynamic tenant organization mapping and auto-provisioning driven by directory claims, with an interactive claims evaluation sandbox.
+- **Enterprise Dataset & Simulated AD:** Canonical plant fixtures (`fixtures/enterprise_plant_dataset.json`), mock directory REST endpoints (`/api/ad-mock/v1.0/*`), and RFC 4511 LDAP search engine.
+- **Better-Auth & Directory Security Group Org Governance:** Dynamic tenant organization mapping and auto-provisioning driven by directory claims, with an interactive claims evaluation sandbox.
 - **Mock CMI / WMI Engine & Simulated PC Containers:** WMI / CIM hardware query runner (`wmic`, `Get-CimInstance`) and dedicated Docker containers running simulated Windows edge PCs with local diagnostics and telemetry streams.
-- **Industrial Maintenance & Zero-Dependency Action QR:** 8-column Kanban lifecycle, error template catalog, SFC serialization, technician delegation hierarchy, and pure SVG Galois Field $GF(256)$ QR generator.
+- **Industrial Maintenance & Zero-Dependency Action QR:** 8-column Kanban lifecycle, error template catalog, SFC serialization, technician delegation hierarchy, and pure SVG Galois Field GF(256) matrix QR generator.
 - **MFA Policy & PKI Certificate Governance:** Role-based MFA timeout threshold enforcement, AD OU VLAN host discovery, and automated X.509 certificate assignment.
-- **OT Integrations:** Copia Automation Git version control integration blueprint and native OPC UA Server API (`opc.tcp://`).
+- **OT Integrations:** Git-based PLC version control integration blueprint and native OPC UA Server API (`opc.tcp://`).
 - **Security & Compliance:** TISAX (VDA ISA 6.0 / High Protection) compliance framework, multi-tenant isolation, cryptographic command signing, and mTLS support.
 
 ---
@@ -60,8 +60,8 @@ heimdall/
 │   ├── dev_manager.py       # Unified development service orchestrator & monitor
 │   └── generate_sequence_diagrams.py # Code-to-Mermaid sequence diagram generator
 ├── tests/                   # Unified Verification Suites
-│   ├── backend/             # xUnit integration & unit tests (83 tests)
-│   ├── frontend/unit/       # Vitest unit tests (32 suites, 241 tests)
+│   ├── backend/             # xUnit integration & unit tests (162 tests)
+│   ├── frontend/unit/       # Vitest unit tests (37 suites, 275 tests)
 │   └── e2e/                 # Playwright browser automation tests
 ├── run_dev.sh               # Local development environment launcher script
 └── run_simulators.sh        # Multi-client fleet simulator orchestrator
@@ -95,8 +95,8 @@ graph TD
     end
 
     subgraph Integrations ["External Integrations"]
-        Copia["Copia Automation (Git PLC Versioning)"]
-        SCADA["SCADA / Ignition / Kepware"]
+        GitPLC["Git-Based PLC Version Control"]
+        SCADA["SCADA / Industrial Automation Gateways"]
     end
 
     Station <-->|Control Relationship M:N| IPC
@@ -108,7 +108,7 @@ graph TD
     
     gRPC --> WebAPI
     WebAPI <--> Postgres
-    WebAPI <--> Copia
+    WebAPI <--> GitPLC
     OpcUa <--> WebAPI
     OpcUa -->|OPC UA Subscriptions| SCADA
     
@@ -233,10 +233,10 @@ source <(./run_dev.sh completion zsh)    # for Zsh
 ## Running Verification Tests
 
 ```bash
-# 1. Run .NET backend unit & integration tests (xUnit, 83 tests)
+# 1. Run .NET backend unit & integration tests (xUnit, 162 tests)
 dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
 
-# 2. Run Nuxt frontend unit test suites (Vitest, 32 suites, 241 tests)
+# 2. Run Nuxt frontend unit test suites (Vitest, 37 suites, 275 tests)
 bun --cwd frontend/web run test:unit
 
 # 3. Run Python fleet simulator & mock CMI runner tests (9 tests)
@@ -255,9 +255,9 @@ cd frontend/web && bun x playwright test
 
 Heimdall includes built-in enterprise tooling for manufacturing IT/OT environments:
 - **Canonical Plant Dataset:** Driven by `fixtures/enterprise_plant_dataset.json`, defining 16 tenant organizations, 10 directory security groups, 60 consolidated users, 14 VLAN-partitioned OUs (VLANs 10–60), 56 edge IPC controllers, and 100 plant machines across 8 automated lines.
-- **Simulated Active Directory & Mock Graph:** Emulates Microsoft Graph (`/api/ad-mock/v1.0/*`) and RFC 4511 LDAP directory search endpoints, plus a standalone Python server on port 5088 (`simulators/active_directory/mock_ad_server.py`).
+- **Simulated Directory & Mock Graph:** Emulates directory query protocols (`/api/ad-mock/v1.0/*`) and RFC 4511 LDAP directory search endpoints, plus a standalone Python server on port 5088 (`simulators/active_directory/mock_ad_server.py`).
 - **Mock CMI Runner & Edge PC Containers:** Emulates Windows WMI (`wmic`) and PowerShell (`Get-CimInstance`) queries on Linux edge containers (`simulators/fleet/docker-compose.simulated-pc.yml`), exposing hardware diagnostics on port 8080.
-- **Better-Auth Entra ID / AD Security Group Org Governance:** Evaluates directory claims to dynamically provision organizations and assign tenant roles (`owner`, `admin`, `member`) via `/dashboard/security-groups`.
+- **Better-Auth & Directory Security Group Org Governance:** Evaluates directory claims to dynamically provision organizations and assign tenant roles (`owner`, `admin`, `member`) via `/dashboard/security-groups`.
 - **MFA Policy & PKI Certificate Assignment:** Enforces configurable MFA timeout rules per role (e.g., sys admin always, engineers weekly, technicians monthly) and assigns project root CA certificates to hosts by Active Directory OU.
 
 ---
@@ -279,7 +279,7 @@ Comprehensive technical documentation is maintained in the [`docs/`](docs/Home.m
 
 - [Documentation Index](docs/Home.md) - Master documentation directory and overview.
 - [Master Sequence Diagrams Gallery](docs/architecture/SEQUENCE_DIAGRAMS.md) - Mermaid sequence diagrams for telemetry, maintenance lifecycle, AD discovery, PKI enrollment, and agent loops.
-- [System Architecture & Data Model](docs/architecture/SYSTEM_ARCHITECTURE.md) - Graph-relational $M:N$ domain model, database schemas, and caching architecture.
+- [System Architecture & Data Model](docs/architecture/SYSTEM_ARCHITECTURE.md) - Graph-relational Many-to-Many (M:N) domain model, database schemas, and caching architecture.
 - [Edge Agent & Protocols](docs/architecture/EDGE_AGENT_AND_PROTOCOLS.md) - Edge daemon lifecycle, DAG recipe merger, 4-tier bandwidth throttling, offline SQLite spooling, and industrial protocol drivers (TwinCAT ADS, EtherCAT, OPC UA, Modbus TCP).
 - [Security, Encryption & Compliance](docs/architecture/SECURITY_AND_COMPLIANCE.md) - AES-256-GCM field-level encryption, signed remote command execution, PII exclusion engine, and TISAX (VDA ISA 6.0) / GDPR mappings.
 - [Frontend, Real-Time PWA & Spatial UI](docs/architecture/FRONTEND_AND_PWA.md) - Nuxt architecture, Nitro BFF proxying, SignalR live Kanban ticketing, offline IndexedDB sync, AutoCAD DXF floor plan engine, and dynamic asset templating.

@@ -3,7 +3,7 @@ import { RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 
 export const navMenu: NavMenu[] = [
   {
-    heading: 'Monitoring',
+    heading: 'Management',
     items: [
       {
         title: 'Dashboard',
@@ -11,14 +11,19 @@ export const navMenu: NavMenu[] = [
         link: '/dashboard',
       },
       {
-        title: 'Live Telemetry',
-        icon: 'i-lucide-activity',
-        link: '/dashboard/telemetry',
+        title: 'Inventory',
+        icon: 'i-lucide-package',
+        link: '/dashboard/inventory',
       },
       {
-        title: 'Fleet Analytics',
-        icon: 'i-lucide-bar-chart-3',
-        link: '/dashboard/analytics',
+        title: 'Machines',
+        icon: 'i-lucide-cpu',
+        link: '/dashboard/machines',
+      },
+      {
+        title: 'Machine Groups',
+        icon: 'i-lucide-folder-tree',
+        link: '/dashboard/machine-groups',
       },
       {
         title: 'Client PCs',
@@ -33,17 +38,17 @@ export const navMenu: NavMenu[] = [
     ],
   },
   {
-    heading: 'Management',
+    heading: 'Data',
     items: [
       {
-        title: 'Inventory',
-        icon: 'i-lucide-package',
-        link: '/dashboard/inventory',
+        title: 'Live Telemetry',
+        icon: 'i-lucide-activity',
+        link: '/dashboard/telemetry',
       },
       {
-        title: 'Machines',
-        icon: 'i-lucide-cpu',
-        link: '/dashboard/machines',
+        title: 'Fleet Analytics',
+        icon: 'i-lucide-bar-chart-3',
+        link: '/dashboard/analytics',
       },
       {
         title: 'Telemetry Templates',
@@ -59,19 +64,29 @@ export const navMenu: NavMenu[] = [
         requiredCapability: 'canManageEndpoints',
         requiredTooltip: RBAC_TOOLTIPS.ENDPOINT_MANAGEMENT,
       },
+    ],
+  },
+  {
+    heading: 'Maintenance',
+    items: [
       {
         title: 'Tickets',
         icon: 'i-lucide-wrench',
         link: '/dashboard/tickets',
       },
+      {
+        title: 'Delegations',
+        icon: 'i-lucide-users',
+        link: '/dashboard/delegations',
+      },
     ],
   },
   {
-    heading: 'Administration',
+    heading: 'Settings',
     items: [
       {
         title: 'Users & Roles',
-        icon: 'i-lucide-users',
+        icon: 'i-lucide-users-round',
         link: '/dashboard/users',
         requiredCapability: 'canManageUsers',
         requiredTooltip: RBAC_TOOLTIPS.USER_MANAGEMENT,

@@ -6,8 +6,9 @@ import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
 import { 
   ChevronLeft, Package, Monitor, Cpu, History, Tag, Box, 
-  Info, Loader2, ArrowUpCircle, Link2Off 
+  Info, Loader2, ArrowUpCircle, Link2Off, Eye
 } from 'lucide-vue-next'
+import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -17,6 +18,21 @@ const route = useRoute()
 const id = route.params.id as string
 const loading = ref(true)
 const component = ref<any>(null)
+const isRemoteModalOpen = ref(false)
+const remoteTargetController = ref<any>(null)
+
+const openRemoteForPc = (pc: any) => {
+  remoteTargetController.value = {
+    id: pc.id || pc.hostname,
+    name: pc.name || pc.hostname,
+    hostname: pc.hostname,
+    ipAddress: pc.ipAddress || (typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'),
+    isOnline: pc.isOnline ?? true,
+    macAddress: pc.macAddress || '00:00:00:00:00:00',
+    osVersion: pc.osVersion || 'Windows 10 IoT Enterprise'
+  }
+  isRemoteModalOpen.value = true
+}
 
 const fetchData = async () => {
   loading.value = true
@@ -255,13 +271,25 @@ const handleSaveEdit = async (updatedItem: any) => {
                  </div>
               </CardHeader>
               <CardContent class="p-5 pt-0 space-y-3">
-                 <div v-if="component.clientPc" class="p-3.5 rounded-lg bg-slate-950 border border-slate-800 space-y-2">
-                    <div class="flex items-center justify-between">
-                       <span class="text-xs font-medium text-slate-400">Reporting PC</span>
-                       <Badge variant="outline" class="bg-blue-900/20 border-blue-900/30 text-blue-400 text-xs font-medium px-2 py-0.5 rounded-md">Active</Badge>
-                    </div>
-                    <div class="text-xs font-semibold text-slate-200">{{ component.clientPc.hostname }}</div>
-                 </div>
+                  <div v-if="component.clientPc" class="p-3.5 rounded-lg bg-slate-950 border border-slate-800 space-y-2">
+                     <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-slate-400">Reporting PC</span>
+                        <div class="flex items-center gap-2">
+                           <Badge variant="outline" class="bg-blue-900/20 border-blue-900/30 text-blue-400 text-xs font-medium px-2 py-0.5 rounded-md">Active</Badge>
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             @click="openRemoteForPc(component.clientPc)"
+                             class="h-6 px-2 bg-indigo-600/20 hover:bg-indigo-600/30 border-indigo-500/30 text-indigo-300 text-[10px] font-semibold rounded-md flex items-center gap-1 transition-all cursor-pointer"
+                             title="Launch Remote Quick View Session"
+                           >
+                             <Eye class="size-3" />
+                             <span>Remote View</span>
+                           </Button>
+                        </div>
+                     </div>
+                     <div class="text-xs font-semibold text-slate-200">{{ component.clientPc.hostname }}</div>
+                  </div>
 
                  <!-- Live Edge Telemetry Stream Card -->
                  <div v-if="component.clientPc?.resourceAverages || component.telemetry || component.freeDiskSpace || component.resourceAverages" class="p-3.5 rounded-lg bg-slate-950 border border-slate-800 space-y-2.5">
@@ -334,6 +362,13 @@ const handleSaveEdit = async (updatedItem: any) => {
       :item="component"
       @update:open="showEditModal = $event"
       @save="handleSaveEdit"
+    />
+
+    <!-- Remote Quick View Modal Overlay -->
+    <RemoteQuickViewModal
+      :controller="remoteTargetController"
+      :open="isRemoteModalOpen"
+      @update:open="isRemoteModalOpen = $event"
     />
   </div>
 </template>

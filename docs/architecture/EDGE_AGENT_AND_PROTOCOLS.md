@@ -185,10 +185,10 @@ The agent implements a 4-tier prioritized queue architecture to protect factory 
 
 | Priority Tier | Max Queue Size | Target Flush Latency | Flush Trigger Condition | Typical Payload Types |
 | :--- | :--- | :--- | :--- | :--- |
-| **`P0_CriticalAlarm`** | Unbounded | **$< 10\text{ ms}$** | Immediate (0 batch delay) | Emergency stops, safety interlocks, EtherCAT frame drop, thermal limits. Bypasses rate limits. |
-| **`P1_HighOperational`** | 5,000 items | **$< 200\text{ ms}$** | $\ge 10\text{ items}$ or $200\text{ ms}$ elapsed | Soft-PLC state transitions (`Run` $\to$ `Stop`), drive error fault codes. |
-| **`P2_MediumMetrics`** | 20,000 items | **$1\text{ s} - 5\text{ s}$** | $\ge 100\text{ items}$ or $2\,000\text{ ms}$ elapsed | Spindle speed RPM, pneumatic line pressure, motor torque. |
-| **`P3_LowInventory`** | 50,000 items | **$5\text{ m} - 15\text{ m}$** | $\ge 1\,000\text{ items}$ or $5\text{ mins}$ elapsed | Installed software versions, SMART disk wear metrics, OS patch levels. |
+| **`P0_CriticalAlarm`** | Unbounded | **< 10 ms** | Immediate (0 batch delay) | Emergency stops, safety interlocks, EtherCAT frame drop, thermal limits. Bypasses rate limits. |
+| **`P1_HighOperational`** | 5,000 items | **< 200 ms** | ≥ 10 items or 200 ms elapsed | Soft-PLC state transitions (`Run` → `Stop`), drive error fault codes. |
+| **`P2_MediumMetrics`** | 20,000 items | **1 s - 5 s** | ≥ 100 items or 2,000 ms elapsed | Spindle speed RPM, pneumatic line pressure, motor torque. |
+| **`P3_LowInventory`** | 50,000 items | **5 m - 15 m** | ≥ 1,000 items or 5 mins elapsed | Installed software versions, SMART disk wear metrics, OS patch levels. |
 
 ### Dynamic Alarm Threshold Escalation
 If a standard metric in tier `P2` (e.g., motor temperature) breaches an alarm threshold ($T > 85^\circ\text{C}$), the evaluator automatically promotes that specific telemetry packet to **`P0_CriticalAlarm`**, flushing it to the network immediately.
@@ -197,7 +197,7 @@ If a standard metric in tier `P2` (e.g., motor temperature) breaches an alarm th
 Enforces a configurable ceiling (default: 256 KB/s) on telemetry egress. Tokens refill continuously based on elapsed wall-clock milliseconds. `P0` packets are exempt from token consumption.
 
 ### Adaptive Compression
-Outgoing batch payloads $\ge 256\text{ bytes}$ are compressed using **Zstandard (`zstd` Level 3)**, achieving $60\text{--}80\%$ compression ratios on repetitive industrial telemetry data while maintaining low CPU overhead.
+Outgoing batch payloads ≥ 256 bytes are compressed using **Zstandard (`zstd` Level 3)**, achieving 60–80% compression ratios on repetitive industrial telemetry data while maintaining low CPU overhead.
 
 ---
 
@@ -285,7 +285,7 @@ During network partitions or central server maintenance, the agent buffers high-
   * `BADC`: Mid-Little Endian.
   * `DCBA`: True Little-Endian (Intel x86 native).
 * **Contiguous Register Optimizer**:
-  If multiple requests target registers separated by a gap of $\le 5$ unused registers, the driver merges them into a single contiguous block read (up to 120 registers) to eliminate network latency.
+  If multiple requests target registers separated by a gap of ≤ 5 unused registers, the driver merges them into a single contiguous block read (up to 120 registers) to eliminate network latency.
 
 ### 7.5 Operating System & Hardware Inspection Probes
 * **Windows Hardware Probes**:
@@ -358,4 +358,74 @@ Custom components registered via the Extension API are merged into the machine h
 - `ExtensionComponentContributor` packages active sensors into the agent's gRPC payload.
 - `SystemInfoCollectorService` links the sensor to its parent equipment using `BaseInventoryItem.ParentId`.
 - The Station Component Tree modal (`StationComponentTreeModal.vue`) displays custom sensors with `[Signed]` and `[Dev Sandbox]` trust badges, allowing operators to inspect dynamic JSON state directly from the CAD map or machinery views.
+
+---
+
+## 9. Beckhoff TwinCAT ADS Simulation Server (Port 48898)
+
+The agent daemon includes a high-performance in-memory Beckhoff TwinCAT ADS simulation server (`AdsSimulationServer.cs`) listening on standard ADS TCP port **48898**:
+* **AMS Net ID**: `5.80.201.44.1.1:851` (TwinCAT 3 PLC Runtime 1).
+* **AMS/TCP Protocol Framing**:
+  * Decodes 6-byte AMS/TCP headers and 32-byte AMS packet headers.
+  * `0x0001` (`ADSCMD_READ_DEVICE_INFO`): Returns TwinCAT 3.1 PLC Runtime, Build 4026.11.
+  * `0x0004` (`ADSCMD_READ_STATE`): Returns current PLC state (`ADSSTATE_RUN = 5` or `ADSSTATE_STOP = 6`).
+  * `0x0005` (`ADSCMD_WRITE_CONTROL`): Allows remote or local switching between RUN, STOP, and RESET states.
+  * `0x0002` (`ADSCMD_READ`) / `0x0009` (`ADSCMD_READ_WRITE`): Serves live simulated PLC variables:
+    * `MAIN.CycleCounter` (incrementing 32-bit counter)
+    * `MAIN.TemperatureDegC` (sine-wave oscillation: 62.0 °C ± 8.5 °C)
+    * `MAIN.PressureBar` (harmonic oscillation: 6.0 bar ± 0.35 bar)
+    * `MAIN.MachineRunning` (Boolean: true)
+    * `MAIN.PartsProduced` (DINT part accumulation)
+    * `MAIN.DriveSpeedRpm` & `MAIN.LineCurrentAmps`
+* **Zero-Allocation Struct Unmarshalling**: Compatible with `StructTelemetryBinder.cs` for direct memory-mapped buffer translation.
+
+---
+
+## 10. Minimal OPC UA Client (Port 4840)
+
+To connect with third-party controllers without external heavy SDK dependencies, the agent provides `MinimalOpcClient.cs`:
+* **OPC UA Binary Protocol**: Implements standard binary socket communication (`HEL`/`ACK` handshake with message sizing and buffer negotiation).
+* **Virtual Simulation Fallback**: When an external OPC UA server is offline, the client automatically engages simulated telemetry generation, ensuring uninterrupted local diagnostics.
+* **Monitored Node Registry**:
+  * `ns=2;s=Line01.DriveSpeed`: Main motor speed (RPM)
+  * `ns=2;s=Line01.MotorCurrent`: Load current (Amperes)
+  * `ns=2;s=Line01.QualityOk`: Automated yield qualification (Boolean)
+  * `ns=2;s=Line01.PartCount`: Batch cycle accumulation
+* **Telemetry Pipeline Integration**: Polled OPC metrics are attached to `IndustrialOtData` and dispatched directly into the central gRPC collector.
+
+---
+
+## 11. Reporting Trigger Engine & Selective Slice Filtering
+
+To eliminate redundant bandwidth usage across industrial OT networks, telemetry dispatch is governed by `TelemetryTriggerEngine.cs`:
+* **`HeartbeatTrigger`**: Ensures connectivity liveness at configurable intervals (default: 60s). Sends lightweight liveness slices (`HeartbeatOnly`).
+* **`ThresholdTrigger`**: Monitors metric thresholds:
+  * OS Drive free space $\le 15$ GB: Triggers `P1_HighOperational`.
+  * OS Drive free space $\le 5$ GB: Escalates to `P0_CriticalAlarm`.
+  * TwinCAT PLC temperature $\ge 75.0$ °C: Escalates to `P0_CriticalAlarm`.
+* **`StateChangeTrigger`**: Detects state transitions:
+  * TwinCAT ADS state change (e.g. `RUN (5)` &rarr; `STOP (6)` or `ERROR (11)`).
+  * Network interface state change or machine identity reconfiguration.
+* **`OnDemandTrigger`**: Immediately fires upon manual request via the Agent Web Dashboard, Taskbar Tray Icon, or gRPC backend command.
+* **Selective Data Slice Filtering**:
+  * When only a metric or PLC variable changes, unchanged static hardware (`HardwareInfo`) and installed software (`SoftwareInfo`) slices are omitted, achieving up to 90% bandwidth reduction.
+
+---
+
+## 12. Windows Taskbar Tray Icon & Modernized Agent Web-View
+
+* **Taskbar Tray Runner (`HeimdallTrayRunner.ps1`)**:
+  * Lives in the Windows system tray notification area with a Heimdall shield icon.
+  * Real-time tooltip: `Heimdall Industrial Edge Agent | ADS: 48898 RUN | OPC: Connected`.
+  * Context Menu:
+    * *Open Agent Web Dashboard* (launches `http://localhost:5998`)
+    * *Trigger Immediate Telemetry Report* (dispatches instant telemetry with balloon confirmation)
+    * *Toggle TwinCAT ADS State* (RUN / STOP)
+    * *View Agent Status Summary*
+    * *Restart Agent Service*
+* **Modernized Web Dashboard (`http://localhost:5998`)**:
+  * Industrial dark-theme interface matching Heimdall design language.
+  * Live status cards: Host Environment, TwinCAT ADS Simulation, Minimal OPC UA Client, and Trigger Engine.
+  * Diagnostic and control APIs: `GET /api/status`, `POST /api/trigger-report`, `POST /api/ads/toggle`, and `GET/POST /api/config`.
+
 

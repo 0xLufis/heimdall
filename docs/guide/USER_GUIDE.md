@@ -14,18 +14,25 @@ This guide describes the user interface, operational workflows, and features ava
 3. Upon login, the active organization is loaded based on your assigned permissions (`admin`, `engineer`, `technician`, `operator`).
 4. To switch organizations (if you belong to multiple plants or production floors), click your organization name in the top navigation bar and choose from the dropdown menu.
 
-### 1.2 Layout & Theme
-* The left sidebar provides direct navigation to all functional areas:
-  * **Dashboard**: Executive KPIs and activity feed.
-  * **Fleet (Clients)**: Edge controller status and live gauges.
-  * **Machines & Lines**: Interactive cards of machines, production lines, and technologies.
-  * **Plant Map**: Interactive CAD floor plan with machine status pins.
-  * **Inventory**: Differentiated serialized parts and bulk stock items with on-demand tree visualization.
-  * **Tickets**: Real-time maintenance Kanban board.
-  * **Telemetry**: Telemetry collection recipes, templates, and policy prioritization rules.
-  * **Settings / Governance**: Users, system settings, security group mappings, and account profile.
-* To change theme preferences (Light / Dark / System), open the user profile card at the bottom-left of the sidebar.
-* Clicking **Account Settings** in the user card navigates to `/dashboard/settings` to manage profile attributes, MFA policies, and presence.
+### 1.2 Sidebar Navigation Structure
+Heimdall groups features into 4 distinct functional domains:
+* **Management**:
+  * **Overview**: Real-time high-level plant metrics and active issues.
+  * **Tickets**: Real-time maintenance Kanban board and incident tracker.
+  * **Delegations**: Preferred technician assignments, absence coverage, and escalation tiers (`/dashboard/delegations`).
+  * **Machines & Lines**: Machinery catalog, line classifications, and machine groups (`/dashboard/machines`, `/dashboard/machine-groups`).
+  * **Inventory**: Differentiated serialized parts and bulk stock items with component tree visualization.
+  * **Fleet (Clients)**: Edge controller status, live telemetry cards, and remote quick view.
+  * **Plant Map**: Interactive CAD floor plan with spatial anchor sync.
+* **Data**:
+  * **Analytics**: Fleet analytics summary, anomaly detection trends, KPI builder, and Grafana mass telemetry.
+  * **Telemetry Hub**: Recipe assignments, live streams, templates, and dynamic collection rules.
+* **Maintenance**:
+  * **System Status & Diagnostics**: Agent spooler diagnostics, diagnostic snapshots, and system health.
+  * **Audit Logs**: Immutable event audit logging for NIS2 and TISAX compliance.
+* **Settings**:
+  * **Governance & Access Control**: Better-Auth security groups, user management, and organizational hierarchy.
+  * **Help & Documentation**: Integrated platform developer and user manuals.
 
 ### 1.3 Universal Keyboard Shortcuts (FMFD)
 Heimdall includes global keyboard shortcuts accessible from any dashboard screen:
@@ -76,7 +83,7 @@ The Fleet view monitors all industrial PCs (IPCs), Soft-PLCs, and edge compute n
 ### 3.1 Live Grid & Metrics
 * **Heartbeat & Status**: The status indicator pulses green when a node has reported within its expected heartbeat window.
 * **Resource Gauges**: Live CPU utilization, RAM usage percentage, and primary OS drive free space.
-* **Network & Driver Details**: Displays reported MAC addresses, active IP, and whether the Beckhoff TwinCAT real-time network driver (`TcRTEthernet`) is bound.
+* **Network & Driver Details**: Displays reported MAC addresses, active IP, and whether the industrial real-time network driver (e.g. TwinCAT `TcRTEthernet` or dedicated RT-NIC adapter) is bound.
 
 ### 3.2 Dispatching Remote Commands
 1. Click the action menu (`...`) on any controller card and select **Dispatch Command**.
@@ -167,7 +174,7 @@ The dedicated Machines module provides multi-dimensional visualization of the fa
 
 ## 7. FMFD: Find My Field Data (OmniSearch 2.0)
 
-The top navigation search bar is powered by FMFD ("Find My Field Data" / internal "Find My Fucking Data"), an intelligent tokenizer modeled after developer IDE autocompletion (`nvim-coc` style):
+The top navigation search bar is powered by FMFD ("Find My Field Data"), an intelligent tokenizer and directive search engine modeled after modern code intelligence language servers:
 
 ### 7.1 Directives & Tag Syntax
 * **`@` for Technology**: Filters by discipline (`@Assembly`, `@Test`, `@SMT`, `@Welding`, `@Fastening`, `@Dispensing`, `@Robotics`).

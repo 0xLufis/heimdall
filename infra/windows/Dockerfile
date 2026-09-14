@@ -13,5 +13,5 @@ ENV PASSWORD="Password123!"
 # Copy OEM unattended post-install provisioning scripts
 COPY oem/ /oem/
 
-# Expose Web VNC (8006), RDP (3389), WinRM HTTP (5985), Agent Configurator (5998), OpenSSH (22)
-EXPOSE 8006 3389 5985 5998 22
+# Expose Web VNC (8006), RDP (3389), WinRM HTTP (5985), Agent Configurator (5998), OpenSSH (22), TwinCAT ADS (48898), OPC UA (4840)
+EXPOSE 8006 3389 5985 5998 22 48898 4840

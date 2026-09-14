@@ -169,5 +169,42 @@ describe('Global Context Menu & Grafana Integration Test Suite', () => {
       const iframe = wrapper.find('iframe')
       expect(iframe.attributes('src')).toContain('spc-capability')
     })
+
+    it('renders interactive demo panels by default and toggles between demo and iframe modes', async () => {
+      const wrapper = mount(GrafanaMassTelemetryEmbed)
+
+      // Verify interactive demo is active
+      expect(wrapper.text()).toContain('Interactive Demo')
+      expect(wrapper.text()).toContain('Infinity Engine: Online')
+      expect(wrapper.text()).toContain('High-Frequency FFT Spectral Spectrum')
+      expect(wrapper.text()).toContain('ISO 10816-3 Spindle Velocity RMS')
+
+      // Switch to External Server Iframe mode
+      const iframeBtn = wrapper.findAll('button').find(b => b.text().includes('External Server (Iframe)'))
+      expect(iframeBtn).toBeDefined()
+      await iframeBtn?.trigger('click')
+
+      // Now iframe controls are shown
+      expect(wrapper.text()).toContain('Targeting Grafana Instance')
+      expect(wrapper.text()).toContain('Reload')
+
+      // Switch back to Interactive Demo
+      const demoBtn = wrapper.findAll('button').find(b => b.text().includes('Interactive Demo'))
+      expect(demoBtn).toBeDefined()
+      await demoBtn?.trigger('click')
+
+      expect(wrapper.text()).toContain('Inject Telemetry Spike')
+    })
+
+    it('renders SPC capability panel when SPC preset is chosen in demo mode', async () => {
+      const wrapper = mount(GrafanaMassTelemetryEmbed)
+
+      const presetCards = wrapper.findAll('[role="button"]')
+      await presetCards[1].trigger('click')
+
+      expect(wrapper.text()).toContain('Real-Time X-Bar Chart')
+      expect(wrapper.text()).toContain('Capability Indices (Cp / Cpk)')
+      expect(wrapper.text()).toContain('Six-Sigma Compliant')
+    })
   })
 })

@@ -23,10 +23,10 @@ describe('Better Auth Studio Integration (/admin/studio)', () => {
     expect(studioConfig.events?.provider).toBeDefined()
   })
 
-  it('exposes Identity Studio in the Administration sidebar navigation menu with external blank target', () => {
-    const adminSection = navMenu.find((group) => group.heading === 'Administration')
-    expect(adminSection).toBeDefined()
-    const studioItem: any = adminSection?.items.find((item: any) => item.link === '/admin/studio')
+  it('exposes Identity Studio in the Settings sidebar navigation menu with external blank target', () => {
+    const settingsSection = navMenu.find((group) => group.heading === 'Settings')
+    expect(settingsSection).toBeDefined()
+    const studioItem: any = settingsSection?.items.find((item: any) => item.link === '/admin/studio')
     expect(studioItem).toBeDefined()
     expect(studioItem?.title).toBe('Identity Studio')
     expect(studioItem?.icon).toBe('i-lucide-fingerprint')

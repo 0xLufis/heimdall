@@ -1,72 +1,42 @@
 import { defineEventHandler, getQuery } from 'h3'
+import {
+  findTelemetryMetricByKey,
+  getCachedTelemetryDatapoints,
+  BUILTIN_METRICS
+} from '../../utils/telemetryCacheStore'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const machineId = (query.machineId as string) || 'm-op20'
-  const metric = (query.metric as string) || 'cycle_time'
+  const metricKey = (query.metric as string) || 'cycle_time'
   const range = (query.range as string) || '8h'
 
-  let unit = 'ms'
-  let nominal = 1200.0
-  let upper = 1280.0
-  let lower = 1120.0
-  let metricName = 'Cycle Time Deviation'
+  // 1. Resolve metric definition (built-in or user-defined)
+  const metricDef = (await findTelemetryMetricByKey(metricKey)) || BUILTIN_METRICS[0]
 
-  if (metric.toLowerCase().includes('temp')) {
-    metricName = 'Temperature Drift'
-    unit = '°C'
-    nominal = 48.5
-    upper = 65.0
-    lower = 25.0
-  } else if (metric.toLowerCase().includes('vib')) {
-    metricName = 'Spindle Vibration Index'
-    unit = 'mm/s'
-    nominal = 1.45
-    upper = 2.80
-    lower = 0.50
-  } else if (metric.toLowerCase().includes('err')) {
-    metricName = 'Micro-Fault Frequency'
-    unit = 'faults/hr'
-    nominal = 0.4
-    upper = 2.0
-    lower = 0.0
-  }
+  const metricName = metricDef.name
+  const unit = metricDef.unit
+  const nominal = metricDef.nominalValue
+  const upper = metricDef.upperTolerance
+  const lower = metricDef.lowerTolerance
 
-  const pointCount = range === '1h' ? 30 : (range === '24h' || range === '7d' ? 60 : 48)
-  const intervalMs = range === '1h' ? 120000 : (range === '24h' ? 1440000 : (range === '7d' ? 10080000 : 600000))
-  const now = Date.now()
+  // 2. Fetch datapoints from the cached telemetry store (Redis / in-memory ring buffer)
+  const points = await getCachedTelemetryDatapoints(machineId, metricKey, range, metricDef)
 
-  const points = []
+  // 3. Compute statistical properties across the cached series
   let sum = 0
-
-  for (let i = pointCount; i >= 0; i--) {
-    const timestamp = new Date(now - i * intervalMs).toISOString()
-    const progress = 1.0 - i / pointCount
-    const drift = progress * 0.15 * (upper - nominal)
-    const noise = (Math.sin(i * 0.8) * 0.5) * ((upper - nominal) * 0.3)
-    let val = nominal + drift + noise
-
-    if (i === 4) {
-      val = upper + (upper - nominal) * 0.8 // Spiked outlier
-    }
-
-    const roundedVal = Math.round(val * 100) / 100
-    sum += roundedVal
-    points.push({
-      timestamp,
-      value: roundedVal,
-      isAnomaly: false,
-      zScore: 0
-    })
+  for (const p of points) {
+    sum += p.value
   }
+  const mean = points.length > 0 ? sum / points.length : nominal
 
-  const mean = sum / points.length
   let sumSquares = 0
   for (const p of points) {
     sumSquares += Math.pow(p.value - mean, 2)
   }
-  const stdDev = Math.sqrt(sumSquares / points.length)
+  const stdDev = points.length > 0 ? Math.sqrt(sumSquares / points.length) : 0.001
 
+  // 4. Extract detected statistical anomalies from cached points
   const detectedAnomalies = []
   if (stdDev > 0.0001) {
     for (const p of points) {
@@ -91,11 +61,14 @@ export default defineEventHandler(async (event) => {
   return {
     machineId,
     metricName,
+    metricKey,
     unit,
     nominalValue: nominal,
     upperTolerance: upper,
     lowerTolerance: lower,
     points,
-    detectedAnomalies
+    detectedAnomalies,
+    source: 'telemetry_cache',
+    isUserDefined: metricDef.isUserDefined
   }
 })

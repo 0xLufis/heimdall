@@ -24,6 +24,20 @@ public class SystemInfoData
     public SoftwareInfo Software { get; set; } = new();
     public DiskData Disk { get; set; } = new();
     public List<EventLogInfo> Events { get; set; } = new();
+    public IndustrialOtData IndustrialOt { get; set; } = new();
+}
+
+public class IndustrialOtData
+{
+    public string AdsAmsNetId { get; set; } = string.Empty;
+    public int AdsPort { get; set; }
+    public string AdsState { get; set; } = string.Empty;
+    public Dictionary<string, object> AdsSymbols { get; set; } = new();
+    public string OpcEndpoint { get; set; } = string.Empty;
+    public bool OpcConnected { get; set; }
+    public Dictionary<string, object> OpcNodes { get; set; } = new();
+    public string LastTriggerReason { get; set; } = string.Empty;
+    public string TriggerPriority { get; set; } = string.Empty;
 }
 
 public class DiskData

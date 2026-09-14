@@ -25,8 +25,8 @@ heimdall/
 ├── infra/
 │   └── database/            # PostgreSQL 18, Redis 7.4, SSL certs, and seed data
 ├── tests/
-│   ├── backend/             # xUnit backend integration tests (83 tests)
-│   ├── frontend/unit/       # Vitest unit test suites (32 suites, 241 tests)
+│   ├── backend/             # xUnit backend integration tests (162 tests)
+│   ├── frontend/unit/       # Vitest unit test suites (37 suites, 275 tests)
 │   └── e2e/                 # Playwright browser end-to-end tests
 ├── docker-compose.yml       # Full stack local development compose file
 ├── run_dev.sh               # Local development launch script
