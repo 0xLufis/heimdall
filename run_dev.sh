@@ -188,7 +188,7 @@ windows_test() {
 # ------------------------------------------------------------------------------
 
 start_services() {
-    local with_windows="${1:-false}"
+    local with_windows="${1:-true}"
     print_header
     echo -e "${COLOR_BOLD}Starting Heimdall Development Services...${COLOR_RESET}"
 
@@ -209,11 +209,17 @@ start_services() {
         ln -sf "$LOG_DIR/frontend.log" /tmp/heimdall-nuxt.log 2>/dev/null || true
     fi
 
-    # 4. Linux Edge Agent Daemon
-    if ! is_running "$PID_DIR/agent.pid"; then
-        echo -e "${COLOR_BLUE}>> Starting Linux Edge Agent Daemon with hot-reload...${COLOR_RESET}"
-        (cd agent/App.Agent.Daemon && nohup dotnet watch run </dev/null > "$LOG_DIR/agent.log" 2>&1 & echo $! > "$PID_DIR/agent.pid")
-        ln -sf "$LOG_DIR/agent.log" /tmp/heimdall-agent.log 2>/dev/null || true
+    # 4. Industrial Edge Agent: Windows Docker Agent by default
+    if [ "$with_windows" = "true" ]; then
+        echo -e "${COLOR_BLUE}>> Using Windows 10 LTSC Docker Edge Agent (TwinCAT ADS & OPC UA)...${COLOR_RESET}"
+        windows_start
+    else
+        # Host Linux Edge Agent Daemon fallback
+        if ! is_running "$PID_DIR/agent.pid"; then
+            echo -e "${COLOR_BLUE}>> Starting Host Linux Edge Agent Daemon with hot-reload...${COLOR_RESET}"
+            (cd agent/App.Agent.Daemon && nohup dotnet watch run </dev/null > "$LOG_DIR/agent.log" 2>&1 & echo $! > "$PID_DIR/agent.pid")
+            ln -sf "$LOG_DIR/agent.log" /tmp/heimdall-agent.log 2>/dev/null || true
+        fi
     fi
 
     # 5. Industrial Edge Fleet Simulator
@@ -223,11 +229,6 @@ start_services() {
         [ ! -f "$python_bin" ] && python_bin="python3"
         (nohup $python_bin simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 & echo $! > "$PID_DIR/simulator.pid")
         ln -sf "$LOG_DIR/simulator.log" /tmp/heimdall-simulator.log 2>/dev/null || true
-    fi
-
-    # 6. Windows Agent (if requested)
-    if [ "$with_windows" = "true" ]; then
-        windows_start
     fi
 
     echo -e "${COLOR_GREEN}${COLOR_BOLD}✓ Core development services successfully launched.${COLOR_RESET}"
@@ -445,7 +446,7 @@ start_zellij() {
 
 start_dev() {
     local mode="tui"
-    local with_windows="false"
+    local with_windows="true"
 
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -455,6 +456,10 @@ start_dev() {
                 ;;
             --windows|--with-windows|-w)
                 with_windows="true"
+                shift
+                ;;
+            --no-windows|--without-windows|--linux-agent)
+                with_windows="false"
                 shift
                 ;;
             --zellij)
