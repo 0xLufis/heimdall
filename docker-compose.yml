@@ -211,6 +211,8 @@ services:
       - "3389:3389/tcp"   # RDP
       - "5985:5985"       # WinRM HTTP
       - "5998:5998"       # Agent Configurator API
+      - "48898:48898"     # Beckhoff TwinCAT ADS Simulation Server
+      - "4840:4840"       # Minimal OPC UA Server / Gateway
       - "2222:22"         # OpenSSH
     volumes:
       - ./infra/windows/storage:/storage
