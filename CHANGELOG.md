@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Interactive Development Workspace TUI (`tools/tui.py` & `run_dev.sh`)**:
+  - Live, reactive full-screen terminal user interface dashboard launched by default on `./run_dev.sh` (staying alive in foreground).
+  - Real-time service topology matrix (Postgres, Redis, Backend REST, gRPC stream, Nuxt frontend, Linux agent, Fleet simulator, Windows container, TwinCAT ADS, OPC UA).
+  - Split live log streamer with per-service buffers, colorized logging, auto-scrolling, and fullscreen log toggle (`[l]`).
+  - Interactive hotkeys for service start/stop (`[s]`), service restart with hot-reload (`[r]`), restart all (`[R]`), toggle Windows agent (`[w]`), verification test execution (`[t]`), and safe detachment to background daemons (`[b]`).
+  - Safe exit prompt (`[q]`) offering options to cleanly shut down all services or detach to background daemons.
+- **Enhanced Development CLI & Windows Agent Orchestration (`run_dev.sh` & `tools/dev_manager.py`)**:
+  - Full Windows 10 LTSC KVM Docker container orchestration directly in `run_dev.sh` (`./run_dev.sh windows start|stop|restart|status|logs|build|launch|test`).
+  - Option to include Windows agent during startup via `./run_dev.sh start --windows` (`-w`).
+  - Added port bindings `48898:48898` (TwinCAT ADS) and `4840:4840` (OPC UA) to `docker-compose.yml`.
+  - Machine-readable `--json` output flag in `dev_manager.py` for automated health telemetry.
+- **Deep Tab Completion System (`tools/completions/`)**:
+  - Comprehensive completions for Bash and Zsh covering all commands, subcommands, service names, and flags.
+  - Safe fallback for bare Bash environments lacking `_init_completion`.
+  - One-shot installation via `./run_dev.sh install-completions` (or `./run_dev.sh completion install`).
 - **Beckhoff TwinCAT ADS Simulation Server & Industrial Protocol Engine (`App.Agent.Daemon`)**:
   - In-memory Beckhoff TwinCAT ADS server (`AdsSimulationServer.cs`) listening on port 48898 with AMS Net ID `5.80.201.44.1.1:851`.
   - Implemented binary ADS frame decoding and response synthesis for commands `0x0001` (DeviceInfo), `0x0002` (Read), `0x0003` (Write), `0x0004` (ReadState), `0x0005` (WriteControl), and `0x0009` (ReadWrite).

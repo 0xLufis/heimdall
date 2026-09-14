@@ -1,5 +1,19 @@
 # bash completion for Heimdall scripts (run_dev.sh, run_simulators.sh, dev_manager.py, seed_pipeline.py, fleet_simulator.py)
 
+# Safe fallback for _init_completion in bare bash environments
+_heimdall_init_completion() {
+    if declare -F _init_completion >/dev/null 2>&1; then
+        _init_completion || return 1
+    else
+        COMPREPLY=()
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+    fi
+    return 0
+}
+
 _heimdall_get_clients() {
     local csv_file="seed_data/inventory_seed.csv"
     if [ -f "$csv_file" ]; then
@@ -11,14 +25,18 @@ _heimdall_get_clients() {
 
 _heimdall_run_dev_completion() {
     local cur prev words cword
-    _init_completion || return
+    _heimdall_init_completion || return
 
-    local commands="start stop clean restart status monitor watch docker logs zellij daemon completion help"
-    local services="backend frontend agent simulator db all"
+    local commands="start stop clean restart status monitor watch tui windows docker logs test build zellij daemon completion install-completions help"
+    local services="backend frontend agent simulator windows windows-agent db all"
+    local win_actions="start stop restart status logs build launch test vnc api"
+    local docker_actions="up down restart logs ps build start stop"
+    local test_subsystems="all backend frontend windows seed smoke"
+    local build_targets="agent-win windows frontend backend all"
 
     if [ "$cword" -eq 1 ]; then
         if [[ "$cur" == -* ]]; then
-            COMPREPLY=( $(compgen -W "--help -h --zellij --quiet -q" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--help -h --daemon -d --windows -w --zellij --tui --no-tui" -- "$cur") )
         else
             COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
         fi
@@ -27,14 +45,40 @@ _heimdall_run_dev_completion() {
 
     local subcmd="${words[1]}"
     case "$subcmd" in
-        logs|restart)
+        start)
+            COMPREPLY=( $(compgen -W "--daemon -d --windows -w --with-windows --zellij --tui --no-tui --help -h" -- "$cur") )
+            ;;
+        logs|restart|stop)
             if [ "$cword" -eq 2 ]; then
                 COMPREPLY=( $(compgen -W "$services" -- "$cur") )
             fi
             ;;
+        windows|winagent)
+            if [ "$cword" -eq 2 ]; then
+                COMPREPLY=( $(compgen -W "$win_actions" -- "$cur") )
+            fi
+            ;;
+        docker|compose)
+            if [ "$cword" -eq 2 ]; then
+                COMPREPLY=( $(compgen -W "$docker_actions" -- "$cur") )
+            fi
+            ;;
+        test)
+            if [ "$cword" -eq 2 ]; then
+                COMPREPLY=( $(compgen -W "$test_subsystems" -- "$cur") )
+            fi
+            ;;
+        build)
+            if [ "$cword" -eq 2 ]; then
+                COMPREPLY=( $(compgen -W "$build_targets" -- "$cur") )
+            fi
+            ;;
+        status)
+            COMPREPLY=( $(compgen -W "-w --watch --json --no-windows --help -h" -- "$cur") )
+            ;;
         completion)
             if [ "$cword" -eq 2 ]; then
-                COMPREPLY=( $(compgen -W "bash zsh" -- "$cur") )
+                COMPREPLY=( $(compgen -W "bash zsh install" -- "$cur") )
             fi
             ;;
         *)
@@ -47,7 +91,7 @@ _heimdall_run_dev_completion() {
 
 _heimdall_run_simulators_completion() {
     local cur prev words cword
-    _init_completion || return
+    _heimdall_init_completion || return
 
     local commands="start stop restart status logs completion help"
 
@@ -79,22 +123,29 @@ _heimdall_run_simulators_completion() {
 
 _heimdall_dev_manager_completion() {
     local cur prev words cword
-    _init_completion || return
+    _heimdall_init_completion || return
 
-    local commands="status watch check-health test"
+    local commands="status watch monitor check-health test test-windows tui windows"
+    local win_actions="start stop restart status logs build launch test"
+
     if [ "$cword" -eq 1 ] || [ "${words[1]}" = "python" -a "$cword" -eq 2 ] || [ "${words[1]}" = "python3" -a "$cword" -eq 2 ]; then
         COMPREPLY=( $(compgen -W "$commands --help -h" -- "$cur") )
         return 0
     fi
 
+    if [ "${words[1]}" = "windows" ] && [ "$cword" -eq 2 ]; then
+        COMPREPLY=( $(compgen -W "$win_actions" -- "$cur") )
+        return 0
+    fi
+
     if [[ "$cur" == -* ]]; then
-        COMPREPLY=( $(compgen -W "--help -h" -- "$cur") )
+        COMPREPLY=( $(compgen -W "--interval --json --no-windows --help -h" -- "$cur") )
     fi
 }
 
 _heimdall_seed_pipeline_completion() {
     local cur prev words cword
-    _init_completion || return
+    _heimdall_init_completion || return
 
     local flags="--generate-all --validate --help -h"
     COMPREPLY=( $(compgen -W "$flags" -- "$cur") )
@@ -102,7 +153,7 @@ _heimdall_seed_pipeline_completion() {
 
 _heimdall_fleet_simulator_completion() {
     local cur prev words cword
-    _init_completion || return
+    _heimdall_init_completion || return
 
     case "$prev" in
         --grpc-host)
@@ -123,8 +174,8 @@ _heimdall_fleet_simulator_completion() {
     COMPREPLY=( $(compgen -W "$flags" -- "$cur") )
 }
 
-# Register completion handlers for scripts
-complete -F _heimdall_run_dev_completion ./run_dev.sh run_dev.sh run_dev
+# Register completion handlers for scripts and aliases
+complete -F _heimdall_run_dev_completion ./run_dev.sh run_dev.sh run_dev heimdall
 complete -F _heimdall_run_simulators_completion ./run_simulators.sh run_simulators.sh run_simulators
 complete -F _heimdall_dev_manager_completion ./tools/dev_manager.py tools/dev_manager.py dev_manager.py
 complete -F _heimdall_seed_pipeline_completion ./seed_data/seed_pipeline.py seed_data/seed_pipeline.py seed_pipeline.py

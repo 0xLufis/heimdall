@@ -197,13 +197,25 @@ venv/bin/python tools/cad/generate_plant_dxf.py
 You can start and manage all services concurrently using `run_dev.sh`:
 
 ```bash
-# Start all Heimdall services
-./run_dev.sh start
+# Start all Heimdall services and launch the interactive full-screen TUI (default)
+./run_dev.sh
 
-# Stream logs for a specific service (backend, frontend, agent, simulator, db)
+# Start services in background daemon mode (without TUI)
+./run_dev.sh start --daemon
+
+# Start with Windows 10 LTSC KVM Docker container (VNC, TwinCAT ADS, OPC UA, WinRM)
+./run_dev.sh start --windows
+
+# Inspect Windows Edge Agent node status & ports
+./run_dev.sh windows status
+
+# Launch the interactive TUI directly anytime
+./run_dev.sh tui
+
+# Stream logs for a specific service (backend, frontend, agent, simulator, windows, db)
 ./run_dev.sh logs backend
 
-# Restart a specific service
+# Restart a specific service with hot-reload
 ./run_dev.sh restart frontend
 
 # Check service health and port matrix
@@ -221,7 +233,7 @@ Heimdall includes comprehensive tab-completion for `run_dev.sh`, `run_simulators
 
 ```bash
 # 1-Click Installation (Auto-detects Bash/Zsh and adds to ~/.bashrc or ~/.zshrc)
-./tools/completions/install_completions.sh
+./run_dev.sh install-completions
 
 # Or activate immediately in your current session:
 source <(./run_dev.sh completion bash)   # for Bash
