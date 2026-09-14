@@ -5,7 +5,7 @@ import {
   Monitor, Cpu, Activity, HardDrive, Network, ShieldCheck, 
   ShieldAlert, Pin, PinOff, Search, Layers, Server, 
   Terminal, CheckCircle2, AlertTriangle, Info, Copy, Check,
-  MapPin, Link
+  MapPin, Link, Eye
 } from 'lucide-vue-next'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -19,6 +19,7 @@ const emit = defineEmits<{
   (e: 'link-dxf', controller: IndustrialController): void
   (e: 'locate-map', handle: string): void
   (e: 'unpin-dxf', controller: IndustrialController): void
+  (e: 'quick-view', controller: IndustrialController): void
 }>()
 
 interface ControllerProperty {
@@ -418,7 +419,7 @@ const getStatusColor = (status?: string) => {
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5 flex-wrap">
         <Badge
           variant="outline"
           class="text-xs font-mono font-medium px-2.5 py-0.5 rounded-md"
@@ -426,6 +427,16 @@ const getStatusColor = (status?: string) => {
         >
           {{ controller.telemetry?.isOnline ? 'Live Telemetry Active' : 'Offline' }}
         </Badge>
+        <Button
+          variant="outline"
+          size="sm"
+          @click="emit('quick-view', controller)"
+          class="h-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white border-0 text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all active:scale-95"
+          title="Launch Remote Quick View Session"
+        >
+          <Eye class="size-3.5" />
+          <span>Remote Session</span>
+        </Button>
       </div>
     </div>
 
