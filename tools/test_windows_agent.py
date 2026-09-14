@@ -115,6 +115,8 @@ def show_status():
         ("RDP Remote Desktop", 3389),
         ("WinRM HTTP Service", 5985),
         ("Agent Configurator API", 5998),
+        ("TwinCAT ADS Server", 48898),
+        ("Minimal OPC UA Server", 4840),
         ("OpenSSH Server", 2222)
     ]
     for name, port in ports:
