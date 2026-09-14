@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, useAttrs } from 'vue'
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-vue-next'
 import { cn } from '~/utils/cn'
 
@@ -22,6 +22,7 @@ const emit = defineEmits<{
   (e: 'click', event: MouseEvent): void
 }>()
 
+const attrs = useAttrs()
 const internalSortDirection = ref<'asc' | 'desc' | null>(props.sortDirection ?? null)
 
 watch(
@@ -33,7 +34,12 @@ watch(
   }
 )
 
-const isSortable = computed(() => Boolean(props.sortable || props.sortDirection !== undefined))
+const isSortable = computed(() => Boolean(
+  props.sortable || 
+  props.sortDirection !== undefined || 
+  attrs.onSort || 
+  attrs['onUpdate:sortDirection']
+))
 
 const currentDirection = computed(() => {
   return props.sortDirection !== undefined ? props.sortDirection : internalSortDirection.value

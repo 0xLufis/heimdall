@@ -24,13 +24,16 @@ describe('Agent Telemetry Templating and Dynamic Inventory Suite', () => {
     }))
   })
 
-  it('includes Telemetry Templates and Telemetry Config in navMenu under Management', () => {
+  it('includes Telemetry Templates and Telemetry Config in navMenu under Data', () => {
+    const dataGroup = navMenu.find(g => g.heading === 'Data')
+    expect(dataGroup).toBeDefined()
+    const dataLinks = dataGroup!.items.map(i => i.link)
+    expect(dataLinks).toContain('/dashboard/telemetry/templates')
+    expect(dataLinks).toContain('/dashboard/telemetry/configure')
+
     const mgmtGroup = navMenu.find(g => g.heading === 'Management')
     expect(mgmtGroup).toBeDefined()
-    const links = mgmtGroup!.items.map(i => i.link)
-    expect(links).toContain('/dashboard/telemetry/templates')
-    expect(links).toContain('/dashboard/telemetry/configure')
-    expect(links).toContain('/dashboard/inventory')
+    expect(mgmtGroup!.items.map(i => i.link)).toContain('/dashboard/inventory')
   })
 
   it('loads built-in industrial templates with high-frequency motion and CIM probes', () => {

@@ -434,6 +434,18 @@ onMounted(() => {
             <span>Technologies</span>
           </Button>
         </div>
+
+        <NuxtLink to="/dashboard/machine-groups">
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            title="Manage Machine Groups and Factory Hierarchy"
+          >
+            <FolderTree class="w-3.5 h-3.5 text-indigo-400" />
+            <span>Machine Groups</span>
+          </Button>
+        </NuxtLink>
       </div>
     </div>
 

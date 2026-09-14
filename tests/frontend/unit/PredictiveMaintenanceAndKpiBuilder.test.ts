@@ -130,11 +130,11 @@ describe('Predictive Maintenance, Analytics & KPI Builder Test Suite', () => {
   })
 
   describe('Navigation Configuration', () => {
-    it('registers Fleet Analytics under Monitoring in navMenu', () => {
-      const monitoring = navMenu.find(group => group.heading === 'Monitoring')
-      expect(monitoring).toBeDefined()
+    it('registers Fleet Analytics under Data in navMenu', () => {
+      const dataGroup = navMenu.find(group => group.heading === 'Data')
+      expect(dataGroup).toBeDefined()
 
-      const analyticsLink = monitoring?.items.find(item => item.link === '/dashboard/analytics')
+      const analyticsLink = dataGroup?.items.find(item => item.link === '/dashboard/analytics')
       expect(analyticsLink).toBeDefined()
       expect(analyticsLink?.title).toBe('Fleet Analytics')
     })

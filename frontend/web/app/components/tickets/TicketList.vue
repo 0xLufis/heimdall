@@ -82,6 +82,108 @@ const formatSlaDue = (slaDueAt: string, status: string) => {
   }
 }
 
+type SortColumn = 'ticket' | 'priority' | 'status' | 'tech' | 'sla'
+const activeSortColumn = ref<SortColumn | null>(null)
+const activeSortDirection = ref<'asc' | 'desc' | null>(null)
+
+const priorityWeights: Record<string, number> = {
+  Critical: 4,
+  High: 3,
+  Medium: 2,
+  Low: 1
+}
+
+const statusWeights: Record<string, number> = {
+  Open: 1,
+  In_Progress: 2,
+  Pending_Parts: 3,
+  Resolved: 4,
+  Closed: 5
+}
+
+const handleSort = (column: SortColumn, direction: 'asc' | 'desc' | null) => {
+  if (direction === null) {
+    activeSortColumn.value = null
+    activeSortDirection.value = null
+  } else {
+    activeSortColumn.value = column
+    activeSortDirection.value = direction
+  }
+}
+
+const processedTickets = computed(() => {
+  let list = [...props.tickets]
+
+  // 1. Status Filter Tab
+  if (activeStatusTab.value !== 'all') {
+    list = list.filter(t => t.status === activeStatusTab.value)
+  }
+
+  // 2. Priority Filter Select
+  if (activePriorityFilter.value !== 'all') {
+    list = list.filter(t => t.priority === activePriorityFilter.value)
+  }
+
+  // 3. Search Query Filter
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim()
+    list = list.filter(t =>
+      t.ticketNumber?.toLowerCase().includes(q) ||
+      t.stationName?.toLowerCase().includes(q) ||
+      t.title?.toLowerCase().includes(q) ||
+      t.description?.toLowerCase().includes(q) ||
+      t.assignedTechnicianName?.toLowerCase().includes(q)
+    )
+  }
+
+  // 4. 3-State Sorting (Asc -> Desc -> Restore)
+  if (!activeSortColumn.value || !activeSortDirection.value) {
+    return list
+  }
+
+  const col = activeSortColumn.value
+  const dir = activeSortDirection.value
+
+  return list.sort((a, b) => {
+    let cmp = 0
+    switch (col) {
+      case 'ticket': {
+        const aVal = `${a.ticketNumber || ''} ${a.stationName || ''} ${a.title || ''}`.toLowerCase()
+        const bVal = `${b.ticketNumber || ''} ${b.stationName || ''} ${b.title || ''}`.toLowerCase()
+        cmp = aVal.localeCompare(bVal)
+        break
+      }
+      case 'priority': {
+        const aVal = priorityWeights[a.priority] ?? 0
+        const bVal = priorityWeights[b.priority] ?? 0
+        cmp = aVal - bVal
+        break
+      }
+      case 'status': {
+        const aVal = statusWeights[a.status] ?? 0
+        const bVal = statusWeights[b.status] ?? 0
+        cmp = aVal - bVal
+        break
+      }
+      case 'tech': {
+        const aVal = (a.assignedTechnicianName || '').toLowerCase()
+        const bVal = (b.assignedTechnicianName || '').toLowerCase()
+        if (!aVal && bVal) cmp = 1
+        else if (aVal && !bVal) cmp = -1
+        else cmp = aVal.localeCompare(bVal)
+        break
+      }
+      case 'sla': {
+        const aVal = a.slaDueAt ? new Date(a.slaDueAt).getTime() : Infinity
+        const bVal = b.slaDueAt ? new Date(b.slaDueAt).getTime() : Infinity
+        cmp = aVal - bVal
+        break
+      }
+    }
+    return dir === 'desc' ? -cmp : cmp
+  })
+})
+
 function handleFilter() {
   emit('filterChange', {
     status: activeStatusTab.value,
@@ -150,17 +252,52 @@ function handleFilter() {
       <Table>
         <TableHeader class="bg-slate-950/60 border-b border-slate-800">
           <TableRow class="border-b border-slate-800 hover:bg-transparent">
-            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">Ticket / Station</TableHead>
-            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">Priority</TableHead>
-            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">Status</TableHead>
-            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">Assigned Tech</TableHead>
-            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4">SLA Due</TableHead>
+            <TableHead
+              sortable
+              :sort-direction="activeSortColumn === 'ticket' ? activeSortDirection : null"
+              @sort="handleSort('ticket', $event)"
+              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+            >
+              Ticket / Station
+            </TableHead>
+            <TableHead
+              sortable
+              :sort-direction="activeSortColumn === 'priority' ? activeSortDirection : null"
+              @sort="handleSort('priority', $event)"
+              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+            >
+              Priority
+            </TableHead>
+            <TableHead
+              sortable
+              :sort-direction="activeSortColumn === 'status' ? activeSortDirection : null"
+              @sort="handleSort('status', $event)"
+              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+            >
+              Status
+            </TableHead>
+            <TableHead
+              sortable
+              :sort-direction="activeSortColumn === 'tech' ? activeSortDirection : null"
+              @sort="handleSort('tech', $event)"
+              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+            >
+              Assigned Tech
+            </TableHead>
+            <TableHead
+              sortable
+              :sort-direction="activeSortColumn === 'sla' ? activeSortDirection : null"
+              @sort="handleSort('sla', $event)"
+              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+            >
+              SLA Due
+            </TableHead>
             <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 text-right py-3 px-4">Action</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
-          <template v-if="tickets.length === 0">
+          <template v-if="processedTickets.length === 0">
             <TableRow>
               <TableCell colspan="6" class="h-32 text-center text-slate-500 font-medium text-xs">
                 No maintenance tickets match the selected filters.
@@ -170,7 +307,7 @@ function handleFilter() {
 
           <template v-else>
             <TableRow 
-              v-for="tkt in tickets" 
+              v-for="tkt in processedTickets" 
               :key="tkt.id"
               class="border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors group cursor-pointer"
               @click="emit('selectTicket', tkt)"

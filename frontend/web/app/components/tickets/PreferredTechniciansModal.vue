@@ -563,10 +563,10 @@ const scopeColor: Record<string, string> = {
 
 <template>
   <Dialog :open="open" @update:open="(v) => { if (!v) emit('close') }">
-    <DialogContent class="max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-0 overflow-hidden max-h-[92vh] flex flex-col">
+    <DialogContent class="max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-0 overflow-y-auto max-h-[90vh] flex flex-col scrollbar-thin">
 
       <!-- ── Header ─────────────────────────────────────────────────────── -->
-      <DialogHeader class="p-6 border-b border-slate-800 bg-slate-900/80 flex-shrink-0">
+      <DialogHeader class="p-6 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md sticky top-0 z-20 shrink-0">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="p-2.5 rounded-2xl bg-violet-600/10 text-violet-400 border border-violet-500/20">
@@ -651,7 +651,7 @@ const scopeColor: Record<string, string> = {
       </DialogHeader>
 
       <!-- ── Tab body ───────────────────────────────────────────────────── -->
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1">
 
         <!-- ══════════════════════════════════════════════════════════════ -->
         <!-- TAB 1: Shift Attendance                                       -->

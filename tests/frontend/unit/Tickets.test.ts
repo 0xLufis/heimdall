@@ -201,4 +201,84 @@ describe('Maintenance Ticketing UI Components', () => {
     expect(metrics.value?.openTickets).toBe(0)
     expect(metrics.value?.resolvedToday).toBe(1)
   })
+
+  it('supports 3-state asc-desc-restore sorting on TicketList table headers', async () => {
+    const wrapper = mount(TicketList, {
+      props: { tickets: mockTickets },
+      global: {
+        stubs: {
+          NuxtLink: { template: '<a><slot /></a>' },
+          Icon: { template: '<span></span>' }
+        }
+      }
+    })
+
+    const headers = wrapper.findAll('th')
+    // Find Priority header
+    const priorityHeader = headers.find(h => h.text().includes('Priority'))
+    expect(priorityHeader).toBeDefined()
+    expect(priorityHeader?.attributes('aria-sort')).toBe('none')
+
+    // Initially: TKT-1 (Critical) then TKT-2 (High)
+    let rows = wrapper.findAll('tbody tr')
+    expect(rows[0].text()).toContain('TKT-2026-0001')
+    expect(rows[1].text()).toContain('TKT-2026-0002')
+
+    // Click 1: ASC -> Low/Medium/High first (TKT-2 High before TKT-1 Critical)
+    await priorityHeader!.trigger('click')
+    expect(priorityHeader?.attributes('aria-sort')).toBe('ascending')
+    rows = wrapper.findAll('tbody tr')
+    expect(rows[0].text()).toContain('TKT-2026-0002')
+    expect(rows[1].text()).toContain('TKT-2026-0001')
+
+    // Click 2: DESC -> Critical first (TKT-1 Critical before TKT-2 High)
+    await priorityHeader!.trigger('click')
+    expect(priorityHeader?.attributes('aria-sort')).toBe('descending')
+    rows = wrapper.findAll('tbody tr')
+    expect(rows[0].text()).toContain('TKT-2026-0001')
+    expect(rows[1].text()).toContain('TKT-2026-0002')
+
+    // Click 3: RESTORE -> returns to natural original order!
+    await priorityHeader!.trigger('click')
+    expect(priorityHeader?.attributes('aria-sort')).toBe('none')
+    rows = wrapper.findAll('tbody tr')
+    expect(rows[0].text()).toContain('TKT-2026-0001')
+    expect(rows[1].text()).toContain('TKT-2026-0002')
+  })
+
+  it('renders PreferredTechniciansModal with a scrollable delegation pop-up card', async () => {
+    // Provide $fetch mock if not defined
+    if (!globalThis.$fetch) {
+      globalThis.$fetch = vi.fn().mockResolvedValue([]) as any
+    }
+
+    const { default: PreferredTechniciansModal } = await import('~/components/tickets/PreferredTechniciansModal.vue')
+    const wrapper = mount(PreferredTechniciansModal, {
+      props: { open: true },
+      global: {
+        stubs: {
+          DialogPortal: { template: '<div class="portal-stub"><slot /></div>' },
+          SearchableTargetCombobox: { template: '<div></div>' },
+          RbacTooltip: { template: '<div><slot /></div>' },
+          Select: { template: '<div><slot /></div>' },
+          SelectTrigger: { template: '<div><slot /></div>' },
+          SelectValue: { template: '<div><slot /></div>' },
+          SelectContent: { template: '<div><slot /></div>' },
+          SelectItem: { template: '<div><slot /></div>' }
+        }
+      }
+    })
+
+    // Verify dialog content has overflow-y-auto making the whole pop-up card scrollable
+    const dialogContent = wrapper.find('[data-slot="dialog-content"]')
+    expect(dialogContent.exists()).toBe(true)
+    expect(dialogContent.classes()).toContain('overflow-y-auto')
+    expect(dialogContent.classes()).toContain('max-h-[90vh]')
+
+    // Verify DialogHeader is sticky
+    const header = wrapper.find('header, [data-slot="dialog-header"]')
+    expect(header.exists()).toBe(true)
+    expect(header.classes()).toContain('sticky')
+    expect(header.classes()).toContain('top-0')
+  })
 })

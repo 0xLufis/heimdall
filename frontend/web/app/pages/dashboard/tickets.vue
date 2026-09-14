@@ -304,28 +304,30 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           </Button>
         </div>
 
-        <!-- Management Modals Buttons -->
-        <Button
-          variant="outline"
-          size="sm"
-          @click="showGroupManagerModal = true"
-          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-          title="Manage recursive machine groups and technology clusters"
-        >
-          <FolderTree class="h-3.5 w-3.5 text-indigo-400" />
-          <span>Machine Groups</span>
-        </Button>
+        <!-- Management Navigation Buttons -->
+        <NuxtLink to="/dashboard/machine-groups">
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            title="Manage recursive machine groups and technology clusters"
+          >
+            <FolderTree class="h-3.5 w-3.5 text-indigo-400" />
+            <span>Machine Groups</span>
+          </Button>
+        </NuxtLink>
 
-        <Button
-          variant="outline"
-          size="sm"
-          @click="showDelegationModal = true"
-          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-          title="Manage shift attendance, engineer dedication, and Teams OOO state"
-        >
-          <Users class="h-3.5 w-3.5 text-cyan-400" />
-          <span>Delegation & OOO</span>
-        </Button>
+        <NuxtLink to="/dashboard/delegations">
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            title="Manage shift attendance, engineer dedication, and Teams OOO state"
+          >
+            <Users class="h-3.5 w-3.5 text-cyan-400" />
+            <span>Delegation & Roster</span>
+          </Button>
+        </NuxtLink>
 
         <Button
           variant="outline"
