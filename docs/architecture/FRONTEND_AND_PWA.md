@@ -86,7 +86,7 @@ Standardizes incident reporting across 4 industrial categories: `Prevention`, `E
 
 ### 2.3 Zero-Dependency SVG Action QR Renderer (`utils/qrSvgRenderer.ts`)
 To prevent SSR container crashes from native Node/canvas QR dependencies, Heimdall implements an internal pure TypeScript QR generator:
-- Built-in Galois Field $GF(256)$ generator with Reed-Solomon Error Correction Level M.
+- Built-in Galois Field GF(256) matrix generator with Reed-Solomon Error Correction Level M.
 - Synchronously renders vector SVG data URLs (`data:image/svg+xml;utf8,...`) without native canvas or C++ bindings.
 - Fully compatible with browser, Bun, Node.js, and Nitro SSR.
 - Supports composable URI actions (`report-incident`, `inspect-machine`, `claim-ticket`) via `utils/qrActionGenerator.ts`.
@@ -228,11 +228,11 @@ The global search interface (`useOmniSearch.ts`, `AutoTagEngine.ts`) supports mu
 
 ### 7.1 Entity Extraction
 The tokenizer detects structured patterns in search queries:
-* **IPv4 Addresses**: `\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b` $\to$ Filters by controller IP.
-* **MAC Addresses**: `\b([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})\b` $\to$ Filters by hardware address.
-* **Station Identifiers**: `LINE-[A-Z0-9]+-OP[0-9]+` $\to$ Filters by factory floor station code.
-* **Ticket Identifiers**: `TKT-[0-9]+` $\to$ Direct navigation to maintenance ticket.
-* **Technical Constraints**: `24V`, `1500RPM`, `60FPS` $\to$ Filters JSONB specs metadata.
+* **IPv4 Addresses**: `\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b` → Filters by controller IP.
+* **MAC Addresses**: `\b([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})\b` → Filters by hardware address.
+* **Station Identifiers**: `LINE-[A-Z0-9]+-OP[0-9]+` → Filters by factory floor station code.
+* **Ticket Identifiers**: `TKT-[0-9]+` → Direct navigation to maintenance ticket.
+* **Technical Constraints**: `24V`, `1500RPM`, `60FPS` → Filters JSONB specs metadata.
 
 ### 7.2 Fuzzy Matching (Damerau-Levenshtein Distance)
 Tolerates typing mistakes, character transpositions, and partial prefixes across asset models, manufacturer names, and serial numbers.
@@ -309,4 +309,41 @@ Clicking any page header title or icon block across dashboard views (`tickets.vu
 - Cleans URL query parameters (e.g. `?id=...`, `?selected=...`).
 - Restores default view modes (e.g. list, grid).
 - Triggers fresh live data fetching and SignalR re-synchronization.
+
+---
+
+## 11. 4-Tier Navigation Hierarchy & Dedicated OT Workspaces
+
+To ensure intuitive discoverability and eliminate modal popup congestion, the platform organizes its frontend navigation into four explicit operational tiers:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      4-TIER SIDEBAR NAVIGATION                         │
+├─────────────────┬──────────────────┬─────────────────┬─────────────────┤
+│   MANAGEMENT    │       DATA       │   MAINTENANCE   │    SETTINGS     │
+├─────────────────┼──────────────────┼─────────────────┼─────────────────┤
+│ * Dashboard     │ * Live Telemetry │ * Tickets       │ * Users & Roles │
+│ * Inventory     │ * Fleet Analytics│ * Delegations   │ * Organizations │
+│ * Machines      │ * Templates      │                 │ * Security Grps │
+│ * Machine Groups│ * Telemetry Cfg  │                 │ * Governance    │
+│ * Client PCs    │                  │                 │ * Identity Studio│
+│ * Plant Map     │                  │                 │ * User Settings │
+│                 │                  │                 │ * Help & Support│
+└─────────────────┴──────────────────┴─────────────────┴─────────────────┘
+```
+
+### 11.1 Dedicated Delegations & Roster Workspace (`/dashboard/delegations`)
+Elevated from an overburdened modal into a first-class responsive workspace:
+* **Shift Attendance Tab**: Live clock-in tracking, absence registration (Sick, Vacation, Training), designated backup support, and Microsoft Teams Out-of-Office (OOO) status synchronization.
+* **Technician Dedication Tab**: Declarative assignment rules mapping technicians to specific Machine Technologies (Milling, Screwing, AOI), Line Envelopes, or individual machines, guarded by multi-tier RBAC authority tiers (`Self`, `Shift Leader`, `Group Leader`, `Manager`).
+* **Machine Group Clusters Tab**: Recursive clustering of factory automation cells and technology groups.
+* **Live Role Simulator Bar**: Integrated persona bar (`DEMO_PERSONAS`) enabling instant verification of role-based governance policies.
+
+### 11.2 Dedicated Machine Groups & Factory Hierarchy (`/dashboard/machine-groups`)
+Dedicated workspace for managing production envelopes:
+* **Hierarchy Tree Explorer**: Multi-level tree visualizing Plant Level &rarr; Production Lines &rarr; Automation Cells &rarr; Workstations.
+* **Technology Clusters A through X**: Real-time assignment of equipment specializations (Optical Inspection, Screwing, Soldering, Milling, Pressing, Manipulators).
+* **Engineering Ownership**: Dedicated lead engineer metadata, operational descriptions, and line capacity notes.
+* **Full CRUD Lifecycle**: Integrated with `/api/machine-groups` REST endpoints for real-time creation, editing, and reparenting.
+
 

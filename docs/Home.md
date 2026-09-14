@@ -11,7 +11,7 @@ Welcome to the Heimdall technical documentation suite. The documentation is orga
   * Edge telemetry ingestion, maintenance ticket lifecycle, Active Directory OU discovery, PKI mTLS auto-enrollment, and agent command execution loops.
 
 * [System Architecture & Data Model](architecture/SYSTEM_ARCHITECTURE.md)
-  * Manufacturing plant topology and the graph-relational $M:N$ domain model.
+  * Manufacturing plant topology and the graph-relational many-to-many (M:N) domain model.
   * Complete entity definitions, constraints, indexes, and database schema isolation (`backend` vs. `auth`).
   * Backend service layers, repository patterns, and hybrid L1/L2 caching with offline resilience.
   * Multi-tenant query isolation via Entity Framework Core Global Query Filters.

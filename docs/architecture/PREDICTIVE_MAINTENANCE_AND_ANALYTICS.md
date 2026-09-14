@@ -6,7 +6,7 @@ This document specifies the technical architecture, mathematical foundations, an
 
 ## 1. Overview & Operational Goals
 
-OT/ICS environments require continuous, non-intrusive statistical surveillance of edge controller telemetry (Beckhoff TwinCAT, Siemens S7, Rockwell ControlLogix) to detect mechanical wear, thermal throttling, and process drift *before* catastrophic line failure occurs.
+OT/ICS environments require continuous, non-intrusive statistical surveillance of edge controller telemetry (Industrial PCs, Soft-PLCs, Fieldbus Runtimes, and Hardware PLCs) to detect mechanical wear, thermal throttling, and process drift *before* catastrophic line failure occurs.
 
 Heimdall combines:
 1. **Statistical Z-Score Anomaly Detection**: Real-time outlier identification over rolling timeseries buffers.
@@ -34,9 +34,9 @@ $$z_i = \frac{x_i - \mu}{\sigma}$$
 
 | Standardized Score | Classification | Action Triggered |
 | :--- | :--- | :--- |
-| **$|z| \le 2.5$** | **Normal Operational Range** | Nominal telemetry recording |
-| **$2.5 < |z| \le 3.0$** | **Degradation Warning** | Visual telemetry chart marker, log entry |
-| **$|z| > 3.0$** | **Critical Outlier Anomaly** | Machine Health Index penalty, proactive ticket recommendation |
+| **\|z\| ≤ 2.5** | **Normal Operational Range** | Nominal telemetry recording |
+| **2.5 < \|z\| ≤ 3.0** | **Degradation Warning** | Visual telemetry chart marker, log entry |
+| **\|z\| > 3.0** | **Critical Outlier Anomaly** | Machine Health Index penalty, proactive ticket recommendation |
 
 ---
 

@@ -13,7 +13,7 @@ In manufacturing automation environments, production lines do not follow rigid h
 
 Conversely, a high-performance multi-core IPC may control multiple physical stations or process zones simultaneously.
 
-To model this reality without artificial constraints, Heimdall implements a **graph-relational data model** with explicit many-to-many ($M:N$) junctions and typed directional interconnects between equipment.
+To model this reality without artificial constraints, Heimdall implements a **graph-relational data model** with explicit many-to-many (M:N) junctions and typed directional interconnects between equipment.
 
 ```
 ┌─────────────────────────┐               M:N               ┌───────────────────────────┐
@@ -127,7 +127,7 @@ Represents edge compute nodes, industrial PCs, and soft-PLC hosts:
 * `system_metadata` (`jsonb`, GIN indexed): Detailed OS specifications, kernel version, installed Beckhoff driver versions, and network adapter hardware info.
 
 ### 2.6 Station-to-Controller Junction (`StationControllers`)
-Models the $M:N$ mapping between physical stations and managing edge computers:
+Models the many-to-many (M:N) mapping between physical stations and managing edge computers:
 * `StationId` (`uuid`, PK/FK): Production station.
 * `ClientPcId` (`uuid`, PK/FK): Industrial controller.
 * `ControlRole` (`varchar(32)`): Operational role (`Primary`, `Secondary`, `Safety`, `Motion`, `Vision`, `Gateway`).
@@ -158,11 +158,11 @@ Tracks equipment malfunctions, maintenance requests, and repairs:
 * `sla_due_at` (`timestamptz`, nullable): Service level agreement resolution deadline.
 
 ### 2.9 OmniSearch 2.0 Language-Server Search Pipeline
-Heimdall includes an advanced industrial search engine styled after `nvim-coc` autocompletion:
+Heimdall includes an advanced industrial search engine styled after autocompletion language servers:
 * **3-Stage Search Engine**:
   1. *Prefix Tokenizer*: Identifies filter directives (`@technology`, `#status`, `!priority`, `typ:`, `org:`).
   2. *Live Tag Suggestions*: Floating completion dropdown offering matching technology tags, operational statuses, and equipment categories with keyboard navigation (`ArrowUp`, `ArrowDown`, `Enter`, `Tab`).
-  3. *Fuzzy Ranking*: Exact prefix matches are scored highest ($100$), followed by token substring matches ($50$), case-insensitive matches ($25$), and fuzzy typo-tolerant matches.
+  3. *Fuzzy Ranking*: Exact prefix matches are scored highest (100), followed by token substring matches (50), case-insensitive matches (25), and fuzzy typo-tolerant matches.
 * Search scopes include stations, controllers, discrete serialized parts, bulk stock items, and maintenance tickets with instantaneous sub-5ms UI filtering.
 
 ---

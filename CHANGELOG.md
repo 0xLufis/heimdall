@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Beckhoff TwinCAT ADS Simulation Server & Industrial Protocol Engine (`App.Agent.Daemon`)**:
+  - In-memory Beckhoff TwinCAT ADS server (`AdsSimulationServer.cs`) listening on port 48898 with AMS Net ID `5.80.201.44.1.1:851`.
+  - Implemented binary ADS frame decoding and response synthesis for commands `0x0001` (DeviceInfo), `0x0002` (Read), `0x0003` (Write), `0x0004` (ReadState), `0x0005` (WriteControl), and `0x0009` (ReadWrite).
+  - Simulated live PLC variables (`MAIN.CycleCounter`, `MAIN.TemperatureDegC`, `MAIN.PressureBar`, `MAIN.PartsProduced`, and `MAIN.MachineRunning`) and TwinCAT 3 run/stop transitions.
+  - Exposed TwinCAT ADS port `48898` in Windows Docker container (`infra/windows/Dockerfile`) and configured automated firewall and TwinCAT/EtherCAT registry provisioning in `setup.ps1`.
+- **Zero-Dependency Binary OPC UA Client (`MinimalOpcClient.cs`)**:
+  - Native binary OPC UA client communicating over `opc.tcp://127.0.0.1:4840` without external runtime dependencies.
+  - Full binary HEL/ACK protocol negotiation, monitored node catalog (`ns=2;s=Line1.Speed`, `ns=2;s=Line1.Vibration`, `ns=2;s=Line1.Status`), and automated fallback simulation.
+  - Port `4840` exposed in `infra/windows/Dockerfile` and configured in edge firewall rules.
+- **Edge Reporting Trigger Engine & Bandwidth Optimization (`TelemetryTriggerEngine.cs`)**:
+  - Configurable multi-condition trigger evaluation engine supporting `HeartbeatTrigger`, `ThresholdTrigger` (OS drive space, PLC temp limits), `StateChangeTrigger` (TwinCAT RUN/STOP changes), and `OnDemandTrigger`.
+  - Selective telemetry slice filtering (`IncludeHardware`, `IncludeSoftware`, `IncludeDisk`, `IncludePlcTelemetry`, `IncludeEvents`), omitting static hardware/software inventories during high-frequency PLC updates to drastically reduce edge-to-cloud payload volume.
+  - Contributor integration via `IndustrialOtComponentContributor.cs` seamlessly feeding hardware and live PLC slices into station inventory graphs.
+- **Interactive Windows Edge Tray Runner & Modernized Agent Web View**:
+  - PowerShell system tray runner (`HeimdallTrayRunner.ps1`) in `infra/windows/tray/` and OEM provisioning, supporting status checks, log viewing, daemon control, and quick web-view launch.
+  - Overhauled Agent Web-View dashboard (`http://localhost:5998`) featuring an industrial dark theme, real-time status polling, live ADS RUN/STOP toggles, and manual telemetry dispatch triggers.
+- **Dedicated Delegations & Machine Groups Management Hubs (`frontend/web`)**:
+  - Standalone `/dashboard/delegations` page (`DelegationsManager.vue`) providing technician priority rules, absence coverage schedules, and escalation tiers.
+  - Standalone `/dashboard/machine-groups` page (`MachineGroupManager.vue`) providing machine classification, production line assignments, and plant location grouping.
+  - Modal wrappers `MachineGroupManagerModal.vue` and `PreferredTechniciansModal.vue` refactored to wrap managers cleanly with full backward compatibility.
+- **4-Tier Grouped Navigation Sidebar (`menus.ts`)**:
+  - Reorganized global sidebar into 4 logical enterprise domains: **Management** (Overview, Tickets, Delegations, Machines, Groups, Inventory, Clients, Map), **Data** (Analytics, Telemetry Hub, Live Stream, Templates, Dynamic Rules), **Maintenance** (System Status, Spooler Diagnostics, Audit Logs), and **Settings** (Access Control, Organizations, Security Groups, Governance, Help & Guide).
+- **User-Defined Telemetry Metrics Registry & Cache Store**:
+  - Custom telemetry metrics registry (`telemetryMetrics.ts`, `useTelemetryMetrics.ts`) with custom unit formulas, warning/critical thresholds, and cached datapoint retrieval via `/api/telemetry/metrics` and `telemetryCacheStore.ts`.
+- **Automated Incident Alert Rules Engine**:
+  - Configurable alert rule management (`AlertRulesManager.vue`, `useAlertRules.ts`) with condition evaluation, threshold triggers, and automatic maintenance ticket creation.
+- **Zero-Dependency RFB/VNC Remote Desktop Canvas (`useRfbClient.ts`)**:
+  - Web-native RFB protocol client rendering remote VNC frames directly onto HTML5 `<canvas>` elements with interactive keyboard and mouse control, integrated into `RemoteQuickViewModal.vue`.
+- **3-State Column Sorting in Table Headers (`TableHead.vue`)**:
+  - Added 3-state sorting cycle (Ascending -> Descending -> Restored default) for incident ticket lists and machine catalogs.
 - **Cryptographically Signed Agent Plugins & Sandboxing (`App.Agent.Daemon` & `App.Backend.Api`)**:
   - Master RSA-2048 signing authority in `PluginService.cs` (`RSA-SHA256` with `Pkcs1` padding) and manifest verification in `PluginManager.cs`.
   - Fail-secure verification rejecting unsigned plugins in Production (`ErrorCode.PluginSignatureInvalid`) and sandboxing in Development (`sandboxes/{pluginId}`).
