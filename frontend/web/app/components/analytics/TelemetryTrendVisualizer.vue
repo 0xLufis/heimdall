@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Badge } from '~/components/ui/badge'
 import { Card } from '~/components/ui/card'
+import { useTelemetryMetrics } from '~/composables/useTelemetryMetrics'
 import {
   TrendingUp,
   AlertTriangle,
@@ -33,20 +34,28 @@ export interface AnomalyDetail {
 export interface TrendSeriesData {
   machineId: string
   metricName: string
+  metricKey?: string
   unit: string
   nominalValue: number
   upperTolerance: number
   lowerTolerance: number
   points: TelemetryPoint[]
   detectedAnomalies: AnomalyDetail[]
+  source?: string
+  isUserDefined?: boolean
 }
 
 const props = defineProps<{
   initialMachineId?: string
 }>()
 
+const {
+  metrics: telemetryMetrics,
+  fetchMetrics: fetchTelemetryMetrics
+} = useTelemetryMetrics()
+
 const activeMachineId = ref(props.initialMachineId || 'm-op20')
-const activeMetric = ref<'cycle_time' | 'temperature' | 'vibration' | 'error_rate'>('cycle_time')
+const activeMetric = ref<string>('cycle_time')
 const activeRange = ref<'1h' | '8h' | '24h' | '7d'>('8h')
 const isLoading = ref(false)
 
@@ -75,7 +84,7 @@ const machinesList = [
 const fetchTrends = async () => {
   isLoading.value = true
   try {
-    const data = await $fetch<TrendSeriesData>(`/api/proxy/v1/analytics/trends`, {
+    const data = await $fetch<TrendSeriesData>(`/api/analytics/trends`, {
       params: {
         machineId: activeMachineId.value,
         metric: activeMetric.value,
@@ -86,9 +95,9 @@ const fetchTrends = async () => {
       trendData.value = data
     }
   } catch {
-    // Graceful fallback to server endpoint
+    // Graceful fallback to proxy endpoint if available
     try {
-      const fallback = await $fetch<TrendSeriesData>(`/api/analytics/trends`, {
+      const fallback = await $fetch<TrendSeriesData>(`/api/proxy/v1/analytics/trends`, {
         params: {
           machineId: activeMachineId.value,
           metric: activeMetric.value,
@@ -110,7 +119,8 @@ watch([activeMachineId, activeMetric, activeRange], () => {
   fetchTrends()
 })
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchTelemetryMetrics()
   fetchTrends()
 })
 
@@ -248,39 +258,20 @@ const meanVal = computed(() => {
       </div>
     </div>
 
-    <!-- Metric Tabs -->
+    <!-- Metric Tabs (Built-in + User Defined) -->
     <div class="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto text-xs font-medium">
       <button
+        v-for="m in telemetryMetrics"
+        :key="m.key"
         type="button"
-        @click="activeMetric = 'cycle_time'"
-        :class="activeMetric === 'cycle_time' ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
-        class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0"
+        @click="activeMetric = m.key"
+        :class="activeMetric === m.key ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
+        class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
       >
-        Cycle Time Jitter (ms)
-      </button>
-      <button
-        type="button"
-        @click="activeMetric = 'temperature'"
-        :class="activeMetric === 'temperature' ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
-        class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0"
-      >
-        Drive Temperature Drift (°C)
-      </button>
-      <button
-        type="button"
-        @click="activeMetric = 'vibration'"
-        :class="activeMetric === 'vibration' ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
-        class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0"
-      >
-        Spindle Harmonic Vibration (mm/s)
-      </button>
-      <button
-        type="button"
-        @click="activeMetric = 'error_rate'"
-        :class="activeMetric === 'error_rate' ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
-        class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0"
-      >
-        Micro-Fault Frequency (faults/hr)
+        <span>{{ m.name }} ({{ m.unit }})</span>
+        <Badge v-if="m.isUserDefined" variant="outline" class="text-[9px] px-1 py-0 border-indigo-500/30 text-indigo-400">
+          Custom
+        </Badge>
       </button>
     </div>
 

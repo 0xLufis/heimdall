@@ -13,8 +13,10 @@ import {
   TrendingDown,
   ChevronRight,
   Flame,
-  ArrowUpRight
+  ArrowUpRight,
+  Bell
 } from 'lucide-vue-next'
+import { useAlertRules } from '~/composables/useAlertRules'
 
 export interface TopFaultingMachine {
   machineId: string
@@ -57,6 +59,7 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
+const { activeAlertsCount, criticalAlertsCount } = useAlertRules()
 
 const totalBacklog = computed(() => {
   const b = props.summary.maintenanceBacklog
@@ -146,6 +149,38 @@ const totalBacklog = computed(() => {
           <span class="text-slate-200 font-semibold">98.1% on-time</span>
         </div>
       </Card>
+    </div>
+
+    <!-- Active Telemetry Breaches / Rule Alerts Alert Banner -->
+    <div
+      v-if="activeAlertsCount > 0"
+      class="p-4 rounded-xl bg-amber-950/30 border border-amber-500/30 flex items-center justify-between flex-wrap gap-3"
+    >
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+          <Bell class="w-4 h-4" />
+        </div>
+        <div>
+          <div class="text-xs font-semibold text-amber-200 flex items-center gap-2">
+            <span>{{ activeAlertsCount }} Active Threshold Breaches in Factory Fleet</span>
+            <Badge v-if="criticalAlertsCount > 0" class="text-[10px] bg-rose-950/80 text-rose-300 border-rose-500/40 border">
+              {{ criticalAlertsCount }} Critical
+            </Badge>
+          </div>
+          <p class="text-[11px] text-amber-300/80 mt-0.5">
+            Real-time rules engine actively monitoring thermal, vibration, and Soft-PLC cycle jitter with automated maintenance ticket dispatch.
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        @click="router.push('/dashboard/tickets')"
+        class="px-3 py-1.5 rounded-lg bg-amber-900/40 hover:bg-amber-800/50 text-amber-200 border border-amber-600/40 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+      >
+        <span>View Incident Tickets</span>
+        <ChevronRight class="w-3.5 h-3.5" />
+      </button>
     </div>
 
     <!-- Second Row: Top-Faulting Machines Ranking & Backlog Distribution -->

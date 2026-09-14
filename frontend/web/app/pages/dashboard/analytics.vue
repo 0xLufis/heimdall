@@ -8,6 +8,8 @@ import TelemetryTrendVisualizer from '~/components/analytics/TelemetryTrendVisua
 import KpiGraphBuilder from '~/components/analytics/KpiGraphBuilder.vue'
 import PowerBiTileEmbed from '~/components/analytics/PowerBiTileEmbed.vue'
 import GrafanaMassTelemetryEmbed from '~/components/analytics/GrafanaMassTelemetryEmbed.vue'
+import AlertRulesManager from '~/components/analytics/AlertRulesManager.vue'
+import { useAlertRules } from '~/composables/useAlertRules'
 import {
   Activity,
   BarChart3,
@@ -17,7 +19,8 @@ import {
   RefreshCw,
   Clock,
   ExternalLink,
-  Server
+  Server,
+  Bell
 } from 'lucide-vue-next'
 
 definePageMeta({
@@ -25,7 +28,8 @@ definePageMeta({
 })
 
 const router = useRouter()
-type AnalyticsTab = 'overview' | 'predictive' | 'builder' | 'powerbi' | 'grafana'
+const { activeAlertsCount, criticalAlertsCount } = useAlertRules()
+type AnalyticsTab = 'overview' | 'rules-alerts' | 'predictive' | 'builder' | 'powerbi' | 'grafana'
 const activeTab = ref<AnalyticsTab>('overview')
 const isLoading = ref(false)
 
@@ -133,7 +137,7 @@ onMounted(() => {
         type="button"
         @click="activeTab = 'overview'"
         :class="activeTab === 'overview' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
-        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0"
+        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Activity class="w-4 h-4" />
         <span>Fleet Overview & KPIs</span>
@@ -141,9 +145,22 @@ onMounted(() => {
 
       <button
         type="button"
+        @click="activeTab = 'rules-alerts'"
+        :class="activeTab === 'rules-alerts' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
+        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+      >
+        <Bell class="w-4 h-4" />
+        <span>Rules & Alert Automation</span>
+        <Badge v-if="activeAlertsCount > 0" class="text-[10px] px-1.5 py-0 bg-rose-500 text-white">
+          {{ activeAlertsCount }}
+        </Badge>
+      </button>
+
+      <button
+        type="button"
         @click="activeTab = 'predictive'"
         :class="activeTab === 'predictive' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
-        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0"
+        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Sparkles class="w-4 h-4" />
         <span>Predictive Drift & Anomalies</span>
@@ -153,7 +170,7 @@ onMounted(() => {
         type="button"
         @click="activeTab = 'builder'"
         :class="activeTab === 'builder' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
-        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0"
+        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Sliders class="w-4 h-4" />
         <span>Custom KPI Builder</span>
@@ -163,7 +180,7 @@ onMounted(() => {
         type="button"
         @click="activeTab = 'powerbi'"
         :class="activeTab === 'powerbi' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
-        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0"
+        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Layers class="w-4 h-4" />
         <span>Power BI & External BI</span>
@@ -173,7 +190,7 @@ onMounted(() => {
         type="button"
         @click="activeTab = 'grafana'"
         :class="activeTab === 'grafana' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
-        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0"
+        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Server class="w-4 h-4" />
         <span>Grafana Mass Telemetry</span>
@@ -185,7 +202,12 @@ onMounted(() => {
       <FleetAnalyticsSummary :summary="summaryData" />
     </template>
 
-    <!-- Tab 2: Predictive Drift & Anomalies -->
+    <!-- Tab 2: Rules & Alert Automation -->
+    <template v-else-if="activeTab === 'rules-alerts'">
+      <AlertRulesManager />
+    </template>
+
+    <!-- Tab 3: Predictive Drift & Anomalies -->
     <template v-else-if="activeTab === 'predictive'">
       <TelemetryTrendVisualizer initial-machine-id="m-op20" />
     </template>
