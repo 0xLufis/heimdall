@@ -148,14 +148,26 @@ public class MinimalOpcClient : IDisposable
         _monitoredNodes["ns=2;s=Line01.QualityOk"] = (TotalPollCycles % 50) != 0; // 98% yield
     }
 
+    private bool _disposed;
+
     public void Stop()
     {
-        _cts?.Cancel();
+        try
+        {
+            if (_cts != null && !_cts.IsCancellationRequested)
+            {
+                _cts.Cancel();
+            }
+        }
+        catch (ObjectDisposedException) { }
+        catch (AggregateException) { }
     }
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         Stop();
-        _cts?.Dispose();
+        try { _cts?.Dispose(); } catch { }
     }
 }

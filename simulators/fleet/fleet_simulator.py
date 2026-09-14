@@ -377,13 +377,22 @@ class IndustrialFleetSimulator:
                 executor.submit(worker_loop, node)
 
             start_time = time.time()
+            last_log_time = 0.0
             try:
                 while True:
                     time.sleep(2)
                     elapsed = time.time() - start_time
                     rate = self.total_dispatched / max(1.0, elapsed)
-                    sys.stdout.write(f"\r[Fleet Live Monitor] Dispatched: {self.total_dispatched} msgs | Rate: {rate:.1f} msg/s | Errors: {self.total_errors} | Active Fleet: {len(self.nodes)} nodes")
-                    sys.stdout.flush()
+                    msg = f"[Fleet Live Monitor] Dispatched: {self.total_dispatched} msgs | Rate: {rate:.1f} msg/s | Errors: {self.total_errors} | Active Fleet: {len(self.nodes)} nodes"
+                    if sys.stdout.isatty():
+                        sys.stdout.write(f"\r{msg}")
+                        sys.stdout.flush()
+                    else:
+                        now = time.time()
+                        if now - last_log_time >= 5.0:
+                            sys.stdout.write(f"{msg}\n")
+                            sys.stdout.flush()
+                            last_log_time = now
             except KeyboardInterrupt:
                 print("\nStopping Edge Fleet Simulator...")
 

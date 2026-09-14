@@ -175,9 +175,9 @@ public class Worker : BackgroundService
 
     public override void Dispose()
     {
-        _adsServer.Dispose();
-        _opcClient.Dispose();
-        _wakeUpSignal.Dispose();
+        try { _adsServer?.Dispose(); } catch { }
+        try { _opcClient?.Dispose(); } catch { }
+        try { _wakeUpSignal?.Dispose(); } catch { }
         base.Dispose();
     }
 }

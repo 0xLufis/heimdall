@@ -113,12 +113,12 @@ SERVICES = [
         "name": "Host Linux Agent (Fallback)",
         "type": ".NET 10",
         "host": "127.0.0.1",
-        "port": 5999,
+        "port": 5998,
         "check_type": "tcp",
         "pid_file": os.path.join(PID_DIR, "agent.pid"),
         "log_path": "/tmp/heimdall-agent.log",
-        "url": "http://localhost:5999",
-        "desc": "Local Linux Edge Collector (when no Windows)",
+        "url": "http://localhost:5998",
+        "desc": "Local Linux Edge Collector (active in --linux-agent mode)",
     },
     {
         "id": "simulator",
@@ -237,7 +237,22 @@ def health_check_worker():
         for svc in STATE.services:
             if not STATE.running:
                 break
-            if svc["check_type"] == "http":
+            if svc["id"] == "agent":
+                pid_f = svc.get("pid_file")
+                is_proc_running = False
+                if pid_f and os.path.exists(pid_f):
+                    try:
+                        with open(pid_f) as f:
+                            pid = int(f.read().strip())
+                        os.kill(pid, 0)
+                        is_proc_running = True
+                    except Exception:
+                        is_proc_running = False
+                if is_proc_running:
+                    ok, lat = check_tcp(svc["host"], svc["port"])
+                else:
+                    ok, lat = False, 0.0
+            elif svc["check_type"] == "http":
                 ok, lat = check_http(svc["host"], svc["port"], svc.get("path", "/"))
             else:
                 ok, lat = check_tcp(svc["host"], svc["port"])
@@ -249,8 +264,9 @@ def health_check_worker():
                 if ok:
                     svc["status_text"] = "ONLINE"
                 else:
-                    if svc.get("is_windows"):
-                        svc["status_text"] = "OFFLINE"
+                    if svc["id"] == "agent":
+                        win_active = any(s["online"] for s in STATE.services if s.get("is_windows"))
+                        svc["status_text"] = "STANDBY" if win_active else "OFFLINE"
                     else:
                         svc["status_text"] = "OFFLINE"
         time.sleep(1.2)
@@ -441,14 +457,20 @@ def curses_tui(stdscr):
                         break
                     is_sel = (idx == STATE.selected_idx)
                     target = f"{svc['host']}:{svc['port']}"
-                    lat_str = f"{svc['latency_ms']}ms" if svc['online'] else "---"
-                    status_str = "● ONLINE" if svc['online'] else "○ OFFLINE"
+                    if svc['online']:
+                        status_str = "● ONLINE"
+                        color = COLOR_ONLINE
+                    elif svc.get("status_text") == "STANDBY":
+                        status_str = "◐ STANDBY"
+                        color = COLOR_WARN
+                    else:
+                        status_str = "○ OFFLINE"
+                        color = COLOR_OFFLINE
 
                     line_str = col_fmt.format(f"[{idx+1}]", svc["name"], svc["type"], target, lat_str, status_str)
 
                     # Highlight row if selected
                     attr = curses.A_REVERSE if is_sel else curses.A_NORMAL
-                    color = COLOR_ONLINE if svc["online"] else COLOR_OFFLINE
 
                     try:
                         if is_sel:
@@ -667,7 +689,12 @@ def ansi_fallback_loop():
             print(f"{'#':<4} {'SERVICE':<26} {'TYPE':<12} {'TARGET':<20} {'STATUS'}")
             print("-" * 72)
             for idx, s in enumerate(STATE.services):
-                stat = "\033[92m● ONLINE\033[0m" if s["online"] else "\033[91m○ OFFLINE\033[0m"
+                if s["online"]:
+                    stat = "\033[92m● ONLINE\033[0m"
+                elif s.get("status_text") == "STANDBY":
+                    stat = "\033[93m◐ STANDBY\033[0m"
+                else:
+                    stat = "\033[91m○ OFFLINE\033[0m"
                 target = f"{s['host']}:{s['port']}"
                 print(f"[{idx+1}]  {s['name']:<26} {s['type']:<12} {target:<20} {stat}")
             print("-" * 72)
