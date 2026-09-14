@@ -373,17 +373,30 @@ public class AdsSimulationServer : IDisposable
         return total;
     }
 
+    private bool _disposed;
+
     public void Stop()
     {
-        _cts?.Cancel();
-        _tcpListener?.Stop();
-        _simulationTicker?.Dispose();
+        try
+        {
+            if (_cts != null && !_cts.IsCancellationRequested)
+            {
+                _cts.Cancel();
+            }
+        }
+        catch (ObjectDisposedException) { }
+        catch (AggregateException) { }
+
+        try { _tcpListener?.Stop(); } catch { }
+        try { _simulationTicker?.Dispose(); } catch { }
         IsListening = false;
     }
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         Stop();
-        _cts?.Dispose();
+        try { _cts?.Dispose(); } catch { }
     }
 }

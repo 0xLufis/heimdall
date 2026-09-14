@@ -21,13 +21,12 @@ CORE_SERVICES = [
     {"name": "Backend REST API (V1)", "host": "127.0.0.1", "port": 5099, "type": "http", "path": "/swagger/v1/swagger.json", "cat": "Application"},
     {"name": "Backend gRPC Ingestion", "host": "127.0.0.1", "port": 5001, "type": "tcp", "cat": "Application"},
     {"name": "Web Frontend (Nuxt 4)", "host": "127.0.0.1", "port": 3000, "type": "http", "path": "/", "cat": "Application"},
-    {"name": "Linux Edge Agent Daemon", "host": "127.0.0.1", "port": 5998, "type": "tcp", "cat": "Edge Node"},
+    {"name": "Edge Agent Config API", "host": "127.0.0.1", "port": 5998, "type": "tcp", "cat": "Edge Node"},
     {"name": "Edge Fleet Simulator", "host": "127.0.0.1", "port": 5055, "type": "tcp", "cat": "Simulation"},
 ]
 
 WINDOWS_SERVICES = [
     {"name": "Windows Web VNC Viewer", "host": "127.0.0.1", "port": 8006, "type": "tcp", "cat": "Windows Container"},
-    {"name": "Windows Agent Config API", "host": "127.0.0.1", "port": 5998, "type": "tcp", "cat": "Windows Container"},
     {"name": "TwinCAT ADS Server", "host": "127.0.0.1", "port": 48898, "type": "tcp", "cat": "OT Protocol"},
     {"name": "Minimal OPC UA Server", "host": "127.0.0.1", "port": 4840, "type": "tcp", "cat": "OT Protocol"},
     {"name": "WinRM Management HTTP", "host": "127.0.0.1", "port": 5985, "type": "tcp", "cat": "Windows Container"},

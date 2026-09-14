@@ -225,9 +225,10 @@ start_services() {
     # 5. Industrial Edge Fleet Simulator
     if ! is_running "$PID_DIR/simulator.pid"; then
         echo -e "${COLOR_BLUE}>> Starting Edge Fleet Simulator (:5055)...${COLOR_RESET}"
-        local python_bin="./venv/bin/python"
+        local python_bin="$SCRIPT_DIR/venv/bin/python"
         [ ! -f "$python_bin" ] && python_bin="python3"
-        (nohup $python_bin simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 & echo $! > "$PID_DIR/simulator.pid")
+        nohup "$python_bin" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
+        echo $! > "$PID_DIR/simulator.pid"
         ln -sf "$LOG_DIR/simulator.log" /tmp/heimdall-simulator.log 2>/dev/null || true
     fi
 
@@ -256,6 +257,9 @@ stop_services() {
             echo "Nuxt Frontend stopped."
             ;;
         agent)
+            if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "heimdall_windows_agent"; then
+                windows_stop
+            fi
             [ -f "$PID_DIR/agent.pid" ] && kill "$(cat "$PID_DIR/agent.pid" 2>/dev/null)" 2>/dev/null || true
             pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
             pkill -f "App.Agent.Daemon" 2>/dev/null || true
@@ -345,7 +349,17 @@ restart_service() {
         all)
             stop_services all
             sleep 1
-            start_services false
+            start_services true
+            ;;
+        agent)
+            if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "heimdall_windows_agent"; then
+                windows_restart
+            else
+                stop_services agent
+                sleep 1
+                (cd agent/App.Agent.Daemon && nohup dotnet watch run </dev/null > "$LOG_DIR/agent.log" 2>&1 & echo $! > "$PID_DIR/agent.pid")
+                echo -e "${COLOR_GREEN}Restarted Host Linux Agent.${COLOR_RESET}"
+            fi
             ;;
         *)
             stop_services "$target"
@@ -357,13 +371,12 @@ restart_service() {
                 frontend)
                     (cd "$SCRIPT_DIR/frontend/web" && nohup bun run dev </dev/null > "$LOG_DIR/frontend.log" 2>&1 & echo $! > "$PID_DIR/frontend.pid")
                     ;;
-                agent)
-                    (cd agent/App.Agent.Daemon && nohup dotnet watch run </dev/null > "$LOG_DIR/agent.log" 2>&1 & echo $! > "$PID_DIR/agent.pid")
-                    ;;
                 simulator)
-                    local python_bin="./venv/bin/python"
+                    local python_bin="$SCRIPT_DIR/venv/bin/python"
                     [ ! -f "$python_bin" ] && python_bin="python3"
-                    (nohup $python_bin simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 & echo $! > "$PID_DIR/simulator.pid")
+                    nohup "$python_bin" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
+                    echo $! > "$PID_DIR/simulator.pid"
+                    ln -sf "$LOG_DIR/simulator.log" /tmp/heimdall-simulator.log 2>/dev/null || true
                     ;;
                 db|database)
                     ensure_database
