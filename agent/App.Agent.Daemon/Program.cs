@@ -58,6 +58,7 @@ builder.Services.AddSingleton<SystemInfoReporter>(sp => (SystemInfoReporter)sp.G
 
 // Industrial OT Subsystems
 builder.Services.AddSingleton<AdsSimulationServer>();
+builder.Services.AddSingleton<MinimalOpcServer>();
 builder.Services.AddSingleton<MinimalOpcClient>();
 builder.Services.AddSingleton<TelemetryTriggerEngine>();
 
@@ -383,6 +384,7 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
 app.MapGet("/api/status", (
     SystemInfoService sysService,
     AdsSimulationServer adsServer,
+    MinimalOpcServer opcServer,
     MinimalOpcClient opcClient,
     TelemetryTriggerEngine triggerEngine,
     ConfigurationService configService) =>
@@ -410,6 +412,9 @@ app.MapGet("/api/status", (
         },
         opc = new
         {
+            serverPort = opcServer.Port,
+            serverIsListening = opcServer.IsListening,
+            serverConnectionsHandled = opcServer.TotalConnectionsHandled,
             endpointUrl = opcClient.EndpointUrl,
             isConnected = opcClient.IsConnected,
             isSimulated = opcClient.IsSimulatedMode,

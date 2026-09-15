@@ -25,6 +25,8 @@ LAYOUT_FILE="dev_layout.kdl"
 LOG_DIR="/tmp/heimdall_logs"
 PID_DIR="/tmp/heimdall_dev_pids"
 SHARED_WIN_AGENT_DIR="$SCRIPT_DIR/infra/windows/shared/agent"
+PYTHON_BIN="$SCRIPT_DIR/venv/bin/python"
+[ ! -f "$PYTHON_BIN" ] && PYTHON_BIN="python3"
 
 mkdir -p "$LOG_DIR" "$PID_DIR"
 
@@ -175,12 +177,12 @@ windows_logs() {
 
 windows_launch() {
     echo -e "${COLOR_BLUE}>> Executing Windows Agent daemon launcher via WinRM...${COLOR_RESET}"
-    python3 tools/launch_agent_win.py
+    "$PYTHON_BIN" tools/launch_agent_win.py
 }
 
 windows_test() {
     echo -e "${COLOR_BLUE}>> Executing Windows Endpoint Integration Tests...${COLOR_RESET}"
-    python3 tools/test_windows_agent.py --test
+    "$PYTHON_BIN" tools/test_windows_agent.py --test
 }
 
 # ------------------------------------------------------------------------------
@@ -225,9 +227,7 @@ start_services() {
     # 5. Industrial Edge Fleet Simulator
     if ! is_running "$PID_DIR/simulator.pid"; then
         echo -e "${COLOR_BLUE}>> Starting Edge Fleet Simulator (:5055)...${COLOR_RESET}"
-        local python_bin="$SCRIPT_DIR/venv/bin/python"
-        [ ! -f "$python_bin" ] && python_bin="python3"
-        nohup "$python_bin" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
+        nohup "$PYTHON_BIN" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
         echo $! > "$PID_DIR/simulator.pid"
         ln -sf "$LOG_DIR/simulator.log" /tmp/heimdall-simulator.log 2>/dev/null || true
     fi
@@ -372,9 +372,7 @@ restart_service() {
                     (cd "$SCRIPT_DIR/frontend/web" && nohup bun run dev </dev/null > "$LOG_DIR/frontend.log" 2>&1 & echo $! > "$PID_DIR/frontend.pid")
                     ;;
                 simulator)
-                    local python_bin="$SCRIPT_DIR/venv/bin/python"
-                    [ ! -f "$python_bin" ] && python_bin="python3"
-                    nohup "$python_bin" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
+                    nohup "$PYTHON_BIN" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
                     echo $! > "$PID_DIR/simulator.pid"
                     ln -sf "$LOG_DIR/simulator.log" /tmp/heimdall-simulator.log 2>/dev/null || true
                     ;;
@@ -424,15 +422,15 @@ show_logs() {
 }
 
 check_status() {
-    python3 tools/dev_manager.py status "$@"
+    "$PYTHON_BIN" tools/dev_manager.py status "$@"
 }
 
 watch_status() {
-    python3 tools/dev_manager.py watch "$@"
+    "$PYTHON_BIN" tools/dev_manager.py watch "$@"
 }
 
 launch_tui() {
-    python3 tools/tui.py
+    "$PYTHON_BIN" tools/tui.py
 }
 
 start_zellij() {
@@ -660,13 +658,13 @@ case "$CMD" in
                 windows_test
                 ;;
             seed)
-                python3 seed_data/seed_pipeline.py --validate
+                "$PYTHON_BIN" seed_data/seed_pipeline.py --validate
                 ;;
             smoke)
-                python3 simulators/fleet/fleet_simulator.py --smoke-test --count 5
+                "$PYTHON_BIN" simulators/fleet/fleet_simulator.py --smoke-test --count 5
                 ;;
             all|*)
-                python3 tools/dev_manager.py test
+                "$PYTHON_BIN" tools/dev_manager.py test
                 ;;
         esac
         ;;

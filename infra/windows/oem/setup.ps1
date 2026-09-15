@@ -79,7 +79,26 @@ try {
             Set-ItemProperty -Path $CryptoKey -Name "MachineGuid" -Value ([guid]::NewGuid().ToString()) -Force
         }
     }
-    Write-Output "[Heimdall] Industrial OT registry seeded (TwinCAT 3.1.4026.11, EtherCAT EK1100, OPC UA 4840)."
+
+    # Seed realistic installed industrial OT software in Windows Uninstall registry
+    $UninstallBase = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+    $packages = @(
+        @{ Key = "Beckhoff_TwinCAT_3"; DisplayName = "Beckhoff TwinCAT 3.1"; DisplayVersion = "3.1.4026.11"; Publisher = "Beckhoff Automation GmbH & Co. KG" },
+        @{ Key = "TwinCAT_ADS_Router"; DisplayName = "TwinCAT ADS Communication Router"; DisplayVersion = "3.1.4026.11"; Publisher = "Beckhoff Automation GmbH & Co. KG" },
+        @{ Key = "OPC_UA_Server_Runtime"; DisplayName = "OPC UA Server & Gateway Runtime"; DisplayVersion = "1.05.02"; Publisher = "OPC Foundation" },
+        @{ Key = "DotNet_Runtime_10"; DisplayName = "Microsoft .NET Runtime - 10.0.0 (x64)"; DisplayVersion = "10.0.0"; Publisher = "Microsoft Corporation" },
+        @{ Key = "VCRedist_2015_2022_x64"; DisplayName = "Microsoft Visual C++ 2015-2022 Redistributable (x64)"; DisplayVersion = "14.40.33810"; Publisher = "Microsoft Corporation" },
+        @{ Key = "Heimdall_Industrial_Agent"; DisplayName = "Heimdall Industrial Edge Agent Daemon"; DisplayVersion = "1.1.0"; Publisher = "Heimdall Solutions" }
+    )
+    foreach ($pkg in $packages) {
+        $pKey = "$UninstallBase\$($pkg.Key)"
+        if (-not (Test-Path $pKey)) { New-Item -Path $pKey -Force | Out-Null }
+        Set-ItemProperty -Path $pKey -Name "DisplayName" -Value $pkg.DisplayName -Force
+        Set-ItemProperty -Path $pKey -Name "DisplayVersion" -Value $pkg.DisplayVersion -Force
+        Set-ItemProperty -Path $pKey -Name "Publisher" -Value $pkg.Publisher -Force
+    }
+
+    Write-Output "[Heimdall] Industrial OT registry seeded (TwinCAT 3.1.4026.11, EtherCAT EK1100, OPC UA 4840, Installed Packages)."
 } catch {
     Write-Warning "[Heimdall] Notice while seeding registry keys: $_"
 }

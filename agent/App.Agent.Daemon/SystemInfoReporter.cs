@@ -26,6 +26,8 @@ public class SystemInfoReporter : ISystemInfoReporter
     private string? _lastBackendUrl;
     private string? _lastAuthType;
 
+    public IReadOnlyList<IComponentContributor> Contributors => _contributors;
+
     public SystemInfoReporter(
         ILogger<SystemInfoReporter> logger,
         IConfigurationService configService,
@@ -38,22 +40,29 @@ public class SystemInfoReporter : ISystemInfoReporter
         _spooler = spooler;
         _systemInfoService = systemInfoService;
 
-        // Register default contributors if not injected
+        // Initialize all base contributors
+        var allContributors = new List<IComponentContributor>
+        {
+            new HardwareComponentContributor(),
+            new SoftwareComponentContributor(),
+            new PhysicalDrivesComponentContributor(),
+            new DriversComponentContributor(),
+            new EventsComponentContributor(),
+            new LiveTelemetryComponentContributor()
+        };
+
         if (contributors != null && contributors.Any())
         {
-            _contributors = contributors.ToList();
-        }
-        else
-        {
-            _contributors = new List<IComponentContributor>
+            foreach (var c in contributors)
             {
-                new HardwareComponentContributor(),
-                new SoftwareComponentContributor(),
-                new PhysicalDrivesComponentContributor(),
-                new DriversComponentContributor(),
-                new EventsComponentContributor()
-            };
+                if (!allContributors.Any(b => b.GetType() == c.GetType()))
+                {
+                    allContributors.Add(c);
+                }
+            }
         }
+
+        _contributors = allContributors;
     }
 
     private SystemInfoCollector.SystemInfoCollectorClient GetClient()

@@ -274,4 +274,96 @@ public class WindowsDockerAndIndustrialOtTests
         Assert.Contains("Toggle TwinCAT ADS State", trayContent);
         Assert.Contains("http://localhost:5998", trayContent);
     }
+
+    [Fact]
+    public async Task MinimalOpcServer_HelHandshake_ReturnsAckfPacket()
+    {
+        int testPort = 49994;
+        using var server = new MinimalOpcServer(port: testPort);
+        server.Start();
+        Assert.True(server.IsListening);
+
+        using var client = new System.Net.Sockets.TcpClient();
+        await client.ConnectAsync("127.0.0.1", testPort);
+        using var stream = client.GetStream();
+
+        // Send HELF (32 bytes)
+        var hel = new byte[32];
+        hel[0] = (byte)'H';
+        hel[1] = (byte)'E';
+        hel[2] = (byte)'L';
+        hel[3] = (byte)'F';
+        BinaryPrimitives.WriteUInt32LittleEndian(hel.AsSpan(4, 4), 32);
+        BinaryPrimitives.WriteUInt32LittleEndian(hel.AsSpan(8, 4), 0);
+        BinaryPrimitives.WriteUInt32LittleEndian(hel.AsSpan(12, 4), 65535);
+        BinaryPrimitives.WriteUInt32LittleEndian(hel.AsSpan(16, 4), 65535);
+        BinaryPrimitives.WriteUInt32LittleEndian(hel.AsSpan(20, 4), 16777216);
+        BinaryPrimitives.WriteUInt32LittleEndian(hel.AsSpan(24, 4), 5000);
+
+        await stream.WriteAsync(hel);
+        await stream.FlushAsync();
+
+        // Read ACKF response (28 bytes)
+        var ack = new byte[28];
+        int total = 0;
+        using var cts = new System.Threading.CancellationTokenSource(3000);
+        while (total < 28)
+        {
+            int r = await stream.ReadAsync(ack.AsMemory(total, 28 - total), cts.Token);
+            Assert.True(r > 0, "Server closed stream unexpectedly");
+            total += r;
+        }
+
+        Assert.Equal(28, total);
+        string ackType = Encoding.ASCII.GetString(ack, 0, 4);
+        Assert.Equal("ACKF", ackType);
+        uint msgSize = BinaryPrimitives.ReadUInt32LittleEndian(ack.AsSpan(4, 4));
+        Assert.Equal(28u, msgSize);
+    }
+
+    [Fact]
+    public void LiveTelemetryComponentContributor_ProducesTelemetryComponentWithMetrics()
+    {
+        var contributor = new App.Agent.Daemon.Reporting.LiveTelemetryComponentContributor();
+        var sysInfo = new SystemInfoData
+        {
+            LiveTelemetry = new LiveTelemetryData
+            {
+                CpuLoad = "23.5%",
+                CpuUsagePercent = 23.5,
+                RamUsage = "45.0%",
+                RamUsagePercent = 45.0,
+                Status = "Online"
+            }
+        };
+
+        var component = contributor.CreateComponent(sysInfo);
+        Assert.NotNull(component);
+        Assert.Equal("Live Telemetry", component.Name);
+        Assert.Equal("telemetry", component.Type);
+        Assert.Contains("23.5%", component.DataJson);
+        Assert.Contains("45.0%", component.DataJson);
+    }
+
+    [Fact]
+    public void SystemInfoReporter_MergesAllBaseContributorsAndInjectedContributors()
+    {
+        var configService = new ConfigurationService(Microsoft.Extensions.Logging.Abstractions.NullLogger<ConfigurationService>.Instance);
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SystemInfoReporter>.Instance;
+
+        // Injected contributor (e.g. IndustrialOtComponentContributor)
+        var injected = new List<App.Agent.Daemon.Reporting.IComponentContributor>
+        {
+            new App.Agent.Daemon.Reporting.IndustrialOtComponentContributor()
+        };
+
+        var reporter = new SystemInfoReporter(logger, configService, injected);
+
+        // Ensure contributors list retained base contributors plus injected
+        var contributors = reporter.Contributors;
+        Assert.Contains(contributors, c => c is App.Agent.Daemon.Reporting.HardwareComponentContributor);
+        Assert.Contains(contributors, c => c is App.Agent.Daemon.Reporting.SoftwareComponentContributor);
+        Assert.Contains(contributors, c => c is App.Agent.Daemon.Reporting.LiveTelemetryComponentContributor);
+        Assert.Contains(contributors, c => c is App.Agent.Daemon.Reporting.IndustrialOtComponentContributor);
+    }
 }

@@ -156,10 +156,28 @@ export const useAuthSession = () => {
     : ref<string | null>(null)
   const defaultTestUser = DEMO_PERSONAS[0]
 
+  const getStoredPersona = (): DemoPersona | null => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = localStorage.getItem('heimdall_simulated_persona')
+        if (raw) return JSON.parse(raw)
+      } catch {}
+    }
+    return null
+  }
+
   // Simulated persona state for testing / role switching
   const simulatedPersona = typeof useState !== 'undefined'
-    ? useState<DemoPersona | null>('auth_simulated_persona', () => null)
+    ? useState<DemoPersona | null>('auth_simulated_persona', () => getStoredPersona())
     : fallbackSimulatedPersona
+
+  // Re-hydrate on client mount if needed
+  if (typeof window !== 'undefined') {
+    const stored = getStoredPersona()
+    if (stored && !simulatedPersona.value) {
+      simulatedPersona.value = stored
+    }
+  }
 
   const session = computed(() => {
     if (simulatedPersona.value) {
@@ -175,7 +193,7 @@ export const useAuthSession = () => {
 
   const isAuthenticated = computed(() => !!user.value)
   const userRole = computed<string>(() => (user.value as any)?.role || 'admin')
-  const activeOrg = computed(() => activeOrgQuery.data?.value || { id: 'org-1', name: 'Heimdall Engineering' })
+  const activeOrg = computed(() => activeOrgQuery.data?.value || { id: 'org-platform', name: 'Platform Operations (Synthetic AI Guild)' })
 
   // Dynamic Admin Role Delegation state (SysAdmin controlled)
   const adminRoleDelegation = typeof useState !== 'undefined'
@@ -185,55 +203,72 @@ export const useAuthSession = () => {
       }))
     : fallbackAdminRoleDelegation
 
-  // Specific role checks
-  const isSystemAdmin = computed(() => userRole.value === 'system_admin')
-  const isPlantDirector = computed(() => ['system_admin', 'plant_director'].includes(userRole.value))
-  const isPlantEngineeringManager = computed(() => ['system_admin', 'plant_director', 'plant_engineering_manager'].includes(userRole.value))
-  const isSeniorEngineeringManager = computed(() => ['system_admin', 'plant_director', 'plant_engineering_manager', 'senior_engineering_manager'].includes(userRole.value))
-  const isHeimdallAdmin = computed(() => ['system_admin', 'heimdall_admin', 'admin'].includes(userRole.value))
-  
-  // IT Admin check with dynamic pseudo-IT admin role inheritance
+  // Lean & mean regex pattern matching helper
+  const match = (...patterns: (RegExp | string)[]) => {
+    const r = (userRole.value || '').toLowerCase()
+    return patterns.some(p => typeof p === 'string' ? r === p.toLowerCase() : p.test(r))
+  }
+
+  // Specific role checks (hierarchical & pattern-matched)
+  const isSystemAdmin = computed(() => match(/^system_admin$/, /^sysadmin$/))
+  const isHeimdallAdmin = computed(() => isSystemAdmin.value || match(/heimdall_admin/, /^admin$/))
   const isItAdmin = computed(() => {
-    if (['system_admin', 'it_admin', 'it_site_admin'].includes(userRole.value)) return true
-    if (adminRoleDelegation.value.heimdallAdminIsPseudoItAdmin && ['heimdall_admin', 'admin'].includes(userRole.value)) return true
-    return false
+    if (isSystemAdmin.value || match(/it(_site)?_admin/)) return true
+    return adminRoleDelegation.value.heimdallAdminIsPseudoItAdmin && isHeimdallAdmin.value
   })
   const isItSiteAdmin = computed(() => isItAdmin.value)
-  const isEngineeringAdmin = computed(() => ['system_admin', 'engineering_admin', 'plant_engineering_manager', 'senior_engineering_manager'].includes(userRole.value))
-  const isOperativePlanner = computed(() => ['system_admin', 'operative_planner', 'manager', 'plant_director'].includes(userRole.value))
+  const isEngineeringAdmin = computed(() => isSystemAdmin.value || match(/engineering_admin/, /plant_engineering_manager/, /senior_engineering_manager/))
+  const isPlantDirector = computed(() => isSystemAdmin.value || match(/plant_director/))
+  const isPlantEngineeringManager = computed(() => isPlantDirector.value || match(/plant_engineering_manager/))
+  const isSeniorEngineeringManager = computed(() => isPlantEngineeringManager.value || match(/senior_engineering_manager/))
+  const isOperativePlanner = computed(() => isSystemAdmin.value || match(/operative_planner/, /manager/, /plant_director/))
 
-  // Broad role groups
-  const isAdmin = computed(() => ['system_admin', 'heimdall_admin', 'admin', 'it_admin', 'it_site_admin', 'engineering_admin', 'plant_director'].includes(userRole.value))
-  const isEngineeringManager = computed(() => ['manager', 'operative_planner', 'plant_director', 'plant_engineering_manager', 'senior_engineering_manager', 'admin', 'heimdall_admin', 'system_admin'].includes(userRole.value))
-  const isGroupLeader = computed(() => ['group_leader', 'lead_engineer', 'team_lead', 'manager', 'operative_planner', 'plant_engineering_manager', 'senior_engineering_manager', 'plant_director', 'admin', 'heimdall_admin', 'system_admin'].includes(userRole.value))
-  const isShiftLeader = computed(() => ['shift_leader', 'group_leader', 'manager', 'operative_planner', 'admin', 'heimdall_admin', 'system_admin'].includes(userRole.value))
-  const isEngineer = computed(() => ['engineer', 'controls_engineer', 'lead_engineer', 'team_lead', 'engineering_admin', 'plant_engineering_manager', 'senior_engineering_manager', 'manager', 'admin', 'heimdall_admin', 'system_admin'].includes(userRole.value))
-  const isTechnician = computed(() => ['technician', 'engineer', 'controls_engineer', 'lead_engineer', 'team_lead', 'shift_leader', 'engineering_admin', 'admin', 'heimdall_admin', 'system_admin'].includes(userRole.value))
+  // Broad role groups (pattern-driven)
+  const isAdmin = computed(() => isSystemAdmin.value || match(/admin/, /plant_director/))
+  const isEngineeringManager = computed(() => isAdmin.value || match(/manager/, /operative_planner/))
+  const isGroupLeader = computed(() => isEngineeringManager.value || match(/group_leader/, /lead_engineer/, /team_lead/))
+  const isShiftLeader = computed(() => isEngineeringManager.value || match(/shift_leader/, /group_leader/))
+  const isEngineer = computed(() => isAdmin.value || isEngineeringManager.value || match(/engineer/, /team_lead/))
+  const isTechnician = computed(() => isEngineer.value || match(/technician/, /shift_leader/))
 
-  // Plant Line Management Dedication Tier (engineering_admin is NOT in line management)
+  // Plant Line Management Dedication Tier
   const dedicationTier = computed<'self' | 'shift' | 'group' | 'manager'>(() => {
-    const r = userRole.value.toLowerCase()
-    if (r === 'manager' || r === 'operative_planner' || r === 'admin' || r === 'heimdall_admin' || r === 'system_admin') return 'manager'
-    if (r === 'group_leader' || r === 'lead_engineer' || r === 'team_lead') return 'group'
-    if (r === 'shift_leader') return 'shift'
+    if (match(/manager|operative_planner|admin/)) return 'manager'
+    if (match(/group_leader|lead_engineer|team_lead/)) return 'group'
+    if (match(/shift_leader/)) return 'shift'
     return 'self'
   })
 
-  // Capability policies
-  const canManageUsers = computed(() => ['system_admin', 'heimdall_admin', 'admin', 'engineering_admin', 'plant_engineering_manager'].includes(userRole.value))
+  // Capability policies: Admin users and IT admins allowed to create user roles & manage users
+  const canManageUsers = computed(() => {
+    if (isSystemAdmin.value || isAdmin.value || isItAdmin.value) return true
+    if (match(/engineering_admin/)) return adminRoleDelegation.value.allowEngineeringAdminUserCreation
+    return match(/plant_engineering_manager/)
+  })
+  const canCreateUserRoles = computed(() => isSystemAdmin.value || isAdmin.value || isItAdmin.value || canManageUsers.value)
+  const canCreateRoles = computed(() => canCreateUserRoles.value)
   const canManageActiveDirectory = computed(() => isItAdmin.value)
-  const canManageFunctionalSettings = computed(() => ['system_admin', 'engineering_admin', 'plant_engineering_manager', 'senior_engineering_manager', 'heimdall_admin', 'admin', 'lead_engineer', 'engineer'].includes(userRole.value))
-  const canManageEndpoints = computed(() => ['system_admin', 'engineering_admin', 'plant_engineering_manager', 'senior_engineering_manager', 'heimdall_admin', 'admin', 'lead_engineer', 'engineer', 'controls_engineer'].includes(userRole.value))
-  const canExecuteRemote = computed(() => ['system_admin', 'engineering_admin', 'plant_engineering_manager', 'senior_engineering_manager', 'heimdall_admin', 'admin', 'lead_engineer', 'engineer'].includes(userRole.value))
-  const canAdministerSystem = computed(() => ['system_admin', 'heimdall_admin', 'admin', 'plant_director'].includes(userRole.value))
-  const canApproveLineStops = computed(() => ['system_admin', 'plant_director', 'plant_engineering_manager', 'operative_planner', 'group_leader'].includes(userRole.value))
+  const canManageFunctionalSettings = computed(() => isSystemAdmin.value || isEngineer.value)
+  const canManageEndpoints = computed(() => isSystemAdmin.value || isEngineer.value)
+  const canExecuteRemote = computed(() => isSystemAdmin.value || isEngineer.value)
+  const canAdministerSystem = computed(() => isSystemAdmin.value || isHeimdallAdmin.value || match(/plant_director/))
+  const canApproveLineStops = computed(() => isSystemAdmin.value || match(/plant_director/, /plant_engineering_manager/, /operative_planner/, /group_leader/))
 
   const setSimulatedPersona = (persona: DemoPersona | null) => {
     simulatedPersona.value = persona
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        if (persona) {
+          localStorage.setItem('heimdall_simulated_persona', JSON.stringify(persona))
+        } else {
+          localStorage.removeItem('heimdall_simulated_persona')
+        }
+      } catch {}
+    }
   }
 
   const clearSimulatedPersona = () => {
-    simulatedPersona.value = null
+    setSimulatedPersona(null)
   }
 
   const setAdminRoleDelegation = (delegation: { heimdallAdminIsPseudoItAdmin?: boolean; allowEngineeringAdminUserCreation?: boolean }) => {
@@ -251,20 +286,27 @@ export const useAuthSession = () => {
 
   const signOut = async () => {
     testCookie.value = null
-    simulatedPersona.value = null
+    setSimulatedPersona(null)
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        localStorage.removeItem('heimdall_simulated_persona')
+        localStorage.removeItem('auth_simulated_persona')
+      } catch {}
+    }
     if (typeof useState !== 'undefined') {
       const authSession = useState<{ authenticated: boolean; user?: any } | null>('auth_user_session', () => null)
       authSession.value = null
     }
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          if (typeof navigateTo !== 'undefined') {
-            navigateTo('/auth/login')
-          }
-        }
-      }
-    })
+    try {
+      await authClient.signOut()
+    } catch (e) {
+      console.warn('[useAuthSession] signOut error:', e)
+    }
+    if (typeof window !== 'undefined') {
+      window.location.href = '/auth/login'
+    } else if (typeof navigateTo !== 'undefined') {
+      await navigateTo('/auth/login')
+    }
   }
 
   return {
@@ -295,6 +337,8 @@ export const useAuthSession = () => {
     adminRoleDelegation,
     setAdminRoleDelegation,
     canManageUsers,
+    canCreateUserRoles,
+    canCreateRoles,
     canManageActiveDirectory,
     canManageFunctionalSettings,
     canManageEndpoints,

@@ -23,8 +23,11 @@ from enum import Enum
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
-# Add proto directory to path
-proto_dir = os.path.join(os.path.dirname(__file__), 'proto')
+# Add proto and fleet directory to path
+fleet_dir = os.path.dirname(os.path.abspath(__file__))
+if fleet_dir not in sys.path:
+    sys.path.insert(0, fleet_dir)
+proto_dir = os.path.join(fleet_dir, 'proto')
 if proto_dir not in sys.path:
     sys.path.insert(0, proto_dir)
 
@@ -80,7 +83,7 @@ class IndustrialDeviceNode:
 
         components = [
             system_info_pb2.InventoryComponent(
-                name="OS & Driver Telemetry",
+                name="OS Environment",
                 technology="Heimdall Edge Probe",
                 type="software",
                 data_json=json.dumps({
@@ -251,12 +254,14 @@ class IndustrialFleetSimulator:
                 profile = DeviceProfile.ROBOT_CELL if "ROBOT" in self.client.upper() else \
                           DeviceProfile.SIMATIC_IPC if "ASSEMBLY" in self.client.upper() else \
                           DeviceProfile.TWINCAT_IPC
+                client_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, self.client))
+                mac = f"02:{client_id[0:2]}:{client_id[2:4]}:{client_id[4:6]}:{client_id[6:8]}:{client_id[9:11]}".upper()
                 self.nodes = [
                     IndustrialDeviceNode(
                         hostname=self.client,
-                        machine_identifier=f"ID-{self.client}",
-                        mac_address="02:AA:BB:CC:DD:01",
-                        ip_address="10.0.1.50",
+                        machine_identifier=f"HW-{self.client}",
+                        mac_address=mac,
+                        ip_address="192.168.100.50",
                         profile=profile,
                         os_name="Windows 10 IoT"
                     )
@@ -358,7 +363,9 @@ class IndustrialFleetSimulator:
         print(f"Smoke Test Result: {success_count}/{len(sample_nodes)} heartbeats acknowledged.")
         return success_count == len(sample_nodes)
 
-    def run_continuous(self, max_workers: int = 50):
+    def run_continuous(self, max_workers: int = None):
+        if max_workers is None:
+            max_workers = max(50, len(self.nodes))
         start_control_server(self, port=int(os.environ.get("HTTP_PORT", "5055")))
         print("==================================================================")
         print(f"  Heimdall Edge Fleet Simulator - Active Fleet: {len(self.nodes)} Nodes")

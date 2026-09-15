@@ -373,101 +373,51 @@ def generate_csv(output_path=CSV_FILE):
         l_num = l_cfg["line_num"]
         l_name = l_cfg["name"]
         org_id = l_cfg["org_id"]
+        vlan = 100 + l_num
 
-        # A. 1-1 Topology: Dedicated IPC on OP030
-        ipc_11 = f"IPC-L{l_num:02d}-OP030-DEDICATED"
-        pcs.append({
-            "hostname": ipc_11,
-            "display": f"{ipc_11} (Dedicated 1:1 Controller)",
-            "station": f"L{l_num:02d}-OP030",
-            "org": org_id,
-            "mfr": "Beckhoff",
-            "os": "Windows 10 IoT Enterprise 2021 LTSC",
-            "twincat": f"TC3_Line{l_num:02d}_Cell030.tsproj (Port 851)",
-            "mes": "Audi MES Production Client v3.1",
-            "model": "Embedded PC C6030 Fanless"
-        })
-        pc_station_links.append((ipc_11, f"L{l_num:02d}-OP030", "Primary"))
+        line_ipcs = [
+            (f"IPC-L{l_num:02d}-OP030-DEDICATED", f"IPC-L{l_num:02d}-OP030-DEDICATED (Dedicated 1:1 Controller)", f"L{l_num:02d}-OP030", "Beckhoff", "Windows 10 IoT Enterprise 2021 LTSC", f"TC3_Line{l_num:02d}_Cell030.tsproj (Port 851)", "Audi MES Production Client v3.1", "Embedded PC C6030 Fanless", [("Primary", f"L{l_num:02d}-OP030")]),
+            (f"IPC-L{l_num:02d}-CONVEYOR-MAIN", f"IPC-L{l_num:02d}-CONVEYOR-MAIN (Master Conveyor 1:n PLC)", f"L{l_num:02d}-OP010", "Siemens", "Windows 11 IoT Enterprise LTSC 2024", f"TC3_Line{l_num:02d}_PalletLoop.tsproj (Port 851)", "Siemens Opcenter Connector v4.2", "SIMATIC IPC477E Industrial", [("ConveyorMaster", f"L{l_num:02d}-OP010"), ("ConveyorMaster", f"L{l_num:02d}-OP020"), ("ConveyorMaster", f"L{l_num:02d}-OP050")]),
+            (f"IPC-L{l_num:02d}-ROB-ALPHA", f"IPC-L{l_num:02d}-ROB-ALPHA (Distributed m:n Cell)", f"L{l_num:02d}-OP080", "KUKA", "Windows 10 IoT Enterprise", f"TC3_Line{l_num:02d}_RoboticsShared.tsproj (Port 851)", "KUKA KRC4 Edge Telemetry Connector", "Advantech UNO-2484G Fanless Edge", [("RobotMotion", f"L{l_num:02d}-OP080"), ("RobotMotion", f"L{l_num:02d}-OP090")]),
+            (f"IPC-L{l_num:02d}-ROB-BETA", f"IPC-L{l_num:02d}-ROB-BETA (Distributed m:n Cell)", f"L{l_num:02d}-OP080", "KUKA", "Windows 10 IoT Enterprise", f"TC3_Line{l_num:02d}_RoboticsShared.tsproj (Port 851)", "KUKA KRC4 Edge Telemetry Connector", "Advantech UNO-2484G Fanless Edge", [("RobotMotion", f"L{l_num:02d}-OP080"), ("RobotMotion", f"L{l_num:02d}-OP090")]),
+            (f"IPC-L{l_num:02d}-OP060-PLC", f"IPC-L{l_num:02d}-OP060-PLC (Motion & Safety PLC)", f"L{l_num:02d}-OP060", "Beckhoff", "Windows 11 IoT Enterprise", f"TC3_Line{l_num:02d}_LaserMotion.tsproj (Port 851)", "Beckhoff ADS Telemetry Streamer", "Embedded PC C6032 High-Perf", [("MultiSpecialized", f"L{l_num:02d}-OP060")]),
+            (f"IPC-L{l_num:02d}-OP060-VISION", f"IPC-L{l_num:02d}-OP060-VISION (Real-time Vision Inspector)", f"L{l_num:02d}-OP060", "Cognex", "Windows 10 IoT Enterprise", "Vision GigE Cam Driver active", "Cognex In-Sight Explorer 6.5.0 Connector", "Dell OptiPlex 7090 Micro Edge", [("MultiSpecialized", f"L{l_num:02d}-OP060")]),
+            (f"IPC-L{l_num:02d}-OP060-MES-GATE", f"IPC-L{l_num:02d}-OP060-MES-GATE (Plant MES Integration Gateway)", f"L{l_num:02d}-OP060", "Advantech", "Debian 12 Bookworm Industrial", "MQTT / OPC UA Gateway active", "Audi Corporate Plant MES Gateway v3", "Advantech UNO-2271G Edge", [("MultiSpecialized", f"L{l_num:02d}-OP060")])
+        ]
 
-        # B. 1-n Topology: 1 Main Conveyor IPC controlling OP010, OP020, OP050, OP110
-        ipc_1n = f"IPC-L{l_num:02d}-CONVEYOR-MAIN"
-        pcs.append({
-            "hostname": ipc_1n,
-            "display": f"{ipc_1n} (Master Conveyor 1:n PLC)",
-            "station": f"L{l_num:02d}-OP010",
-            "org": org_id,
-            "mfr": "Siemens",
-            "os": "Windows 11 IoT Enterprise LTSC 2024",
-            "twincat": f"TC3_Line{l_num:02d}_PalletLoop.tsproj (Port 851)",
-            "mes": "Siemens Opcenter Connector v4.2",
-            "model": "SIMATIC IPC477E Industrial"
-        })
-        for target_op in [f"L{l_num:02d}-OP010", f"L{l_num:02d}-OP020", f"L{l_num:02d}-OP050"]:
-            pc_station_links.append((ipc_1n, target_op, "ConveyorMaster"))
-
-        # C. m-n Topology: 2 Coordinated Robot IPCs spanning OP080 and OP090
-        ipc_mn1 = f"IPC-L{l_num:02d}-ROB-ALPHA"
-        ipc_mn2 = f"IPC-L{l_num:02d}-ROB-BETA"
-        for hname in [ipc_mn1, ipc_mn2]:
+        for idx, (hn, disp, st, mfr, os_ver, tc, mes_conn, model, st_links) in enumerate(line_ipcs, start=1):
+            mac = f"02:65:54:{l_num:02X}:{vlan:02X}:{idx:02X}"
+            ip = f"192.168.{vlan}.{10 + idx}"
+            hw_id = f"HW-{hn}"
+            ou = f"OU=AudiLine{l_num:02d},OU=ProductionLines,DC=factory,DC=corp"
             pcs.append({
-                "hostname": hname,
-                "display": f"{hname} (Distributed m:n Cell)",
-                "station": f"L{l_num:02d}-OP080",
+                "hostname": hn,
+                "display": disp,
+                "station": st,
                 "org": org_id,
-                "mfr": "KUKA",
-                "os": "Windows 10 IoT Enterprise",
-                "twincat": f"TC3_Line{l_num:02d}_RoboticsShared.tsproj (Port 851)",
-                "mes": "KUKA KRC4 Edge Telemetry Connector",
-                "model": "Advantech UNO-2484G Fanless Edge"
+                "mfr": mfr,
+                "os": os_ver,
+                "twincat": tc,
+                "mes": mes_conn,
+                "model": model,
+                "mac": mac,
+                "ip": ip,
+                "hw_id": hw_id,
+                "vlan": vlan,
+                "ad_ou": ou
             })
-            pc_station_links.append((hname, f"L{l_num:02d}-OP080", "RobotMotion"))
-            pc_station_links.append((hname, f"L{l_num:02d}-OP090", "RobotMotion"))
-
-        # D. n-1 Topology: 3 Specialized IPCs controlling single Station OP060 (Welder/Press)
-        ipc_n1_plc = f"IPC-L{l_num:02d}-OP060-PLC"
-        ipc_n1_vis = f"IPC-L{l_num:02d}-OP060-VISION"
-        ipc_n1_mes = f"IPC-L{l_num:02d}-OP060-MES-GATE"
-        pcs.append({
-            "hostname": ipc_n1_plc,
-            "display": f"{ipc_n1_plc} (Motion & Safety PLC)",
-            "station": f"L{l_num:02d}-OP060",
-            "org": org_id,
-            "mfr": "Beckhoff",
-            "os": "Windows 11 IoT Enterprise",
-            "twincat": f"TC3_Line{l_num:02d}_LaserMotion.tsproj (Port 851)",
-            "mes": "Beckhoff ADS Telemetry Streamer",
-            "model": "Embedded PC C6032 High-Perf"
-        })
-        pcs.append({
-            "hostname": ipc_n1_vis,
-            "display": f"{ipc_n1_vis} (Real-time Vision Inspector)",
-            "station": f"L{l_num:02d}-OP060",
-            "org": org_id,
-            "mfr": "Cognex",
-            "os": "Windows 10 IoT Enterprise",
-            "twincat": "Vision GigE Cam Driver active",
-            "mes": "Cognex In-Sight Explorer 6.5.0 Connector",
-            "model": "Dell OptiPlex 7090 Micro Edge"
-        })
-        pcs.append({
-            "hostname": ipc_n1_mes,
-            "display": f"{ipc_n1_mes} (Plant MES Integration Gateway)",
-            "station": f"L{l_num:02d}-OP060",
-            "org": org_id,
-            "mfr": "Advantech",
-            "os": "Debian 12 Bookworm Industrial",
-            "twincat": "MQTT / OPC UA Gateway active",
-            "mes": "Audi Corporate Plant MES Gateway v3",
-            "model": "Advantech UNO-2271G Edge"
-        })
-        for hname in [ipc_n1_plc, ipc_n1_vis, ipc_n1_mes]:
-            pc_station_links.append((hname, f"L{l_num:02d}-OP060", "MultiSpecialized"))
+            for role, target_op in st_links:
+                pc_station_links.append((hn, target_op, role))
 
     # Convert pcs list into CSV rows
     for i, pc in enumerate(pcs, start=1):
         hname = pc["hostname"]
         meta = {
-            "IPAddress": f"192.168.{10 + (i // 250)}.{(i % 250) + 1}",
+            "IPAddress": pc["ip"],
+            "MACAddress": pc["mac"],
+            "MachineIdentifier": pc["hw_id"],
+            "VlanId": pc["vlan"],
+            "AdOuPath": pc["ad_ou"],
             "OperatingSystem": pc["os"],
             "Model": pc["model"],
             "TwinCATProject": pc["twincat"],
@@ -752,9 +702,9 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE, pc_station_links=None)
     sql.append("\n-- Seed Primary System Administrator into auth.user, auth.account, and auth.member")
     admin_pw_hash = "4ad2888535f37c17fa6b2b7d74dc6211:bdb17beff0b6883c8f7d0ca3485b8dc4e7b17205c2f6ff4f77d4cbf41a1291181cb4880a34aac47c81e8d171980522b9579ae046e512166eebc239242a8a0900"
     sql.append("INSERT INTO auth.user (id, name, email, email_verified, role, username, created_at, updated_at) "
-               "VALUES ('usr-admin-primary', 'System Administrator', 'admin@heimdall.dev', true, 'admin', 'admin', NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, role = EXCLUDED.role, username = EXCLUDED.username;")
-    sql.append(f"INSERT INTO auth.account (id, account_id, provider_id, user_id, password, created_at, updated_at) "
-               f"VALUES ('acc-admin-primary', 'usr-admin-primary', 'credential', 'usr-admin-primary', '{admin_pw_hash}', NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET password = EXCLUDED.password;")
+               "VALUES ('usr-admin-primary', 'System Administrator', 'admin@heimdall.dev', true, 'system_admin', 'admin', NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, role = EXCLUDED.role, username = EXCLUDED.username;")
+    sql.append(f"INSERT INTO auth.account (id, account_id, provider_id, user_id, password, issuer, created_at, updated_at) "
+               f"VALUES ('acc-admin-primary', 'usr-admin-primary', 'credential', 'usr-admin-primary', '{admin_pw_hash}', 'local:credential', NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET password = EXCLUDED.password, issuer = EXCLUDED.issuer;")
     sql.append("INSERT INTO auth.member (id, organization_id, user_id, role, created_at) VALUES ('mem-admin-platform', 'org-platform', 'usr-admin-primary', 'owner', NOW()) ON CONFLICT (id) DO NOTHING;")
     sql.append("INSERT INTO auth.member (id, organization_id, user_id, role, created_at) VALUES ('mem-admin-controls', 'org-controls', 'usr-admin-primary', 'admin', NOW()) ON CONFLICT (id) DO NOTHING;")
 
@@ -803,10 +753,18 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE, pc_station_links=None)
             item_id = pc_ids[row['Name']]
             pin_handle = f"'{row['PinnedObjectHandle']}'" if row.get('PinnedObjectHandle') else "NULL"
             org_id = f"'{row['OrganizationId']}'" if row.get('OrganizationId') else "'org-platform'"
-            mac = f"02:{item_id[0:2]}:{item_id[2:4]}:{item_id[4:6]}:{item_id[6:8]}:{item_id[9:11]}".upper()
-            sql.append(f"INSERT INTO backend.client_pcs (id, name, mac_address, hostname, machine_identifier, pinned_object_handle, organization_id) "
-                       f"VALUES ('{item_id}', '{row['Name']}', '{mac}', '{row['ClientPcHostname'] or row['Name']}', 'HW-{item_id[:8]}', {pin_handle}, {org_id}) "
-                       f"ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, organization_id = EXCLUDED.organization_id;")
+            meta = json.loads(row['Metadata']) if row.get('Metadata') else {}
+            mac = meta.get("MACAddress")
+            if not mac:
+                mac = f"02:{item_id[0:2]}:{item_id[2:4]}:{item_id[4:6]}:{item_id[6:8]}:{item_id[9:11]}".upper()
+            hw_id = meta.get("MachineIdentifier", f"HW-{row['ClientPcHostname'] or row['Name']}")
+            ip_val = f"'{meta['IPAddress']}'" if meta.get('IPAddress') else "NULL"
+            vlan_id = meta.get("VlanId", "NULL")
+            ad_ou = f"'{meta['AdOuPath']}'" if meta.get('AdOuPath') else "NULL"
+            meta_json = json.dumps(meta).replace("'", "''")
+            sql.append(f"INSERT INTO backend.client_pcs (id, name, mac_address, hostname, machine_identifier, ip_address, vlan_id, ad_ou_path, system_metadata, pinned_object_handle, organization_id) "
+                       f"VALUES ('{item_id}', '{row['Name']}', '{mac}', '{row['ClientPcHostname'] or row['Name']}', '{hw_id}', {ip_val}, {vlan_id}, {ad_ou}, '{meta_json}'::jsonb, {pin_handle}, {org_id}) "
+                       f"ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, mac_address = EXCLUDED.mac_address, hostname = EXCLUDED.hostname, machine_identifier = EXCLUDED.machine_identifier, ip_address = EXCLUDED.ip_address, vlan_id = EXCLUDED.vlan_id, ad_ou_path = EXCLUDED.ad_ou_path, system_metadata = EXCLUDED.system_metadata, pinned_object_handle = EXCLUDED.pinned_object_handle, organization_id = EXCLUDED.organization_id;")
 
     # Seed 100 Machines into inventory_items and stations table
     sql.append("\n-- Seed 100 Diverse Machines across 8 Automated Lines")
@@ -891,6 +849,48 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE, pc_station_links=None)
                 st_id = item_ids[st_name]
                 sc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{pc_id}:{st_id}"))
                 sql.append(f"INSERT INTO backend.\"StationControllers\" (id, client_pc_id, machine_id) VALUES ('{sc_id}', '{pc_id}', '{st_id}') ON CONFLICT DO NOTHING;")
+
+    # Seed Maintenance Tickets
+    sql.append("\n-- Seed 75 Realistic Maintenance Tickets")
+    ticket_titles = ["Servo Drive Fault", "Vision System Misalignment", "Pneumatic Pressure Leak", "Torque Deviation Warning", "Conveyor Belt Jam", "Spindle Vibration Alert", "Laser Calibration Required", "Robot Axis Timeout", "Coolant Flow Restriction", "Sensor Debris Detected"]
+    ticket_statuses = ["Open"]*25 + ["In_Progress"]*20 + ["Pending_Parts"]*10 + ["Resolved"]*30 + ["Closed"]*15
+    ticket_priorities = ["Critical"]*10 + ["High"]*25 + ["Medium"]*40 + ["Low"]*25
+
+    machine_list = [row for row in rows if row['Type'] == 'Machine']
+    
+    for i in range(75):
+        t_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f'ticket:{i}'))
+        title = random.choice(ticket_titles)
+        desc = f"Observed intermittent {title.lower()} during production cycle."
+        status = random.choice(ticket_statuses)
+        priority = random.choice(ticket_priorities)
+        
+        machine_row = random.choice(machine_list) if machine_list else None
+        m_id_val = f"'{item_ids[machine_row['Name']]}'" if machine_row else "NULL"
+        org_id_val = f"'{machine_row.get('OrganizationId', 'org-line-01')}'" if machine_row and machine_row.get('OrganizationId') else "'org-line-01'"
+        
+        assigned_user = random.choice(FAKE_USERS)
+        assigned_to = f"'{assigned_user[1].replace(chr(39), chr(39)+chr(39))}'"
+        created_user = random.choice(FAKE_USERS)
+        created_by = f"'{created_user[1].replace(chr(39), chr(39)+chr(39))}'"
+        
+        days_ago = random.randint(1, 90)
+        created_at = f"NOW() - INTERVAL '{days_ago} days'"
+        
+        if status in ("Resolved", "Closed"):
+            resolved_at = f"{created_at} + INTERVAL '{random.randint(1, 48)} hours'"
+        else:
+            resolved_at = "NULL"
+            
+        sql.append(f"INSERT INTO backend.maintenance_tickets (id, title, description, status, priority, machine_id, assigned_to, created_by, created_at, resolved_at, organization_id) "
+                   f"VALUES ('{t_id}', '{title}', '{desc}', '{status}', '{priority}', {m_id_val}, {assigned_to}, {created_by}, {created_at}, {resolved_at}, {org_id_val}) ON CONFLICT DO NOTHING;")
+                   
+        for c in range(random.randint(1, 3)):
+            c_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f'ticket_comment:{i}:{c}'))
+            c_author = random.choice(FAKE_USERS)[1].replace(chr(39), chr(39)+chr(39))
+            c_content = f"Update on {title.lower()}."
+            sql.append(f"INSERT INTO backend.ticket_comments (id, maintenance_ticket_id, author, content, created_at) "
+                       f"VALUES ('{c_id}', '{t_id}', '{c_author}', '{c_content}', {created_at} + INTERVAL '{c+1} hours') ON CONFLICT DO NOTHING;")
 
     # Seed Security Group Mappings
     sql.append("\n-- Seed Security Group Mappings for 8 Lines & Tech Guilds")

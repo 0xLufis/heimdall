@@ -13,18 +13,21 @@ _CACHED_DATASET: Optional[Dict[str, Any]] = None
 
 def get_dataset_path() -> str:
     candidates = [
+        os.environ.get("DATASET_PATH"),
         os.path.join(os.path.dirname(__file__), '../../fixtures/enterprise_plant_dataset.json'),
         os.path.join(os.path.dirname(__file__), '../fixtures/enterprise_plant_dataset.json'),
         os.path.join(os.path.dirname(__file__), 'fixtures/enterprise_plant_dataset.json'),
         os.path.join(os.getcwd(), 'fixtures/enterprise_plant_dataset.json'),
+        '/workspace/fixtures/enterprise_plant_dataset.json',
         '/app/fixtures/enterprise_plant_dataset.json'
     ]
     for c in candidates:
-        norm = os.path.abspath(c)
-        if os.path.exists(norm):
-            return norm
-    # Default to first candidate
-    return os.path.abspath(candidates[0])
+        if c:
+            norm = os.path.abspath(c)
+            if os.path.exists(norm):
+                return norm
+    # Default to first candidate with fallback
+    return os.path.abspath(candidates[1])
 
 def load_enterprise_dataset() -> Dict[str, Any]:
     global _CACHED_DATASET

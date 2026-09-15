@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
@@ -95,21 +96,35 @@ export default defineNuxtConfig({
           server.middlewares.use((req, res, next) => {
             if (!req.url) return next()
 
-            // Catch legacy host-path requests for the Nuxt entry bundle
-            if (
-              req.url.includes('node_modules/nuxt/dist/app/entry.async.js') &&
-              !req.url.startsWith('/_nuxt/app/')
-            ) {
-              res.writeHead(302, { Location: '/_nuxt/app/node_modules/nuxt/dist/app/entry.async.js' })
-              return res.end()
-            }
+            const isDocker = fs.existsSync('/.dockerenv') || process.cwd().startsWith('/app')
+            const appRoot = process.cwd()
 
-            // Catch any host-prefixed Vite/Nuxt resource paths (e.g. /_nuxt/home/lufis/.../frontend/...)
-            if (req.url.startsWith('/_nuxt/home/')) {
-              const correctedPath = req.url.replace(/^\/_nuxt\/home\/[^/]+\/Projects\/[^/]+\/[^/]+\/frontend\/[^/]+/, '/_nuxt/app')
-              if (correctedPath !== req.url) {
-                res.writeHead(302, { Location: correctedPath })
+            if (isDocker) {
+              // Catch legacy host-path requests for the Nuxt entry bundle inside Docker
+              if (
+                req.url.includes('node_modules/nuxt/dist/app/entry.async.js') &&
+                !req.url.startsWith('/_nuxt/app/')
+              ) {
+                res.writeHead(302, { Location: '/_nuxt/app/node_modules/nuxt/dist/app/entry.async.js' })
                 return res.end()
+              }
+
+              // Catch any host-prefixed Vite/Nuxt resource paths inside Docker
+              if (req.url.startsWith('/_nuxt/home/')) {
+                const correctedPath = req.url.replace(/^\/_nuxt\/home\/[^/]+\/Projects\/[^/]+\/[^/]+\/frontend\/[^/]+/, '/_nuxt/app')
+                if (correctedPath !== req.url) {
+                  res.writeHead(302, { Location: correctedPath })
+                  return res.end()
+                }
+              }
+            } else {
+              // On Host: redirect stale container /_nuxt/app/ requests to the host root path
+              if (req.url.startsWith('/_nuxt/app/')) {
+                const correctedPath = req.url.replace('/_nuxt/app', `/_nuxt${appRoot}`)
+                if (correctedPath !== req.url) {
+                  res.writeHead(302, { Location: correctedPath })
+                  return res.end()
+                }
               }
             }
 
