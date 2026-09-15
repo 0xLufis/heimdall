@@ -28,8 +28,8 @@ export const useControllers = () => {
         displayName: c.displayName || c.hostname,
         hostname: c.hostname || c.name || 'Unknown Host',
         macAddress: c.macAddress || '',
-        ipAddress: c.systemMetadata?.IPAddress || c.ipAddress || (c.hostname?.startsWith('DOCKERW') ? '127.0.0.1' : undefined),
-        osVersion: c.systemMetadata?.OsVersion || c.osVersion || (c.inventoryItems || c.InventoryItems || []).find((i: any) => i.name === 'Software')?.metadata?.OsVersion || (c.hostname?.startsWith('DOCKERW') ? 'Microsoft Windows 10 Enterprise LTSC' : undefined),
+        ipAddress: c.systemMetadata?.IPAddress || c.ipAddress || undefined,
+        osVersion: c.systemMetadata?.OsVersion || c.osVersion || (c.inventoryItems || c.InventoryItems || []).find((i: any) => i.name === 'Software')?.metadata?.OsVersion || undefined,
         machineIdentifier: c.machineIdentifier,
         pinnedObjectHandle: c.pinnedObjectHandle,
         lastOnline: c.lastOnline || c.lastSeen,
@@ -42,11 +42,11 @@ export const useControllers = () => {
         adOuPath: c.adOuPath || c.AdOuPath || c.systemMetadata?.AdOuPath || '',
         ouTags: c.ouTags || c.OuTags || (typeof c.ouTagsJson === 'string' ? (() => { try { return JSON.parse(c.ouTagsJson) } catch { return {} } })() : (c.ouTagsJson || {})),
         telemetry: {
-          cpuUsagePercent: c.resourceAverages?.cpuUsageAverage ?? (Math.floor(Math.random() * 30) + 10),
-          ramUsagePercent: c.resourceAverages?.ramUsageAverage ?? (Math.floor(Math.random() * 40) + 30),
+          cpuUsagePercent: c.resourceAverages?.cpuUsageAverage,
+          ramUsagePercent: c.resourceAverages?.ramUsageAverage,
           diskSpace: c.freeDiskSpace,
           beckhoffRT: c.systemMetadata?.BeckhoffRT,
-          ipAddress: c.systemMetadata?.IPAddress,
+          ipAddress: c.systemMetadata?.IPAddress || c.ipAddress,
           isOnline: isOnline(c.lastOnline || c.lastSeen)
         }
       }))

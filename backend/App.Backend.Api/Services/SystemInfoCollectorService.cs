@@ -207,10 +207,79 @@ public class SystemInfoCollectorService : SystemInfoCollector.SystemInfoCollecto
             clientPc.InventoryItems = items;
 
             // Map abstract components to properties
-            var osComp = request.Components.FirstOrDefault(c => c.Name == "OS Environment");
+            var osComp = request.Components.FirstOrDefault(c => 
+                c.Name == "OS Environment" || 
+                c.Name == "OS & Driver Telemetry" || 
+                c.Name == "Operating System & CMI" ||
+                c.Name == "Software");
+            var industrialOtComp = request.Components.FirstOrDefault(c => c.Name == "IndustrialOT");
+
             if (osComp != null && !string.IsNullOrEmpty(osComp.DataJson))
             {
-                clientPc.SystemMetadata = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonDocument>(osComp.DataJson);
+                try
+                {
+                    var metaNode = System.Text.Json.Nodes.JsonNode.Parse(osComp.DataJson)?.AsObject() ?? new System.Text.Json.Nodes.JsonObject();
+                    if (industrialOtComp != null && !string.IsNullOrEmpty(industrialOtComp.DataJson))
+                    {
+                        using var otDoc = System.Text.Json.JsonDocument.Parse(industrialOtComp.DataJson);
+                        var otRoot = otDoc.RootElement;
+                        if (otRoot.TryGetProperty("AdsState", out var adsState))
+                            metaNode["TwinCAT_ADS_State"] = adsState.GetString();
+                        if (otRoot.TryGetProperty("AdsAmsNetId", out var netId))
+                            metaNode["AdsAmsNetId"] = netId.GetString();
+                        if (otRoot.TryGetProperty("OpcEndpoint", out var opcEp))
+                            metaNode["OpcEndpoint"] = opcEp.GetString();
+                        if (otRoot.TryGetProperty("OpcConnected", out var opcConn))
+                            metaNode["OpcConnected"] = opcConn.GetBoolean();
+                    }
+                    clientPc.SystemMetadata = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonDocument>(metaNode.ToJsonString());
+                }
+                catch
+                {
+                    clientPc.SystemMetadata = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonDocument>(osComp.DataJson);
+                }
+
+                try
+                {
+                    if (clientPc.SystemMetadata != null && clientPc.SystemMetadata.RootElement.TryGetProperty("IPAddress", out var ipProp) && ipProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        clientPc.IpAddress = ipProp.GetString();
+                    }
+                    else if (clientPc.SystemMetadata != null && clientPc.SystemMetadata.RootElement.TryGetProperty("ipAddress", out var ipProp2) && ipProp2.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        clientPc.IpAddress = ipProp2.GetString();
+                    }
+                }
+                catch
+                {
+                    // Fallback
+                }
+            }
+
+            if (string.IsNullOrEmpty(clientPc.IpAddress))
+            {
+                foreach (var c in request.Components)
+                {
+                    if (string.IsNullOrEmpty(c.DataJson)) continue;
+                    try
+                    {
+                        using var cDoc = System.Text.Json.JsonDocument.Parse(c.DataJson);
+                        if (cDoc.RootElement.TryGetProperty("IPAddress", out var p) && p.ValueKind == System.Text.Json.JsonValueKind.String)
+                        {
+                            clientPc.IpAddress = p.GetString();
+                            break;
+                        }
+                        if (cDoc.RootElement.TryGetProperty("ipAddress", out var p2) && p2.ValueKind == System.Text.Json.JsonValueKind.String)
+                        {
+                            clientPc.IpAddress = p2.GetString();
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore malformed individual components
+                    }
+                }
             }
 
             var telemetryComp = request.Components.FirstOrDefault(c => c.Name == "Live Telemetry" || c.Name == "Real-Time Metrics");

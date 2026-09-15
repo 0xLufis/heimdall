@@ -279,7 +279,11 @@ def log_tail_worker():
         for svc in STATE.services:
             log_path = svc.get("log_path")
             if not log_path or not os.path.exists(log_path):
-                continue
+                fallback = os.path.join(LOG_DIR, f"{svc['id']}.log")
+                if os.path.exists(fallback):
+                    log_path = fallback
+                else:
+                    continue
             try:
                 curr_size = os.path.getsize(log_path)
                 last_offset = file_offsets.get(log_path, max(0, curr_size - 4096))
@@ -356,7 +360,8 @@ def restart_windows_agent():
 def run_tests_async():
     STATE.set_banner("Launching verification test suite in background...")
     def _run():
-        res = subprocess.run(["python3", "tools/dev_manager.py", "test"], cwd=ROOT_DIR, capture_output=True, text=True)
+        python_bin = sys.executable
+        res = subprocess.run([python_bin, "tools/dev_manager.py", "test"], cwd=ROOT_DIR, capture_output=True, text=True)
         if res.returncode == 0:
             STATE.set_banner("Verification tests passed! (100% OK)")
         else:
@@ -457,6 +462,7 @@ def curses_tui(stdscr):
                         break
                     is_sel = (idx == STATE.selected_idx)
                     target = f"{svc['host']}:{svc['port']}"
+                    lat_str = f"{svc['latency_ms']:.1f}ms" if svc['online'] else "---"
                     if svc['online']:
                         status_str = "● ONLINE"
                         color = COLOR_ONLINE
@@ -723,14 +729,19 @@ def main():
     # Pre-seed log buffers with recent lines if log files exist
     for svc in STATE.services:
         log_path = svc.get("log_path")
-        if log_path and os.path.exists(log_path):
-            try:
-                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-                    lines = f.readlines()[-50:]
-                    for line in lines:
-                        STATE.log_buffers[svc["id"]].append(line.rstrip("\r\n"))
-            except Exception:
-                pass
+        if not log_path or not os.path.exists(log_path):
+            fallback = os.path.join(LOG_DIR, f"{svc['id']}.log")
+            if os.path.exists(fallback):
+                log_path = fallback
+            else:
+                continue
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()[-50:]
+                for line in lines:
+                    STATE.log_buffers[svc["id"]].append(line.rstrip("\r\n"))
+        except Exception:
+            pass
 
     if HAS_CURSES and sys.stdin.isatty() and sys.stdout.isatty() and os.environ.get("TERM") != "dumb":
         try:

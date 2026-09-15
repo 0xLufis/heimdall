@@ -23,6 +23,7 @@ public class Worker : BackgroundService
     private readonly ISystemInfoReporter _systemInfoReporter;
     private readonly ICommandHandler _commandHandler;
     private readonly AdsSimulationServer _adsServer;
+    private readonly MinimalOpcServer _opcServer;
     private readonly MinimalOpcClient _opcClient;
     private readonly TelemetryTriggerEngine _triggerEngine;
 
@@ -33,6 +34,7 @@ public class Worker : BackgroundService
     private readonly AutoResetEvent _wakeUpSignal = new(false);
 
     public AdsSimulationServer AdsServer => _adsServer;
+    public MinimalOpcServer OpcServer => _opcServer;
     public MinimalOpcClient OpcClient => _opcClient;
     public TelemetryTriggerEngine TriggerEngine => _triggerEngine;
 
@@ -42,6 +44,7 @@ public class Worker : BackgroundService
         ISystemInfoReporter systemInfoReporter,
         ICommandHandler commandHandler,
         AdsSimulationServer? adsServer = null,
+        MinimalOpcServer? opcServer = null,
         MinimalOpcClient? opcClient = null,
         TelemetryTriggerEngine? triggerEngine = null)
     {
@@ -51,6 +54,7 @@ public class Worker : BackgroundService
         _commandHandler = commandHandler;
 
         _adsServer = adsServer ?? new AdsSimulationServer();
+        _opcServer = opcServer ?? new MinimalOpcServer();
         _opcClient = opcClient ?? new MinimalOpcClient();
         _triggerEngine = triggerEngine ?? new TelemetryTriggerEngine();
     }
@@ -68,9 +72,10 @@ public class Worker : BackgroundService
         try
         {
             _adsServer.Start();
+            _opcServer.Start();
             _opcClient.Start(pollIntervalMs: 2000);
-            _logger.LogInformation("Industrial OT subsystems initialized (ADS: port {AdsPort}, OPC: {OpcEndpoint})",
-                _adsServer.Port, _opcClient.EndpointUrl);
+            _logger.LogInformation("Industrial OT subsystems initialized (ADS: port {AdsPort}, OPC Server: port {OpcPort}, OPC Client: {OpcEndpoint})",
+                _adsServer.Port, _opcServer.Port, _opcClient.EndpointUrl);
         }
         catch (Exception ex)
         {
@@ -170,12 +175,14 @@ public class Worker : BackgroundService
         }
 
         _adsServer.Stop();
+        _opcServer.Stop();
         _opcClient.Stop();
     }
 
     public override void Dispose()
     {
         try { _adsServer?.Dispose(); } catch { }
+        try { _opcServer?.Dispose(); } catch { }
         try { _opcClient?.Dispose(); } catch { }
         try { _wakeUpSignal?.Dispose(); } catch { }
         base.Dispose();

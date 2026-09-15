@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
 
   const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   try {
-    const rawList = await $fetch<any[]>(`${backendBase}/api/MaintenanceTicket`, {
+    const rawList = await $fetch<any[]>(`${backendBase}/api/v1/MaintenanceTicket`, {
       headers: event.headers as any
     })
     if (rawList && rawList.length > 0) {

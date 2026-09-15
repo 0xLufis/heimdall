@@ -19,7 +19,7 @@
               {
                 "id": "IPC-L01-CONVEYOR-MAIN",
                 "hostname": "IPC-L01-CONVEYOR-MAIN",
-                "ip": "192.168.10.3",
+                "ip": "192.168.101.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
@@ -38,7 +38,7 @@
               {
                 "id": "IPC-L01-CONVEYOR-MAIN",
                 "hostname": "IPC-L01-CONVEYOR-MAIN",
-                "ip": "192.168.10.3",
+                "ip": "192.168.101.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
@@ -57,7 +57,7 @@
               {
                 "id": "IPC-L01-OP030-DEDICATED",
                 "hostname": "IPC-L01-OP030-DEDICATED",
-                "ip": "192.168.10.2",
+                "ip": "192.168.101.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_Cell030.tsproj (Port 851)",
@@ -85,7 +85,7 @@
               {
                 "id": "IPC-L01-CONVEYOR-MAIN",
                 "hostname": "IPC-L01-CONVEYOR-MAIN",
-                "ip": "192.168.10.3",
+                "ip": "192.168.101.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
@@ -104,7 +104,7 @@
               {
                 "id": "IPC-L01-OP060-PLC",
                 "hostname": "IPC-L01-OP060-PLC",
-                "ip": "192.168.10.6",
+                "ip": "192.168.101.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_LaserMotion.tsproj (Port 851)",
@@ -113,7 +113,7 @@
               {
                 "id": "IPC-L01-OP060-VISION",
                 "hostname": "IPC-L01-OP060-VISION",
-                "ip": "192.168.10.7",
+                "ip": "192.168.101.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "Vision GigE Cam Driver active",
@@ -122,7 +122,7 @@
               {
                 "id": "IPC-L01-OP060-MES-GATE",
                 "hostname": "IPC-L01-OP060-MES-GATE",
-                "ip": "192.168.10.8",
+                "ip": "192.168.101.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
                 "twincat": "MQTT / OPC UA Gateway active",
@@ -150,7 +150,7 @@
               {
                 "id": "IPC-L01-ROB-ALPHA",
                 "hostname": "IPC-L01-ROB-ALPHA",
-                "ip": "192.168.10.4",
+                "ip": "192.168.101.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_RoboticsShared.tsproj (Port 851)",
@@ -159,7 +159,7 @@
               {
                 "id": "IPC-L01-ROB-BETA",
                 "hostname": "IPC-L01-ROB-BETA",
-                "ip": "192.168.10.5",
+                "ip": "192.168.101.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_RoboticsShared.tsproj (Port 851)",
@@ -178,7 +178,7 @@
               {
                 "id": "IPC-L01-ROB-ALPHA",
                 "hostname": "IPC-L01-ROB-ALPHA",
-                "ip": "192.168.10.4",
+                "ip": "192.168.101.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_RoboticsShared.tsproj (Port 851)",
@@ -187,7 +187,7 @@
               {
                 "id": "IPC-L01-ROB-BETA",
                 "hostname": "IPC-L01-ROB-BETA",
-                "ip": "192.168.10.5",
+                "ip": "192.168.101.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line01_RoboticsShared.tsproj (Port 851)",
@@ -241,7 +241,7 @@
               {
                 "id": "IPC-L02-CONVEYOR-MAIN",
                 "hostname": "IPC-L02-CONVEYOR-MAIN",
-                "ip": "192.168.10.10",
+                "ip": "192.168.102.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
@@ -260,7 +260,7 @@
               {
                 "id": "IPC-L02-CONVEYOR-MAIN",
                 "hostname": "IPC-L02-CONVEYOR-MAIN",
-                "ip": "192.168.10.10",
+                "ip": "192.168.102.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
@@ -279,7 +279,7 @@
               {
                 "id": "IPC-L02-OP030-DEDICATED",
                 "hostname": "IPC-L02-OP030-DEDICATED",
-                "ip": "192.168.10.9",
+                "ip": "192.168.102.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_Cell030.tsproj (Port 851)",
@@ -307,7 +307,7 @@
               {
                 "id": "IPC-L02-CONVEYOR-MAIN",
                 "hostname": "IPC-L02-CONVEYOR-MAIN",
-                "ip": "192.168.10.10",
+                "ip": "192.168.102.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
@@ -326,7 +326,7 @@
               {
                 "id": "IPC-L02-OP060-PLC",
                 "hostname": "IPC-L02-OP060-PLC",
-                "ip": "192.168.10.13",
+                "ip": "192.168.102.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_LaserMotion.tsproj (Port 851)",
@@ -335,7 +335,7 @@
               {
                 "id": "IPC-L02-OP060-VISION",
                 "hostname": "IPC-L02-OP060-VISION",
-                "ip": "192.168.10.14",
+                "ip": "192.168.102.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "Vision GigE Cam Driver active",
@@ -344,7 +344,7 @@
               {
                 "id": "IPC-L02-OP060-MES-GATE",
                 "hostname": "IPC-L02-OP060-MES-GATE",
-                "ip": "192.168.10.15",
+                "ip": "192.168.102.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
                 "twincat": "MQTT / OPC UA Gateway active",
@@ -372,7 +372,7 @@
               {
                 "id": "IPC-L02-ROB-ALPHA",
                 "hostname": "IPC-L02-ROB-ALPHA",
-                "ip": "192.168.10.11",
+                "ip": "192.168.102.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_RoboticsShared.tsproj (Port 851)",
@@ -381,7 +381,7 @@
               {
                 "id": "IPC-L02-ROB-BETA",
                 "hostname": "IPC-L02-ROB-BETA",
-                "ip": "192.168.10.12",
+                "ip": "192.168.102.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_RoboticsShared.tsproj (Port 851)",
@@ -400,7 +400,7 @@
               {
                 "id": "IPC-L02-ROB-ALPHA",
                 "hostname": "IPC-L02-ROB-ALPHA",
-                "ip": "192.168.10.11",
+                "ip": "192.168.102.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_RoboticsShared.tsproj (Port 851)",
@@ -409,7 +409,7 @@
               {
                 "id": "IPC-L02-ROB-BETA",
                 "hostname": "IPC-L02-ROB-BETA",
-                "ip": "192.168.10.12",
+                "ip": "192.168.102.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line02_RoboticsShared.tsproj (Port 851)",
@@ -472,7 +472,7 @@
               {
                 "id": "IPC-L03-CONVEYOR-MAIN",
                 "hostname": "IPC-L03-CONVEYOR-MAIN",
-                "ip": "192.168.10.17",
+                "ip": "192.168.103.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
@@ -491,7 +491,7 @@
               {
                 "id": "IPC-L03-CONVEYOR-MAIN",
                 "hostname": "IPC-L03-CONVEYOR-MAIN",
-                "ip": "192.168.10.17",
+                "ip": "192.168.103.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
@@ -510,7 +510,7 @@
               {
                 "id": "IPC-L03-OP030-DEDICATED",
                 "hostname": "IPC-L03-OP030-DEDICATED",
-                "ip": "192.168.10.16",
+                "ip": "192.168.103.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_Cell030.tsproj (Port 851)",
@@ -538,7 +538,7 @@
               {
                 "id": "IPC-L03-CONVEYOR-MAIN",
                 "hostname": "IPC-L03-CONVEYOR-MAIN",
-                "ip": "192.168.10.17",
+                "ip": "192.168.103.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
@@ -557,7 +557,7 @@
               {
                 "id": "IPC-L03-OP060-PLC",
                 "hostname": "IPC-L03-OP060-PLC",
-                "ip": "192.168.10.20",
+                "ip": "192.168.103.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_LaserMotion.tsproj (Port 851)",
@@ -566,7 +566,7 @@
               {
                 "id": "IPC-L03-OP060-VISION",
                 "hostname": "IPC-L03-OP060-VISION",
-                "ip": "192.168.10.21",
+                "ip": "192.168.103.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "Vision GigE Cam Driver active",
@@ -575,7 +575,7 @@
               {
                 "id": "IPC-L03-OP060-MES-GATE",
                 "hostname": "IPC-L03-OP060-MES-GATE",
-                "ip": "192.168.10.22",
+                "ip": "192.168.103.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
                 "twincat": "MQTT / OPC UA Gateway active",
@@ -603,7 +603,7 @@
               {
                 "id": "IPC-L03-ROB-ALPHA",
                 "hostname": "IPC-L03-ROB-ALPHA",
-                "ip": "192.168.10.18",
+                "ip": "192.168.103.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_RoboticsShared.tsproj (Port 851)",
@@ -612,7 +612,7 @@
               {
                 "id": "IPC-L03-ROB-BETA",
                 "hostname": "IPC-L03-ROB-BETA",
-                "ip": "192.168.10.19",
+                "ip": "192.168.103.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_RoboticsShared.tsproj (Port 851)",
@@ -631,7 +631,7 @@
               {
                 "id": "IPC-L03-ROB-ALPHA",
                 "hostname": "IPC-L03-ROB-ALPHA",
-                "ip": "192.168.10.18",
+                "ip": "192.168.103.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_RoboticsShared.tsproj (Port 851)",
@@ -640,7 +640,7 @@
               {
                 "id": "IPC-L03-ROB-BETA",
                 "hostname": "IPC-L03-ROB-BETA",
-                "ip": "192.168.10.19",
+                "ip": "192.168.103.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line03_RoboticsShared.tsproj (Port 851)",
@@ -694,7 +694,7 @@
               {
                 "id": "IPC-L04-CONVEYOR-MAIN",
                 "hostname": "IPC-L04-CONVEYOR-MAIN",
-                "ip": "192.168.10.24",
+                "ip": "192.168.104.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
@@ -713,7 +713,7 @@
               {
                 "id": "IPC-L04-CONVEYOR-MAIN",
                 "hostname": "IPC-L04-CONVEYOR-MAIN",
-                "ip": "192.168.10.24",
+                "ip": "192.168.104.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
@@ -732,7 +732,7 @@
               {
                 "id": "IPC-L04-OP030-DEDICATED",
                 "hostname": "IPC-L04-OP030-DEDICATED",
-                "ip": "192.168.10.23",
+                "ip": "192.168.104.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_Cell030.tsproj (Port 851)",
@@ -760,7 +760,7 @@
               {
                 "id": "IPC-L04-CONVEYOR-MAIN",
                 "hostname": "IPC-L04-CONVEYOR-MAIN",
-                "ip": "192.168.10.24",
+                "ip": "192.168.104.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
@@ -779,7 +779,7 @@
               {
                 "id": "IPC-L04-OP060-PLC",
                 "hostname": "IPC-L04-OP060-PLC",
-                "ip": "192.168.10.27",
+                "ip": "192.168.104.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_LaserMotion.tsproj (Port 851)",
@@ -788,7 +788,7 @@
               {
                 "id": "IPC-L04-OP060-VISION",
                 "hostname": "IPC-L04-OP060-VISION",
-                "ip": "192.168.10.28",
+                "ip": "192.168.104.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "Vision GigE Cam Driver active",
@@ -797,7 +797,7 @@
               {
                 "id": "IPC-L04-OP060-MES-GATE",
                 "hostname": "IPC-L04-OP060-MES-GATE",
-                "ip": "192.168.10.29",
+                "ip": "192.168.104.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
                 "twincat": "MQTT / OPC UA Gateway active",
@@ -825,7 +825,7 @@
               {
                 "id": "IPC-L04-ROB-ALPHA",
                 "hostname": "IPC-L04-ROB-ALPHA",
-                "ip": "192.168.10.25",
+                "ip": "192.168.104.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_RoboticsShared.tsproj (Port 851)",
@@ -834,7 +834,7 @@
               {
                 "id": "IPC-L04-ROB-BETA",
                 "hostname": "IPC-L04-ROB-BETA",
-                "ip": "192.168.10.26",
+                "ip": "192.168.104.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_RoboticsShared.tsproj (Port 851)",
@@ -853,7 +853,7 @@
               {
                 "id": "IPC-L04-ROB-ALPHA",
                 "hostname": "IPC-L04-ROB-ALPHA",
-                "ip": "192.168.10.25",
+                "ip": "192.168.104.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_RoboticsShared.tsproj (Port 851)",
@@ -862,7 +862,7 @@
               {
                 "id": "IPC-L04-ROB-BETA",
                 "hostname": "IPC-L04-ROB-BETA",
-                "ip": "192.168.10.26",
+                "ip": "192.168.104.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line04_RoboticsShared.tsproj (Port 851)",
@@ -925,7 +925,7 @@
               {
                 "id": "IPC-L05-CONVEYOR-MAIN",
                 "hostname": "IPC-L05-CONVEYOR-MAIN",
-                "ip": "192.168.10.31",
+                "ip": "192.168.105.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
@@ -944,7 +944,7 @@
               {
                 "id": "IPC-L05-CONVEYOR-MAIN",
                 "hostname": "IPC-L05-CONVEYOR-MAIN",
-                "ip": "192.168.10.31",
+                "ip": "192.168.105.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
@@ -963,7 +963,7 @@
               {
                 "id": "IPC-L05-OP030-DEDICATED",
                 "hostname": "IPC-L05-OP030-DEDICATED",
-                "ip": "192.168.10.30",
+                "ip": "192.168.105.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_Cell030.tsproj (Port 851)",
@@ -991,7 +991,7 @@
               {
                 "id": "IPC-L05-CONVEYOR-MAIN",
                 "hostname": "IPC-L05-CONVEYOR-MAIN",
-                "ip": "192.168.10.31",
+                "ip": "192.168.105.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
@@ -1010,7 +1010,7 @@
               {
                 "id": "IPC-L05-OP060-PLC",
                 "hostname": "IPC-L05-OP060-PLC",
-                "ip": "192.168.10.34",
+                "ip": "192.168.105.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_LaserMotion.tsproj (Port 851)",
@@ -1019,7 +1019,7 @@
               {
                 "id": "IPC-L05-OP060-VISION",
                 "hostname": "IPC-L05-OP060-VISION",
-                "ip": "192.168.10.35",
+                "ip": "192.168.105.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "Vision GigE Cam Driver active",
@@ -1028,7 +1028,7 @@
               {
                 "id": "IPC-L05-OP060-MES-GATE",
                 "hostname": "IPC-L05-OP060-MES-GATE",
-                "ip": "192.168.10.36",
+                "ip": "192.168.105.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
                 "twincat": "MQTT / OPC UA Gateway active",
@@ -1056,7 +1056,7 @@
               {
                 "id": "IPC-L05-ROB-ALPHA",
                 "hostname": "IPC-L05-ROB-ALPHA",
-                "ip": "192.168.10.32",
+                "ip": "192.168.105.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_RoboticsShared.tsproj (Port 851)",
@@ -1065,7 +1065,7 @@
               {
                 "id": "IPC-L05-ROB-BETA",
                 "hostname": "IPC-L05-ROB-BETA",
-                "ip": "192.168.10.33",
+                "ip": "192.168.105.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_RoboticsShared.tsproj (Port 851)",
@@ -1084,7 +1084,7 @@
               {
                 "id": "IPC-L05-ROB-ALPHA",
                 "hostname": "IPC-L05-ROB-ALPHA",
-                "ip": "192.168.10.32",
+                "ip": "192.168.105.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_RoboticsShared.tsproj (Port 851)",
@@ -1093,7 +1093,7 @@
               {
                 "id": "IPC-L05-ROB-BETA",
                 "hostname": "IPC-L05-ROB-BETA",
-                "ip": "192.168.10.33",
+                "ip": "192.168.105.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line05_RoboticsShared.tsproj (Port 851)",
@@ -1147,7 +1147,7 @@
               {
                 "id": "IPC-L06-CONVEYOR-MAIN",
                 "hostname": "IPC-L06-CONVEYOR-MAIN",
-                "ip": "192.168.10.38",
+                "ip": "192.168.106.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
@@ -1166,7 +1166,7 @@
               {
                 "id": "IPC-L06-CONVEYOR-MAIN",
                 "hostname": "IPC-L06-CONVEYOR-MAIN",
-                "ip": "192.168.10.38",
+                "ip": "192.168.106.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
@@ -1185,7 +1185,7 @@
               {
                 "id": "IPC-L06-OP030-DEDICATED",
                 "hostname": "IPC-L06-OP030-DEDICATED",
-                "ip": "192.168.10.37",
+                "ip": "192.168.106.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_Cell030.tsproj (Port 851)",
@@ -1213,7 +1213,7 @@
               {
                 "id": "IPC-L06-CONVEYOR-MAIN",
                 "hostname": "IPC-L06-CONVEYOR-MAIN",
-                "ip": "192.168.10.38",
+                "ip": "192.168.106.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
@@ -1232,7 +1232,7 @@
               {
                 "id": "IPC-L06-OP060-PLC",
                 "hostname": "IPC-L06-OP060-PLC",
-                "ip": "192.168.10.41",
+                "ip": "192.168.106.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_LaserMotion.tsproj (Port 851)",
@@ -1241,7 +1241,7 @@
               {
                 "id": "IPC-L06-OP060-VISION",
                 "hostname": "IPC-L06-OP060-VISION",
-                "ip": "192.168.10.42",
+                "ip": "192.168.106.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "Vision GigE Cam Driver active",
@@ -1250,7 +1250,7 @@
               {
                 "id": "IPC-L06-OP060-MES-GATE",
                 "hostname": "IPC-L06-OP060-MES-GATE",
-                "ip": "192.168.10.43",
+                "ip": "192.168.106.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
                 "twincat": "MQTT / OPC UA Gateway active",
@@ -1278,7 +1278,7 @@
               {
                 "id": "IPC-L06-ROB-ALPHA",
                 "hostname": "IPC-L06-ROB-ALPHA",
-                "ip": "192.168.10.39",
+                "ip": "192.168.106.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_RoboticsShared.tsproj (Port 851)",
@@ -1287,7 +1287,7 @@
               {
                 "id": "IPC-L06-ROB-BETA",
                 "hostname": "IPC-L06-ROB-BETA",
-                "ip": "192.168.10.40",
+                "ip": "192.168.106.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_RoboticsShared.tsproj (Port 851)",
@@ -1306,7 +1306,7 @@
               {
                 "id": "IPC-L06-ROB-ALPHA",
                 "hostname": "IPC-L06-ROB-ALPHA",
-                "ip": "192.168.10.39",
+                "ip": "192.168.106.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_RoboticsShared.tsproj (Port 851)",
@@ -1315,7 +1315,7 @@
               {
                 "id": "IPC-L06-ROB-BETA",
                 "hostname": "IPC-L06-ROB-BETA",
-                "ip": "192.168.10.40",
+                "ip": "192.168.106.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line06_RoboticsShared.tsproj (Port 851)",
@@ -1369,7 +1369,7 @@
               {
                 "id": "IPC-L07-CONVEYOR-MAIN",
                 "hostname": "IPC-L07-CONVEYOR-MAIN",
-                "ip": "192.168.10.45",
+                "ip": "192.168.107.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
@@ -1388,7 +1388,7 @@
               {
                 "id": "IPC-L07-CONVEYOR-MAIN",
                 "hostname": "IPC-L07-CONVEYOR-MAIN",
-                "ip": "192.168.10.45",
+                "ip": "192.168.107.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
@@ -1407,7 +1407,7 @@
               {
                 "id": "IPC-L07-OP030-DEDICATED",
                 "hostname": "IPC-L07-OP030-DEDICATED",
-                "ip": "192.168.10.44",
+                "ip": "192.168.107.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_Cell030.tsproj (Port 851)",
@@ -1435,7 +1435,7 @@
               {
                 "id": "IPC-L07-CONVEYOR-MAIN",
                 "hostname": "IPC-L07-CONVEYOR-MAIN",
-                "ip": "192.168.10.45",
+                "ip": "192.168.107.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
@@ -1454,7 +1454,7 @@
               {
                 "id": "IPC-L07-OP060-PLC",
                 "hostname": "IPC-L07-OP060-PLC",
-                "ip": "192.168.10.48",
+                "ip": "192.168.107.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_LaserMotion.tsproj (Port 851)",
@@ -1463,7 +1463,7 @@
               {
                 "id": "IPC-L07-OP060-VISION",
                 "hostname": "IPC-L07-OP060-VISION",
-                "ip": "192.168.10.49",
+                "ip": "192.168.107.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "Vision GigE Cam Driver active",
@@ -1472,7 +1472,7 @@
               {
                 "id": "IPC-L07-OP060-MES-GATE",
                 "hostname": "IPC-L07-OP060-MES-GATE",
-                "ip": "192.168.10.50",
+                "ip": "192.168.107.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
                 "twincat": "MQTT / OPC UA Gateway active",
@@ -1500,7 +1500,7 @@
               {
                 "id": "IPC-L07-ROB-ALPHA",
                 "hostname": "IPC-L07-ROB-ALPHA",
-                "ip": "192.168.10.46",
+                "ip": "192.168.107.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_RoboticsShared.tsproj (Port 851)",
@@ -1509,7 +1509,7 @@
               {
                 "id": "IPC-L07-ROB-BETA",
                 "hostname": "IPC-L07-ROB-BETA",
-                "ip": "192.168.10.47",
+                "ip": "192.168.107.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_RoboticsShared.tsproj (Port 851)",
@@ -1528,7 +1528,7 @@
               {
                 "id": "IPC-L07-ROB-ALPHA",
                 "hostname": "IPC-L07-ROB-ALPHA",
-                "ip": "192.168.10.46",
+                "ip": "192.168.107.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_RoboticsShared.tsproj (Port 851)",
@@ -1537,7 +1537,7 @@
               {
                 "id": "IPC-L07-ROB-BETA",
                 "hostname": "IPC-L07-ROB-BETA",
-                "ip": "192.168.10.47",
+                "ip": "192.168.107.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line07_RoboticsShared.tsproj (Port 851)",
@@ -1600,7 +1600,7 @@
               {
                 "id": "IPC-L08-CONVEYOR-MAIN",
                 "hostname": "IPC-L08-CONVEYOR-MAIN",
-                "ip": "192.168.10.52",
+                "ip": "192.168.108.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
@@ -1619,7 +1619,7 @@
               {
                 "id": "IPC-L08-CONVEYOR-MAIN",
                 "hostname": "IPC-L08-CONVEYOR-MAIN",
-                "ip": "192.168.10.52",
+                "ip": "192.168.108.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
@@ -1638,7 +1638,7 @@
               {
                 "id": "IPC-L08-OP030-DEDICATED",
                 "hostname": "IPC-L08-OP030-DEDICATED",
-                "ip": "192.168.10.51",
+                "ip": "192.168.108.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_Cell030.tsproj (Port 851)",
@@ -1666,7 +1666,7 @@
               {
                 "id": "IPC-L08-CONVEYOR-MAIN",
                 "hostname": "IPC-L08-CONVEYOR-MAIN",
-                "ip": "192.168.10.52",
+                "ip": "192.168.108.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
@@ -1685,7 +1685,7 @@
               {
                 "id": "IPC-L08-OP060-PLC",
                 "hostname": "IPC-L08-OP060-PLC",
-                "ip": "192.168.10.55",
+                "ip": "192.168.108.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_LaserMotion.tsproj (Port 851)",
@@ -1694,7 +1694,7 @@
               {
                 "id": "IPC-L08-OP060-VISION",
                 "hostname": "IPC-L08-OP060-VISION",
-                "ip": "192.168.10.56",
+                "ip": "192.168.108.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "Vision GigE Cam Driver active",
@@ -1703,7 +1703,7 @@
               {
                 "id": "IPC-L08-OP060-MES-GATE",
                 "hostname": "IPC-L08-OP060-MES-GATE",
-                "ip": "192.168.10.57",
+                "ip": "192.168.108.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
                 "twincat": "MQTT / OPC UA Gateway active",
@@ -1731,7 +1731,7 @@
               {
                 "id": "IPC-L08-ROB-ALPHA",
                 "hostname": "IPC-L08-ROB-ALPHA",
-                "ip": "192.168.10.53",
+                "ip": "192.168.108.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_RoboticsShared.tsproj (Port 851)",
@@ -1740,7 +1740,7 @@
               {
                 "id": "IPC-L08-ROB-BETA",
                 "hostname": "IPC-L08-ROB-BETA",
-                "ip": "192.168.10.54",
+                "ip": "192.168.108.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_RoboticsShared.tsproj (Port 851)",
@@ -1759,7 +1759,7 @@
               {
                 "id": "IPC-L08-ROB-ALPHA",
                 "hostname": "IPC-L08-ROB-ALPHA",
-                "ip": "192.168.10.53",
+                "ip": "192.168.108.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_RoboticsShared.tsproj (Port 851)",
@@ -1768,7 +1768,7 @@
               {
                 "id": "IPC-L08-ROB-BETA",
                 "hostname": "IPC-L08-ROB-BETA",
-                "ip": "192.168.10.54",
+                "ip": "192.168.108.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
                 "twincat": "TC3_Line08_RoboticsShared.tsproj (Port 851)",

@@ -1,22 +1,36 @@
+import fs from 'node:fs'
 import { defineEventHandler, getRequestURL, sendRedirect } from 'h3'
+
+const isDocker = fs.existsSync('/.dockerenv') || process.cwd().startsWith('/app')
+const appRoot = process.cwd()
 
 export default defineEventHandler((event) => {
   const url = getRequestURL(event)
   const pathname = url.pathname
 
-  // 1. Catch legacy host-path requests for the Nuxt entry bundle
-  if (
-    pathname.includes('node_modules/nuxt/dist/app/entry.async.js') &&
-    !pathname.startsWith('/_nuxt/app/')
-  ) {
-    return sendRedirect(event, '/_nuxt/app/node_modules/nuxt/dist/app/entry.async.js', 302)
-  }
+  if (isDocker) {
+    // 1. Inside Docker: catch legacy host-path requests for the Nuxt entry bundle
+    if (
+      pathname.includes('node_modules/nuxt/dist/app/entry.async.js') &&
+      !pathname.startsWith('/_nuxt/app/')
+    ) {
+      return sendRedirect(event, '/_nuxt/app/node_modules/nuxt/dist/app/entry.async.js', 302)
+    }
 
-  // 2. Catch any host-prefixed Vite/Nuxt resource paths (e.g. /_nuxt/home/lufis/.../frontend/...)
-  if (pathname.startsWith('/_nuxt/home/')) {
-    const correctedPath = pathname.replace(/^\/_nuxt\/home\/[^/]+\/Projects\/[^/]+\/[^/]+\/frontend\/[^/]+/, '/_nuxt/app')
-    if (correctedPath !== pathname) {
-      return sendRedirect(event, correctedPath, 302)
+    // 2. Catch any host-prefixed Vite/Nuxt resource paths (e.g. /_nuxt/home/lufis/.../frontend/...)
+    if (pathname.startsWith('/_nuxt/home/')) {
+      const correctedPath = pathname.replace(/^\/_nuxt\/home\/[^/]+\/Projects\/[^/]+\/[^/]+\/frontend\/[^/]+/, '/_nuxt/app')
+      if (correctedPath !== pathname) {
+        return sendRedirect(event, correctedPath, 302)
+      }
+    }
+  } else {
+    // 1. On Host: catch stale container /_nuxt/app/ requests from cached tabs and map to host root
+    if (pathname.startsWith('/_nuxt/app/')) {
+      const correctedPath = pathname.replace('/_nuxt/app', `/_nuxt${appRoot}`)
+      if (correctedPath !== pathname) {
+        return sendRedirect(event, correctedPath, 302)
+      }
     }
   }
 

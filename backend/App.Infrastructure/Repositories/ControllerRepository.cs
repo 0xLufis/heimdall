@@ -56,15 +56,12 @@ public class ControllerRepository : IControllerRepository
             .FirstOrDefaultAsync(x => x.MacAddress == pc.MacAddress);
 
         var existingByHostname = await _context.ClientPcs
+            .Include(x => x.InventoryItems)
             .Where(x => x.Hostname == pc.Hostname && x.MacAddress != pc.MacAddress)
             .FirstOrDefaultAsync();
 
-        if (existingByHostname != null)
-        {
-            existingByHostname.Hostname = $"{existingByHostname.Hostname}-OLD-{DateTime.UtcNow:yyyyMMddHHmmss}";
-        }
-
-        if (existingByMac == null)
+        var targetPc = existingByMac ?? existingByHostname;
+        if (targetPc == null)
         {
             _context.ClientPcs.Add(pc);
             await _context.SaveChangesAsync();
@@ -72,45 +69,71 @@ public class ControllerRepository : IControllerRepository
         }
 
         bool changed = false;
-        if (existingByMac.Hostname != pc.Hostname) { existingByMac.Hostname = pc.Hostname; changed = true; }
-        if (existingByMac.MachineIdentifier != pc.MachineIdentifier) { existingByMac.MachineIdentifier = pc.MachineIdentifier; changed = true; }
+
+        // If matched by hostname but MAC differed, update the MAC to the new physical MAC
+        if (existingByMac == null && existingByHostname != null)
+        {
+            existingByHostname.MacAddress = pc.MacAddress;
+            changed = true;
+        }
+
+        if (targetPc.Hostname != pc.Hostname) { targetPc.Hostname = pc.Hostname; changed = true; }
+        if (!string.IsNullOrEmpty(pc.MachineIdentifier) && targetPc.MachineIdentifier != pc.MachineIdentifier) 
+        { 
+            targetPc.MachineIdentifier = pc.MachineIdentifier; 
+            changed = true; 
+        }
         
-        existingByMac.LastOnline = pc.LastOnline;
+        targetPc.LastOnline = pc.LastOnline;
         changed = true;
+
+        if (!string.IsNullOrEmpty(pc.IpAddress) && targetPc.IpAddress != pc.IpAddress)
+        {
+            targetPc.IpAddress = pc.IpAddress;
+            changed = true;
+        }
         
         if (pc.FreeDiskSpace != null)
         {
-            existingByMac.FreeDiskSpace = pc.FreeDiskSpace;
+            targetPc.FreeDiskSpace = pc.FreeDiskSpace;
             changed = true;
         }
 
         if (pc.SystemMetadata != null)
         {
-            existingByMac.SystemMetadata = pc.SystemMetadata;
+            targetPc.SystemMetadata = pc.SystemMetadata;
             changed = true;
         }
 
         if (pc.ResourceAverages != null)
         {
-            existingByMac.ResourceAverages = pc.ResourceAverages;
+            targetPc.ResourceAverages = pc.ResourceAverages;
             changed = true;
         }
 
         if (pc.InventoryItems != null)
         {
             var reportedHardwares = pc.InventoryItems.OfType<PcHardware>().ToList();
-            var existingHardwares = existingByMac.InventoryItems.OfType<PcHardware>().ToList();
+            var existingHardwares = targetPc.InventoryItems.OfType<PcHardware>().ToList();
             var reportedNames = new HashSet<string>(reportedHardwares.Select(h => h.Name));
             
-            int removedCount = existingByMac.InventoryItems.RemoveAll(i => i is PcHardware h && !reportedNames.Contains(h.Name));
-            if (removedCount > 0) changed = true;
+            var toRemove = targetPc.InventoryItems.Where(i => i is PcHardware h && !reportedNames.Contains(h.Name)).ToList();
+            if (toRemove.Any())
+            {
+                foreach (var rem in toRemove)
+                {
+                    targetPc.InventoryItems.Remove(rem);
+                    _context.InventoryItems.Remove(rem);
+                }
+                changed = true;
+            }
 
             foreach (var reported in reportedHardwares)
             {
                 var existing = existingHardwares.FirstOrDefault(h => h.Name == reported.Name);
                 if (existing != null)
                 {
-                    if (existing.Type != reported.Type || existing.Capacity != reported.Capacity)
+                    if (existing.Type != reported.Type || existing.Capacity != reported.Capacity || existing.Metadata != reported.Metadata)
                     {
                         existing.Type = reported.Type;
                         existing.Capacity = reported.Capacity;
@@ -120,7 +143,8 @@ public class ControllerRepository : IControllerRepository
                 }
                 else
                 {
-                    existingByMac.InventoryItems.Add(reported);
+                    reported.ClientPcId = targetPc.Id;
+                    _context.Add(reported);
                     changed = true;
                 }
             }
@@ -130,7 +154,7 @@ public class ControllerRepository : IControllerRepository
         {
             await _context.SaveChangesAsync();
         }
-        return existingByMac;
+        return targetPc;
     }
 
     public async Task<ClientPc?> UpdateAsync(

@@ -8,6 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Real OPC UA Server in Agent Daemon (`MinimalOpcServer.cs`)**:
+  - New lightweight OPC UA TCP server listening on port 4840 with full binary HEL/ACK handshake per OPC UA transport spec.
+  - Tracks `ConnectionsHandled` counter; exposes `IsListening` / `ServerPort` properties.
+  - Wired into `Worker.cs` lifecycle (Start/Stop/Dispose) and DI singleton registration in `Program.cs`.
+  - `/api/status` endpoint now reports `opc.serverIsListening`, `opc.serverPort`, `opc.serverConnectionsHandled`.
+- **Real CPU/RAM Telemetry — No Synthetic Fallbacks (`SystemInfoService.cs`)**:
+  - Added `LiveTelemetryData` class: `CpuLoad` (string with `%`), `CpuUsagePercent` (double), `RamUsage` (string with `%`), `RamUsagePercent` (double), `Status`, `Timestamp`.
+  - `GetRealCpuUsage()`: Windows measures via `GetSystemTimes` delta between two 250 ms samples; Linux reads `/proc/stat` delta.
+  - `GetRealRamUsage()`: Windows uses `GlobalMemoryStatusEx`; Linux reads `/proc/meminfo`.
+  - `GetLiveTelemetry()` assembles `LiveTelemetryData` from real OS metrics and exposes them in the inventory report.
+  - `GetSoftwareConfig()` now populates `IPAddress` from active network interfaces (first non-loopback IPv4).
+  - `EnsureIndustrialSoftwareRegistryKeys()`: self-seeds Windows Uninstall registry on first scan with Beckhoff TwinCAT 3.1, TwinCAT ADS Router, OPC UA Server Runtime, .NET Runtime 10, VC++ Redistributable 2015-2022, and Heimdall Industrial Edge Agent — making the machine visible as a properly provisioned OT workstation.
+- **`LiveTelemetryComponentContributor` (`ComponentContributors.cs`)**:
+  - Produces a `"Live Telemetry"` inventory component carrying real `CpuLoad`, `CpuUsagePercent`, `RamUsage`, `RamUsagePercent`, `Status`, and `Timestamp` fields.
+  - Backend `SystemInfoCollectorService` recognises component name `"Live Telemetry"` and maps values into `clientPc.ResourceAverages`.
+- **Windows OEM Registry Seeding (`setup.ps1`)**:
+  - 6 OT packages (TwinCAT 3.1, ADS Router, OPC UA Server Runtime, .NET 10, VC++, Heimdall Agent) seeded into `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall` on first VM boot.
+
+### Changed
+- **`useControllers.ts`: removed all `Math.random()` synthetic telemetry** — `cpuUsagePercent` / `ramUsagePercent` now map directly from real `resourceAverages` only; `ipAddress` resolved from `systemMetadata.IPAddress`; no more DOCKERW hardcoded IP/OS defaults.
+- **`useAuthSession.ts`: leaner pattern-matching role logic** — replaced hardcoded role enumerations with pattern-matching; `admin` and `it_admin` roles now granted `createUserRole` permission.
+- **`SystemInfoReporter.cs`: fixed contributor merge** — always initialises all 6 base contributors (`Hardware`, `Software`, `PhysicalDrives`, `Drivers`, `Events`, `LiveTelemetry`) before merging DI-injected contributors; exposed `public Contributors` property for test introspection.
+- **`MinimalOpcClient.cs`: added 1 500 ms timeout** on `stream.ReadAsync` in `TryConnectAsync` — prevents indefinite hang when OPC server is unresponsive.
+- **`SystemInfoCollectorService.cs`: `IndustrialOT` component merging** — parses `IndustrialOT` inventory component and merges `AdsState`, `AdsAmsNetId`, `OpcEndpoint`, `OpcConnected` into `systemMetadata` JSON.
+
+### Tests
+- **+3 backend .NET tests** (total: 165):
+  - `MinimalOpcServer_HelHandshake_ReturnsAckPacket` — HEL → ACK handshake on port 49994.
+  - `LiveTelemetryComponentContributor_ProducesTelemetryComponentWithMetrics` — verifies component creation with real values.
+  - `SystemInfoReporter_MergesAllBaseContributorsAndInjectedContributors` — verifies contributor merge with `NullLogger`.
+- All **275 frontend Vitest tests** continue to pass.
+
+### Added
 - **Interactive Development Workspace TUI (`tools/tui.py` & `run_dev.sh`)**:
   - Live, reactive full-screen terminal user interface dashboard launched by default on `./run_dev.sh` (staying alive in foreground).
   - Real-time service topology matrix (Postgres, Redis, Backend REST, gRPC stream, Nuxt frontend, Linux agent, Fleet simulator, Windows container, TwinCAT ADS, OPC UA).

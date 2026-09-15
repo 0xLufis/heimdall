@@ -118,3 +118,23 @@ public class IndustrialOtComponentContributor : IComponentContributor
         };
     }
 }
+
+/// <summary>
+/// Contributes live telemetry metrics (CPU load, RAM usage).
+/// </summary>
+public class LiveTelemetryComponentContributor : IComponentContributor
+{
+    public InventoryComponent? CreateComponent(SystemInfoData data)
+    {
+        if (data.LiveTelemetry == null) return null;
+
+        return new InventoryComponent
+        {
+            Name = "Live Telemetry",
+            Technology = "Agent",
+            Type = "telemetry",
+            DataJson = JsonSerializer.Serialize(data.LiveTelemetry)
+        };
+    }
+}
+

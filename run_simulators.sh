@@ -5,25 +5,31 @@
 # --- Configuration ---
 # Activate virtual environment if it exists
 if [ -d "venv" ]; then
-    source "venv/bin/activate"
+    source "venv/bin/activate" 2>/dev/null || true
     if [ "$1" != "completion" ]; then
         echo "Python virtual environment activated."
     fi
 fi
-PYTHON_CMD="python"
+if [ -f "venv/bin/python" ]; then
+    PYTHON_CMD="venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+else
+    PYTHON_CMD="python"
+fi
 SIMULATOR_SCRIPT="simulators/fleet/fleet_simulator.py"
 PID_FILE_DIR="/tmp/heimdall_sims"
 CLIENTS=(
-    "ROBOT-CELL-01"
-    "ROBOT-CELL-02"
-    "ROBOT-CELL-03"
-    "ROBOT-CELL-04"
-    "ROBOT-CELL-05"
-    "ASSEMBLY-ST-01"
-    "ASSEMBLY-ST-02"
-    "ASSEMBLY-ST-03"
-    "ASSEMBLY-ST-04"
-    "ASSEMBLY-ST-05"
+    "IPC-L01-OP030-DEDICATED"
+    "IPC-L01-CONVEYOR-MAIN"
+    "IPC-L01-ROB-ALPHA"
+    "IPC-L01-ROB-BETA"
+    "IPC-L01-OP060-PLC"
+    "IPC-L01-OP060-VISION"
+    "IPC-L01-OP060-MES-GATE"
+    "IPC-L02-OP030-DEDICATED"
+    "IPC-L02-CONVEYOR-MAIN"
+    "IPC-L02-ROB-ALPHA"
 )
 
 # --- Functions ---

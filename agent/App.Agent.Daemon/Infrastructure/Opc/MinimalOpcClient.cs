@@ -104,12 +104,15 @@ public class MinimalOpcClient : IDisposable
                 BinaryPrimitives.WriteUInt32LittleEndian(hel.AsSpan(24, 4), 5000); // Max chunk count
 
                 var stream = client.GetStream();
-                await stream.WriteAsync(hel, 0, hel.Length, token);
-                await stream.FlushAsync(token);
+                using var readCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                readCts.CancelAfter(1500);
+
+                await stream.WriteAsync(hel, 0, hel.Length, readCts.Token);
+                await stream.FlushAsync(readCts.Token);
 
                 // Wait for ACK
                 var ackBuffer = new byte[8];
-                int read = await stream.ReadAsync(ackBuffer.AsMemory(0, 8), token);
+                int read = await stream.ReadAsync(ackBuffer.AsMemory(0, 8), readCts.Token);
                 if (read >= 8 && ackBuffer[0] == (byte)'A' && ackBuffer[1] == (byte)'C' && ackBuffer[2] == (byte)'K')
                 {
                     IsConnected = true;
