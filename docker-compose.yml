@@ -87,12 +87,16 @@ services:
     ports:
       - "5099:5099"
       - "5001:5001"
+      - "1883:1883"  # Embedded MQTT broker (Heimdall agent telemetry transport)
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5099;http://+:5001
       - DOTNET_USE_POLLING_FILE_WATCHER=1
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=heimdall_dev_db;Username=ef_admin;Password=migrate
       - REDIS_CONNECTION_STRING=redis:6379,password=heimdall_redis_dev_secret
+      - MQTT_EMBEDDED_BROKER=true
+      - MQTT_EMBEDDED_PORT=1883
+      - HEIMDALL_AGENT_KEY=heimdall-dev-agent-key
     volumes:
       - ./shared:/workspace/shared
       - ./backend:/workspace/backend
@@ -154,7 +158,9 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_USE_POLLING_FILE_WATCHER=1
-      - Backend__Url=http://backend:5001
+      - MQTT_BROKER_HOST=backend
+      - MQTT_BROKER_PORT=1883
+      - HEIMDALL_AGENT_KEY=heimdall-dev-agent-key
     volumes:
       - ./shared:/workspace/shared
       - ./agent:/workspace/agent
@@ -176,7 +182,8 @@ services:
     ports:
       - "5055:5055"
     environment:
-      - GRPC_HOST=backend:5001
+      - MQTT_BROKER_HOST=backend
+      - MQTT_BROKER_PORT=1883
       - HTTP_PORT=5055
       - CSV_PATH=/workspace/seed_data/inventory_seed.csv
     volumes:

@@ -14,11 +14,11 @@ export default defineEventHandler(async (event) => {
   // 1. Resolve metric definition (built-in or user-defined)
   const metricDef = (await findTelemetryMetricByKey(metricKey)) || BUILTIN_METRICS[0]
 
-  const metricName = metricDef.name
-  const unit = metricDef.unit
-  const nominal = metricDef.nominalValue
-  const upper = metricDef.upperTolerance
-  const lower = metricDef.lowerTolerance
+  const metricName = metricDef?.name || metricKey
+  const unit = metricDef?.unit || ''
+  const nominal = metricDef?.nominalValue ?? 0
+  const upper = metricDef?.upperTolerance ?? nominal
+  const lower = metricDef?.lowerTolerance ?? nominal
 
   // 2. Fetch datapoints from the cached telemetry store (Redis / in-memory ring buffer)
   const points = await getCachedTelemetryDatapoints(machineId, metricKey, range, metricDef)
@@ -37,14 +37,15 @@ export default defineEventHandler(async (event) => {
   const stdDev = points.length > 0 ? Math.sqrt(sumSquares / points.length) : 0.001
 
   // 4. Extract detected statistical anomalies from cached points
+  const threshold = query.anomalyThreshold ? Number(query.anomalyThreshold) : 2.5
   const detectedAnomalies = []
   if (stdDev > 0.0001) {
     for (const p of points) {
       const z = (p.value - mean) / stdDev
       p.zScore = Math.round(z * 100) / 100
-      if (Math.abs(z) > 2.5) {
+      if (Math.abs(z) > threshold) {
         p.isAnomaly = true
-        const severity = Math.abs(z) > 3.0 ? 'Critical' : 'Warning'
+        const severity = Math.abs(z) > (threshold + 0.5) ? 'Critical' : 'Warning'
         detectedAnomalies.push({
           timestamp: p.timestamp,
           metric: metricName,

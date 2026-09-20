@@ -5,7 +5,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
+using App.Agent.Daemon.Interfaces;
 
+/// <summary>
+/// Record representing an identified industrial software or recipe configuration asset.
+/// </summary>
 public record DiscoveredIndustrialAsset(
     string FilePath,
     string FileName,
@@ -17,7 +21,7 @@ public record DiscoveredIndustrialAsset(
 /// <summary>
 /// High-performance industrial file scanner with strict directory pruning of all personal/PII data.
 /// </summary>
-public sealed class SecureIndustrialFileScanner
+public sealed class SecureIndustrialFileScanner : ISecureIndustrialFileScanner
 {
     // Allowed industrial extensions: TwinCAT, Siemens TIA, Rockwell, CoDeSys, JSON/XML/YAML configs
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -32,7 +36,7 @@ public sealed class SecureIndustrialFileScanner
         ".json", ".xml", ".ini", ".csv", ".yaml", ".yml", ".conf", ".cfg"
     };
 
-    // STRICT BLACKLIST of directories to NEVER enter
+    // STRICT BLACKLIST of directories to NEVER enter (PII, browser profiles, OS internals)
     private static readonly string[] BlacklistedDirectorySegments =
     {
         Path.Combine("AppData", "Local", "Google", "Chrome"),
@@ -78,13 +82,16 @@ public sealed class SecureIndustrialFileScanner
         "swapfile.sys"
     };
 
+    private const long MaxFileSizeBytes = 2L * 1024 * 1024 * 1024; // 2 GB threshold
+
     /// <summary>
     /// Recursively scans root paths, pruning blacklisted directories before descent.
     /// Computes streaming SHA256 hashes without allocating large files in memory.
     /// </summary>
     public IEnumerable<DiscoveredIndustrialAsset> ScanDirectory(string rootPath, CancellationToken ct = default)
     {
-        if (!Directory.Exists(rootPath)) yield break;
+        if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
+            yield break;
 
         var stack = new Stack<string>();
         stack.Push(rootPath);
@@ -135,6 +142,8 @@ public sealed class SecureIndustrialFileScanner
 
             foreach (var filePath in files)
             {
+                if (ct.IsCancellationRequested) yield break;
+
                 var fileName = Path.GetFileName(filePath);
                 var extension = Path.GetExtension(filePath);
 
@@ -154,12 +163,12 @@ public sealed class SecureIndustrialFileScanner
                 try
                 {
                     var fileInfo = new FileInfo(filePath);
-                    if (fileInfo.Length > 2L * 1024 * 1024 * 1024) // Skip files > 2GB for safety
+                    if (fileInfo.Length > MaxFileSizeBytes)
                     {
                         continue;
                     }
 
-                    string sha256 = ComputeStreamingSha256(filePath);
+                    string sha256 = ComputeStreamingSha256(filePath, ct);
 
                     asset = new DiscoveredIndustrialAsset(
                         FilePath: filePath,
@@ -170,7 +179,7 @@ public sealed class SecureIndustrialFileScanner
                         Sha256Hash: sha256
                     );
                 }
-                catch { /* Handle file locks or access restrictions */ }
+                catch { /* Handle file locks or access restrictions gracefully */ }
 
                 if (asset != null)
                 {
@@ -180,8 +189,14 @@ public sealed class SecureIndustrialFileScanner
         }
     }
 
+    /// <summary>
+    /// Evaluates if a given path traverses any blacklisted directory segments.
+    /// </summary>
     public static bool IsDirectoryBlacklisted(string dirPath)
     {
+        if (string.IsNullOrWhiteSpace(dirPath))
+            return false;
+
         var normalized = dirPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
         foreach (var segment in BlacklistedDirectorySegments)
         {
@@ -196,7 +211,7 @@ public sealed class SecureIndustrialFileScanner
     /// <summary>
     /// Computes SHA256 using streaming buffers (zero full-file allocation).
     /// </summary>
-    public static string ComputeStreamingSha256(string path)
+    public static string ComputeStreamingSha256(string path, CancellationToken ct = default)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 64 * 1024, useAsync: false);
         byte[] hash = SHA256.HashData(stream);

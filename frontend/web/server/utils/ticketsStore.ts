@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { initialTickets } from './initialTickets'
+import { featureFlags } from './featureFlags'
 
 export interface StateTransitionMeta {
   fromStatus: string
@@ -88,7 +89,7 @@ export interface MaintenanceTicket {
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
-let ticketsStore: MaintenanceTicket[] = [...initialTickets]
+let ticketsStore: MaintenanceTicket[] = featureFlags.enableDevFeatures ? [...initialTickets] : []
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ export interface TicketSettings {
 
 let ticketSettings: TicketSettings = {
   autoAssignTickets: false,
-  devTicketGenEnabled: true
+  devTicketGenEnabled: featureFlags.enableDevFeatures
 }
 
 export function getTicketSettings(): TicketSettings {

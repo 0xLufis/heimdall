@@ -1,13 +1,30 @@
-import { useDb } from "../utils/db"
-import { organization, member } from "../database/drizzle/schema"
-import { eq, sql } from "drizzle-orm"
+import { defineEventHandler } from 'h3'
 import { getPlantOrganizations, getPlantActiveDirectoryOUs } from "../utils/datasetLoader"
 
-export default defineEventHandler(async () => {
+
+export interface EnrichedOrganization {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  createdAt?: string
+  memberCount?: number
+  ouPath?: string
+  vlanId?: string
+  vlanName?: string
+  [key: string]: any
+}
+
+export interface OrganizationsResponse {
+  success: boolean
+  organizations: EnrichedOrganization[]
+}
+
+export default defineEventHandler(async (event): Promise<OrganizationsResponse> => {
   let ous: any[] = []
   try {
     ous = getPlantActiveDirectoryOUs()
-  } catch {}
+  } catch { }
 
   function findMatchingOu(name: string, slug: string) {
     if (!ous || ous.length === 0) return undefined
@@ -20,23 +37,15 @@ export default defineEventHandler(async () => {
     })
   }
 
+  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   try {
-    const db = useDb()
-    const orgList = await db
-      .select({
-        id: organization.id,
-        name: organization.name,
-        slug: organization.slug,
-        createdAt: organization.createdAt,
-        memberCount: sql<number>`cast(count(${member.id}) as int)`
-      })
-      .from(organization)
-      .leftJoin(member, eq(member.organizationId, organization.id))
-      .groupBy(organization.id, organization.name, organization.slug, organization.createdAt)
-
-    if (orgList && orgList.length > 0) {
-      const enriched = orgList.map(o => {
-        const matched = findMatchingOu(o.name, o.slug)
+    const res = await $fetch<any>(`${backendBase}/api/v1/organization`, {
+      headers: event.headers as any
+    })
+    const orgList = res?.organizations || res
+    if (Array.isArray(orgList) && orgList.length > 0) {
+      const enriched = orgList.map((o: any) => {
+        const matched = findMatchingOu(o.name, o.slug || o.id || '')
         return {
           ...o,
           ouPath: matched?.ouPath,
@@ -47,7 +56,7 @@ export default defineEventHandler(async () => {
       return { success: true, organizations: enriched }
     }
   } catch (e: any) {
-    console.warn("Could not query organizations via Drizzle, using plant dataset fallback:", e?.message)
+    // Graceful fallback if backend is unavailable or starting up
   }
 
   // Graceful fallback to canonical plant dataset (OU-based plant hierarchy)

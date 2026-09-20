@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+/**
+ * Advanced multi-parameter equipment search form.
+ */
+import { ref, onMounted } from 'vue'
 
 const props = defineProps<{
   initialQuery?: string
@@ -50,13 +53,13 @@ function handleSearch() {
   if (costCenter.value) queryParts.push(`costcenter:"${costCenter.value}"`)
   if (manufacturer.value) queryParts.push(`manufacturer:"${manufacturer.value}"`)
   if (supplier.value) queryParts.push(`supplier:"${supplier.value}"`)
-  
+
   for (const tag of customTags.value) {
     if (tag.key && tag.value) {
       queryParts.push(`${tag.key}:"${tag.value}"`)
     }
   }
-  
+
   emit('search', queryParts.join(' '))
 }
 </script>
@@ -92,7 +95,7 @@ function handleSearch() {
           Add Tag
         </Button>
       </div>
-      
+
       <div v-for="(tag, index) in customTags" :key="index" class="flex gap-2">
         <Select v-model="tag.key">
           <SelectTrigger class="w-[180px]">

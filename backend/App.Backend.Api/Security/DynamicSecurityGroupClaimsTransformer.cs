@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using App.Contracts.Security;
 using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.AspNetCore.Authentication;
@@ -66,17 +67,17 @@ public class DynamicSecurityGroupClaimsTransformer : IClaimsTransformation
                 return false;
             });
 
-            if (isPseudoItAdminEnabled && (existingRoles.Contains("heimdall_admin") || existingRoles.Contains("admin")))
+            if (isPseudoItAdminEnabled && (existingRoles.Contains(HeimdallRoles.HeimdallAdmin) || existingRoles.Contains(HeimdallRoles.Admin)))
             {
-                if (!existingRoles.Contains("it_admin"))
+                if (!existingRoles.Contains(HeimdallRoles.ItAdmin))
                 {
-                    identity.AddClaim(new Claim(ClaimTypes.Role, "it_admin"));
-                    existingRoles.Add("it_admin");
+                    identity.AddClaim(new Claim(ClaimTypes.Role, HeimdallRoles.ItAdmin));
+                    existingRoles.Add(HeimdallRoles.ItAdmin);
                 }
-                if (!existingRoles.Contains("it_site_admin"))
+                if (!existingRoles.Contains(HeimdallRoles.ItSiteAdmin))
                 {
-                    identity.AddClaim(new Claim(ClaimTypes.Role, "it_site_admin"));
-                    existingRoles.Add("it_site_admin");
+                    identity.AddClaim(new Claim(ClaimTypes.Role, HeimdallRoles.ItSiteAdmin));
+                    existingRoles.Add(HeimdallRoles.ItSiteAdmin);
                 }
                 _logger.LogDebug("Injected pseudo IT-Admin claims for Heimdall Admin user.");
             }

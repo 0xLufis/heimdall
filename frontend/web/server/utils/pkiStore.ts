@@ -29,6 +29,7 @@ export interface OuCertificateRuleEntry {
   updatedAt: string
 }
 
+// Built-in industrial Root CA trust anchor profile
 let activeRootCert: ClientCertificateEntry = {
   id: 'root-ca-default',
   commonName: 'CN=Heimdall Project Industrial Root CA, O=Enterprise Factory Automation, C=US',

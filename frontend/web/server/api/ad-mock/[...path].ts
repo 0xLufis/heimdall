@@ -1,4 +1,4 @@
-import { getQuery, readBody } from 'h3'
+import { defineEventHandler, getQuery, readBody } from 'h3'
 import {
   getEnterpriseDataset,
   getPlantUsers,
@@ -6,8 +6,10 @@ import {
   getPlantClientPcs,
   getPlantActiveDirectoryOUs
 } from '../../utils/datasetLoader'
+import { assertDevFeaturesEnabled } from '../../utils/featureFlags'
 
 export default defineEventHandler(async (event) => {
+  assertDevFeaturesEnabled()
   const path = event.context.params?.path || ''
   const method = event.method
   const dataset = getEnterpriseDataset()

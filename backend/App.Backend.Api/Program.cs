@@ -1,6 +1,11 @@
+using App.Backend.Api.Configuration;
 using App.Backend.Api.Hubs;
 using App.Backend.Api.Security;
 using App.Backend.Api.Services;
+using App.Backend.Api.Services.Mqtt;
+using App.Contracts.Configuration;
+using App.Contracts.Mqtt;
+using App.Contracts.Security;
 using App.Infrastructure.Repositories;
 using App.Shared.Data;
 using Microsoft.EntityFrameworkCore;
@@ -44,10 +49,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
     if (builder.Environment.IsDevelopment())
     {
-        // Dedicated port for local dev cleartext gRPC (accessible inside container network)
+        // Dedicated port for local dev cleartext HTTP API (accessible inside container network)
         serverOptions.ListenAnyIP(5001, listenOptions =>
         {
-            listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+            listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
         });
     }
     else
@@ -62,6 +67,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
 // Ensure Environment Variables are included in configuration
 builder.Configuration.AddEnvironmentVariables();
+
+// Strongly-typed Backend Feature Flags
+var featureFlags = builder.Configuration.ToBackendFeatureFlags(builder.Environment.EnvironmentName);
+builder.Services.AddSingleton(featureFlags);
 
 // --- 1. Database ---
 if (!builder.Environment.IsEnvironment("Test"))
@@ -108,10 +117,16 @@ builder.Services.AddScoped<IClientPcRepository, ClientPcRepository>();
 builder.Services.AddScoped<ClientPcRepository>();
 builder.Services.AddScoped<IAssetRepository, AssetRepository>();
 builder.Services.AddScoped<IMaintenanceTicketRepository, MaintenanceTicketRepository>();
-builder.Services.AddScoped<OpcUaGatewayService>();
-builder.Services.AddScoped<CopiaIntegrationService>();
-builder.Services.AddScoped<ReportExportService>();
-builder.Services.AddScoped<PredictiveMaintenanceService>();
+builder.Services.AddScoped<IMachineGroupRepository, MachineGroupRepository>();
+builder.Services.AddScoped<ITechnicianRepository, TechnicianRepository>();
+builder.Services.AddScoped<IOpcUaGatewayService, OpcUaGatewayService>();
+builder.Services.AddScoped<OpcUaGatewayService>(sp => (OpcUaGatewayService)sp.GetRequiredService<IOpcUaGatewayService>());
+builder.Services.AddScoped<ICopiaIntegrationService, CopiaIntegrationService>();
+builder.Services.AddScoped<CopiaIntegrationService>(sp => (CopiaIntegrationService)sp.GetRequiredService<ICopiaIntegrationService>());
+builder.Services.AddScoped<IReportExportService, ReportExportService>();
+builder.Services.AddScoped<ReportExportService>(sp => (ReportExportService)sp.GetRequiredService<IReportExportService>());
+builder.Services.AddScoped<IPredictiveMaintenanceService, PredictiveMaintenanceService>();
+builder.Services.AddScoped<PredictiveMaintenanceService>(sp => (PredictiveMaintenanceService)sp.GetRequiredService<IPredictiveMaintenanceService>());
 builder.Services.AddSingleton<App.Backend.Api.Services.Plugins.IPluginService>(sp =>
     new App.Backend.Api.Services.Plugins.PluginService(
         sp.GetRequiredService<IServiceScopeFactory>(),
@@ -126,32 +141,32 @@ builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransforma
 builder.Services.AddAuthorization(options =>
 {
     // God user (system_admin) and Heimdall platform administrators (heimdall_admin, legacy admin, plant_director)
-    options.AddPolicy("SystemAdministration", policy =>
-        policy.RequireRole("system_admin", "heimdall_admin", "admin", "plant_director"));
+    options.AddPolicy(AuthorizationPolicies.SystemAdministration, policy =>
+        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.PlantDirector));
 
     // IT Infrastructure operations (AD, Entra, PKI, OU approvals)
-    options.AddPolicy("ItAdministration", policy =>
-        policy.RequireRole("system_admin", "it_admin", "it_site_admin"));
+    options.AddPolicy(AuthorizationPolicies.ItAdministration, policy =>
+        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.ItAdmin, HeimdallRoles.ItSiteAdmin));
 
     // Engineering administration (Functional settings & User management)
-    options.AddPolicy("EngineeringAdministration", policy =>
-        policy.RequireRole("system_admin", "engineering_admin", "plant_engineering_manager", "senior_engineering_manager"));
+    options.AddPolicy(AuthorizationPolicies.EngineeringAdministration, policy =>
+        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.SeniorEngineeringManager));
 
     // Functional endpoint configurations
-    options.AddPolicy("EndpointConfigManagement", policy =>
-        policy.RequireRole("system_admin", "heimdall_admin", "admin", "engineering_admin", "plant_engineering_manager", "senior_engineering_manager", "group_leader", "lead_engineer", "engineer", "controls_engineer"));
+    options.AddPolicy(AuthorizationPolicies.EndpointConfigManagement, policy =>
+        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.SeniorEngineeringManager, HeimdallRoles.GroupLeader, HeimdallRoles.LeadEngineer, HeimdallRoles.Engineer, HeimdallRoles.ControlsEngineer));
 
     // Remote execution & OT commands
-    options.AddPolicy("RemoteExecution", policy =>
-        policy.RequireRole("system_admin", "heimdall_admin", "admin", "engineering_admin", "plant_engineering_manager", "senior_engineering_manager", "group_leader", "lead_engineer", "engineer"));
+    options.AddPolicy(AuthorizationPolicies.RemoteExecution, policy =>
+        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.SeniorEngineeringManager, HeimdallRoles.GroupLeader, HeimdallRoles.LeadEngineer, HeimdallRoles.Engineer));
 
     // Maintenance operations
-    options.AddPolicy("MaintenanceOperations", policy =>
-        policy.RequireRole("system_admin", "heimdall_admin", "admin", "engineering_admin", "plant_engineering_manager", "senior_engineering_manager", "group_leader", "lead_engineer", "engineer", "technician", "operative_planner", "manager"));
+    options.AddPolicy(AuthorizationPolicies.MaintenanceOperations, policy =>
+        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.SeniorEngineeringManager, HeimdallRoles.GroupLeader, HeimdallRoles.LeadEngineer, HeimdallRoles.Engineer, HeimdallRoles.Technician, HeimdallRoles.OperativePlanner, HeimdallRoles.Manager));
 
     // Operative line stop requests and scheduling approvals
     options.AddPolicy("LineStopRequest", policy =>
-        policy.RequireRole("system_admin", "plant_director", "plant_engineering_manager", "operative_planner", "group_leader"));
+        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.PlantDirector, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.OperativePlanner, HeimdallRoles.GroupLeader));
 });
 
 // --- 4. Controllers & SignalR & gRPC & Swagger & CORS & RateLimiting ---
@@ -178,7 +193,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("HeimdallCorsPolicy", policy =>
     {
-        if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Test"))
+        if (featureFlags.EnableDevFeatures || builder.Environment.IsEnvironment("Test"))
         {
             policy.WithOrigins(
                     "http://localhost:3000",
@@ -215,8 +230,15 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
-builder.Services.AddGrpc();
-builder.Services.AddGrpcReflection();
+
+// --- MQTT Telemetry Ingestion & Embedded Broker Subsystem ---
+builder.Services.Configure<MqttOptions>(builder.Configuration.GetSection(MqttOptions.SectionName));
+builder.Services.AddSingleton<IMqttBrokerService, MqttBrokerService>();
+builder.Services.AddScoped<ITelemetryIngestionService, TelemetryIngestionService>();
+builder.Services.AddSingleton<MqttIngestionHostedService>();
+builder.Services.AddSingleton<IMqttIngestionService>(sp => sp.GetRequiredService<MqttIngestionHostedService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<MqttIngestionHostedService>());
+
 builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -250,8 +272,10 @@ var app = builder.Build();
 
 app.UseCors("HeimdallCorsPolicy");
 
-if (app.Environment.IsDevelopment())
+if (featureFlags.EnableDevFeatures)
 {
+    app.UseDeveloperExceptionPage();
+
     // Enable middleware to serve generated Swagger as a JSON endpoint.
     app.UseSwagger();
 
@@ -268,6 +292,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
+    app.UseExceptionHandler("/error");
     app.UseHsts();
 }
 
@@ -279,11 +304,10 @@ app.UseWebSockets();
 
 app.MapControllers();
 app.MapHub<MaintenanceHub>("/hubs/maintenance");
-app.MapGrpcService<SystemInfoCollectorService>();
 
-if (app.Environment.IsDevelopment())
+if (!featureFlags.EnableDevFeatures)
 {
-    app.MapGrpcReflectionService();
+    app.MapGet("/error", () => Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "An unexpected error occurred."));
 }
 
 app.Run();

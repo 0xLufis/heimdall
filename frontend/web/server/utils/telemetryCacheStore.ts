@@ -1,5 +1,5 @@
 import { getCachedJson, setCachedJson } from './redis'
-
+import { featureFlags } from './featureFlags'
 export interface CachedTelemetryDatapoint {
   timestamp: string
   value: number
@@ -240,6 +240,11 @@ export async function getCachedTelemetryDatapoints(
     return existingMem
   }
 
+  // If dev features are disabled, do not fabricate synthetic datapoints
+  if (!featureFlags.enableDevFeatures) {
+    return []
+  }
+
   // 3. Generate baseline points matching nominal & tolerance parameters
   const def = metricDef || (await findTelemetryMetricByKey(metricKey)) || BUILTIN_METRICS[0]
   const nominal = def.nominalValue
@@ -332,6 +337,6 @@ export async function recordCachedTelemetryDatapoint(
     const cacheKey = `heimdall:telemetry:series:${targetId}:${metricKey}:${r}`
     try {
       await setCachedJson(cacheKey, list, 300)
-    } catch {}
+    } catch { }
   }
 }

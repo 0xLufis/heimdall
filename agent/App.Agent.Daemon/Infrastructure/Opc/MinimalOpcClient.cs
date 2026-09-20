@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 /// Supports connecting to standard opc.tcp endpoints (port 4840) via OPC UA binary protocol
 /// with HEL/ACK framing, or gracefully operating in virtual mode when no server is present.
 /// </summary>
-public class MinimalOpcClient : IDisposable
+public class MinimalOpcClient : IMinimalOpcClient
 {
     public const int DefaultOpcUaPort = 4840;
     public const string DefaultEndpointUrl = "opc.tcp://127.0.0.1:4840";

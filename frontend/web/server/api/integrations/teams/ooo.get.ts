@@ -1,8 +1,9 @@
 import { getTeamsOooStatuses } from '../../../utils/technicianRulesStore'
+import { featureFlags } from '../../../utils/featureFlags'
 
 export default defineEventHandler(() => {
   return {
-    devMode: true,
+    devMode: featureFlags.enableDevFeatures,
     statuses: getTeamsOooStatuses()
   }
 })

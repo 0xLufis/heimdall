@@ -59,6 +59,21 @@ public class LocalTelemetrySpooler : ITelemetrySpooler
         }
     }
 
+    public int PendingCount
+    {
+        get
+        {
+            try
+            {
+                return Directory.Exists(_spoolDir) ? Directory.GetFiles(_spoolDir, "spool_*.json").Length : 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+    }
+
     /// <summary>
     /// Drains spooled payloads in chronological order and sends them via the provided send function.
     /// </summary>

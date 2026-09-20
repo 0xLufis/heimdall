@@ -13,7 +13,7 @@ Industrial controllers execute continuous data collection from TwinCAT ADS, Ethe
 sequenceDiagram
     autonumber
     actor EdgeNode as Edge Agent Daemon (C# / TwinCAT)
-    participant GrpcEndpoint as SystemInfoCollectorService (HTTP/2 gRPC)
+    participant GrpcEndpoint as TelemetryIngestionService (HTTP/2 gRPC & MQTT)
     participant SecurityAuth as Auth & mTLS Cert Validator
     participant Repo as ClientPcRepository (PostgreSQL)
     participant Cache as CacheService (L1 Memory / L2 Redis)

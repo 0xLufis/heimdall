@@ -9,10 +9,11 @@ using App.Shared.Protos.Telemetry;
 /// </summary>
 public static partial class PlcTypeSanitizer
 {
+
     [GeneratedRegex(@"[^a-zA-Z0-9_]")]
     private static partial Regex InvalidIdentifierCharRegex();
 
-    [GeneratedRegex(@"^(POINTER\s+TO|REFERENCE\s+TO|INTERFACE)\s+", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^(POINTER\s+TO|REFERENCE\s+TO|REF_TO|REF=|INTERFACE)\s*", RegexOptions.IgnoreCase)]
     private static partial Regex PointerOrRefRegex();
 
     [GeneratedRegex(@"_{2,}")]

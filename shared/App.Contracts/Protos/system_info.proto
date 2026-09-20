@@ -6,13 +6,7 @@ package heimdall.telemetry.v1;
 
 import "google/protobuf/timestamp.proto";
 
-service SystemInfoCollector {
-  rpc ReportSystemInfo (SystemInfoRequest) returns (SystemInfoResponse);
-  rpc ReportTelemetryBatch (TelemetryBatchRequest) returns (TelemetryBatchResponse);
-  rpc StreamAgentEvents (stream AgentEventMessage) returns (AgentEventStreamAck);
-  rpc SyncRecipes (RecipeSyncRequest) returns (RecipeSyncResponse);
-}
-
+// Telemetry and System Info Contracts for MQTT Ingestion
 message SystemInfoRequest {
   string hostname = 1;
   string machine_identifier = 2;

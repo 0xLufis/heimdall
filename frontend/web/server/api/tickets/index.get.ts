@@ -70,8 +70,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (stationFilter) {
-    filtered = filtered.filter(t => 
-      (t.stationId || '').toLowerCase().includes(stationFilter.toLowerCase()) || 
+    filtered = filtered.filter(t =>
+      (t.stationId || '').toLowerCase().includes(stationFilter.toLowerCase()) ||
       (t.stationName || '').toLowerCase().includes(stationFilter.toLowerCase())
     )
   }

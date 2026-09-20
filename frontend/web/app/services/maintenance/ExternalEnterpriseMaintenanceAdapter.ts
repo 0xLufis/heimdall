@@ -84,6 +84,6 @@ export class ExternalEnterpriseMaintenanceAdapter implements IMaintenanceService
   }
 
   public subscribeToEvents(listener: (event: MaintenanceEvent) => void): () => void {
-    return () => {}
+    return () => { }
   }
 }

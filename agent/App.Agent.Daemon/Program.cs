@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using App.Contracts.Configuration;
+using App.Agent.Daemon.Configuration;
 
 // Load .env file
 Env.Load();
@@ -17,6 +19,9 @@ AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
+
+var featureFlags = builder.Configuration.ToAgentFeatureFlags(builder.Environment.EnvironmentName);
+builder.Services.AddSingleton(featureFlags);
 
 // Enable Windows Service lifecycle management when running on Windows
 if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
@@ -53,14 +58,23 @@ builder.Services.AddSingleton<IComponentContributor, IndustrialOtComponentContri
 builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ISystemInfoService, SystemInfoService>();
 builder.Services.AddSingleton<SystemInfoService>(sp => (SystemInfoService)sp.GetRequiredService<App.Agent.Daemon.Interfaces.ISystemInfoService>());
 
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.IMqttAgentClient, App.Agent.Daemon.Infrastructure.MqttAgentClient>();
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.MqttAgentClient>(sp => (App.Agent.Daemon.Infrastructure.MqttAgentClient)sp.GetRequiredService<App.Agent.Daemon.Interfaces.IMqttAgentClient>());
+
 builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ISystemInfoReporter, SystemInfoReporter>();
 builder.Services.AddSingleton<SystemInfoReporter>(sp => (SystemInfoReporter)sp.GetRequiredService<App.Agent.Daemon.Interfaces.ISystemInfoReporter>());
 
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Beckhoff.IAdsMemoryReporter, App.Agent.Daemon.Infrastructure.Beckhoff.AdsMemoryReporter>();
+
 // Industrial OT Subsystems
-builder.Services.AddSingleton<AdsSimulationServer>();
-builder.Services.AddSingleton<MinimalOpcServer>();
-builder.Services.AddSingleton<MinimalOpcClient>();
-builder.Services.AddSingleton<TelemetryTriggerEngine>();
+builder.Services.AddSingleton<IAdsSimulationServer, AdsSimulationServer>();
+builder.Services.AddSingleton<AdsSimulationServer>(sp => (AdsSimulationServer)sp.GetRequiredService<IAdsSimulationServer>());
+builder.Services.AddSingleton<IMinimalOpcServer, MinimalOpcServer>();
+builder.Services.AddSingleton<MinimalOpcServer>(sp => (MinimalOpcServer)sp.GetRequiredService<IMinimalOpcServer>());
+builder.Services.AddSingleton<IMinimalOpcClient, MinimalOpcClient>();
+builder.Services.AddSingleton<MinimalOpcClient>(sp => (MinimalOpcClient)sp.GetRequiredService<IMinimalOpcClient>());
+builder.Services.AddSingleton<ITelemetryTriggerEngine, TelemetryTriggerEngine>();
+builder.Services.AddSingleton<TelemetryTriggerEngine>(sp => (TelemetryTriggerEngine)sp.GetRequiredService<ITelemetryTriggerEngine>());
 
 // Hosted Worker Service
 builder.Services.AddSingleton<Worker>();
@@ -74,20 +88,21 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
 <head>
     <meta charset=""UTF-8"">
     <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-    <title>Heimdall Industrial Edge Node Dashboard</title>
+    <title>Heimdall Industrial Edge Node</title>
     <style>
         :root {
-            --bg-base: #090d16;
-            --bg-card: #0f172a;
-            --bg-card-header: #1e293b;
-            --border: #334155;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent-indigo: #6366f1;
-            --accent-cyan: #06b6d4;
+            --bg-base: #0c0e12;
+            --bg-card: #15181e;
+            --bg-card-header: #1e232b;
+            --border: #232730;
+            --text-primary: #f4f5f6;
+            --text-secondary: #8b949e;
+            --accent-steel: #495464;
+            --accent-sage: #57715b;
             --accent-emerald: #10b981;
-            --accent-amber: #f59e0b;
-            --accent-rose: #f43f5e;
+            --accent-amber: #a37238;
+            --accent-rose: #992828;
+            --code-bg: #0d1117;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -97,86 +112,96 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
             padding: 1.5rem;
             line-height: 1.5;
         }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1280px; margin: 0 auto; }
         header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-bottom: 1.5rem;
+            padding-bottom: 1.25rem;
             border-bottom: 1px solid var(--border);
             margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
-        .brand { display: flex; align-items: center; gap: 0.75rem; }
+        .brand { display: flex; align-items: center; gap: 0.85rem; }
         .logo-box {
-            width: 42px; height: 42px; border-radius: 12px;
-            background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3);
+            width: 44px; height: 44px; border-radius: 10px;
+            background: rgba(73, 84, 100, 0.25); border: 1px solid rgba(73, 84, 100, 0.5);
             display: flex; align-items: center; justify-content: center;
-            font-weight: 900; color: var(--accent-indigo); font-size: 1.25rem;
+            font-weight: 900; color: #cbd5e1; font-size: 1.3rem; letter-spacing: -0.05em;
         }
-        .title h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.025em; }
+        .title h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.025em; color: #ffffff; }
         .title p { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+        .header-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
         .pill {
-            display: inline-flex; align-items: center; gap: 0.35rem;
-            font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-            padding: 0.25rem 0.75rem; border-radius: 9999px;
-            background: rgba(16, 185, 129, 0.1); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.2);
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            padding: 0.25rem 0.65rem; border-radius: 9999px;
+            background: rgba(87, 113, 91, 0.2); color: #86efac; border: 1px solid rgba(87, 113, 91, 0.4);
         }
-        .pill-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-emerald); }
+        .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
+        .pill-muted {
+            background: rgba(73, 84, 100, 0.2); color: #94a3b8; border: 1px solid rgba(73, 84, 100, 0.4);
+        }
+        .pill-muted .pill-dot { background: #64748b; }
+        .pill-amber {
+            background: rgba(163, 114, 56, 0.2); color: #fcd34d; border: 1px solid rgba(163, 114, 56, 0.4);
+        }
+        .pill-amber .pill-dot { background: #f59e0b; }
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
             gap: 1.25rem;
             margin-bottom: 1.5rem;
         }
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }
         .card-header {
-            padding: 1rem 1.25rem;
-            background: rgba(30, 41, 59, 0.5);
+            padding: 0.85rem 1.15rem;
+            background: var(--bg-card-header);
             border-bottom: 1px solid var(--border);
             display: flex; align-items: center; justify-content: space-between;
         }
-        .card-title { font-size: 0.875rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-primary); }
-        .card-body { padding: 1.25rem; font-size: 0.8125rem; }
+        .card-title { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #e2e8f0; }
+        .card-body { padding: 1.15rem; font-size: 0.8125rem; }
         .data-row {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0.4rem 0; border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+            padding: 0.35rem 0; border-bottom: 1px solid rgba(35, 39, 48, 0.8);
         }
         .data-row:last-child { border-bottom: none; }
         .data-label { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; }
         .data-val { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 600; color: #cbd5e1; }
         .btn {
-            background: var(--accent-indigo); color: white; border: none;
-            padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.8125rem; font-weight: 700;
-            cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.5rem;
+            background: var(--accent-steel); color: white; border: none;
+            padding: 0.45rem 0.85rem; border-radius: 6px; font-size: 0.78rem; font-weight: 700;
+            cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.4rem;
         }
-        .btn:hover { background: #4f46e5; }
+        .btn:hover { background: #374151; }
         .btn-outline {
             background: transparent; border: 1px solid var(--border); color: var(--text-primary);
         }
-        .btn-outline:hover { background: rgba(51, 65, 85, 0.5); }
-        .btn-sm { padding: 0.25rem 0.6rem; font-size: 0.75rem; border-radius: 6px; }
+        .btn-outline:hover { background: rgba(35, 39, 48, 0.6); }
+        .btn-sm { padding: 0.25rem 0.55rem; font-size: 0.72rem; }
         .tag-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-top: 0.75rem; }
         .tag-item {
-            background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border);
-            padding: 0.4rem 0.6rem; border-radius: 8px; font-family: monospace; font-size: 0.75rem;
+            background: var(--code-bg); border: 1px solid var(--border);
+            padding: 0.4rem 0.6rem; border-radius: 6px; font-family: monospace; font-size: 0.75rem;
         }
         .tag-item .k { color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; }
-        .tag-item .v { font-weight: 700; color: var(--accent-cyan); }
-        .input-group { margin-bottom: 1rem; }
-        .input-group label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0.35rem; }
+        .tag-item .v { font-weight: 700; color: #93c5fd; }
+        .input-group { margin-bottom: 0.85rem; }
+        .input-group label { display: block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0.3rem; }
         .input-group input {
-            width: 100%; padding: 0.5rem 0.75rem; background: #090d16;
-            border: 1px solid var(--border); border-radius: 8px; color: white; font-size: 0.8125rem;
+            width: 100%; padding: 0.5rem 0.7rem; background: #0c0e12;
+            border: 1px solid var(--border); border-radius: 6px; color: white; font-size: 0.8125rem; font-family: monospace;
         }
         .alert-box {
-            padding: 0.75rem 1rem; border-radius: 8px; background: rgba(99, 102, 241, 0.1);
-            border: 1px solid rgba(99, 102, 241, 0.2); font-size: 0.75rem; color: #cbd5e1; margin-bottom: 1rem;
+            padding: 0.65rem 0.9rem; border-radius: 6px; background: rgba(73, 84, 100, 0.15);
+            border: 1px solid rgba(73, 84, 100, 0.3); font-size: 0.75rem; color: #cbd5e1; margin-bottom: 1rem;
         }
     </style>
 </head>
@@ -187,12 +212,13 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                 <div class=""logo-box"">H</div>
                 <div class=""title"">
                     <h1 id=""lblHostname"">Heimdall Edge Node</h1>
-                    <p id=""lblSub"">Industrial OT Daemon & TwinCAT ADS Simulation</p>
+                    <p id=""lblSub"">Industrial Edge Daemon &bull; OT Simulator Suite</p>
                 </div>
             </div>
-            <div style=""display: flex; gap: 0.75rem; align-items: center;"">
-                <span class=""pill""><span class=""pill-dot""></span> <span id=""lblDaemonStatus"">Online</span></span>
-                <button class=""btn btn-sm btn-outline"" onclick=""triggerReport()"">🚀 Dispatch Telemetry</button>
+            <div class=""header-actions"">
+                <span class=""pill"" id=""badgeDaemon""><span class=""pill-dot""></span> <span id=""lblDaemonStatus"">Online</span></span>
+                <span class=""pill pill-muted"" id=""badgeDevMode""><span class=""pill-dot""></span> <span id=""lblDevMode"">Production</span></span>
+                <button class=""btn btn-sm btn-outline"" onclick=""triggerReport()"">&#9654; Dispatch Telemetry</button>
             </div>
         </header>
 
@@ -200,7 +226,7 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
             <!-- 1. Node Identity -->
             <div class=""card"">
                 <div class=""card-header"">
-                    <span class=""card-title"">🖥️ Host Environment</span>
+                    <span class=""card-title"">Host Environment</span>
                 </div>
                 <div class=""card-body"">
                     <div class=""data-row""><span class=""data-label"">Hostname</span><span class=""data-val"" id=""valHost"">—</span></div>
@@ -208,19 +234,20 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                     <div class=""data-row""><span class=""data-label"">MAC Address</span><span class=""data-val"" id=""valMac"">—</span></div>
                     <div class=""data-row""><span class=""data-label"">OS Runtime</span><span class=""data-val"" id=""valOs"">—</span></div>
                     <div class=""data-row""><span class=""data-label"">Cores / RAM</span><span class=""data-val"" id=""valHardware"">—</span></div>
+                    <div class=""data-row""><span class=""data-label"">Disk Free / Total</span><span class=""data-val"" id=""valDisk"">—</span></div>
                 </div>
             </div>
 
             <!-- 2. Beckhoff TwinCAT ADS Simulation -->
             <div class=""card"">
                 <div class=""card-header"">
-                    <span class=""card-title"">⚡ Beckhoff TwinCAT ADS (Port 48898)</span>
+                    <span class=""card-title"">TwinCAT ADS Subsystem</span>
                     <button class=""btn btn-sm btn-outline"" id=""btnAdsToggle"" onclick=""toggleAdsState()"">Toggle State</button>
                 </div>
                 <div class=""card-body"">
                     <div class=""data-row""><span class=""data-label"">AMS Net ID</span><span class=""data-val"" id=""valNetId"">5.80.201.44.1.1:851</span></div>
-                    <div class=""data-row""><span class=""data-label"">Runtime State</span><span class=""data-val"" id=""valAdsState"" style=""color: #10b981;"">ADSSTATE_RUN (5)</span></div>
-                    <div class=""data-row""><span class=""data-label"">Requests Processed</span><span class=""data-val"" id=""valAdsReq"">0</span></div>
+                    <div class=""data-row""><span class=""data-label"">Runtime State</span><span class=""data-val"" id=""valAdsState"" style=""color: #86efac;"">RUN</span></div>
+                    <div class=""data-row""><span class=""data-label"">Requests Handled</span><span class=""data-val"" id=""valAdsReq"">0</span></div>
                     <div class=""tag-grid"" id=""adsTags"">
                         <div class=""tag-item""><div class=""k"">MAIN.CycleCounter</div><div class=""v"" id=""tagCycle"">—</div></div>
                         <div class=""tag-item""><div class=""k"">MAIN.TemperatureDegC</div><div class=""v"" id=""tagTemp"">—</div></div>
@@ -230,58 +257,70 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- 3. Minimal OPC UA Client -->
+            <!-- 3. Minimal OPC UA Client & Server -->
             <div class=""card"">
                 <div class=""card-header"">
-                    <span class=""card-title"">🔌 Minimal OPC UA Client</span>
+                    <span class=""card-title"">Minimal OPC UA Subsystem</span>
                     <span class=""pill"" id=""pillOpc""><span class=""pill-dot""></span> Connected</span>
                 </div>
                 <div class=""card-body"">
                     <div class=""data-row""><span class=""data-label"">Endpoint URL</span><span class=""data-val"" id=""valOpcEndpoint"">opc.tcp://127.0.0.1:4840</span></div>
-                    <div class=""data-row""><span class=""data-label"">Driver Mode</span><span class=""data-val"" id=""valOpcMode"">Virtual Industrial Simulator</span></div>
+                    <div class=""data-row""><span class=""data-label"">Driver Mode</span><span class=""data-val"" id=""valOpcMode"">Virtual Simulator</span></div>
                     <div class=""tag-grid"" id=""opcNodes"">
                         <div class=""tag-item""><div class=""k"">Line01.DriveSpeed</div><div class=""v"" id=""nodeSpeed"">1480.0 RPM</div></div>
                         <div class=""tag-item""><div class=""k"">Line01.MotorCurrent</div><div class=""v"" id=""nodeCurrent"">12.4 A</div></div>
-                        <div class=""tag-item""><div class=""k"">Line01.QualityOk</div><div class=""v"" id=""nodeQuality"">True</div></div>
+                        <div class=""tag-item""><div class=""k"">Line01.QualityOk</div><div class=""v"" id=""nodeQuality"">Yield OK</div></div>
                         <div class=""tag-item""><div class=""k"">Line01.PartCount</div><div class=""v"" id=""nodeCount"">2450</div></div>
                     </div>
                 </div>
             </div>
 
-            <!-- 4. Reporting Trigger Engine -->
+            <!-- 4. MQTT Client & Offline Spooler -->
             <div class=""card"">
                 <div class=""card-header"">
-                    <span class=""card-title"">🎯 Reporting Trigger Engine</span>
+                    <span class=""card-title"">Edge Egress &amp; Spool Buffer</span>
                 </div>
                 <div class=""card-body"">
-                    <div class=""data-row""><span class=""data-label"">Active Triggers</span><span class=""data-val"">Heartbeat, Threshold, StateChange, OnDemand</span></div>
+                    <div class=""data-row""><span class=""data-label"">MQTT Transport</span><span class=""data-val"" id=""valMqttStatus"">Active</span></div>
+                    <div class=""data-row""><span class=""data-label"">Broker Address</span><span class=""data-val"" id=""valMqttBroker"">—</span></div>
+                    <div class=""data-row""><span class=""data-label"">Spooled Telemetry</span><span class=""data-val"" id=""valSpoolPending"">0 queued</span></div>
+                    <div class=""data-row""><span class=""data-label"">Extensions Active</span><span class=""data-val"" id=""valExtensions"">0</span></div>
+                    <div class=""data-row""><span class=""data-label"">Installed Plugins</span><span class=""data-val"" id=""valPlugins"">0</span></div>
+                </div>
+            </div>
+
+            <!-- 5. Reporting Trigger Engine -->
+            <div class=""card"">
+                <div class=""card-header"">
+                    <span class=""card-title"">Reporting Trigger Engine</span>
+                </div>
+                <div class=""card-body"">
+                    <div class=""data-row""><span class=""data-label"">Active Triggers</span><span class=""data-val"">Heartbeat, Threshold, StateChange</span></div>
                     <div class=""data-row""><span class=""data-label"">Total Evaluations</span><span class=""data-val"" id=""valTrigEvals"">0</span></div>
                     <div class=""data-row""><span class=""data-label"">Reports Dispatched</span><span class=""data-val"" id=""valTrigDispatches"">0</span></div>
-                    <div class=""data-row""><span class=""data-label"">Last Trigger Reason</span><span class=""data-val"" id=""valTrigReason"" style=""color: #a5b4fc;"">Heartbeat interval</span></div>
+                    <div class=""data-row""><span class=""data-label"">Last Trigger Reason</span><span class=""data-val"" id=""valTrigReason"" style=""color: #cbd5e1;"">Heartbeat interval</span></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Configuration Settings Card -->
-        <div class=""card"">
-            <div class=""card-header"">
-                <span class=""card-title"">⚙️ Daemon Connection &amp; Core Settings</span>
-            </div>
-            <div class=""card-body"">
-                <div class=""alert-box"" id=""statusAlert"">
-                    Agent running. All industrial OT subsystems active. Config changes take effect on save.
+            <!-- 6. Daemon Connection Settings -->
+            <div class=""card"">
+                <div class=""card-header"">
+                    <span class=""card-title"">Connection Settings</span>
                 </div>
-                <div style=""display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"">
+                <div class=""card-body"">
+                    <div class=""alert-box"" id=""statusAlert"">
+                        Configuration changes are persisted locally to agentconfig.json.
+                    </div>
                     <div class=""input-group"">
-                        <label>Backend URL (gRPC / HTTP)</label>
+                        <label>Backend URL (MQTT / HTTP)</label>
                         <input id=""inputBackendUrl"" type=""text"" />
                     </div>
                     <div class=""input-group"">
                         <label>Auth Type</label>
-                        <input id=""inputAuthType"" type=""text"" readonly style=""opacity: 0.7; cursor: not-allowed;"" />
+                        <input id=""inputAuthType"" type=""text"" readonly style=""opacity: 0.6; cursor: not-allowed;"" />
                     </div>
+                    <button class=""btn"" onclick=""saveConfig()"">Save Configuration</button>
                 </div>
-                <button class=""btn"" onclick=""saveConfig()"">Save Configuration</button>
             </div>
         </div>
     </div>
@@ -298,12 +337,26 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                 document.getElementById('valUuid').innerText = d.machineIdentifier || '—';
                 document.getElementById('valMac').innerText = d.macAddress || '—';
                 document.getElementById('valOs').innerText = d.osVersion || '—';
-                document.getElementById('valHardware').innerText = d.hardware ? `${d.hardware.cpu || ''} (${d.hardware.ram || ''})` : '—';
+                document.getElementById('valHardware').innerText = d.hardware ? (d.hardware.cpu || '') + ' (' + (d.hardware.ram || '') + ')' : '—';
+                if (d.disk) {
+                    document.getElementById('valDisk').innerText = (d.disk.free || '—') + ' / ' + (d.disk.total || '—');
+                }
                 
+                // Mode badges
+                const devBadge = document.getElementById('badgeDevMode');
+                const lblDev = document.getElementById('lblDevMode');
+                if (d.devFeaturesEnabled) {
+                    devBadge.className = 'pill pill-amber';
+                    lblDev.innerText = 'Dev Mode Active';
+                } else {
+                    devBadge.className = 'pill pill-muted';
+                    lblDev.innerText = 'Production Mode';
+                }
+
                 if (d.ads) {
-                    document.getElementById('valNetId').innerText = `${d.ads.amsNetId}:${d.ads.amsPort}`;
-                    document.getElementById('valAdsState').innerText = d.ads.state || 'ADSSTATE_RUN (5)';
-                    document.getElementById('valAdsState').style.color = d.ads.state === 'RUN' ? '#10b981' : '#f43f5e';
+                    document.getElementById('valNetId').innerText = (d.ads.amsNetId || '') + ':' + (d.ads.amsPort || 851);
+                    document.getElementById('valAdsState').innerText = d.ads.state || 'RUN';
+                    document.getElementById('valAdsState').style.color = d.ads.state === 'RUN' ? '#86efac' : '#f87171';
                     document.getElementById('valAdsReq').innerText = d.ads.requestsHandled || 0;
                     if (d.ads.symbols) {
                         document.getElementById('tagCycle').innerText = d.ads.symbols['MAIN.CycleCounter'] ?? '—';
@@ -314,14 +367,30 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                 }
 
                 if (d.opc) {
-                    document.getElementById('valOpcEndpoint').innerText = d.opc.endpointUrl;
-                    document.getElementById('valOpcMode').innerText = d.opc.isSimulated ? 'Virtual Industrial Simulator' : 'Live OPC UA Server';
+                    document.getElementById('valOpcEndpoint').innerText = d.opc.endpointUrl || 'opc.tcp://127.0.0.1:4840';
+                    document.getElementById('valOpcMode').innerText = d.opc.isSimulated ? 'Virtual Simulator' : 'Live Industrial Server';
                     if (d.opc.nodes) {
                         document.getElementById('nodeSpeed').innerText = (d.opc.nodes['ns=2;s=Line01.DriveSpeed'] ?? '—') + ' RPM';
                         document.getElementById('nodeCurrent').innerText = (d.opc.nodes['ns=2;s=Line01.MotorCurrent'] ?? '—') + ' A';
                         document.getElementById('nodeQuality').innerText = d.opc.nodes['ns=2;s=Line01.QualityOk'] ? 'Yield OK' : 'Reject Alert';
                         document.getElementById('nodeCount').innerText = d.opc.nodes['ns=2;s=Line01.PartCount'] ?? '—';
                     }
+                }
+
+                if (d.mqtt) {
+                    document.getElementById('valMqttStatus').innerText = d.mqtt.isConnected ? 'Connected' : 'Disconnected';
+                    document.getElementById('valMqttBroker').innerText = d.mqtt.brokerHost + ':' + d.mqtt.brokerPort;
+                }
+
+                if (d.spooler) {
+                    document.getElementById('valSpoolPending').innerText = (d.spooler.pendingRecords || 0) + ' queued';
+                }
+
+                if (d.extensionsCount !== undefined) {
+                    document.getElementById('valExtensions').innerText = d.extensionsCount + ' active';
+                }
+                if (d.pluginsCount !== undefined) {
+                    document.getElementById('valPlugins').innerText = d.pluginsCount + ' installed';
                 }
 
                 if (d.triggers) {
@@ -336,10 +405,9 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
             try {
                 const res = await fetch('/api/trigger-report', { method: 'POST' });
                 if (res.ok) {
-                    alert('Telemetry report dispatched successfully!');
                     fetchStatus();
                 }
-            } catch (e) { alert('Error triggering telemetry: ' + e); }
+            } catch (e) { console.error('Error triggering telemetry:', e); }
         }
 
         async function toggleAdsState() {
@@ -348,7 +416,7 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                 if (res.ok) {
                     fetchStatus();
                 }
-            } catch (e) { alert('Error toggling ADS state: ' + e); }
+            } catch (e) { console.error('Error toggling ADS state:', e); }
         }
 
         async function loadConfig() {
@@ -368,14 +436,15 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ backendUrl })
                 });
-                if (res.ok) alert('Configuration saved!');
-                else alert('Error saving configuration');
+                if (res.ok) {
+                    alert('Configuration saved successfully.');
+                }
             } catch (e) { alert('Error saving: ' + e); }
         }
 
         loadConfig();
         fetchStatus();
-        setInterval(fetchStatus, 2000);
+        setInterval(fetchStatus, 2500);
     </script>
 </body>
 </html>", "text/html"));
@@ -387,7 +456,12 @@ app.MapGet("/api/status", (
     MinimalOpcServer opcServer,
     MinimalOpcClient opcClient,
     TelemetryTriggerEngine triggerEngine,
-    ConfigurationService configService) =>
+    ConfigurationService configService,
+    AgentFeatureFlags flags,
+    App.Agent.Daemon.Extensions.IExtensionRegistry extensionRegistry,
+    App.Agent.Daemon.Infrastructure.Plugins.IPluginManager pluginManager,
+    App.Agent.Daemon.Interfaces.IMqttAgentClient mqttClient,
+    App.Agent.Daemon.Interfaces.ITelemetrySpooler spooler) =>
 {
     var sysInfo = sysService.GetSystemInfo();
     return Results.Ok(new
@@ -399,7 +473,9 @@ app.MapGet("/api/status", (
         hardware = new { cpu = sysInfo.Hardware.Cpu, ram = sysInfo.Hardware.Ram },
         disk = sysInfo.Disk,
         backendUrl = configService.Config.BackendUrl,
-        ads = new
+        devFeaturesEnabled = flags.EnableDevFeatures,
+        debugFeaturesEnabled = flags.EnableDebugFeatures,
+        ads = flags.EnableDevFeatures ? new
         {
             amsNetId = adsServer.AmsNetId,
             amsPort = adsServer.AmsPort,
@@ -408,9 +484,9 @@ app.MapGet("/api/status", (
                     adsServer.CurrentAdsState == AdsSimulationServer.ADSSTATE_STOP ? "STOP" :
                     $"State_{adsServer.CurrentAdsState}",
             requestsHandled = adsServer.TotalRequestsHandled,
-            symbols = adsServer.SimulatedVariables
-        },
-        opc = new
+            symbols = flags.EnableDebugFeatures ? (IReadOnlyDictionary<string, object>)adsServer.SimulatedVariables : new Dictionary<string, object>()
+        } : null,
+        opc = flags.EnableDevFeatures ? new
         {
             serverPort = opcServer.Port,
             serverIsListening = opcServer.IsListening,
@@ -418,13 +494,85 @@ app.MapGet("/api/status", (
             endpointUrl = opcClient.EndpointUrl,
             isConnected = opcClient.IsConnected,
             isSimulated = opcClient.IsSimulatedMode,
-            nodes = opcClient.MonitoredNodes
+            nodes = flags.EnableDebugFeatures ? opcClient.MonitoredNodes : (IReadOnlyDictionary<string, object>)new Dictionary<string, object>()
+        } : new
+        {
+            serverPort = 0,
+            serverIsListening = false,
+            serverConnectionsHandled = 0L,
+            endpointUrl = opcClient.EndpointUrl,
+            isConnected = opcClient.IsConnected,
+            isSimulated = false,
+            nodes = flags.EnableDebugFeatures ? opcClient.MonitoredNodes : (IReadOnlyDictionary<string, object>)new Dictionary<string, object>()
         },
+        mqtt = new
+        {
+            isConnected = mqttClient.IsConnected,
+            brokerHost = mqttClient.BrokerHost,
+            brokerPort = mqttClient.BrokerPort
+        },
+        spooler = new
+        {
+            pendingRecords = spooler.PendingCount
+        },
+        extensionsCount = extensionRegistry.GetActiveComponents().Count,
+        pluginsCount = pluginManager.GetInstalledPlugins().Count,
         triggers = new
         {
             totalEvaluations = triggerEngine.TotalEvaluations,
             totalReports = triggerEngine.TotalTriggeredReports,
             lastReason = triggerEngine.LastEvaluationResult?.Reason ?? "None"
+        }
+    });
+});
+
+// Verbose diagnostic dump endpoint (guarded strictly by EnableDebugFeatures)
+app.MapGet("/api/diagnostics/dump", (
+    SystemInfoService sysService,
+    AdsSimulationServer adsServer,
+    MinimalOpcServer opcServer,
+    MinimalOpcClient opcClient,
+    TelemetryTriggerEngine triggerEngine,
+    ConfigurationService configService,
+    AgentFeatureFlags flags) =>
+{
+    if (!flags.EnableDebugFeatures)
+    {
+        return Results.Json(
+            new { error = "Diagnostic dump routines are disabled in production mode. Set HEIMDALL_ENABLE_DEBUG=true to enable." },
+            statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var sysInfo = sysService.GetSystemInfo();
+    return Results.Ok(new
+    {
+        timestampUtc = DateTime.UtcNow,
+        system = sysInfo,
+        configuration = configService.Config,
+        adsSimulation = flags.EnableDevFeatures ? new
+        {
+            adsServer.Port,
+            adsServer.AmsNetId,
+            adsServer.AmsPort,
+            adsServer.CurrentAdsState,
+            adsServer.TotalRequestsHandled,
+            Variables = adsServer.SimulatedVariables
+        } : null,
+        opcSimulation = new
+        {
+            opcServer.Port,
+            opcServer.IsListening,
+            opcServer.TotalConnectionsHandled,
+            opcClient.EndpointUrl,
+            opcClient.IsConnected,
+            opcClient.IsSimulatedMode,
+            Nodes = opcClient.MonitoredNodes
+        },
+        triggers = new
+        {
+            triggerEngine.TotalEvaluations,
+            triggerEngine.TotalTriggeredReports,
+            LastResult = triggerEngine.LastEvaluationResult
         }
     });
 });
@@ -436,9 +584,14 @@ app.MapPost("/api/trigger-report", (Worker worker) =>
     return Results.Ok(new { success = true, message = "Immediate telemetry dispatch requested." });
 });
 
-// Toggle TwinCAT ADS Run/Stop state endpoint
-app.MapPost("/api/ads/toggle", (AdsSimulationServer adsServer, Worker worker) =>
+// Toggle TwinCAT ADS Run/Stop state endpoint (guarded strictly by EnableDevFeatures)
+app.MapPost("/api/ads/toggle", (AdsSimulationServer adsServer, Worker worker, AgentFeatureFlags flags) =>
 {
+    if (!flags.EnableDevFeatures)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
     adsServer.CurrentAdsState = adsServer.CurrentAdsState == AdsSimulationServer.ADSSTATE_RUN
         ? AdsSimulationServer.ADSSTATE_STOP
         : AdsSimulationServer.ADSSTATE_RUN;

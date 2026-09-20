@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody, getMethod } from 'h3'
+import { defineEventHandler, readBody, getMethod, createError } from 'h3'
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
@@ -40,5 +40,5 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return { error: 'Method not allowed' }
+  throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
 })

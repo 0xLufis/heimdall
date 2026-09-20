@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { getPlantMachineGroups } from './datasetLoader'
+import { featureFlags } from './featureFlags'
 
 export interface MachineGroupEntry {
   id: string
@@ -58,7 +59,7 @@ const FALLBACK_GROUPS: MachineGroupEntry[] = [
 ]
 
 function loadInitialGroups(): MachineGroupEntry[] {
-  const result: MachineGroupEntry[] = [...FALLBACK_GROUPS]
+  const result: MachineGroupEntry[] = featureFlags.enableDevFeatures ? [...FALLBACK_GROUPS] : []
   try {
     const datasetGroups = getPlantMachineGroups()
     if (datasetGroups && datasetGroups.length > 0) {

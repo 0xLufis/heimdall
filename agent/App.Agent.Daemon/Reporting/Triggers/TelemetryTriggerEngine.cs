@@ -167,7 +167,7 @@ public class OnDemandTrigger : ITelemetryTrigger
 /// <summary>
 /// Central evaluation engine coordinating industrial telemetry reporting triggers.
 /// </summary>
-public class TelemetryTriggerEngine
+public class TelemetryTriggerEngine : ITelemetryTriggerEngine
 {
     private readonly ILogger<TelemetryTriggerEngine>? _logger;
     private readonly List<ITelemetryTrigger> _triggers = new();

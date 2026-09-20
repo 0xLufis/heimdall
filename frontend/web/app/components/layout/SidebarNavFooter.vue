@@ -19,6 +19,7 @@ const {
   simulatedPersona,
   setSimulatedPersona,
   clearSimulatedPersona,
+  isPersonaSimulationAllowed,
   signOut,
   DEMO_PERSONAS
 } = useAuthSession()
@@ -114,7 +115,7 @@ async function handleLogout() {
             </DropdownMenuSub>
 
             <!-- Quick Persona Switcher Submenu -->
-            <DropdownMenuSub>
+            <DropdownMenuSub v-if="isPersonaSimulationAllowed">
               <DropdownMenuSubTrigger class="flex items-center gap-2 cursor-pointer">
                 <Icon name="i-lucide-user-check" class="h-4 w-4 text-cyan-400" />
                 <span>Switch Persona</span>

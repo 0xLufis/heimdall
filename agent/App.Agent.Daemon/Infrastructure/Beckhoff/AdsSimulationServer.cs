@@ -20,7 +20,7 @@ using Microsoft.Extensions.Logging;
 /// - 0x0005: Write Control (Change ADS State)
 /// - 0x0009: Read/Write by Symbol Name or Index Group
 /// </summary>
-public class AdsSimulationServer : IDisposable
+public class AdsSimulationServer : IAdsSimulationServer
 {
     public const int DefaultAdsPort = 48898;
     public const string DefaultAmsNetId = "5.80.201.44.1.1";

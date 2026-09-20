@@ -14,12 +14,14 @@ export default defineEventHandler(async (event) => {
   const now = new Date()
   const priority = body.priority || 'Medium'
 
-  // Calculate SLA due timestamp based on priority
-  let slaHours = 24
-  if (priority === 'Critical') slaHours = 4
-  else if (priority === 'High') slaHours = 8
-  else if (priority === 'Medium') slaHours = 24
-  else if (priority === 'Low') slaHours = 48
+  // Calculate SLA due timestamp based on user override or priority matrix
+  let slaHours = body.slaHours ?? 24
+  if (!body.slaHours) {
+    if (priority === 'Critical') slaHours = 4
+    else if (priority === 'High') slaHours = 8
+    else if (priority === 'Medium') slaHours = 24
+    else if (priority === 'Low') slaHours = 48
+  }
 
   const slaDueAt = new Date(now.getTime() + slaHours * 3600 * 1000).toISOString()
 
@@ -27,6 +29,10 @@ export default defineEventHandler(async (event) => {
   const randomSuffix = Math.floor(1000 + Math.random() * 9000)
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
   const ticketNumber = body.ticketNumber || `TKT-${dateStr}-${randomSuffix}`
+
+  const sessionUser = (event.context as any)?.auth?.user
+  const reportedByUserId = body.reportedByUserId || sessionUser?.id || 'usr-current'
+  const reportedByUserName = body.reportedByUserName || sessionUser?.name || 'Operator User'
 
   const newTicket: MaintenanceTicket = {
     id: `tkt-${Date.now()}-${randomSuffix}`,
@@ -38,8 +44,8 @@ export default defineEventHandler(async (event) => {
     description: body.description,
     status: 'Open',
     priority,
-    reportedByUserId: body.reportedByUserId || 'usr-current',
-    reportedByUserName: body.reportedByUserName || 'Operator User',
+    reportedByUserId,
+    reportedByUserName,
     assignedTechnicianId: body.assignedTechnicianId,
     assignedTechnicianName: body.assignedTechnicianName,
     createdAt: now.toISOString(),

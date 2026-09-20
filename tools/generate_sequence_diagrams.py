@@ -74,7 +74,7 @@ class SequenceDiagramBuilder:
 sequenceDiagram
     autonumber
     actor EdgeNode as Edge Agent Daemon (C# / TwinCAT)
-    participant GrpcEndpoint as SystemInfoCollectorService (HTTP/2 gRPC)
+    participant GrpcEndpoint as TelemetryIngestionService (HTTP/2 gRPC & MQTT)
     participant SecurityAuth as Auth & mTLS Cert Validator
     participant Repo as ClientPcRepository (PostgreSQL)
     participant Cache as CacheService (L1 Memory / L2 Redis)
@@ -376,7 +376,7 @@ def update_documentation_files(builder: SequenceDiagramBuilder, root: Path):
 sequenceDiagram
     autonumber
     actor EdgeNode as Edge Agent Daemon (C# / TwinCAT)
-    participant GrpcEndpoint as SystemInfoCollectorService (gRPC)
+    participant GrpcEndpoint as TelemetryIngestionService (gRPC & MQTT)
     participant Repo as ClientPcRepository (PostgreSQL)
     participant Cache as CacheService (L1 Memory / L2 Redis)
     participant Hub as MaintenanceHub (SignalR WebSocket)

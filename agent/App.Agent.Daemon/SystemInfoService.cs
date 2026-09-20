@@ -11,6 +11,7 @@ using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using App.Agent.Daemon.Interfaces;
+using App.Contracts.Enums;
 using App.Shared.Drivers;
 using App.Shared.Sanitization;
 
@@ -34,7 +35,18 @@ public class LiveTelemetryData
     public double CpuUsagePercent { get; set; }
     public string RamUsage { get; set; } = "0.0%";
     public double RamUsagePercent { get; set; }
-    public string Status { get; set; } = "Online";
+    public DeviceOperationalStatus OperationalStatus { get; set; } = DeviceOperationalStatus.Online;
+    public string Status
+    {
+        get => OperationalStatus.ToString();
+        set
+        {
+            if (Enum.TryParse<DeviceOperationalStatus>(value, true, out var parsed))
+            {
+                OperationalStatus = parsed;
+            }
+        }
+    }
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -382,7 +394,7 @@ public class SystemInfoService : ISystemInfoService
     }
 
     [SupportedOSPlatform("windows")]
-    private void EnsureIndustrialSoftwareRegistryKeys()
+    public void EnsureIndustrialSoftwareRegistryKeys()
     {
         try
         {
@@ -421,8 +433,7 @@ public class SystemInfoService : ISystemInfoService
     [SupportedOSPlatform("windows")]
     private List<string> ScanWindowsRegistryInstalledSoftware()
     {
-        EnsureIndustrialSoftwareRegistryKeys();
-
+        // Mutating registry side-effect removed from read telemetry path (AGT-07)
         var packages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         var registryLocations = new[]

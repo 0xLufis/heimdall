@@ -14,12 +14,12 @@ namespace App.Backend.Api.Controllers.V1;
 [Authorize]
 public class AnalyticsController : ControllerBase
 {
-    private readonly PredictiveMaintenanceService _predictiveService;
+    private readonly IPredictiveMaintenanceService _predictiveService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AnalyticsController> _logger;
 
     public AnalyticsController(
-        PredictiveMaintenanceService predictiveService,
+        IPredictiveMaintenanceService predictiveService,
         IConfiguration configuration,
         ILogger<AnalyticsController> logger)
     {

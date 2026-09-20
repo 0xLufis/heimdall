@@ -14,6 +14,11 @@ public interface ITelemetrySpooler
     Task SpoolPayloadAsync(string payloadJson);
 
     /// <summary>
+    /// Returns the number of spooled payloads waiting to be dispatched.
+    /// </summary>
+    int PendingCount { get; }
+
+    /// <summary>
     /// Drains queued payloads sequentially, removing items only upon confirmed delivery. Returns number of drained items.
     /// </summary>
     Task<int> DrainSpoolAsync(Func<string, Task<bool>> sendDelegate);

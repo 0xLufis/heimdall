@@ -43,6 +43,7 @@ import { Label } from '@/components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { useControllers } from '~/composables/useControllers'
 import { useTelemetryTemplates } from '~/composables/useTelemetryTemplates'
+import { useFeatureFlags } from '~/composables/useFeatureFlags'
 import type { FleetAgentPolicy, OuTagRecipeRule } from '~/types/telemetry'
 import {
   extractHostDna,
@@ -58,6 +59,7 @@ definePageMeta({
 
 const { controllers, isLoading: isControllersLoading, fetchControllers } = useControllers()
 const { allTemplates, fetchTemplates } = useTelemetryTemplates()
+const { enableDebugFeatures } = useFeatureFlags()
 
 const isSavingPolicy = ref(false)
 const saveSuccess = ref(false)
@@ -772,7 +774,7 @@ async function pushToAllHosts() {
             <select v-model="fleetPolicy.deltaEvaluationAlgorithm" class="w-full h-9 px-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs font-medium focus:ring-1 focus:ring-indigo-500">
               <option value="xxHash64">xxHash64 (Sub-millisecond Industrial)</option>
               <option value="SHA256">SHA-256 (Cryptographic Integrity)</option>
-              <option value="None">None (Stream all raw packets)</option>
+              <option v-if="enableDebugFeatures" value="None">None (Stream all raw packets - Debug)</option>
             </select>
           </div>
 

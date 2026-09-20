@@ -1,5 +1,6 @@
 using App.Backend.Api.Dtos;
 using App.Backend.Api.Services;
+using App.Contracts.Inventory;
 using App.Infrastructure.Repositories;
 using App.Shared.Data;
 using App.Shared.Entities;
@@ -116,11 +117,33 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet("station-tree/{id}")]
-    public async Task<IActionResult> GetStationTree(Guid id)
+    public async Task<ActionResult<StationComponentTreeDto>> GetStationTree(Guid id)
     {
         var tree = await _assetRepository.GetStationComponentTreeAsync(id);
         if (tree == null) return NotFound();
         return Ok(tree);
+    }
+
+    /// <summary>
+    /// Server-side filtered, sorted, paginated inventory search with global KPIs.
+    /// </summary>
+    [HttpGet("filter")]
+    public async Task<ActionResult<InventoryFilterResultDto>> FilterInventoryGet([FromQuery] InventoryFilterRequest request, CancellationToken cancellationToken)
+    {
+        var cacheKey = $"inventory:filter:{request.Query}:{request.Type}:{request.Classification}:{request.EquipmentStatus}:{request.Technology}:{request.StorageLocation}:{request.ManufacturerId}:{request.TeamId}:{request.SortBy}:{request.SortOrder}:{request.Page}:{request.PageSize}";
+        var result = await _cache.GetOrSetAsync(cacheKey, () => _assetRepository.FilterInventoryAsync(request, cancellationToken), TimeSpan.FromSeconds(30));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Server-side filtered, sorted, paginated inventory search with global KPIs (POST payload support).
+    /// </summary>
+    [HttpPost("filter")]
+    public async Task<ActionResult<InventoryFilterResultDto>> FilterInventoryPost([FromBody] InventoryFilterRequest request, CancellationToken cancellationToken)
+    {
+        var cacheKey = $"inventory:filter:{request.Query}:{request.Type}:{request.Classification}:{request.EquipmentStatus}:{request.Technology}:{request.StorageLocation}:{request.ManufacturerId}:{request.TeamId}:{request.SortBy}:{request.SortOrder}:{request.Page}:{request.PageSize}";
+        var result = await _cache.GetOrSetAsync(cacheKey, () => _assetRepository.FilterInventoryAsync(request, cancellationToken), TimeSpan.FromSeconds(30));
+        return Ok(result);
     }
 
     [HttpPost]

@@ -1,3 +1,4 @@
+import { ref, computed, onMounted } from 'vue'
 import { createSharedComposable, useActiveElement } from '@vueuse/core'
 
 export function _useShortcuts() {

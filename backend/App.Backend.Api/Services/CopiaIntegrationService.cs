@@ -23,7 +23,7 @@ public record CopiaCommitRecord(
 /// Handles HMAC-SHA256 signature verification, branch commits, diff metadata extraction,
 /// and automatic version synchronization with SoftwareAssets in the database.
 /// </summary>
-public class CopiaIntegrationService
+public class CopiaIntegrationService : ICopiaIntegrationService
 {
     private readonly ILogger<CopiaIntegrationService> _logger;
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;

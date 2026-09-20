@@ -25,8 +25,8 @@ heimdall/
 ├── infra/
 │   └── database/            # PostgreSQL 18, Redis 7.4, SSL certs, and seed data
 ├── tests/
-│   ├── backend/             # xUnit backend integration tests (162 tests)
-│   ├── frontend/unit/       # Vitest unit test suites (37 suites, 275 tests)
+│   ├── backend/             # xUnit backend integration tests (208 tests)
+│   ├── frontend/unit/       # Vitest unit test suites (39 suites, 298 tests)
 │   └── e2e/                 # Playwright browser end-to-end tests
 ├── docker-compose.yml       # Full stack local development compose file
 ├── run_dev.sh               # Local development launch script
@@ -80,6 +80,7 @@ dotnet run
 ```
 * **REST API & Swagger UI**: `http://localhost:5099/swagger` (also redirects from `/api-docs` and `/`)
 * **Cleartext gRPC Endpoint**: `http://localhost:5001`
+* **Embedded MQTT Broker**: `localhost:1883` (telemetry topic `heimdall/telemetry/{client_pc_id}`)
 * **SignalR WebSocket Hub**: `http://localhost:5099/hubs/maintenance`
 
 ### 3.4 Running the Frontend Dashboard
@@ -142,6 +143,7 @@ docker compose down
 | **Frontend** | `heimdall_frontend` | `3000:3000` | Nuxt web dashboard & Nitro BFF |
 | **Backend API** | `heimdall_backend` | `5099:5099` | REST API, Swagger, SignalR |
 | **Backend gRPC**| `heimdall_backend` | `5001:5001` | Edge telemetry collector |
+| **Backend MQTT**| `heimdall_backend` | `1883:1883` | Embedded MQTT broker |
 | **PostgreSQL** | `heimdall_postgres`| `5432:5432` | Primary database with SSL |
 | **Redis** | `heimdall_redis` | `6379:6379` | L2 distributed cache |
 | **pgAdmin** | `heimdall_pgadmin` | `5050:80` | Web database management |
@@ -152,18 +154,25 @@ docker compose down
 
 ## 5. Automated Test Verification
 
+### 5.0 Unified Test Execution
+To run all verification suites in one command:
+```bash
+./run_dev.sh test all
+```
+Executes seed validation, backend xUnit tests, frontend Vitest suites, and fleet simulator smoke tests.
+
 ### 5.1 Backend & Agent Unit Tests (xUnit)
 ```bash
 dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
 ```
-Executes 83 tests covering multi-tenancy global query filters, MFA policy rules, Active Directory OU synchronization, entity inheritance, AES-256-GCM encryption roundtrips, PII exclusion rules, predictive maintenance thresholds, and gRPC endpoints.
+Executes 208 tests covering multi-tenancy global query filters, MFA policy rules, Active Directory OU synchronization, entity inheritance, AES-256-GCM encryption roundtrips, PII exclusion rules, predictive maintenance thresholds, MQTT broker communication, and API endpoints.
 
 ### 5.2 Frontend Unit Tests (Vitest)
 ```bash
 cd frontend/web
 bun run test:unit
 ```
-Executes 32 test suites (241 tests) covering rule reordering with drag-and-drop point-of-click anchoring, FMFD search keyboard shortcuts, 8-stage Kanban lifecycle, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, remote controller modal quick view, predictive maintenance metrics, and all page routing.
+Executes 39 test suites (298 tests) covering rule reordering with drag-and-drop point-of-click anchoring, FMFD search keyboard shortcuts, 8-stage Kanban lifecycle, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, remote controller modal quick view, predictive maintenance metrics, feature flag gating, and all page routing.
 
 ### 5.3 Python Fleet Simulator & Mock CMI Tests
 ```bash

@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody, getQuery, getMethod, getHeader } from 'h3'
-import { getCachedJson, setCachedJson } from '../../utils/redis'
+import { featureFlags } from '../../utils/featureFlags'
 
 // Resilient default seed inventory if backend is offline or starting up
 const SEED_INVENTORY = [
@@ -346,7 +346,7 @@ function flattenTreeNodes(nodes: any[]): any[] {
   const flattened: any[] = []
   for (const node of nodes) {
     if (!node) continue
-    
+
     // Normalize item type
     let normType = 'hardware'
     const rawType = (node.itemType || node.ItemType || node.$type || '').toLowerCase()
@@ -408,6 +408,30 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
+  const forwardHeaders: Record<string, string> = {}
+  try {
+    const cookie = getHeader(event, 'cookie')
+    if (cookie) forwardHeaders.cookie = cookie
+    const authorization = getHeader(event, 'authorization')
+    if (authorization) forwardHeaders.authorization = authorization
+    const activeOrgId = getHeader(event, 'x-organization-id')
+    if (activeOrgId) forwardHeaders['x-organization-id'] = activeOrgId
+  } catch { }
+
+  try {
+    const backendResult = await $fetch<any>(`${backendBase}/api/v1/inventory/filter`, {
+      method: 'POST',
+      body: payload,
+      headers: forwardHeaders
+    })
+    if (backendResult && backendResult.items) {
+      return backendResult
+    }
+  } catch {
+    // Backend unavailable or isolated test environment: fall back to local dataset
+  }
+
   const {
     query = '',
     type = 'all',
@@ -420,17 +444,6 @@ export default defineEventHandler(async (event) => {
   } = payload
 
   let allItems: any[] = []
-  const cacheKey = 'heimdall:nitro:inventory_all'
-
-  // 1. Try Redis distributed cache first
-  try {
-    const cached = await getCachedJson<any[]>(cacheKey)
-    if (cached && Array.isArray(cached) && cached.length > 0) {
-      allItems = cached
-    }
-  } catch {
-    // Graceful fallback to backend fetch
-  }
 
   if (allItems.length === 0) {
     const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
@@ -451,86 +464,86 @@ export default defineEventHandler(async (event) => {
       // Graceful fallback
     }
 
-  // Also query Client PCs to dynamically ingest live agent telemetry & reported PC hardware
-  try {
-    const pcs = await $fetch<any[]>(`${backendBase}/api/v1/ClientPc`, {
-      headers: forwardHeaders
-    })
-    if (pcs && Array.isArray(pcs) && pcs.length > 0) {
-      for (const pc of pcs) {
-        const isOnline = pc.lastSeen ? (Date.now() - new Date(pc.lastSeen).getTime() < 5 * 60 * 1000) : false
-        // Add the PC controller itself as an asset if not present
-        allItems.push({
-          id: pc.id,
-          name: pc.hostname || pc.name,
-          displayName: pc.displayName || pc.hostname,
-          serialNumber: pc.machineIdentifier || pc.macAddress,
-          itemType: 'hardware',
-          customIdentifier: pc.hostname,
-          costInHUF: 850000,
-          purchaseDate: pc.lastSeen || new Date().toISOString(),
-          manufacturer: { name: 'Advantech / Industrial IPC' },
-          responsibleTeams: pc.responsibleTeams || [],
-          isStockItem: false,
-          equipmentStatus: 'InMachine',
-          storageLocation: 'Production Line Control Cabinet',
-          stockQuantity: 1,
-          minStockThreshold: 1,
-          technology: 'Assembly',
-          telemetry: {
-            cpuUsagePercent: pc.resourceAverages?.cpuUsageAverage ?? (isOnline ? 18.5 : 0),
-            ramUsagePercent: pc.resourceAverages?.ramUsageAverage ?? (isOnline ? 42.1 : 0),
-            freeDiskSpace: pc.freeDiskSpace,
-            isOnline,
-            lastSeen: pc.lastSeen
-          },
-          metadata: {
-            MAC: pc.macAddress,
-            IP: pc.ipAddress || (pc.systemMetadata as any)?.IPAddress,
-            Host: pc.hostname,
-            ...(pc.systemMetadata || {})
-          }
-        })
+    // Also query Client PCs to dynamically ingest live agent telemetry & reported PC hardware
+    try {
+      const pcs = await $fetch<any[]>(`${backendBase}/api/v1/ClientPc`, {
+        headers: forwardHeaders
+      })
+      if (pcs && Array.isArray(pcs) && pcs.length > 0) {
+        for (const pc of pcs) {
+          const isOnline = pc.lastSeen ? (Date.now() - new Date(pc.lastSeen).getTime() < 5 * 60 * 1000) : false
+          // Add the PC controller itself as an asset if not present
+          allItems.push({
+            id: pc.id,
+            name: pc.hostname || pc.name,
+            displayName: pc.displayName || pc.hostname,
+            serialNumber: pc.machineIdentifier || pc.macAddress,
+            itemType: 'hardware',
+            customIdentifier: pc.hostname,
+            costInHUF: 850000,
+            purchaseDate: pc.lastSeen || new Date().toISOString(),
+            manufacturer: { name: 'Advantech / Industrial IPC' },
+            responsibleTeams: pc.responsibleTeams || [],
+            isStockItem: false,
+            equipmentStatus: 'InMachine',
+            storageLocation: 'Production Line Control Cabinet',
+            stockQuantity: 1,
+            minStockThreshold: 1,
+            technology: 'Assembly',
+            telemetry: {
+              cpuUsagePercent: pc.resourceAverages?.cpuUsageAverage ?? (isOnline ? 18.5 : 0),
+              ramUsagePercent: pc.resourceAverages?.ramUsageAverage ?? (isOnline ? 42.1 : 0),
+              freeDiskSpace: pc.freeDiskSpace,
+              isOnline,
+              lastSeen: pc.lastSeen
+            },
+            metadata: {
+              MAC: pc.macAddress,
+              IP: pc.ipAddress || (pc.systemMetadata as any)?.IPAddress,
+              Host: pc.hostname,
+              ...(pc.systemMetadata || {})
+            }
+          })
 
-        // Add each reported hardware component (CPU, RAM, Disk, etc.)
-        if (pc.inventoryItems && Array.isArray(pc.inventoryItems)) {
-          for (const hw of pc.inventoryItems) {
-            allItems.push({
-              id: hw.id || `${pc.id}-${hw.name}`,
-              name: `${pc.hostname} - ${hw.name}`,
-              displayName: hw.displayName || hw.name,
-              serialNumber: hw.serialNumber || `${pc.macAddress}-${hw.name}`,
-              itemType: 'hardware',
-              customIdentifier: `${pc.hostname}/${hw.name}`,
-              costInHUF: 150000,
-              purchaseDate: pc.lastSeen || new Date().toISOString(),
-              manufacturer: { name: hw.manufacturer?.name || 'OEM' },
-              responsibleTeams: pc.responsibleTeams || [],
-              isStockItem: false,
-              equipmentStatus: 'InMachine',
-              storageLocation: `${pc.hostname} Internal Chassis`,
-              stockQuantity: 1,
-              minStockThreshold: 1,
-              technology: 'Assembly',
-              telemetry: {
-                isOnline,
-                host: pc.hostname
-              },
-              metadata: {
-                HostPC: pc.hostname,
-                Type: hw.type || hw.itemType,
-                ...(hw.metadata || {})
-              }
-            })
+          // Add each reported hardware component (CPU, RAM, Disk, etc.)
+          if (pc.inventoryItems && Array.isArray(pc.inventoryItems)) {
+            for (const hw of pc.inventoryItems) {
+              allItems.push({
+                id: hw.id || `${pc.id}-${hw.name}`,
+                name: `${pc.hostname} - ${hw.name}`,
+                displayName: hw.displayName || hw.name,
+                serialNumber: hw.serialNumber || `${pc.macAddress}-${hw.name}`,
+                itemType: 'hardware',
+                customIdentifier: `${pc.hostname}/${hw.name}`,
+                costInHUF: 150000,
+                purchaseDate: pc.lastSeen || new Date().toISOString(),
+                manufacturer: { name: hw.manufacturer?.name || 'OEM' },
+                responsibleTeams: pc.responsibleTeams || [],
+                isStockItem: false,
+                equipmentStatus: 'InMachine',
+                storageLocation: `${pc.hostname} Internal Chassis`,
+                stockQuantity: 1,
+                minStockThreshold: 1,
+                technology: 'Assembly',
+                telemetry: {
+                  isOnline,
+                  host: pc.hostname
+                },
+                metadata: {
+                  HostPC: pc.hostname,
+                  Type: hw.type || hw.itemType,
+                  ...(hw.metadata || {})
+                }
+              })
+            }
           }
         }
       }
+    } catch {
+      // Ignore if ClientPc endpoint not available
     }
-  } catch {
-    // Ignore if ClientPc endpoint not available
-  }
 
-    if (allItems.length === 0) {
+    if (allItems.length === 0 && featureFlags.enableDevFeatures) {
       allItems = [...SEED_INVENTORY]
     }
   }
@@ -545,12 +558,6 @@ export default defineEventHandler(async (event) => {
   }
   let items = Array.from(uniqueItemsMap.values())
 
-  // Save to Redis cache for fast subsequent requests (avoiding DB hits)
-  try {
-    await setCachedJson(cacheKey, items, 60)
-  } catch {
-    // Ignore cache set failure
-  }
 
   // Compute global inventory totals before filtering
   const totalGlobalCount = items.length
@@ -600,7 +607,7 @@ export default defineEventHandler(async (event) => {
   // Filter by Query (OmniSearch syntax + free text)
   if (query) {
     const q = query.toLowerCase().trim()
-    
+
     // Parse key:value pairs if present in query
     const tagMatches: Record<string, string> = {}
     const tagRegex = /(\w+):"([^"]+)"|(\w+):(\S+)/g

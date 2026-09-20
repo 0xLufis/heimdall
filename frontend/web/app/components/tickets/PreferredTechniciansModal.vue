@@ -57,7 +57,8 @@ const {
   dedicationTier,
   simulatedPersona,
   setSimulatedPersona,
-  clearSimulatedPersona
+  clearSimulatedPersona,
+  isPersonaSimulationAllowed
 } = useAuthSession()
 
 // ─── Tab state ───────────────────────────────────────────────────────────────
@@ -590,7 +591,7 @@ const scopeColor: Record<string, string> = {
         </div>
 
         <!-- Role Simulator Bar (Allows switching test role live to test governance) -->
-        <div class="mt-4 p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+        <div v-if="isPersonaSimulationAllowed" class="mt-4 p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <Sparkles class="w-3.5 h-3.5 text-amber-400" />

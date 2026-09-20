@@ -3,9 +3,10 @@ import { useDb } from '../utils/db'
 import { eq } from 'drizzle-orm'
 import { user, account } from '../database/drizzle/schema'
 import { auth } from '../utils/auth'
+import { featureFlags } from '../utils/featureFlags'
 
 export default defineNitroPlugin(async () => {
-  if (process.env.NODE_ENV !== 'development') {
+  if (!featureFlags.enableDevFeatures) {
     return
   }
 
@@ -53,7 +54,8 @@ export default defineNitroPlugin(async () => {
           .where(eq(user.id, adminId))
       }
     }
-  } catch (err) {
-    console.warn("[ensureAdminUser] Note: could not auto-verify admin user at boot:", err)
+  } catch (err: any) {
+    const msg = err?.message || String(err)
+    console.warn(`[ensureAdminUser] Database offline at boot (${msg}). Admin auto-verification deferred.`)
   }
 })

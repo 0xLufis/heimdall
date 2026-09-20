@@ -1,3 +1,4 @@
+using App.Contracts.Inventory;
 using App.Shared.Entities;
 
 namespace App.Infrastructure.Repositories;
@@ -21,5 +22,6 @@ public interface IAssetRepository
     Task<int> GetAuthUsersCountAsync();
     Task<List<BaseInventoryItem>> GetPartsAsync();
     Task<List<BaseInventoryItem>> GetStockAsync();
-    Task<object?> GetStationComponentTreeAsync(Guid stationId);
+    Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId);
+    Task<InventoryFilterResultDto> FilterInventoryAsync(InventoryFilterRequest request, CancellationToken cancellationToken = default);
 }

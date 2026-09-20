@@ -1,6 +1,7 @@
 using App.Backend.Api.Controllers.V1;
 using App.Backend.Api.Dtos;
 using App.Backend.Api.Services;
+using App.Contracts.Inventory;
 using App.Infrastructure.Repositories;
 using App.Shared.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,8 @@ public class FakeAssetRepository : IAssetRepository
     public Task<int> GetAuthUsersCountAsync() => Task.FromResult(5);
     public Task<List<BaseInventoryItem>> GetPartsAsync() => Task.FromResult(Items.ToList());
     public Task<List<BaseInventoryItem>> GetStockAsync() => Task.FromResult(Items.ToList());
-    public Task<object?> GetStationComponentTreeAsync(Guid stationId) => Task.FromResult<object?>(null);
+    public Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId) => Task.FromResult<StationComponentTreeDto?>(null);
+    public Task<InventoryFilterResultDto> FilterInventoryAsync(InventoryFilterRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new InventoryFilterResultDto());
 }
 
 public class FakeMaintenanceTicketRepository : IMaintenanceTicketRepository

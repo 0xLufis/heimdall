@@ -12,9 +12,9 @@ namespace App.Backend.Api.Controllers.V1;
 [Authorize]
 public class ReportExportController : ControllerBase
 {
-    private readonly ReportExportService _exportService;
+    private readonly IReportExportService _exportService;
 
-    public ReportExportController(ReportExportService exportService)
+    public ReportExportController(IReportExportService exportService)
     {
         _exportService = exportService;
     }

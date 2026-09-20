@@ -15,8 +15,8 @@ layout {
                 pane name="Backend API (.NET 10 Hot-Reload)" command="bash" {
                     args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet watch --project backend/App.Backend.Api run"
                 }
-                pane name="Local Agent (.NET 10 Hot-Reload)" command="bash" {
-                    args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet watch --project agent/App.Agent.Daemon run"
+                pane name="Industrial Agent" command="bash" {
+                    args "-c" "export DOTNET_ROOT=\"$HOME/.dotnet\" && export PATH=\"$HOME/.dotnet:$PATH\" && if docker ps --format '{{.Names}}' 2>/dev/null | grep -q 'heimdall_windows_agent'; then echo 'Windows Edge Agent container is active. Streaming logs...'; docker compose --profile windows logs -f windows-agent; else dotnet watch --project agent/App.Agent.Daemon run; fi"
                 }
             }
             pane split_direction="horizontal" {

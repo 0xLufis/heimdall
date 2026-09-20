@@ -23,13 +23,12 @@ public class ControllerRepository : IControllerRepository
     public async Task<List<ClientPc>> GetAllAsync()
     {
         return await _context.ClientPcs
+            .AsSplitQuery()
             .Include(c => c.ControlledMachines)
             .Include(c => c.ResponsibleTeams)
             .Include(c => c.InventoryItems)
                 .ThenInclude(i => i.Children)
                     .ThenInclude(c => c.Children)
-                        .ThenInclude(c => c.Children)
-                            .ThenInclude(c => c.Children)
             .ToListAsync();
     }
 
@@ -225,6 +224,7 @@ public class ControllerRepository : IControllerRepository
     public async Task<DiagnosticSnapshot> CreateDiagnosticSnapshotAsync(Guid clientPcId, string userId, string? userName, string? orgId)
     {
         var pc = await _context.ClientPcs
+            .AsSplitQuery()
             .Include(c => c.ControlledMachines)
             .Include(c => c.ResponsibleTeams)
             .Include(c => c.InventoryItems)

@@ -27,9 +27,17 @@ class MockCmiEngine:
 
         self.cmi = self.pc.get('cmiHardware', {})
 
+    FORBIDDEN_METACHARED = set(";&|`$><\n\r")
+    ALLOWED_WMIC_ALIASES = {'os', 'cpu', 'processor', 'memorychip', 'physicalmemory', 'logicaldisk', 'disk', 'bios', 'computersystem', 'cs', 'nicconfig', 'networkadapterconfiguration'}
+    ALLOWED_CIM_CLASSES = {'win32_operatingsystem', 'win32_processor', 'win32_physicalmemory', 'win32_logicaldisk', 'win32_bios', 'win32_computersystem', 'win32_networkadapterconfiguration'}
+
     def execute(self, cmd_string: str) -> str:
-        """Executes a wmic command or Get-CimInstance query string and returns formatted text."""
+        """Executes a validated wmic command or Get-CimInstance query string and returns formatted text."""
         cmd = cmd_string.strip()
+        
+        # Security validation: reject shell chaining characters
+        if any(c in self.FORBIDDEN_METACHARED for c in cmd):
+            return "Security violation: Shell chaining characters or metacharacters not permitted in CMI queries."
         
         # Handle PowerShell syntax: Get-CimInstance Win32_* or Get-WmiObject Win32_*
         if re.search(r'(Get-CimInstance|Get-WmiObject)\s+Win32_', cmd, re.IGNORECASE):

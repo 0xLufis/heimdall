@@ -54,16 +54,22 @@ watch(
       keyAlgorithm.value = 'RSA-2048'
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
-const sampleOus = ref<string[]>([
-  'OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp',
-  'OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp',
-  'OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp',
-  'OU=Milling,OU=VLAN30-Machining,DC=factory,DC=corp',
-  'OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp',
-])
+const { enableDevFeatures } = useFeatureFlags()
+
+const sampleOus = ref<string[]>(
+  enableDevFeatures.value
+    ? [
+        'OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp',
+        'OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp',
+        'OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp',
+        'OU=Milling,OU=VLAN30-Machining,DC=factory,DC=corp',
+        'OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp',
+      ]
+    : []
+)
 
 onMounted(async () => {
   try {
@@ -138,7 +144,8 @@ async function saveRule() {
           {{ ruleToEdit ? 'Edit Active Directory Certificate Enrollment Policy' : 'Configure Active Directory Certificate Enrollment Policy' }}
         </DialogTitle>
         <DialogDescription class="text-xs text-slate-400">
-          Automatically enroll and issue mTLS client certificates whenever hosts in this Active Directory OU are discovered.
+          Automatically enroll and issue mTLS client certificates whenever hosts in this Active Directory OU are
+          discovered.
         </DialogDescription>
       </DialogHeader>
 
@@ -149,19 +156,11 @@ async function saveRule() {
 
         <div>
           <label class="text-xs font-medium text-slate-300">Active Directory OU Path (Distinguished Name)</label>
-          <Input
-            v-model="ouPath"
-            placeholder="e.g. OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp"
-            class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
-          />
+          <Input v-model="ouPath" placeholder="e.g. OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp"
+            class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono" />
           <div class="mt-2 flex flex-wrap gap-1.5">
-            <button
-              v-for="p in sampleOus"
-              :key="p"
-              type="button"
-              @click="selectSampleOu(p)"
-              class="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-            >
+            <button v-for="p in sampleOus" :key="p" type="button" @click="selectSampleOu(p)"
+              class="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">
               {{ p.split(',')[0].replace('OU=', '') }} ({{ p.split(',')[1]?.replace('OU=', '') }})
             </button>
           </div>
@@ -169,31 +168,21 @@ async function saveRule() {
 
         <div>
           <label class="text-xs font-medium text-slate-300">Certificate Profile Name</label>
-          <Input
-            v-model="profileName"
-            placeholder="e.g. High-Assurance-Robotics-mTLS"
-            class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm"
-          />
+          <Input v-model="profileName" placeholder="e.g. High-Assurance-Robotics-mTLS"
+            class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-xs font-medium text-slate-300">Validity (Years)</label>
-            <Input
-              type="number"
-              min="1"
-              max="10"
-              v-model.number="validityYears"
-              class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm"
-            />
+            <Input type="number" min="1" max="10" v-model.number="validityYears"
+              class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
           </div>
 
           <div>
             <label class="text-xs font-medium text-slate-300">Cryptographic Algorithm</label>
-            <select
-              v-model="keyAlgorithm"
-              class="mt-1 flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-xs text-slate-200"
-            >
+            <select v-model="keyAlgorithm"
+              class="mt-1 flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-xs text-slate-200">
               <option value="RSA-2048">RSA-2048 (Standard)</option>
               <option value="RSA-4096">RSA-4096 (High-Security)</option>
               <option value="ECDSA-P256">ECDSA-P256 (NIST Curve)</option>
@@ -205,13 +194,11 @@ async function saveRule() {
         <div class="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950/50">
           <div>
             <div class="text-xs font-medium text-slate-200">Auto-Enroll Upon Discovery</div>
-            <div class="text-[11px] text-slate-400">Issue certificate automatically when edge host imports from this OU</div>
+            <div class="text-[11px] text-slate-400">Issue certificate automatically when edge host imports from this OU
+            </div>
           </div>
-          <input
-            type="checkbox"
-            v-model="autoEnroll"
-            class="h-4 w-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500"
-          />
+          <input type="checkbox" v-model="autoEnroll"
+            class="h-4 w-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" />
         </div>
       </div>
 
@@ -219,12 +206,8 @@ async function saveRule() {
         <Button variant="ghost" size="sm" @click="emit('close')" class="text-slate-400">
           Dismiss
         </Button>
-        <Button
-          size="sm"
-          class="bg-indigo-600 hover:bg-indigo-500 text-white"
-          :disabled="saving || !ouPath || !profileName"
-          @click="saveRule"
-        >
+        <Button size="sm" class="bg-indigo-600 hover:bg-indigo-500 text-white"
+          :disabled="saving || !ouPath || !profileName" @click="saveRule">
           <CheckIcon class="h-4 w-4 mr-1.5" />
           {{ saving ? 'Saving Rule...' : 'Commit Policy Rule' }}
         </Button>

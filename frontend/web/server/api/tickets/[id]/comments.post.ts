@@ -1,5 +1,6 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { addCommentToTicket, findTicketById } from '../../../utils/ticketsStore'
+import { featureFlags } from '../../../utils/featureFlags'
 
 export default defineEventHandler(async (event) => {
   const id = event.context.params?.id
@@ -18,11 +19,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: `Ticket '${id}' not found` })
   }
 
+  const sessionUser = (event.context as any)?.auth?.user
+  const authorUserId = body.authorUserId || sessionUser?.id || (featureFlags.enableDevFeatures ? 'usr-tech-01' : 'anonymous')
+  const authorName = body.authorName || sessionUser?.name || (featureFlags.enableDevFeatures ? 'Technician User' : 'Anonymous User')
+
   const newComment = {
     id: `c-${Date.now()}`,
     ticketId: ticket.id,
-    authorUserId: body.authorUserId || 'usr-tech-01',
-    authorName: body.authorName || 'Technician User',
+    authorUserId,
+    authorName,
     content: body.content ?? '',
     createdAt: new Date().toISOString(),
     ...(body.transition ? { transition: body.transition } : {}),

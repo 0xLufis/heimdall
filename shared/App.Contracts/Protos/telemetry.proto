@@ -108,3 +108,29 @@ message TelemetryDataBatch {
   repeated TelemetryDataPoint points = 4;
   int32 compression_level = 5;       // 0 = uncompressed, 3 = zstd-3, 9 = gzip
 }
+
+// High-performance container for Beckhoff TwinCAT ADS PLC memory blocks and structured variables
+message AdsPlcMemoryBlock {
+  string ams_net_id = 1;             // e.g. "5.80.201.44.1.1"
+  uint32 ams_port = 2;               // e.g. 851 (TwinCAT 3 PLC Runtime 1)
+  uint32 index_group = 3;            // e.g. 0x4020 (PLC memory %M), 0x4040 (%I), 0xF003 (symbol handle)
+  uint32 index_offset = 4;           // Byte offset within group
+  uint32 length = 5;                 // Byte count
+  bytes raw_memory = 6;              // Raw binary memory read from PLC
+  google.protobuf.Timestamp timestamp = 7;
+  string symbol_name = 8;            // e.g. "MAIN.Station1.Telemetry._data"
+  string plc_type_name = 9;          // e.g. "ST_Station1TelemetryData"
+  QualityCode quality = 10;
+  TelemetryValue structured_value = 11; // Strongly typed unmarshalled data
+  map<string, string> metadata = 12;
+}
+
+// Batch container for PLC memory blocks or ADS symbol observations
+message AdsPlcMemoryBatch {
+  string machine_identifier = 1;
+  string hostname = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  repeated AdsPlcMemoryBlock blocks = 4;
+  int32 compression_level = 5;       // 0 = uncompressed, 3 = zstd-3, 9 = gzip
+}
+

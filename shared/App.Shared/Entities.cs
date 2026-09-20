@@ -1082,3 +1082,165 @@ public class DiagnosticSnapshot
     [Column("organization_id")]
     public string? OrganizationId { get; set; }
 }
+
+/// <summary>
+/// Machine Group entity representing line assignments, functional groups, and plant clusters.
+/// Replaces in-memory shadow store.
+/// </summary>
+[Table("machine_groups", Schema = "backend")]
+public class MachineGroup
+{
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    [MaxLength(255)]
+    [Column("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [MaxLength(1000)]
+    [Column("description")]
+    public string? Description { get; set; }
+
+    [Column("parent_id")]
+    public Guid? ParentId { get; set; }
+
+    [MaxLength(64)]
+    [Column("color")]
+    public string? Color { get; set; }
+
+    [MaxLength(64)]
+    [Column("icon")]
+    public string? Icon { get; set; }
+
+    [MaxLength(128)]
+    [Column("lead_engineer_id")]
+    public string? LeadEngineerId { get; set; }
+
+    [MaxLength(255)]
+    [Column("lead_engineer_name")]
+    public string? LeadEngineerName { get; set; }
+
+    /// <summary>JSON array of machine IDs belonging to this group</summary>
+    [Column("machine_ids_json")]
+    public string MachineIdsJson { get; set; } = "[]";
+
+    /// <summary>JSON array of machine types</summary>
+    [Column("machine_types_json")]
+    public string? MachineTypesJson { get; set; }
+
+    [Column("created_at")]
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    [Column("updated_at")]
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Technician assignment and routing rule entity.
+/// Replaces in-memory shadow store.
+/// </summary>
+[Table("technician_rules", Schema = "backend")]
+public class TechnicianRule
+{
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    [MaxLength(255)]
+    [Column("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(128)]
+    [Column("technician_id")]
+    public string TechnicianId { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(255)]
+    [Column("technician_name")]
+    public string TechnicianName { get; set; } = string.Empty;
+
+    [MaxLength(255)]
+    [Column("technician_email")]
+    public string? TechnicianEmail { get; set; }
+
+    [Required]
+    [MaxLength(64)]
+    [Column("scope_type")]
+    public string ScopeType { get; set; } = "technology";
+
+    [Required]
+    [MaxLength(128)]
+    [Column("target_id")]
+    public string TargetId { get; set; } = string.Empty;
+
+    [MaxLength(128)]
+    [Column("category_filter")]
+    public string? CategoryFilter { get; set; }
+
+    [MaxLength(128)]
+    [Column("backup_technician_id")]
+    public string? BackupTechnicianId { get; set; }
+
+    [MaxLength(255)]
+    [Column("backup_technician_name")]
+    public string? BackupTechnicianName { get; set; }
+
+    [MaxLength(64)]
+    [Column("assigned_by_role")]
+    public string? AssignedByRole { get; set; }
+
+    [Column("created_at")]
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Shift absence record for technician availability tracking.
+/// Replaces in-memory shadow store.
+/// </summary>
+[Table("shift_absences", Schema = "backend")]
+public class ShiftAbsence
+{
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    [MaxLength(128)]
+    [Column("technician_id")]
+    public string TechnicianId { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(255)]
+    [Column("technician_name")]
+    public string TechnicianName { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(64)]
+    [Column("reason")]
+    public string Reason { get; set; } = "Sick";
+
+    [Column("start_date")]
+    public DateTimeOffset StartDate { get; set; }
+
+    [Column("end_date")]
+    public DateTimeOffset EndDate { get; set; }
+
+    [MaxLength(255)]
+    [Column("marked_by")]
+    public string MarkedBy { get; set; } = "System";
+
+    [MaxLength(128)]
+    [Column("backup_technician_id")]
+    public string? BackupTechnicianId { get; set; }
+
+    [MaxLength(255)]
+    [Column("backup_technician_name")]
+    public string? BackupTechnicianName { get; set; }
+
+    [Column("active")]
+    public bool Active { get; set; } = true;
+}

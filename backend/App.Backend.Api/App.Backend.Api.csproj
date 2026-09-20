@@ -11,8 +11,7 @@
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
-    <PackageReference Include="Grpc.AspNetCore" Version="2.83.0" />
-    <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.83.0" />
+    <PackageReference Include="MQTTnet.Server" Version="5.2.0.1603" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -24,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\shared\App.Contracts\App.Contracts.csproj" />
     <ProjectReference Include="..\..\shared\App.Shared\App.Shared.csproj" />
     <ProjectReference Include="..\App.Infrastructure\App.Infrastructure.csproj" />
   </ItemGroup>

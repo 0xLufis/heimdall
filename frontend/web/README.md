@@ -67,6 +67,6 @@ To populate the system with mock data for testing:
 3. Login at `/auth/login` using `admin` / `admin`.
 
 ## Testing
-The system includes automated tests for auth logic:
-- `npm test`: Runs Vitest suite for auth utilities and API routes.
-- `seed-admin`: Integration test for data consistency and role mapping.
+The frontend includes comprehensive automated tests powered by Vitest (39 test files, 298 unit tests):
+- `bun run test` or `bun run test:unit`: Runs full Vitest suite (39 suites, 298 tests) covering composables, feature flag gating, drag-and-drop mechanics, OmniSearch, auth sessions, and pages.
+- `bun run test:e2e`: Runs Playwright end-to-end browser tests.

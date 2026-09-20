@@ -3,25 +3,39 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using App.Backend.Api.Services;
+using App.Contracts.Security;
 using App.Shared.Data;
 
 namespace App.Backend.Api.Security;
+
+public class CachedAuthSession
+{
+    public string UserId { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Role { get; set; }
+    public string? OrgId { get; set; }
+}
 
 public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
 {
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _environment;
+    private readonly ICacheService? _cacheService;
 
     public BetterAuthHandler(
         IOptionsMonitor<BetterAuthOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
         IDbContextFactory<AppDbContext> dbContextFactory,
-        Microsoft.AspNetCore.Hosting.IWebHostEnvironment environment)
+        Microsoft.AspNetCore.Hosting.IWebHostEnvironment environment,
+        ICacheService? cacheService = null)
         : base(options, logger, encoder)
     {
         _dbContextFactory = dbContextFactory;
         _environment = environment;
+        _cacheService = cacheService;
     }
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -49,12 +63,12 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
                     new(System.Security.Claims.ClaimTypes.NameIdentifier, "dev-admin-id"),
                     new(System.Security.Claims.ClaimTypes.Email, "admin@heimdall.local"),
                     new(System.Security.Claims.ClaimTypes.Name, "Dev Administrator"),
-                    new(System.Security.Claims.ClaimTypes.Role, "admin"),
-                    new(System.Security.Claims.ClaimTypes.Role, "system_admin"),
-                    new(System.Security.Claims.ClaimTypes.Role, "technician"),
-                    new(System.Security.Claims.ClaimTypes.Role, "engineer"),
-                    new(System.Security.Claims.ClaimTypes.Role, "lead_engineer"),
-                    new(System.Security.Claims.ClaimTypes.Role, "controls_engineer"),
+                    new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.Admin),
+                    new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.SystemAdmin),
+                    new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.Technician),
+                    new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.Engineer),
+                    new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.LeadEngineer),
+                    new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.ControlsEngineer),
                     new("OrgId", "Heimdall Root")
                 };
                 var devIdentity = new System.Security.Claims.ClaimsIdentity(devClaims, Scheme.Name);
@@ -75,19 +89,50 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
 
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            // 2. Query the session table in PostgreSQL
-            var session = await dbContext.AuthSessions
-                .Include(s => s.User)
-                .Where(s => s.Token == token && s.ExpiresAt > DateTimeOffset.UtcNow)
-                .Select(s => new {
-                    UserId = s.UserId,
-                    Email = s.User.Email,
-                    Name = s.User.Name,
-                    Role = s.User.Role,
-                    OrgId = s.ActiveOrganizationId
-                })
-                .FirstOrDefaultAsync();
+            // 2. Check cache first to prevent per-request database hits (MID-03)
+            var cacheKey = $"better-auth:session:{token}";
+            CachedAuthSession? session = null;
+
+            if (_cacheService != null)
+            {
+                try
+                {
+                    session = await _cacheService.GetAsync<CachedAuthSession>(cacheKey);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to read session from cache, falling back to DB.");
+                }
+            }
+
+            if (session == null)
+            {
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                session = await dbContext.AuthSessions
+                    .Include(s => s.User)
+                    .Where(s => s.Token == token && s.ExpiresAt > DateTimeOffset.UtcNow)
+                    .Select(s => new CachedAuthSession
+                    {
+                        UserId = s.UserId,
+                        Email = s.User.Email,
+                        Name = s.User.Name,
+                        Role = s.User.Role,
+                        OrgId = s.ActiveOrganizationId
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (session != null && _cacheService != null)
+                {
+                    try
+                    {
+                        await _cacheService.SetAsync(cacheKey, session, TimeSpan.FromMinutes(5));
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "Failed to write session to cache.");
+                    }
+                }
+            }
 
             if (session == null)
             {
@@ -98,12 +143,12 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
                         new(System.Security.Claims.ClaimTypes.NameIdentifier, "dev-admin-id"),
                         new(System.Security.Claims.ClaimTypes.Email, "admin@heimdall.local"),
                         new(System.Security.Claims.ClaimTypes.Name, "Dev Administrator"),
-                        new(System.Security.Claims.ClaimTypes.Role, "admin"),
-                        new(System.Security.Claims.ClaimTypes.Role, "system_admin"),
-                        new(System.Security.Claims.ClaimTypes.Role, "technician"),
-                        new(System.Security.Claims.ClaimTypes.Role, "engineer"),
-                        new(System.Security.Claims.ClaimTypes.Role, "lead_engineer"),
-                        new(System.Security.Claims.ClaimTypes.Role, "controls_engineer"),
+                        new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.Admin),
+                        new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.SystemAdmin),
+                        new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.Technician),
+                        new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.Engineer),
+                        new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.LeadEngineer),
+                        new(System.Security.Claims.ClaimTypes.Role, HeimdallRoles.ControlsEngineer),
                         new("OrgId", "Heimdall Root")
                     };
                     var devIdentity = new System.Security.Claims.ClaimsIdentity(devClaims, Scheme.Name);
@@ -120,7 +165,7 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
                 new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, session.UserId),
                 new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, session.Email),
                 new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, session.Name),
-                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, session.Role ?? "user")
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, session.Role ?? HeimdallRoles.User)
             };
 
             if (!string.IsNullOrEmpty(session.OrgId))

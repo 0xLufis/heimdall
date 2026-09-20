@@ -53,8 +53,28 @@ is_running() {
         if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
             return 0
         fi
+        rm -f "$pid_file"
     fi
     return 1
+}
+
+kill_pid_tree() {
+    local parent_pid="$1"
+    if [ -z "$parent_pid" ]; then return; fi
+    local child_pids
+    child_pids=$(pgrep -P "$parent_pid" 2>/dev/null || true)
+    for cpid in $child_pids; do
+        kill_pid_tree "$cpid"
+    done
+    kill "$parent_pid" 2>/dev/null || true
+}
+
+free_port() {
+    local port="$1"
+    if [ -z "$port" ]; then return; fi
+    if command -v fuser >/dev/null 2>&1; then
+        fuser -k "${port}/tcp" >/dev/null 2>&1 || true
+    fi
 }
 
 check_tcp() {
@@ -198,16 +218,20 @@ start_services() {
     ensure_database
 
     # 2. Backend API (.NET 10)
-    if ! check_tcp 127.0.0.1 5099; then
+    if ! is_running "$PID_DIR/backend.pid" && ! check_tcp 127.0.0.1 5099; then
         echo -e "${COLOR_BLUE}>> Starting Backend REST API & gRPC Ingestion with hot-reload...${COLOR_RESET}"
-        (cd backend/App.Backend.Api && nohup dotnet watch run </dev/null > "$LOG_DIR/backend.log" 2>&1 & echo $! > "$PID_DIR/backend.pid")
+        setsid dotnet watch --project backend/App.Backend.Api run </dev/null > "$LOG_DIR/backend.log" 2>&1 &
+        local b_pid=$!
+        echo "$b_pid" > "$PID_DIR/backend.pid"
         ln -sf "$LOG_DIR/backend.log" /tmp/heimdall-backend.log 2>/dev/null || true
     fi
 
     # 3. Nuxt 4 Web Frontend
-    if ! check_tcp 127.0.0.1 3000; then
+    if ! is_running "$PID_DIR/frontend.pid" && ! check_tcp 127.0.0.1 3000; then
         echo -e "${COLOR_BLUE}>> Starting Nuxt 4 Web Frontend on http://localhost:3000 (Vite HMR)...${COLOR_RESET}"
-        (cd "$SCRIPT_DIR/frontend/web" && nohup bun run dev </dev/null > "$LOG_DIR/frontend.log" 2>&1 & echo $! > "$PID_DIR/frontend.pid")
+        setsid bun run --cwd "$SCRIPT_DIR/frontend/web" dev </dev/null > "$LOG_DIR/frontend.log" 2>&1 &
+        local f_pid=$!
+        echo "$f_pid" > "$PID_DIR/frontend.pid"
         ln -sf "$LOG_DIR/frontend.log" /tmp/heimdall-nuxt.log 2>/dev/null || true
     fi
 
@@ -217,18 +241,21 @@ start_services() {
         windows_start
     else
         # Host Linux Edge Agent Daemon fallback
-        if ! is_running "$PID_DIR/agent.pid"; then
+        if ! is_running "$PID_DIR/agent.pid" && ! check_tcp 127.0.0.1 5998; then
             echo -e "${COLOR_BLUE}>> Starting Host Linux Edge Agent Daemon with hot-reload...${COLOR_RESET}"
-            (cd agent/App.Agent.Daemon && nohup dotnet watch run </dev/null > "$LOG_DIR/agent.log" 2>&1 & echo $! > "$PID_DIR/agent.pid")
+            setsid dotnet watch --project agent/App.Agent.Daemon run </dev/null > "$LOG_DIR/agent.log" 2>&1 &
+            local a_pid=$!
+            echo "$a_pid" > "$PID_DIR/agent.pid"
             ln -sf "$LOG_DIR/agent.log" /tmp/heimdall-agent.log 2>/dev/null || true
         fi
     fi
 
     # 5. Industrial Edge Fleet Simulator
-    if ! is_running "$PID_DIR/simulator.pid"; then
+    if ! is_running "$PID_DIR/simulator.pid" && ! check_tcp 127.0.0.1 5055; then
         echo -e "${COLOR_BLUE}>> Starting Edge Fleet Simulator (:5055)...${COLOR_RESET}"
-        nohup "$PYTHON_BIN" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
-        echo $! > "$PID_DIR/simulator.pid"
+        setsid "$PYTHON_BIN" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
+        local s_pid=$!
+        echo "$s_pid" > "$PID_DIR/simulator.pid"
         ln -sf "$LOG_DIR/simulator.log" /tmp/heimdall-simulator.log 2>/dev/null || true
     fi
 
@@ -243,33 +270,58 @@ stop_services() {
 
     case "$target" in
         backend)
-            [ -f "$PID_DIR/backend.pid" ] && kill "$(cat "$PID_DIR/backend.pid" 2>/dev/null)" 2>/dev/null || true
+            if [ -f "$PID_DIR/backend.pid" ]; then
+                local pid
+                pid=$(cat "$PID_DIR/backend.pid" 2>/dev/null || true)
+                kill_pid_tree "$pid"
+                rm -f "$PID_DIR/backend.pid"
+            fi
             pkill -f "dotnet watch.*backend/App.Backend.Api" 2>/dev/null || true
             pkill -f "App.Backend.Api" 2>/dev/null || true
-            rm -f "$PID_DIR/backend.pid"
+            pkill -f "dotnet exec.*App.Backend.Api" 2>/dev/null || true
+            free_port 5099
+            free_port 5001
             echo "Backend API stopped."
             ;;
         frontend)
-            [ -f "$PID_DIR/frontend.pid" ] && kill "$(cat "$PID_DIR/frontend.pid" 2>/dev/null)" 2>/dev/null || true
-            pkill -f "bun.*frontend/web" 2>/dev/null || true
-            pkill -f "nuxt/bin/nuxt" 2>/dev/null || true
-            rm -f "$PID_DIR/frontend.pid"
+            if [ -f "$PID_DIR/frontend.pid" ]; then
+                local pid
+                pid=$(cat "$PID_DIR/frontend.pid" 2>/dev/null || true)
+                kill_pid_tree "$pid"
+                rm -f "$PID_DIR/frontend.pid"
+            fi
+            pkill -f "bun.*run.*dev" 2>/dev/null || true
+            pkill -f "nuxt dev" 2>/dev/null || true
+            pkill -f "@nuxt/cli" 2>/dev/null || true
+            pkill -f "node.*nuxt" 2>/dev/null || true
+            free_port 3000
             echo "Nuxt Frontend stopped."
             ;;
         agent)
             if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "heimdall_windows_agent"; then
                 windows_stop
             fi
-            [ -f "$PID_DIR/agent.pid" ] && kill "$(cat "$PID_DIR/agent.pid" 2>/dev/null)" 2>/dev/null || true
+            if [ -f "$PID_DIR/agent.pid" ]; then
+                local pid
+                pid=$(cat "$PID_DIR/agent.pid" 2>/dev/null || true)
+                kill_pid_tree "$pid"
+                rm -f "$PID_DIR/agent.pid"
+            fi
             pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
             pkill -f "App.Agent.Daemon" 2>/dev/null || true
-            rm -f "$PID_DIR/agent.pid"
+            pkill -f "dotnet exec.*App.Agent.Daemon" 2>/dev/null || true
+            free_port 5998
             echo "Agent Daemon stopped."
             ;;
         simulator)
-            [ -f "$PID_DIR/simulator.pid" ] && kill "$(cat "$PID_DIR/simulator.pid" 2>/dev/null)" 2>/dev/null || true
+            if [ -f "$PID_DIR/simulator.pid" ]; then
+                local pid
+                pid=$(cat "$PID_DIR/simulator.pid" 2>/dev/null || true)
+                kill_pid_tree "$pid"
+                rm -f "$PID_DIR/simulator.pid"
+            fi
             pkill -f "fleet_simulator.py" 2>/dev/null || true
-            rm -f "$PID_DIR/simulator.pid"
+            free_port 5055
             echo "Fleet Simulator stopped."
             ;;
         windows|windows-agent|winagent)
@@ -292,9 +344,7 @@ stop_services() {
                 if [ -f "$pid_file" ]; then
                     local pid
                     pid=$(cat "$pid_file" 2>/dev/null || true)
-                    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-                        kill "$pid" 2>/dev/null || true
-                    fi
+                    kill_pid_tree "$pid"
                     rm -f "$pid_file"
                 fi
             done
@@ -302,13 +352,26 @@ stop_services() {
             # Stop dev processes
             pkill -f "dotnet watch.*backend/App.Backend.Api" 2>/dev/null || true
             pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
-            pkill -f "dotnet run --project backend/App.Backend.Api" 2>/dev/null || true
-            pkill -f "dotnet run --project agent/App.Agent.Daemon" 2>/dev/null || true
-            pkill -f "bun.*frontend/web" 2>/dev/null || true
-            pkill -f "nuxt/bin/nuxt" 2>/dev/null || true
+            pkill -f "dotnet run.*App.Backend.Api" 2>/dev/null || true
+            pkill -f "dotnet run.*App.Agent.Daemon" 2>/dev/null || true
+            pkill -f "dotnet exec.*App.Backend.Api" 2>/dev/null || true
+            pkill -f "dotnet exec.*App.Agent.Daemon" 2>/dev/null || true
+            pkill -f "App.Backend.Api" 2>/dev/null || true
+            pkill -f "App.Agent.Daemon" 2>/dev/null || true
+            pkill -f "bun.*run.*dev" 2>/dev/null || true
+            pkill -f "nuxt dev" 2>/dev/null || true
+            pkill -f "@nuxt/cli" 2>/dev/null || true
+            pkill -f "node.*nuxt" 2>/dev/null || true
             pkill -f "fleet_simulator.py" 2>/dev/null || true
             pkill -f "dev_manager.py" 2>/dev/null || true
             pkill -f "tools/tui.py" 2>/dev/null || true
+
+            # Free ports
+            free_port 5099
+            free_port 5001
+            free_port 3000
+            free_port 5055
+            free_port 5998
 
             # Stop Windows agent container if running
             docker compose --profile windows stop windows-agent 2>/dev/null || true
@@ -332,7 +395,15 @@ clean_environment() {
     pkill -9 -f "dotnet exec" 2>/dev/null || true
     pkill -9 -f "dotnet run" 2>/dev/null || true
     pkill -9 -f "dotnet watch" 2>/dev/null || true
+    pkill -9 -f "bun.*run.*dev" 2>/dev/null || true
+    pkill -9 -f "nuxt dev" 2>/dev/null || true
+    pkill -9 -f "@nuxt/cli" 2>/dev/null || true
     pkill -9 -f "fleet_simulator.py" 2>/dev/null || true
+    free_port 5099
+    free_port 5001
+    free_port 3000
+    free_port 5055
+    free_port 5998
     if command -v zellij >/dev/null 2>&1; then
         zellij delete-session "$SESSION_NAME" 2>/dev/null || true
     fi
@@ -357,7 +428,9 @@ restart_service() {
             else
                 stop_services agent
                 sleep 1
-                (cd agent/App.Agent.Daemon && nohup dotnet watch run </dev/null > "$LOG_DIR/agent.log" 2>&1 & echo $! > "$PID_DIR/agent.pid")
+                setsid dotnet watch --project agent/App.Agent.Daemon run </dev/null > "$LOG_DIR/agent.log" 2>&1 &
+                local a_pid=$!
+                echo "$a_pid" > "$PID_DIR/agent.pid"
                 echo -e "${COLOR_GREEN}Restarted Host Linux Agent.${COLOR_RESET}"
             fi
             ;;
@@ -366,14 +439,19 @@ restart_service() {
             sleep 1
             case "$target" in
                 backend)
-                    (cd backend/App.Backend.Api && nohup dotnet watch run </dev/null > "$LOG_DIR/backend.log" 2>&1 & echo $! > "$PID_DIR/backend.pid")
+                    setsid dotnet watch --project backend/App.Backend.Api run </dev/null > "$LOG_DIR/backend.log" 2>&1 &
+                    local b_pid=$!
+                    echo "$b_pid" > "$PID_DIR/backend.pid"
                     ;;
                 frontend)
-                    (cd "$SCRIPT_DIR/frontend/web" && nohup bun run dev </dev/null > "$LOG_DIR/frontend.log" 2>&1 & echo $! > "$PID_DIR/frontend.pid")
+                    setsid bun run --cwd "$SCRIPT_DIR/frontend/web" dev </dev/null > "$LOG_DIR/frontend.log" 2>&1 &
+                    local f_pid=$!
+                    echo "$f_pid" > "$PID_DIR/frontend.pid"
                     ;;
                 simulator)
-                    nohup "$PYTHON_BIN" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
-                    echo $! > "$PID_DIR/simulator.pid"
+                    setsid "$PYTHON_BIN" -u simulators/fleet/fleet_simulator.py </dev/null > "$LOG_DIR/simulator.log" 2>&1 &
+                    local s_pid=$!
+                    echo "$s_pid" > "$PID_DIR/simulator.pid"
                     ln -sf "$LOG_DIR/simulator.log" /tmp/heimdall-simulator.log 2>/dev/null || true
                     ;;
                 db|database)
@@ -489,18 +567,29 @@ start_dev() {
 
     # If stdin/stdout is not a TTY (CI, pipes, background jobs), force daemon mode
     if ! [ -t 0 ] || ! [ -t 1 ]; then
-        mode="daemon"
+        if [ "$mode" != "zellij" ]; then
+            mode="daemon"
+        fi
     fi
-
-    # 1. Start core development services
-    start_services "$with_windows"
 
     # 2. Launch Interface Mode
     case "$mode" in
         zellij)
+            echo -e "${COLOR_CYAN}Preparing Zellij workspace mode...${COLOR_RESET}"
+            # Ensure background daemons aren't occupying Zellij pane ports
+            stop_services backend
+            stop_services frontend
+            stop_services simulator
+            ensure_database
+            if [ "$with_windows" = "true" ]; then
+                windows_start
+            else
+                stop_services agent
+            fi
             start_zellij
             ;;
         daemon)
+            start_services "$with_windows"
             echo ""
             echo -e "${COLOR_GREEN}${COLOR_BOLD}Heimdall is running in background daemon mode.${COLOR_RESET}"
             echo -e "Use ${COLOR_CYAN}./run_dev.sh tui${COLOR_RESET} to launch interactive TUI dashboard."
@@ -508,6 +597,7 @@ start_dev() {
             echo -e "Use ${COLOR_CYAN}./run_dev.sh stop${COLOR_RESET} to stop all services."
             ;;
         tui|*)
+            start_services "$with_windows"
             echo -e "${COLOR_CYAN}Launching interactive Heimdall TUI (staying alive by default)...${COLOR_RESET}"
             sleep 0.8
             launch_tui
@@ -640,7 +730,7 @@ case "$CMD" in
         docker compose "$@"
         ;;
     zellij)
-        start_zellij
+        start_dev --zellij "$@"
         ;;
     daemon)
         start_dev --daemon "$@"

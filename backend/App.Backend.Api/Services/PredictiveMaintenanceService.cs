@@ -8,7 +8,7 @@ namespace App.Backend.Api.Services;
 /// Service providing predictive maintenance analytics, statistical Z-score anomaly detection,
 /// MTBF/MTTR modeling, and fleet-wide KPI aggregations.
 /// </summary>
-public class PredictiveMaintenanceService
+public class PredictiveMaintenanceService : IPredictiveMaintenanceService
 {
     private readonly IAssetRepository _assetRepository;
     private readonly IControllerRepository _controllerRepository;

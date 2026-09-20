@@ -17,15 +17,18 @@ public class ClientPcController : ControllerBase
     private readonly IControllerRepository _repository;
     private readonly ILogger<ClientPcController> _logger;
     private readonly ICacheService? _cache;
+    private readonly App.Contracts.Configuration.BackendFeatureFlags _featureFlags;
 
     public ClientPcController(
         IControllerRepository repository, 
         ILogger<ClientPcController> logger,
-        ICacheService? cache = null)
+        ICacheService? cache = null,
+        App.Contracts.Configuration.BackendFeatureFlags? featureFlags = null)
     {
         _repository = repository;
         _logger = logger;
         _cache = cache;
+        _featureFlags = featureFlags ?? new App.Contracts.Configuration.BackendFeatureFlags { EnableDevFeatures = true, EnableDebugFeatures = true };
     }
 
     [HttpGet]
@@ -223,6 +226,13 @@ public class ClientPcController : ControllerBase
     [HttpGet("{id}/snapshots/{snapshotId}/download")]
     public async Task<IActionResult> DownloadDiagnosticSnapshot(Guid id, Guid snapshotId)
     {
+        if (!_featureFlags.EnableDebugFeatures)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new App.Shared.Errors.ApiError(
+                App.Shared.Errors.ErrorCode.AccessDenied,
+                "Verbose diagnostic snapshot exports and dumps are disabled in production. Set HEIMDALL_ENABLE_DEBUG=true to enable."));
+        }
+
         var snapshot = await _repository.GetSnapshotByIdAsync(snapshotId);
         if (snapshot == null || snapshot.ClientPcId != id)
         {
@@ -233,5 +243,36 @@ public class ClientPcController : ControllerBase
         string filename = $"diagnostic_snapshot_{snapshot.Hostname}_{snapshot.CapturedAtUtc:yyyyMMdd_HHmmss}.json";
 
         return File(payloadBytes, "application/json", filename);
+    }
+
+    /// <summary>
+    /// Verbose raw telemetry and diagnostic dump export for industrial controllers.
+    /// Strictly guarded behind EnableDebugFeatures.
+    /// </summary>
+    [HttpGet("{id}/telemetry/raw-dump")]
+    public async Task<IActionResult> GetRawTelemetryDump(Guid id)
+    {
+        if (!_featureFlags.EnableDebugFeatures)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new App.Shared.Errors.ApiError(
+                App.Shared.Errors.ErrorCode.AccessDenied,
+                "Raw telemetry debug dumps are disabled in production. Set HEIMDALL_ENABLE_DEBUG=true to enable."));
+        }
+
+        var pc = await _repository.GetByIdAsync(id);
+        if (pc == null) return NotFound();
+
+        return Ok(new
+        {
+            pc.Id,
+            pc.Hostname,
+            pc.MacAddress,
+            pc.LastOnline,
+            ResourceAverages = pc.ResourceAverages,
+            FreeDiskSpace = pc.FreeDiskSpace,
+            SystemMetadata = pc.SystemMetadata,
+            InventoryCount = pc.InventoryItems.Count,
+            ControlledMachinesCount = pc.ControlledMachines.Count
+        });
     }
 }

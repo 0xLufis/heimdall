@@ -17,6 +17,20 @@ public class OrganizationController : ControllerBase
     {
         _context = context;
     }
+    [HttpGet]
+    public async Task<ActionResult> GetOrganizations()
+    {
+        var orgs = await _context.AuthOrganizations
+            .Select(o => new
+            {
+                id = o.Id,
+                name = o.Name,
+                slug = o.Id,
+                memberCount = o.Members.Count
+            })
+            .ToListAsync();
+        return Ok(new { success = true, organizations = orgs });
+    }
 
     [HttpGet("my-organizations")]
     [Authorize]

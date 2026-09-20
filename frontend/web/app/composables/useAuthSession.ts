@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { authClient } from '~/utils/auth-client'
+import { useFeatureFlags } from '~/composables/useFeatureFlags'
 
 export interface DemoPersona {
   id: string
@@ -147,6 +148,9 @@ const fallbackAdminRoleDelegation = ref({
 })
 
 export const useAuthSession = () => {
+  const { enableDevFeatures, enableDebugFeatures } = useFeatureFlags()
+  const isPersonaSimulationAllowed = computed(() => enableDevFeatures.value || enableDebugFeatures.value)
+
   const sessionQuery = authClient.useSession()
   const activeOrgQuery = authClient.useActiveOrganization()
   const isSwitchingOrg = ref(false)
@@ -157,6 +161,9 @@ export const useAuthSession = () => {
   const defaultTestUser = DEMO_PERSONAS[0]
 
   const getStoredPersona = (): DemoPersona | null => {
+    if (!enableDevFeatures.value && !enableDebugFeatures.value) {
+      return null
+    }
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         const raw = localStorage.getItem('heimdall_simulated_persona')
@@ -255,6 +262,10 @@ export const useAuthSession = () => {
   const canApproveLineStops = computed(() => isSystemAdmin.value || match(/plant_director/, /plant_engineering_manager/, /operative_planner/, /group_leader/))
 
   const setSimulatedPersona = (persona: DemoPersona | null) => {
+    if (persona && !enableDevFeatures.value && !enableDebugFeatures.value) {
+      console.warn('[useAuthSession] Persona simulation blocked: dev and debug features are disabled.')
+      return
+    }
     simulatedPersona.value = persona
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
@@ -334,6 +345,7 @@ export const useAuthSession = () => {
     simulatedPersona,
     setSimulatedPersona,
     clearSimulatedPersona,
+    isPersonaSimulationAllowed,
     adminRoleDelegation,
     setAdminRoleDelegation,
     canManageUsers,

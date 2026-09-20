@@ -22,7 +22,7 @@ public record OpcUaNodeDescriptor(
 /// Implements in-memory node address space, hierarchical browsing, typed tag reads/writes,
 /// real-time telemetry dispatching, and EquipmentInterconnect persistence.
 /// </summary>
-public class OpcUaGatewayService
+public class OpcUaGatewayService : IOpcUaGatewayService
 {
     private readonly ILogger<OpcUaGatewayService> _logger;
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;

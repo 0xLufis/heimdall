@@ -278,13 +278,12 @@ public class WindowsDockerAndIndustrialOtTests
     [Fact]
     public async Task MinimalOpcServer_HelHandshake_ReturnsAckfPacket()
     {
-        int testPort = 49994;
-        using var server = new MinimalOpcServer(port: testPort);
+        using var server = new MinimalOpcServer(port: 0);
         server.Start();
         Assert.True(server.IsListening);
 
         using var client = new System.Net.Sockets.TcpClient();
-        await client.ConnectAsync("127.0.0.1", testPort);
+        await client.ConnectAsync("127.0.0.1", server.Port);
         using var stream = client.GetStream();
 
         // Send HELF (32 bytes)
@@ -357,7 +356,7 @@ public class WindowsDockerAndIndustrialOtTests
             new App.Agent.Daemon.Reporting.IndustrialOtComponentContributor()
         };
 
-        var reporter = new SystemInfoReporter(logger, configService, injected);
+        var reporter = new SystemInfoReporter(logger, configService, null!, injected);
 
         // Ensure contributors list retained base contributors plus injected
         var contributors = reporter.Contributors;

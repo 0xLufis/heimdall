@@ -13,6 +13,7 @@ public interface IMaintenanceClient
     Task ReceiveNotification(string message);
     Task InventoryUpdated(string source, string hostname, string macAddress);
     Task TelemetryReceived(string hostname, string macAddress, object telemetrySummary);
+    Task PlcMemoryReceived(string hostname, string machineIdentifier, string amsNetId, string symbolName, object memoryData);
 }
 
 [Authorize(Policy = "MaintenanceOperations")]

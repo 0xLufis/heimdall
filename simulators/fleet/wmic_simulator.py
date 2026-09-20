@@ -20,11 +20,15 @@ from mock_cmi_runner import MockCmiEngine
 GRPC_HOST = os.environ.get('GRPC_HOST', 'localhost:5001')
 
 def run_command(command, hostname=None):
-    """Utility to run a shell command or mock CMI runner on Linux."""
+    """Utility to run a validated CMI command or mock CMI runner on Linux/Windows."""
     try:
-        # If on native Windows, execute real command
+        # If on native Windows, execute real command securely without shell=True
         if platform.system() == 'Windows':
-            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+            import shlex
+            args = shlex.split(command) if isinstance(command, str) else command
+            if not args or args[0].lower() not in ('wmic', 'powershell', 'pwsh'):
+                return f"Error: Command '{args[0] if args else ''}' not authorized."
+            result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=False)
             return result.stdout.strip()
             
         # On Linux / Docker, run realistic mock CMI engine

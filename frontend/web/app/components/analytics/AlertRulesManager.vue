@@ -7,6 +7,7 @@ import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '~/components/ui/dialog'
 import { useAlertRules } from '~/composables/useAlertRules'
 import { useTelemetryMetrics } from '~/composables/useTelemetryMetrics'
+import { useFeatureFlags } from '~/composables/useFeatureFlags'
 import type { AlertRule, AlertEvent, RuleCategory, RuleOperator, AlertSeverity } from '~/types/alertRules'
 import type { UserTelemetryMetric, CreateTelemetryMetricInput } from '~/types/telemetryMetrics'
 import {
@@ -60,6 +61,8 @@ const {
   deleteCustomMetric,
   fetchMetrics: fetchTelemetryMetrics
 } = useTelemetryMetrics()
+
+const { enableDebugFeatures, enableDevFeatures } = useFeatureFlags()
 
 onMounted(() => {
   fetchTelemetryMetrics()
@@ -286,18 +289,16 @@ const getSeverityClass = (sev: AlertSeverity) => {
     <!-- Summary Stat Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- 1. Active Alerts -->
-      <Card class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+      <Card
+        class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between text-xs text-slate-400">
           <span class="font-medium">Active Rule Alerts</span>
           <Bell class="w-4 h-4 text-amber-400" />
         </div>
         <div class="flex items-baseline gap-3 my-3">
           <span class="text-3xl font-bold font-mono text-white">{{ activeAlertsCount }}</span>
-          <Badge
-            v-if="criticalAlertsCount > 0"
-            variant="outline"
-            class="text-[10px] bg-rose-950/50 text-rose-400 border-rose-500/30 animate-pulse"
-          >
+          <Badge v-if="criticalAlertsCount > 0" variant="outline"
+            class="text-[10px] bg-rose-950/50 text-rose-400 border-rose-500/30 animate-pulse">
             {{ criticalAlertsCount }} Critical
           </Badge>
           <Badge v-else variant="outline" class="text-[10px] bg-emerald-950/50 text-emerald-400 border-emerald-500/30">
@@ -310,7 +311,8 @@ const getSeverityClass = (sev: AlertSeverity) => {
       </Card>
 
       <!-- 2. Active Rules Catalog -->
-      <Card class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+      <Card
+        class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between text-xs text-slate-400">
           <span class="font-medium">Configured Rules</span>
           <Sliders class="w-4 h-4 text-indigo-400" />
@@ -325,7 +327,8 @@ const getSeverityClass = (sev: AlertSeverity) => {
       </Card>
 
       <!-- 3. Automated Tickets -->
-      <Card class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+      <Card
+        class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between text-xs text-slate-400">
           <span class="font-medium">Auto-Dispatched Tickets</span>
           <Ticket class="w-4 h-4 text-emerald-400" />
@@ -336,14 +339,16 @@ const getSeverityClass = (sev: AlertSeverity) => {
             Kanban Linked
           </Badge>
         </div>
-        <div class="text-[11px] text-indigo-300 hover:text-indigo-200 cursor-pointer flex items-center gap-1" @click="navigateToTickets()">
+        <div class="text-[11px] text-indigo-300 hover:text-indigo-200 cursor-pointer flex items-center gap-1"
+          @click="navigateToTickets()">
           <span>View in Kanban Board</span>
           <ChevronRight class="w-3 h-3" />
         </div>
       </Card>
 
       <!-- 4. Evaluation Engine State -->
-      <Card class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+      <Card
+        class="bg-slate-900/90 border-slate-800 text-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between text-xs text-slate-400">
           <span class="font-medium">Rule Engine Engine State</span>
           <Activity class="w-4 h-4 text-teal-400" />
@@ -364,12 +369,9 @@ const getSeverityClass = (sev: AlertSeverity) => {
     <!-- Inner Sub-Tabs Navigation Bar -->
     <div class="flex items-center justify-between flex-wrap gap-3 pb-1 border-b border-slate-800">
       <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium">
-        <button
-          type="button"
-          @click="activeSubTab = 'alerts'"
+        <button type="button" @click="activeSubTab = 'alerts'"
           :class="activeSubTab === 'alerts' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer"
-        >
+          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer">
           <Bell class="w-4 h-4" />
           <span>Active Alerts</span>
           <Badge v-if="activeAlertsCount > 0" class="text-[10px] px-1.5 py-0 bg-rose-500 text-white">
@@ -377,22 +379,16 @@ const getSeverityClass = (sev: AlertSeverity) => {
           </Badge>
         </button>
 
-        <button
-          type="button"
-          @click="activeSubTab = 'rules'"
+        <button type="button" @click="activeSubTab = 'rules'"
           :class="activeSubTab === 'rules' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer"
-        >
+          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer">
           <Sliders class="w-4 h-4" />
           <span>Rule Catalog ({{ rules.length }})</span>
         </button>
 
-        <button
-          type="button"
-          @click="activeSubTab = 'metrics'"
+        <button type="button" @click="activeSubTab = 'metrics'"
           :class="activeSubTab === 'metrics' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer"
-        >
+          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer">
           <Activity class="w-4 h-4" />
           <span>Telemetry Metrics ({{ telemetryMetrics.length }})</span>
           <Badge v-if="userDefinedMetrics.length > 0" class="text-[10px] px-1.5 py-0 bg-indigo-500 text-white">
@@ -400,22 +396,16 @@ const getSeverityClass = (sev: AlertSeverity) => {
           </Badge>
         </button>
 
-        <button
-          type="button"
-          @click="activeSubTab = 'sandbox'"
+        <button v-if="enableDebugFeatures || enableDevFeatures" type="button" @click="activeSubTab = 'sandbox'"
           :class="activeSubTab === 'sandbox' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer"
-        >
+          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer">
           <Play class="w-4 h-4" />
           <span>Trigger Sandbox</span>
         </button>
 
-        <button
-          type="button"
-          @click="activeSubTab = 'ticket-log'"
+        <button type="button" @click="activeSubTab = 'ticket-log'"
           :class="activeSubTab === 'ticket-log' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer"
-        >
+          class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer">
           <Ticket class="w-4 h-4" />
           <span>Auto-Ticket Log ({{ automatedTicketsList.length }})</span>
         </button>
@@ -423,21 +413,13 @@ const getSeverityClass = (sev: AlertSeverity) => {
 
       <!-- Right Action Button -->
       <div class="flex items-center gap-2">
-        <Button
-          v-if="activeSubTab === 'rules'"
-          size="sm"
-          @click="isAddRuleOpen = true"
-          class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 cursor-pointer"
-        >
+        <Button v-if="activeSubTab === 'rules'" size="sm" @click="isAddRuleOpen = true"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 cursor-pointer">
           <Plus class="w-3.5 h-3.5 mr-1.5" />
           <span>Define New Rule</span>
         </Button>
-        <Button
-          v-if="activeSubTab === 'metrics'"
-          size="sm"
-          @click="isAddMetricOpen = true"
-          class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 cursor-pointer"
-        >
+        <Button v-if="activeSubTab === 'metrics'" size="sm" @click="isAddMetricOpen = true"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-9 cursor-pointer">
           <Plus class="w-3.5 h-3.5 mr-1.5" />
           <span>Register Custom Metric</span>
         </Button>
@@ -451,46 +433,35 @@ const getSeverityClass = (sev: AlertSeverity) => {
       <div class="flex items-center justify-between text-xs text-slate-400">
         <div class="flex items-center gap-2">
           <span class="font-medium">Filter Status:</span>
-          <button
-            type="button"
-            @click="alertStatusFilter = 'active'"
+          <button type="button" @click="alertStatusFilter = 'active'"
             :class="alertStatusFilter === 'active' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-300'"
-            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer"
-          >
-            Active ({{ alerts.filter(a => a.status === 'active').length }})
+            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer">
+            Active ({{alerts.filter(a => a.status === 'active').length}})
           </button>
-          <button
-            type="button"
-            @click="alertStatusFilter = 'acknowledged'"
+          <button type="button" @click="alertStatusFilter = 'acknowledged'"
             :class="alertStatusFilter === 'acknowledged' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-300'"
-            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer"
-          >
-            Acknowledged ({{ alerts.filter(a => a.status === 'acknowledged').length }})
+            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer">
+            Acknowledged ({{alerts.filter(a => a.status === 'acknowledged').length}})
           </button>
-          <button
-            type="button"
-            @click="alertStatusFilter = 'all'"
+          <button type="button" @click="alertStatusFilter = 'all'"
             :class="alertStatusFilter === 'all' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-300'"
-            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer"
-          >
+            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer">
             All Events ({{ alerts.length }})
           </button>
         </div>
       </div>
 
-      <div v-if="filteredAlerts.length === 0" class="p-12 text-center rounded-2xl bg-slate-900/50 border border-slate-800 text-slate-400 space-y-2">
+      <div v-if="filteredAlerts.length === 0"
+        class="p-12 text-center rounded-2xl bg-slate-900/50 border border-slate-800 text-slate-400 space-y-2">
         <CheckCircle2 class="w-10 h-10 text-emerald-400 mx-auto" />
         <h4 class="text-sm font-semibold text-slate-200">No Alerts In Current View</h4>
         <p class="text-xs">All monitored industrial parameters are operating strictly within nominal bounds.</p>
       </div>
 
       <div v-else class="grid grid-cols-1 gap-3">
-        <div
-          v-for="alert in filteredAlerts"
-          :key="alert.id"
+        <div v-for="alert in filteredAlerts" :key="alert.id"
           :class="alert.status === 'active' ? 'border-l-4 border-l-rose-500 bg-slate-900/80' : 'border-l-4 border-l-slate-600 bg-slate-900/40 opacity-80'"
-          class="p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all"
-        >
+          class="p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all">
           <div class="space-y-1.5">
             <div class="flex items-center gap-2 flex-wrap">
               <Badge :class="getSeverityClass(alert.severity)" class="text-[10px] font-semibold border">
@@ -502,8 +473,7 @@ const getSeverityClass = (sev: AlertSeverity) => {
               <span class="text-sm font-semibold text-slate-100">{{ alert.ruleName }}</span>
               <Badge
                 :class="alert.status === 'active' ? 'bg-rose-950/60 text-rose-300 border-rose-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'"
-                class="text-[10px] border"
-              >
+                class="text-[10px] border">
                 {{ alert.status === 'active' ? 'ACTIVE' : 'ACKNOWLEDGED' }}
               </Badge>
             </div>
@@ -514,7 +484,8 @@ const getSeverityClass = (sev: AlertSeverity) => {
               <span class="text-slate-500">•</span>
               <span class="text-slate-400">Observed:</span>
               <span class="font-mono font-bold text-rose-400">{{ alert.measuredValue }} {{ alert.unit }}</span>
-              <span class="text-slate-500">(Threshold: {{ alert.condition }} {{ alert.threshold }} {{ alert.unit }})</span>
+              <span class="text-slate-500">(Threshold: {{ alert.condition }} {{ alert.threshold }} {{ alert.unit
+                }})</span>
             </div>
 
             <div class="text-[11px] text-slate-500 flex items-center gap-3 flex-wrap font-mono">
@@ -530,24 +501,16 @@ const getSeverityClass = (sev: AlertSeverity) => {
 
           <!-- Alert Actions & Ticket Jump -->
           <div class="flex items-center gap-2 shrink-0">
-            <button
-              v-if="alert.ticketNumber"
-              type="button"
-              @click="navigateToTickets(alert.ticketNumber)"
+            <button v-if="alert.ticketNumber" type="button" @click="navigateToTickets(alert.ticketNumber)"
               class="px-3 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-950/70 text-emerald-300 border border-emerald-500/30 text-xs font-mono font-medium flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Open Ticket in Maintenance Kanban"
-            >
+              title="Open Ticket in Maintenance Kanban">
               <Ticket class="w-3.5 h-3.5" />
               <span>{{ alert.ticketNumber }}</span>
               <ExternalLink class="w-3 h-3 text-emerald-400" />
             </button>
 
-            <button
-              v-if="alert.status === 'active'"
-              type="button"
-              @click="acknowledgeAlert(alert.id, 'Shift Operator')"
-              class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
-            >
+            <button v-if="alert.status === 'active'" type="button" @click="acknowledgeAlert(alert.id, 'Shift Operator')"
+              class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer">
               <Check class="w-3.5 h-3.5 text-emerald-400" />
               <span>Acknowledge</span>
             </button>
@@ -563,26 +526,19 @@ const getSeverityClass = (sev: AlertSeverity) => {
       <!-- Category Filter Pills -->
       <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
         <span class="text-slate-400 text-xs mr-1">Category:</span>
-        <button
-          v-for="cat in ['all', 'thermal', 'vibration', 'jitter', 'resources', 'pneumatics', 'fieldbus']"
-          :key="cat"
-          type="button"
-          @click="ruleCategoryFilter = cat"
+        <button v-for="cat in ['all', 'thermal', 'vibration', 'jitter', 'resources', 'pneumatics', 'fieldbus']"
+          :key="cat" type="button" @click="ruleCategoryFilter = cat"
           :class="ruleCategoryFilter === cat ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'"
-          class="px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all cursor-pointer shrink-0"
-        >
+          class="px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all cursor-pointer shrink-0">
           {{ cat }}
         </button>
       </div>
 
       <!-- Rules Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
-          v-for="rule in filteredRules"
-          :key="rule.id"
+        <div v-for="rule in filteredRules" :key="rule.id"
           :class="rule.enabled ? 'border-slate-800 bg-slate-900/80' : 'border-slate-800/60 bg-slate-950/60 opacity-60'"
-          class="p-5 rounded-xl border flex flex-col justify-between space-y-4 transition-all"
-        >
+          class="p-5 rounded-xl border flex flex-col justify-between space-y-4 transition-all">
           <div class="space-y-2">
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
@@ -596,18 +552,22 @@ const getSeverityClass = (sev: AlertSeverity) => {
 
             <p class="text-xs text-slate-400 leading-relaxed">{{ rule.description }}</p>
 
-            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
+            <div
+              class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
               <div class="flex items-center justify-between">
                 <span class="text-slate-400">Trigger Threshold:</span>
-                <span class="font-bold text-indigo-300">{{ rule.metricLabel }} {{ rule.condition }} {{ rule.threshold }} {{ rule.unit }}</span>
+                <span class="font-bold text-indigo-300">{{ rule.metricLabel }} {{ rule.condition }} {{ rule.threshold }}
+                  {{ rule.unit }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-slate-400">Target Scope:</span>
-                <span class="text-slate-200">{{ rule.targetType === 'all' ? 'Entire Plant Fleet' : (rule.targetName || rule.targetId) }}</span>
+                <span class="text-slate-200">{{ rule.targetType === 'all' ? 'Entire Plant Fleet' : (rule.targetName ||
+                  rule.targetId) }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-slate-400">Auto-Dispatched Ticket:</span>
-                <span v-if="rule.autoCreateTicket" class="text-emerald-400 flex items-center gap-1 font-sans text-[11px]">
+                <span v-if="rule.autoCreateTicket"
+                  class="text-emerald-400 flex items-center gap-1 font-sans text-[11px]">
                   <Check class="w-3 h-3" /> Enabled ({{ rule.errorCode || 'E-GEN' }})
                 </span>
                 <span v-else class="text-slate-500 font-sans text-[11px]">Disabled</span>
@@ -622,22 +582,16 @@ const getSeverityClass = (sev: AlertSeverity) => {
           <!-- Bottom rule actions -->
           <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
             <div class="flex items-center gap-2">
-              <button
-                type="button"
-                @click="toggleRule(rule.id)"
+              <button type="button" @click="toggleRule(rule.id)"
                 :class="rule.enabled ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'"
-                class="px-2.5 py-1 rounded border text-xs font-medium cursor-pointer transition-all"
-              >
+                class="px-2.5 py-1 rounded border text-xs font-medium cursor-pointer transition-all">
                 {{ rule.enabled ? 'Active' : 'Disabled' }}
               </button>
             </div>
             <div class="flex items-center gap-1">
-              <button
-                type="button"
-                @click="deleteRule(rule.id)"
+              <button type="button" @click="deleteRule(rule.id)"
                 class="p-1.5 rounded hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
-                title="Delete rule"
-              >
+                title="Delete rule">
                 <Trash2 class="w-3.5 h-3.5" />
               </button>
             </div>
@@ -657,54 +611,43 @@ const getSeverityClass = (sev: AlertSeverity) => {
             <span>Industrial Telemetry Metrics Registry</span>
           </h4>
           <p class="text-xs text-slate-400 mt-0.5">
-            Configure telemetry metrics, nominal operating baselines, and tolerances. User-defined metrics dynamically feed the rule evaluation engine and cached timeseries trend models.
+            Configure telemetry metrics, nominal operating baselines, and tolerances. User-defined metrics dynamically
+            feed the rule evaluation engine and cached timeseries trend models.
           </p>
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
           <span class="font-medium">Filter Origin:</span>
-          <button
-            type="button"
-            @click="metricOriginFilter = 'all'"
+          <button type="button" @click="metricOriginFilter = 'all'"
             :class="metricOriginFilter === 'all' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-300'"
-            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer"
-          >
+            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer">
             All ({{ telemetryMetrics.length }})
           </button>
-          <button
-            type="button"
-            @click="metricOriginFilter = 'builtin'"
+          <button type="button" @click="metricOriginFilter = 'builtin'"
             :class="metricOriginFilter === 'builtin' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-300'"
-            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer"
-          >
-            Built-in ({{ telemetryMetrics.filter(m => !m.isUserDefined).length }})
+            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer">
+            Built-in ({{telemetryMetrics.filter(m => !m.isUserDefined).length}})
           </button>
-          <button
-            type="button"
-            @click="metricOriginFilter = 'custom'"
+          <button type="button" @click="metricOriginFilter = 'custom'"
             :class="metricOriginFilter === 'custom' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-300'"
-            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer"
-          >
+            class="px-2.5 py-1 rounded text-[11px] border border-slate-700/50 cursor-pointer">
             User Defined ({{ userDefinedMetrics.length }})
           </button>
         </div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="m in filteredMetricsList"
-          :key="m.key"
-          class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between gap-4 hover:border-slate-700 transition-all group"
-        >
+        <div v-for="m in filteredMetricsList" :key="m.key"
+          class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between gap-4 hover:border-slate-700 transition-all group">
           <div class="space-y-2">
             <div class="flex items-start justify-between gap-2">
               <div class="space-y-0.5">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors">{{ m.name }}</span>
+                  <span class="text-sm font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors">{{
+                    m.name }}</span>
                   <Badge
                     :class="m.isUserDefined ? 'bg-indigo-950/60 text-indigo-300 border-indigo-500/40' : 'bg-slate-800 text-slate-400 border-slate-700'"
-                    class="text-[10px] border"
-                  >
+                    class="text-[10px] border">
                     {{ m.isUserDefined ? 'User Defined' : 'Built-in' }}
                   </Badge>
                 </div>
@@ -738,22 +681,15 @@ const getSeverityClass = (sev: AlertSeverity) => {
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
-            <button
-              type="button"
-              @click="openCreateRuleForMetric(m)"
-              class="px-2.5 py-1 rounded bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 text-[11px] font-medium transition-all flex items-center gap-1.5 cursor-pointer"
-            >
+            <button type="button" @click="openCreateRuleForMetric(m)"
+              class="px-2.5 py-1 rounded bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 text-[11px] font-medium transition-all flex items-center gap-1.5 cursor-pointer">
               <Sliders class="w-3 h-3" />
               <span>Create Rule</span>
             </button>
 
-            <button
-              v-if="m.isUserDefined"
-              type="button"
-              @click="handleDeleteCustomMetric(m.key)"
+            <button v-if="m.isUserDefined" type="button" @click="handleDeleteCustomMetric(m.key)"
               class="p-1.5 rounded hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
-              title="Delete custom metric"
-            >
+              title="Delete custom metric">
               <Trash2 class="w-3.5 h-3.5" />
             </button>
             <span v-else class="text-[10px] text-slate-600 uppercase font-mono">Standard Catalog</span>
@@ -765,7 +701,7 @@ const getSeverityClass = (sev: AlertSeverity) => {
     <!-- ========================================== -->
     <!-- SUBTAB 3: TRIGGER SANDBOX & EVALUATOR -->
     <!-- ========================================== -->
-    <div v-else-if="activeSubTab === 'sandbox'" class="space-y-5">
+    <div v-else-if="(enableDebugFeatures || enableDevFeatures) && activeSubTab === 'sandbox'" class="space-y-5">
       <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
         <div>
           <h4 class="text-sm font-semibold text-slate-100 flex items-center gap-2">
@@ -773,65 +709,58 @@ const getSeverityClass = (sev: AlertSeverity) => {
             <span>Industrial Telemetry Sandbox & Rule Breaker</span>
           </h4>
           <p class="text-xs text-slate-400 mt-1">
-            Simulate real-time hardware anomalies to test rule triggers, threshold boundaries, and automated ticket generation without touching physical PLC lines.
+            Simulate real-time hardware anomalies to test rule triggers, threshold boundaries, and automated ticket
+            generation without touching physical PLC lines.
           </p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <button
-            type="button"
-            @click="handleRunSandbox('thermal')"
-            class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all cursor-pointer group"
-          >
+          <button type="button" @click="handleRunSandbox('thermal')"
+            class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all cursor-pointer group">
             <div class="flex items-center justify-between text-xs text-rose-400 mb-1">
               <span class="font-semibold flex items-center gap-1">
                 <Flame class="w-3.5 h-3.5" /> Thermal Spike
               </span>
               <span class="font-mono text-[10px]">84.5 °C</span>
             </div>
-            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Spike Laser Cell OP20 spindle temperature above 72°C threshold.</p>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Spike Laser Cell OP20 spindle temperature
+              above 72°C threshold.</p>
           </button>
 
-          <button
-            type="button"
-            @click="handleRunSandbox('jitter')"
-            class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all cursor-pointer group"
-          >
+          <button type="button" @click="handleRunSandbox('jitter')"
+            class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all cursor-pointer group">
             <div class="flex items-center justify-between text-xs text-amber-400 mb-1">
               <span class="font-semibold flex items-center gap-1">
                 <Zap class="w-3.5 h-3.5" /> Soft-PLC Jitter
               </span>
               <span class="font-mono text-[10px]">64.8 μs</span>
             </div>
-            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Simulate TwinCAT real-time cyclic task jitter exceeding 45μs.</p>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Simulate TwinCAT real-time cyclic task
+              jitter exceeding 45μs.</p>
           </button>
 
-          <button
-            type="button"
-            @click="handleRunSandbox('pressure')"
-            class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all cursor-pointer group"
-          >
+          <button type="button" @click="handleRunSandbox('pressure')"
+            class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all cursor-pointer group">
             <div class="flex items-center justify-between text-xs text-blue-400 mb-1">
               <span class="font-semibold flex items-center gap-1">
                 <Wind class="w-3.5 h-3.5" /> Pressure Sag
               </span>
               <span class="font-mono text-[10px]">4.65 bar</span>
             </div>
-            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Drop pneumatic supply line pressure below 5.4 bar critical limit.</p>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Drop pneumatic supply line pressure below
+              5.4 bar critical limit.</p>
           </button>
 
-          <button
-            type="button"
-            @click="handleRunSandbox('vibration')"
-            class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all cursor-pointer group"
-          >
+          <button type="button" @click="handleRunSandbox('vibration')"
+            class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 text-left transition-all cursor-pointer group">
             <div class="flex items-center justify-between text-xs text-teal-400 mb-1">
               <span class="font-semibold flex items-center gap-1">
                 <Activity class="w-3.5 h-3.5" /> Vibration Wave
               </span>
               <span class="font-mono text-[10px]">3.45 mm/s</span>
             </div>
-            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Simulate robotic fastener drive bearing wear and harmonic drift.</p>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Simulate robotic fastener drive bearing
+              wear and harmonic drift.</p>
           </button>
         </div>
 
@@ -839,24 +768,19 @@ const getSeverityClass = (sev: AlertSeverity) => {
         <div class="space-y-2">
           <div class="flex items-center justify-between text-xs text-slate-400">
             <span class="font-mono">Real-Time Event Stream Log</span>
-            <button
-              type="button"
-              @click="sandboxLogs = []"
-              class="hover:text-slate-200 transition-colors text-[11px] cursor-pointer"
-            >
+            <button type="button" @click="sandboxLogs = []"
+              class="hover:text-slate-200 transition-colors text-[11px] cursor-pointer">
               Clear Log
             </button>
           </div>
-          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs max-h-56 overflow-y-auto space-y-1.5">
+          <div
+            class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs max-h-56 overflow-y-auto space-y-1.5">
             <div v-if="sandboxLogs.length === 0" class="text-slate-600 italic">
               Ready for simulation. Click a trigger above to evaluate telemetry and dispatch tickets.
             </div>
-            <div
-              v-for="(log, idx) in sandboxLogs"
-              :key="idx"
+            <div v-for="(log, idx) in sandboxLogs" :key="idx"
               :class="log.type === 'alert' ? 'text-rose-400' : (log.type === 'ticket' ? 'text-emerald-400' : 'text-slate-400')"
-              class="flex items-start gap-2 text-[11px]"
-            >
+              class="flex items-start gap-2 text-[11px]">
               <span class="text-slate-600 shrink-0">[{{ log.timestamp }}]</span>
               <span>{{ log.message }}</span>
             </div>
@@ -877,25 +801,20 @@ const getSeverityClass = (sev: AlertSeverity) => {
               <span>Automated Maintenance Ticket Audit Log</span>
             </h4>
             <p class="text-xs text-slate-400 mt-1">
-              Every ticket created autonomously by the rules engine includes cryptographic telemetry snapshots and standard error codes.
+              Every ticket created autonomously by the rules engine includes cryptographic telemetry snapshots and
+              standard error codes.
             </p>
           </div>
-          <Button
-            size="sm"
-            @click="navigateToTickets()"
-            class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 cursor-pointer"
-          >
+          <Button size="sm" @click="navigateToTickets()"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 cursor-pointer">
             <span>Open Kanban Board</span>
             <ExternalLink class="w-3.5 h-3.5 ml-1.5" />
           </Button>
         </div>
 
         <div class="divide-y divide-slate-800 border border-slate-800 rounded-xl overflow-hidden">
-          <div
-            v-for="item in automatedTicketsList"
-            :key="item.id"
-            class="p-4 bg-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-900/50 transition-colors"
-          >
+          <div v-for="item in automatedTicketsList" :key="item.id"
+            class="p-4 bg-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-900/50 transition-colors">
             <div class="space-y-1">
               <div class="flex items-center gap-2">
                 <span class="font-mono text-xs font-bold text-emerald-400">{{ item.ticketNumber }}</span>
@@ -907,17 +826,16 @@ const getSeverityClass = (sev: AlertSeverity) => {
               <div class="text-xs text-slate-400 flex items-center gap-2">
                 <span>Target: <strong class="text-slate-300">{{ item.targetName }}</strong></span>
                 <span>•</span>
-                <span>Value: <strong class="text-rose-400 font-mono">{{ item.measuredValue }} {{ item.unit }}</strong></span>
+                <span>Value: <strong class="text-rose-400 font-mono">{{ item.measuredValue }} {{ item.unit
+                    }}</strong></span>
               </div>
             </div>
 
             <div class="flex items-center gap-3">
-              <span class="text-[11px] font-mono text-slate-500">{{ new Date(item.triggeredAt).toLocaleTimeString() }}</span>
-              <button
-                type="button"
-                @click="navigateToTickets(item.ticketNumber)"
-                class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded border border-slate-700 flex items-center gap-1 transition-all cursor-pointer"
-              >
+              <span class="text-[11px] font-mono text-slate-500">{{ new Date(item.triggeredAt).toLocaleTimeString()
+                }}</span>
+              <button type="button" @click="navigateToTickets(item.ticketNumber)"
+                class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded border border-slate-700 flex items-center gap-1 transition-all cursor-pointer">
                 <span>View Ticket</span>
                 <ChevronRight class="w-3 h-3" />
               </button>
@@ -943,32 +861,22 @@ const getSeverityClass = (sev: AlertSeverity) => {
         <div class="space-y-3.5 py-3 text-xs">
           <div>
             <label class="block text-slate-300 font-medium mb-1">Rule Name</label>
-            <input
-              v-model="newRuleForm.name"
-              type="text"
-              placeholder="e.g., High-Voltage Test Cell Temperature Warning"
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-            />
+            <input v-model="newRuleForm.name" type="text" placeholder="e.g., High-Voltage Test Cell Temperature Warning"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500" />
           </div>
 
           <div>
             <label class="block text-slate-300 font-medium mb-1">Description / Operational Context</label>
-            <textarea
-              v-model="newRuleForm.description"
-              rows="2"
+            <textarea v-model="newRuleForm.description" rows="2"
               placeholder="Explains what failure mode this rule protects against..."
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-            ></textarea>
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"></textarea>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-slate-300 font-medium mb-1">Telemetry Metric</label>
-              <select
-                :value="newRuleForm.metricKey"
-                @change="handleMetricSelect"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
+              <select :value="newRuleForm.metricKey" @change="handleMetricSelect"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer">
                 <option v-for="m in metricOptions" :key="m.key" :value="m.key">
                   {{ m.label }} ({{ m.unit }})
                 </option>
@@ -977,10 +885,8 @@ const getSeverityClass = (sev: AlertSeverity) => {
 
             <div>
               <label class="block text-slate-300 font-medium mb-1">Severity Level</label>
-              <select
-                v-model="newRuleForm.severity"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
+              <select v-model="newRuleForm.severity"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer">
                 <option value="Critical">Critical</option>
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
@@ -992,10 +898,8 @@ const getSeverityClass = (sev: AlertSeverity) => {
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="block text-slate-300 font-medium mb-1">Condition</label>
-              <select
-                v-model="newRuleForm.condition"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-mono cursor-pointer"
-              >
+              <select v-model="newRuleForm.condition"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-mono cursor-pointer">
                 <option value=">">&gt; (Greater than)</option>
                 <option value=">=">&gt;= (Greater or eq)</option>
                 <option value="<">&lt; (Less than)</option>
@@ -1005,33 +909,22 @@ const getSeverityClass = (sev: AlertSeverity) => {
 
             <div>
               <label class="block text-slate-300 font-medium mb-1">Threshold</label>
-              <input
-                v-model.number="newRuleForm.threshold"
-                type="number"
-                step="any"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-              />
+              <input v-model.number="newRuleForm.threshold" type="number" step="any"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
             </div>
 
             <div>
               <label class="block text-slate-300 font-medium mb-1">Unit</label>
-              <input
-                v-model="newRuleForm.unit"
-                type="text"
-                readonly
-                class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-400 font-mono select-none"
-              />
+              <input v-model="newRuleForm.unit" type="text" readonly
+                class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-400 font-mono select-none" />
             </div>
           </div>
 
           <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5">
             <div class="flex items-center justify-between">
               <label class="font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer">
-                <input
-                  v-model="newRuleForm.autoCreateTicket"
-                  type="checkbox"
-                  class="rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
-                />
+                <input v-model="newRuleForm.autoCreateTicket" type="checkbox"
+                  class="rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer" />
                 <span>Auto-Dispatch Maintenance Ticket</span>
               </label>
               <Badge variant="outline" class="text-[10px] border-indigo-500/30 text-indigo-300">
@@ -1042,42 +935,26 @@ const getSeverityClass = (sev: AlertSeverity) => {
             <div v-if="newRuleForm.autoCreateTicket" class="grid grid-cols-2 gap-3 pt-1">
               <div>
                 <label class="block text-[11px] text-slate-400 mb-1">Error Code</label>
-                <input
-                  v-model="newRuleForm.errorCode"
-                  type="text"
-                  placeholder="e.g., E-MOT-01"
-                  class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-                />
+                <input v-model="newRuleForm.errorCode" type="text" placeholder="e.g., E-MOT-01"
+                  class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
               </div>
 
               <div>
                 <label class="block text-[11px] text-slate-400 mb-1">Cooldown (Mins)</label>
-                <input
-                  v-model.number="newRuleForm.cooldownMinutes"
-                  type="number"
-                  min="5"
-                  class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-                />
+                <input v-model.number="newRuleForm.cooldownMinutes" type="number" min="5"
+                  class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
           </div>
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-          <Button
-            variant="outline"
-            size="sm"
-            @click="isAddRuleOpen = false"
-            class="border-slate-800 bg-slate-900 text-slate-300 text-xs"
-          >
+          <Button variant="outline" size="sm" @click="isAddRuleOpen = false"
+            class="border-slate-800 bg-slate-900 text-slate-300 text-xs">
             Cancel
           </Button>
-          <Button
-            size="sm"
-            @click="handleCreateRule"
-            :disabled="!newRuleForm.name"
-            class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs disabled:opacity-40"
-          >
+          <Button size="sm" @click="handleCreateRule" :disabled="!newRuleForm.name"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs disabled:opacity-40">
             Save Alert Rule
           </Button>
         </div>
@@ -1093,7 +970,8 @@ const getSeverityClass = (sev: AlertSeverity) => {
             <span>Register User-Defined Telemetry Metric</span>
           </DialogTitle>
           <DialogDescription class="text-xs text-slate-400">
-            Define a custom process signal from PLC, sensor terminal, or CIM host. This metric becomes immediately available in rules, trend charts, and cached analytics.
+            Define a custom process signal from PLC, sensor terminal, or CIM host. This metric becomes immediately
+            available in rules, trend charts, and cached analytics.
           </DialogDescription>
         </DialogHeader>
 
@@ -1101,41 +979,28 @@ const getSeverityClass = (sev: AlertSeverity) => {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-slate-300 font-medium mb-1">Metric Key (Identifier)</label>
-              <input
-                v-model="newMetricForm.key"
-                type="text"
-                placeholder="e.g., coolant_flow_lpm"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-              />
+              <input v-model="newMetricForm.key" type="text" placeholder="e.g., coolant_flow_lpm"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
             </div>
             <div>
               <label class="block text-slate-300 font-medium mb-1">Display Name</label>
-              <input
-                v-model="newMetricForm.name"
-                type="text"
-                placeholder="e.g., Chiller Coolant Flow Rate"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-              />
+              <input v-model="newMetricForm.name" type="text" placeholder="e.g., Chiller Coolant Flow Rate"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500" />
             </div>
           </div>
 
           <div>
             <label class="block text-slate-300 font-medium mb-1">Description / Functional Intent</label>
-            <textarea
-              v-model="newMetricForm.description"
-              rows="2"
+            <textarea v-model="newMetricForm.description" rows="2"
               placeholder="Explains physical instrumentation, sensor type, and process limits..."
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-            ></textarea>
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"></textarea>
           </div>
 
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="block text-slate-300 font-medium mb-1">Category</label>
-              <select
-                v-model="newMetricForm.category"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
+              <select v-model="newMetricForm.category"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer">
                 <option value="thermal">Thermal</option>
                 <option value="vibration">Vibration</option>
                 <option value="jitter">Jitter</option>
@@ -1149,20 +1014,14 @@ const getSeverityClass = (sev: AlertSeverity) => {
 
             <div>
               <label class="block text-slate-300 font-medium mb-1">Unit of Measure</label>
-              <input
-                v-model="newMetricForm.unit"
-                type="text"
-                placeholder="e.g. °C, bar, L/min"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-              />
+              <input v-model="newMetricForm.unit" type="text" placeholder="e.g. °C, bar, L/min"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
             </div>
 
             <div>
               <label class="block text-slate-300 font-medium mb-1">Source Protocol</label>
-              <select
-                v-model="newMetricForm.sourceType"
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
+              <select v-model="newMetricForm.sourceType"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer">
                 <option value="BeckhoffAds">Beckhoff ADS</option>
                 <option value="BeckhoffEtherCat">Beckhoff EtherCAT</option>
                 <option value="OpcUaSubscription">OPC-UA Sub</option>
@@ -1175,60 +1034,37 @@ const getSeverityClass = (sev: AlertSeverity) => {
 
           <div>
             <label class="block text-slate-300 font-medium mb-1">PLC Variable / Symbol Path</label>
-            <input
-              v-model="newMetricForm.pathOrSymbol"
-              type="text"
+            <input v-model="newMetricForm.pathOrSymbol" type="text"
               placeholder="e.g., MAIN.fbCoolant.fActualFlowLpm or ns=2;s=Chiller.Flow"
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-            />
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
           </div>
 
           <div class="grid grid-cols-3 gap-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800">
             <div>
               <label class="block text-[11px] text-slate-400 mb-1">Nominal Target</label>
-              <input
-                v-model.number="newMetricForm.nominalValue"
-                type="number"
-                step="any"
-                class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-              />
+              <input v-model.number="newMetricForm.nominalValue" type="number" step="any"
+                class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
             </div>
             <div>
               <label class="block text-[11px] text-slate-400 mb-1">Lower Tolerance</label>
-              <input
-                v-model.number="newMetricForm.lowerTolerance"
-                type="number"
-                step="any"
-                class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-              />
+              <input v-model.number="newMetricForm.lowerTolerance" type="number" step="any"
+                class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
             </div>
             <div>
               <label class="block text-[11px] text-slate-400 mb-1">Upper Tolerance</label>
-              <input
-                v-model.number="newMetricForm.upperTolerance"
-                type="number"
-                step="any"
-                class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
-              />
+              <input v-model.number="newMetricForm.upperTolerance" type="number" step="any"
+                class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500" />
             </div>
           </div>
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-          <Button
-            variant="outline"
-            size="sm"
-            @click="isAddMetricOpen = false"
-            class="border-slate-800 bg-slate-900 text-slate-300 text-xs cursor-pointer"
-          >
+          <Button variant="outline" size="sm" @click="isAddMetricOpen = false"
+            class="border-slate-800 bg-slate-900 text-slate-300 text-xs cursor-pointer">
             Cancel
           </Button>
-          <Button
-            size="sm"
-            @click="handleCreateCustomMetric"
-            :disabled="!newMetricForm.key || !newMetricForm.name"
-            class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs disabled:opacity-40 cursor-pointer"
-          >
+          <Button size="sm" @click="handleCreateCustomMetric" :disabled="!newMetricForm.key || !newMetricForm.name"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs disabled:opacity-40 cursor-pointer">
             Save Telemetry Metric
           </Button>
         </div>

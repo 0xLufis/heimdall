@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using App.Agent.Daemon.Infrastructure.Plugins;
 using App.Agent.Daemon.Interfaces;
+using App.Contracts.Enums;
 using App.Shared.Errors;
 using App.Shared.Plugins;
 using App.Shared.Protos;
@@ -23,19 +24,22 @@ public class CommandHandler : ICommandHandler
     private readonly IPluginManager? _pluginManager;
     private readonly ISystemInfoReporter? _reporter;
     private readonly ILogger<CommandHandler> _logger;
+    private readonly App.Contracts.Configuration.AgentFeatureFlags _featureFlags;
 
     public CommandHandler(
         IConfigurationService configService,
         IFileSystemScanner fileScanner,
         ILogger<CommandHandler> logger,
         IPluginManager? pluginManager = null,
-        ISystemInfoReporter? reporter = null)
+        ISystemInfoReporter? reporter = null,
+        App.Contracts.Configuration.AgentFeatureFlags? featureFlags = null)
     {
         _configService = configService;
         _fileScanner = fileScanner;
         _logger = logger;
         _pluginManager = pluginManager;
         _reporter = reporter;
+        _featureFlags = featureFlags ?? App.Contracts.Configuration.AgentFeatureFlags.FromEnvironment();
     }
 
     public async Task<CommandExecutionResult> HandleCommandAsync(ServerCommand command)
@@ -54,35 +58,67 @@ public class CommandHandler : ICommandHandler
             return new CommandExecutionResult(false, "Signature verification failed", ErrorCode.SignatureVerificationFailed);
         }
 
-        // 2. Command Dispatch
-        switch (command.Type)
+        // 2. Strongly-Typed Command Dispatch via Enum Pattern Matching
+        if (!TryParseCommandType(command.Type, out var commandType))
         {
-            case "UPDATE_CONFIG":
-            case "SET_MASTER_POLICY":
-                return HandleConfigUpdate(command);
-
-            case "FILE_CHECK":
-                return await HandleFileCheckAsync(command);
-
-            case "SHELL_EXEC":
-                return HandleShellExec(command);
-
-            case "INSTALL_PLUGIN":
-                return await HandleInstallPluginAsync(command);
-
-            case "UNINSTALL_PLUGIN":
-                return await HandleUninstallPluginAsync(command);
-
-            case "EXECUTE_PLUGIN":
-                return await HandleExecutePluginAsync(command);
-
-            case "TRIGGER_DIAGNOSTIC_SNAPSHOT":
-                return await HandleDiagnosticSnapshotAsync(command);
-
-            default:
-                _logger.LogWarning("Unknown command type received: {Type}", command.Type);
-                return new CommandExecutionResult(false, $"Unknown command type '{command.Type}'", ErrorCode.InvalidInput);
+            _logger.LogWarning("Unknown command type received: {Type}", command.Type);
+            return new CommandExecutionResult(false, $"Unknown command type '{command.Type}'", ErrorCode.InvalidInput);
         }
+
+        return commandType switch
+        {
+            AgentCommandType.UpdateConfig or AgentCommandType.SetMasterPolicy => HandleConfigUpdate(command),
+            AgentCommandType.FileCheck => await HandleFileCheckAsync(command),
+            AgentCommandType.ExecuteDiagnostic => HandleDiagnosticRoutineOrShellExec(command),
+            AgentCommandType.InstallPlugin => await HandleInstallPluginAsync(command),
+            AgentCommandType.UninstallPlugin => await HandleUninstallPluginAsync(command),
+            AgentCommandType.ExecutePlugin => await HandleExecutePluginAsync(command),
+            AgentCommandType.TriggerDiagnosticSnapshot => await HandleDiagnosticSnapshotAsync(command),
+            _ => new CommandExecutionResult(false, $"Unsupported command type '{command.Type}'", ErrorCode.InvalidInput)
+        };
+    }
+
+    private static bool TryParseCommandType(string? typeStr, out AgentCommandType commandType)
+    {
+        commandType = default;
+        if (string.IsNullOrWhiteSpace(typeStr)) return false;
+
+        var normalized = typeStr.Trim().ToUpperInvariant();
+        return normalized switch
+        {
+            "UPDATE_CONFIG" => Set(AgentCommandType.UpdateConfig, out commandType),
+            "SET_MASTER_POLICY" => Set(AgentCommandType.SetMasterPolicy, out commandType),
+            "FILE_CHECK" => Set(AgentCommandType.FileCheck, out commandType),
+            "EXECUTE_DIAGNOSTIC" => Set(AgentCommandType.ExecuteDiagnostic, out commandType),
+            "SHELL_EXEC" => Set(AgentCommandType.ExecuteDiagnostic, out commandType),
+            "DIAGNOSTIC_DUMP" => Set(AgentCommandType.ExecuteDiagnostic, out commandType),
+            "INSTALL_PLUGIN" => Set(AgentCommandType.InstallPlugin, out commandType),
+            "UNINSTALL_PLUGIN" => Set(AgentCommandType.UninstallPlugin, out commandType),
+            "EXECUTE_PLUGIN" => Set(AgentCommandType.ExecutePlugin, out commandType),
+            "TRIGGER_DIAGNOSTIC_SNAPSHOT" => Set(AgentCommandType.TriggerDiagnosticSnapshot, out commandType),
+            _ => Enum.TryParse<AgentCommandType>(typeStr, true, out commandType)
+        };
+
+        static bool Set(AgentCommandType type, out AgentCommandType target)
+        {
+            target = type;
+            return true;
+        }
+    }
+
+    private CommandExecutionResult HandleDiagnosticRoutineOrShellExec(ServerCommand command)
+    {
+        // Guard verbose diagnostic dumps under EnableDebugFeatures
+        bool isDumpRequest = string.Equals(command.Type, "DIAGNOSTIC_DUMP", StringComparison.OrdinalIgnoreCase)
+            || (!string.IsNullOrEmpty(command.Payload) && command.Payload.Contains("dump", StringComparison.OrdinalIgnoreCase));
+
+        if (isDumpRequest && !_featureFlags.EnableDebugFeatures)
+        {
+            _logger.LogWarning("Diagnostic dump routine rejected: verbose diagnostic dumps disabled in production mode (EnableDebugFeatures = false).");
+            return new CommandExecutionResult(false, "Verbose diagnostic dumps are disabled in production mode", ErrorCode.RemoteExecutionDisabled);
+        }
+
+        return HandleShellExec(command);
     }
 
     private async Task<CommandExecutionResult> HandleDiagnosticSnapshotAsync(ServerCommand command)

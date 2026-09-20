@@ -9,7 +9,7 @@ namespace App.Backend.Api.Services;
 /// Service for streaming OpenXML (.xlsx) mass-data exports of plant inventory,
 /// machine hierarchy, and telemetry diagnostic logs.
 /// </summary>
-public class ReportExportService
+public class ReportExportService : IReportExportService
 {
     private readonly ILogger<ReportExportService> _logger;
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;

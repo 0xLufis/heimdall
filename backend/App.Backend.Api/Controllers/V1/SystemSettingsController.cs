@@ -15,15 +15,18 @@ public class SystemSettingsController : ControllerBase
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly ILogger<SystemSettingsController> _logger;
     private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache? _memoryCache;
+    private readonly App.Contracts.Configuration.BackendFeatureFlags _featureFlags;
 
     public SystemSettingsController(
         IDbContextFactory<AppDbContext> dbContextFactory, 
         ILogger<SystemSettingsController> logger,
-        Microsoft.Extensions.Caching.Memory.IMemoryCache? memoryCache = null)
+        Microsoft.Extensions.Caching.Memory.IMemoryCache? memoryCache = null,
+        App.Contracts.Configuration.BackendFeatureFlags? featureFlags = null)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
         _memoryCache = memoryCache;
+        _featureFlags = featureFlags ?? new App.Contracts.Configuration.BackendFeatureFlags { EnableDevFeatures = true, EnableDebugFeatures = true };
     }
 
     [HttpGet]
@@ -394,6 +397,102 @@ public class SystemSettingsController : ControllerBase
             IsExpired = isExpired
         };
     }
+
+    /// <summary>
+    /// Dev-only endpoint to inject arbitrary system setting overrides.
+    /// Strictly guarded behind EnableDevFeatures.
+    /// </summary>
+    [HttpPost("dev-override")]
+    public async Task<IActionResult> DevOverrideSetting([FromBody] DevOverrideSettingDto dto)
+    {
+        if (!_featureFlags.EnableDevFeatures)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new App.Shared.Errors.ApiError(
+                App.Shared.Errors.ErrorCode.AccessDenied,
+                "Dev settings override is disabled in production mode. Set HEIMDALL_ENABLE_DEV=true to enable."));
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Key) || string.IsNullOrWhiteSpace(dto.Category))
+        {
+            return BadRequest(new { Message = "Key and Category are required." });
+        }
+
+        await using var db = await _dbContextFactory.CreateDbContextAsync();
+        var setting = await db.SystemSettings.FirstOrDefaultAsync(s => s.Key == dto.Key);
+        if (setting == null)
+        {
+            setting = new SystemSetting
+            {
+                Key = dto.Key,
+                Category = dto.Category,
+                ValueJson = dto.ValueJson ?? "{}",
+                UpdatedBy = "dev_override",
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.SystemSettings.Add(setting);
+        }
+        else
+        {
+            setting.Category = dto.Category;
+            setting.ValueJson = dto.ValueJson ?? "{}";
+            setting.UpdatedBy = "dev_override";
+            setting.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync();
+        if (_memoryCache != null)
+        {
+            App.Backend.Api.Security.DynamicSecurityGroupClaimsTransformer.InvalidateCache(_memoryCache);
+        }
+
+        return Ok(new { Success = true, Message = $"Dev override applied for key '{dto.Key}'.", Setting = setting });
+    }
+
+    /// <summary>
+    /// Dev-only endpoint to reset settings to default baseline for testing.
+    /// Strictly guarded behind EnableDevFeatures.
+    /// </summary>
+    [HttpPost("dev-reset-defaults")]
+    public async Task<IActionResult> DevResetDefaults()
+    {
+        if (!_featureFlags.EnableDevFeatures)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new App.Shared.Errors.ApiError(
+                App.Shared.Errors.ErrorCode.AccessDenied,
+                "Dev reset defaults is disabled in production mode. Set HEIMDALL_ENABLE_DEV=true to enable."));
+        }
+
+        await using var db = await _dbContextFactory.CreateDbContextAsync();
+        var mfaSetting = await db.SystemSettings.FirstOrDefaultAsync(s => s.Key == "Auth.MfaPolicy");
+        var defaultMfa = JsonSerializer.Serialize(GetDefaultMfaPolicy());
+        if (mfaSetting == null)
+        {
+            db.SystemSettings.Add(new SystemSetting
+            {
+                Key = "Auth.MfaPolicy",
+                Category = "Auth",
+                ValueJson = defaultMfa,
+                UpdatedBy = "dev_reset",
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        }
+        else
+        {
+            mfaSetting.ValueJson = defaultMfa;
+            mfaSetting.UpdatedBy = "dev_reset";
+            mfaSetting.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync();
+        return Ok(new { Success = true, Message = "Dev defaults reset successfully." });
+    }
+}
+
+public class DevOverrideSettingDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string ValueJson { get; set; } = "{}";
 }
 
 public class UpdateSettingDto

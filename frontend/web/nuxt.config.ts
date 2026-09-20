@@ -24,14 +24,7 @@ export default defineNuxtConfig({
       }
     },
     server: {
-      hmr: {
-        clientPort: 3000,
-        protocol: 'ws'
-      },
-      allowedHosts: [
-        'localhost',
-        '127.0.0.1'
-      ],
+      allowedHosts: true,
       proxy: {
         '/hubs': {
           target: process.env.BACKEND_API_URL || 'http://localhost:5099',
@@ -66,8 +59,12 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    enableDevFeatures: process.env.HEIMDALL_ENABLE_DEV === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
+    enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true',
     public: {
-      signalrHubUrl: process.env.SIGNALR_HUB_URL || ''
+      signalrHubUrl: process.env.SIGNALR_HUB_URL || '',
+      enableDevFeatures: process.env.HEIMDALL_ENABLE_DEV === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
+      enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true'
     }
   },
   nitro: {

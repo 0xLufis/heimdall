@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using App.Contracts.Configuration;
 using App.Shared.Data;
 using App.Shared.Entities;
 
@@ -15,16 +16,28 @@ public class ActiveDirectoryController : ControllerBase
 {
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly ILogger<ActiveDirectoryController> _logger;
+    private readonly BackendFeatureFlags _featureFlags;
 
-    public ActiveDirectoryController(IDbContextFactory<AppDbContext> dbContextFactory, ILogger<ActiveDirectoryController> logger)
+    public ActiveDirectoryController(
+        IDbContextFactory<AppDbContext> dbContextFactory, 
+        ILogger<ActiveDirectoryController> logger,
+        BackendFeatureFlags? featureFlags = null)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
+        _featureFlags = featureFlags ?? new BackendFeatureFlags { EnableDevFeatures = true, EnableDebugFeatures = true };
     }
 
     [HttpGet("ous")]
     public async Task<IActionResult> GetOrganizationalUnits()
     {
+        if (!_featureFlags.EnableDevFeatures)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new App.Shared.Errors.ApiError(
+                App.Shared.Errors.ErrorCode.AccessDenied,
+                "Simulated Active Directory Organizational Unit discovery is disabled in production. Set HEIMDALL_ENABLE_DEV=true to enable."));
+        }
+
         await using var db = await _dbContextFactory.CreateDbContextAsync();
         var existingHostnames = await db.ClientPcs
             .Where(p => p.Hostname != null)
@@ -62,9 +75,36 @@ public class ActiveDirectoryController : ControllerBase
         return Ok(ous);
     }
 
+    [HttpPost("test-connection")]
+    public IActionResult TestConnection()
+    {
+        if (!_featureFlags.EnableDevFeatures)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new App.Shared.Errors.ApiError(
+                App.Shared.Errors.ErrorCode.AccessDenied,
+                "Active Directory mock test connection is disabled in production. Set HEIMDALL_ENABLE_DEV=true to enable."));
+        }
+
+        return Ok(new
+        {
+            Status = "Connected",
+            Domain = "factory.corp",
+            ForestMode = "Windows2016Forest",
+            IsMock = true,
+            Message = "Simulated Active Directory mock integration is healthy."
+        });
+    }
+
     [HttpPost("preview-import")]
     public IActionResult PreviewImport([FromBody] AdImportPreviewRequest request)
     {
+        if (!_featureFlags.EnableDevFeatures)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new App.Shared.Errors.ApiError(
+                App.Shared.Errors.ErrorCode.AccessDenied,
+                "Active Directory simulated preview and import discovery are disabled in production. Set HEIMDALL_ENABLE_DEV=true to enable."));
+        }
+
         var allOus = GetFactoryActiveDirectoryOUs();
         var selectedOus = (request.SelectedOuPaths == null || request.SelectedOuPaths.Count == 0)
             ? allOus

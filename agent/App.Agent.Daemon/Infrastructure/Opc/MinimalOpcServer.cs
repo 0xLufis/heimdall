@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 /// - HEL / ACK: Connection establishment & parameter negotiation
 /// - OPN / CLO: Channel lifecycle handling
 /// </summary>
-public class MinimalOpcServer : IDisposable
+public class MinimalOpcServer : IMinimalOpcServer
 {
     public const int DefaultPort = 4840;
     public const string DefaultEndpointUrl = "opc.tcp://0.0.0.0:4840";
@@ -26,8 +26,8 @@ public class MinimalOpcServer : IDisposable
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
 
-    public int Port { get; }
-    public string EndpointUrl { get; }
+    public int Port { get; private set; }
+    public string EndpointUrl => $"opc.tcp://0.0.0.0:{Port}";
     public bool IsListening { get; private set; }
     public long TotalConnectionsHandled { get; private set; }
     public DateTimeOffset StartTime { get; } = DateTimeOffset.UtcNow;
@@ -37,7 +37,6 @@ public class MinimalOpcServer : IDisposable
     public MinimalOpcServer(int port = DefaultPort, ILogger<MinimalOpcServer>? logger = null)
     {
         Port = port;
-        EndpointUrl = $"opc.tcp://0.0.0.0:{port}";
         _logger = logger;
 
         InitializeServerNodes();
@@ -62,6 +61,10 @@ public class MinimalOpcServer : IDisposable
         {
             _tcpListener = new TcpListener(IPAddress.Any, Port);
             _tcpListener.Start();
+            if (Port == 0 && _tcpListener.LocalEndpoint is IPEndPoint ep)
+            {
+                Port = ep.Port;
+            }
             IsListening = true;
             _logger?.LogInformation("OPC UA Simulation Server listening on port {Port} ({Endpoint})", Port, EndpointUrl);
 

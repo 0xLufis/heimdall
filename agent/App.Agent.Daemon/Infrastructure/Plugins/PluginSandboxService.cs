@@ -130,23 +130,33 @@ public class PluginSandboxService : IPluginSandboxService
                 ErrorCode: ErrorCode.PluginNotFound);
         }
 
-        // Determine executable and argument string based on runtime
+        // Determine executable and argument list based on runtime
         string fileName;
-        var argsBuilder = new StringBuilder();
+        var startInfo = new ProcessStartInfo
+        {
+            WorkingDirectory = sandboxDir,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
 
         if (manifest.Entrypoint.EndsWith(".py", StringComparison.OrdinalIgnoreCase))
         {
             fileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "python.exe" : "python3";
-            argsBuilder.Append($"\"{entrypointPath}\"");
+            startInfo.FileName = fileName;
+            startInfo.ArgumentList.Add(entrypointPath);
         }
         else if (manifest.Entrypoint.EndsWith(".sh", StringComparison.OrdinalIgnoreCase))
         {
             fileName = "/bin/bash";
-            argsBuilder.Append($"\"{entrypointPath}\"");
+            startInfo.FileName = fileName;
+            startInfo.ArgumentList.Add(entrypointPath);
         }
         else
         {
             fileName = entrypointPath;
+            startInfo.FileName = fileName;
         }
 
         if (arguments != null)
@@ -155,22 +165,10 @@ public class PluginSandboxService : IPluginSandboxService
             {
                 if (CommandSanitizer.IsSafeCommandString(arg, out _))
                 {
-                    argsBuilder.Append(' ');
-                    argsBuilder.Append(arg);
+                    startInfo.ArgumentList.Add(arg);
                 }
             }
         }
-
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = fileName,
-            Arguments = argsBuilder.ToString(),
-            WorkingDirectory = sandboxDir,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
 
         // Secret Scrubbing: Strip agent keys and master secrets from child environment
         startInfo.Environment.Remove("HEIMDALL_AGENT_KEY");

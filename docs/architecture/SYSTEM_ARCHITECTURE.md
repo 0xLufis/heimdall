@@ -217,29 +217,31 @@ Every query issued by EF Core automatically appends `AND (organization_id = @cur
 The backend adopts clean separation between controllers, business services, and repository layers:
 
 ```
-[ HTTP REST / JSON ]   [ HTTP/2 gRPC ]   [ WebSockets / SignalR ]
-        │                     │                      │
-        ▼                     ▼                      ▼
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│ API Controllers  │  │   gRPC Service   │  │  MaintenanceHub  │
-└────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
-         │                     │                     │
-         └───────────────┬─────┴─────────────────────┘
-                         ▼
-        ┌──────────────────────────────────┐
-        │      Application Services        │
-        │  (TicketService, InventorySvc)   │
-        └────────────────┬─────────────────┘
-                         │
-         ┌───────────────┴───────────────┐
-         ▼                               ▼
-┌──────────────────┐            ┌──────────────────┐
-│   CacheService   │            │   Repositories   │
-│  (L1/L2 Hybrid)  │            │ (EF Core Npgsql) │
-└────────┬─────────┘            └────────┬─────────┘
-         │                               │
-         ▼                               ▼
- [ Redis / Memory ]              [ PostgreSQL 18 ]
+[ HTTP REST / JSON ]   [ HTTP/2 gRPC ]   [ MQTT 1883 ]   [ WebSockets / SignalR ]
+        │                     │                 │                   │
+        ▼                     ▼                 ▼                   ▼
+┌──────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────┐
+│ API Controllers  │  │   Telemetry Ingestion Service    │  │  MaintenanceHub  │
+│ (v1 Endpoints)   │  │   (ITelemetryIngestionService)   │  │ (Real-Time Hub)  │
+└────────┬─────────┘  └───────────────┬──────────────────┘  └────────┬─────────┘
+         │                            │                              │
+         └──────────────────────┬─────┴──────────────────────────────┘
+                                ▼
+        ┌────────────────────────────────────────────────────────────┐
+        │                 Application Domain Services                │
+        │ (PredictiveMaintenance, CopiaIntegration, ReportExportSvc) │
+        └─────────────────────────────┬──────────────────────────────┘
+                                      │
+         ┌────────────────────────────┴────────────────────────────┐
+         ▼                                                         ▼
+┌──────────────────┐                                      ┌──────────────────┐
+│   CacheService   │                                      │   Repositories   │
+│  (L1/L2 Hybrid)  │                                      │ (Asset, Machine, │
+└────────┬─────────┘                                      │ Technician, etc) │
+         │                                                └────────┬─────────┘
+         ▼                                                         │
+ [ Redis / Memory ]                                                ▼
+                                                          [ PostgreSQL 18 ]
 ```
 
 ### 4.1 Hybrid Multi-Tier Caching (`CacheService`)
@@ -262,18 +264,18 @@ Modifications to maintenance tickets or incoming critical alarms trigger real-ti
 sequenceDiagram
     autonumber
     actor EdgeNode as Edge Agent Daemon (C# / TwinCAT)
-    participant GrpcEndpoint as SystemInfoCollectorService (gRPC)
-    participant Repo as ClientPcRepository (PostgreSQL)
+    participant TelemetryIngestion as TelemetryIngestionService (gRPC / MQTT)
+    participant Repo as Asset / Controller Repositories (PostgreSQL)
     participant Cache as CacheService (L1 Memory / L2 Redis)
     participant Hub as MaintenanceHub (SignalR WebSocket)
     actor Browser as Nuxt Web Dashboard (Vue 3 / Pinia)
 
-    EdgeNode->>+GrpcEndpoint: ReportSystemInfo(SystemInfoRequest)
-    GrpcEndpoint->>Repo: UpsertClientPcTelemetryAsync(snapshot)
-    Repo-->>GrpcEndpoint: Entity committed
-    GrpcEndpoint->>Cache: SetAsync("telemetry:snapshot:{hostname}", snapshot, 5 min)
-    GrpcEndpoint->>+Hub: Clients.All.TelemetryReceived(hostname, mac, summary)
+    EdgeNode->>+TelemetryIngestion: IngestTelemetryAsync(snapshot)
+    TelemetryIngestion->>Repo: UpsertClientPcTelemetryAsync(snapshot)
+    Repo-->>TelemetryIngestion: Entity committed
+    TelemetryIngestion->>Cache: SetAsync("telemetry:snapshot:{hostname}", snapshot, 5 min)
+    TelemetryIngestion->>+Hub: Clients.All.TelemetryReceived(hostname, mac, summary)
     Hub-->>-Browser: WebSocket Broadcast
     Browser->>Browser: Update reactive canvas & spatial view
-    GrpcEndpoint-->>-EdgeNode: SystemInfoResponse(success=true)
+    TelemetryIngestion-->>-EdgeNode: TelemetryIngestionResult(success=true)
 ```

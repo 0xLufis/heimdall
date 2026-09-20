@@ -60,8 +60,8 @@ heimdall/
 │   ├── dev_manager.py       # Unified development service orchestrator & monitor
 │   └── generate_sequence_diagrams.py # Code-to-Mermaid sequence diagram generator
 ├── tests/                   # Unified Verification Suites
-│   ├── backend/             # xUnit integration & unit tests (162 tests)
-│   ├── frontend/unit/       # Vitest unit tests (37 suites, 275 tests)
+│   ├── backend/             # xUnit integration & unit tests (208 tests)
+│   ├── frontend/unit/       # Vitest unit tests (39 suites, 298 tests)
 │   └── e2e/                 # Playwright browser automation tests
 ├── run_dev.sh               # Local development environment launcher script
 └── run_simulators.sh        # Multi-client fleet simulator orchestrator
@@ -245,10 +245,13 @@ source <(./run_dev.sh completion zsh)    # for Zsh
 ## Running Verification Tests
 
 ```bash
-# 1. Run .NET backend unit & integration tests (xUnit, 162 tests)
+# 0. Run Unified Verification Suite (all seed, backend, frontend, and smoke tests)
+./run_dev.sh test all
+
+# 1. Run .NET backend unit & integration tests (xUnit, 208 tests)
 dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
 
-# 2. Run Nuxt frontend unit test suites (Vitest, 37 suites, 275 tests)
+# 2. Run Nuxt frontend unit test suites (Vitest, 39 suites, 298 tests)
 bun --cwd frontend/web run test:unit
 
 # 3. Run Python fleet simulator & mock CMI runner tests (9 tests)

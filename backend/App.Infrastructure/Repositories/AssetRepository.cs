@@ -1,3 +1,4 @@
+using App.Contracts.Inventory;
 using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -58,8 +59,14 @@ public class AssetRepository : IAssetRepository
 
         try
         {
+            var entityType = _context.Model.FindEntityType(typeof(BaseInventoryItem));
+            var schema = entityType?.GetSchema() ?? "backend";
+            var tableName = entityType?.GetTableName() ?? "inventory_items";
+            var fullTableName = string.IsNullOrEmpty(schema) ? $"\"{tableName}\"" : $"\"{schema}\".\"{tableName}\"";
+
+            var sql = $"SELECT DISTINCT jsonb_object_keys(metadata) FROM {fullTableName} WHERE metadata IS NOT NULL AND jsonb_typeof(metadata) = 'object'";
             return await _context.Database
-                .SqlQueryRaw<string>(@"SELECT DISTINCT jsonb_object_keys(metadata) FROM backend.inventory_items WHERE metadata IS NOT NULL AND jsonb_typeof(metadata) = 'object'")
+                .SqlQueryRaw<string>(sql)
                 .ToListAsync();
         }
         catch
@@ -282,7 +289,7 @@ public class AssetRepository : IAssetRepository
             .ToListAsync();
     }
 
-    public async Task<object?> GetStationComponentTreeAsync(Guid stationId)
+    public async Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId)
     {
         var station = await _context.InventoryItems
             .OfType<Machine>()
@@ -298,57 +305,222 @@ public class AssetRepository : IAssetRepository
             .AsNoTracking()
             .Include(i => i.Manufacturer)
             .Where(i => i.MachineId == stationId)
-            .Select(i => new
+            .Select(i => new StationInstalledPartDto
             {
-                i.Id,
-                i.Name,
-                i.DisplayName,
-                i.SerialNumber,
-                i.EquipmentStatus,
-                i.Technology,
-                i.StorageLocation,
-                i.ItemType,
+                Id = i.Id,
+                Name = i.Name,
+                DisplayName = i.DisplayName,
+                SerialNumber = i.SerialNumber,
+                EquipmentStatus = i.EquipmentStatus,
+                Technology = i.Technology,
+                StorageLocation = i.StorageLocation,
+                ItemType = i.ItemType,
                 ManufacturerName = i.Manufacturer != null ? i.Manufacturer.Name : null
             })
             .ToListAsync();
 
-        var controllers = station.Controllers.Select(c => new
+        var controllers = station.Controllers.Select(c => new StationControllerNodeDto
         {
-            c.Id,
-            c.Name,
-            c.Hostname,
-            c.IpAddress,
-            c.MacAddress,
-            c.VlanId,
-            c.PinnedObjectHandle,
-            c.LastOnline,
-            InternalComponents = c.InventoryItems.Select(item => new
+            Id = c.Id,
+            Name = c.Name,
+            Hostname = c.Hostname,
+            IpAddress = c.IpAddress,
+            MacAddress = c.MacAddress,
+            VlanId = c.VlanId,
+            PinnedObjectHandle = c.PinnedObjectHandle,
+            LastOnline = c.LastOnline,
+            InternalComponents = c.InventoryItems.Select(item => new StationInternalComponentDto
             {
-                item.Id,
-                item.Name,
-                item.DisplayName,
-                item.SerialNumber,
-                item.ItemType,
-                item.Technology,
-                item.ParentId,
-                item.Metadata,
+                Id = item.Id,
+                Name = item.Name,
+                DisplayName = item.DisplayName,
+                SerialNumber = item.SerialNumber,
+                ItemType = item.ItemType,
+                Technology = item.Technology,
+                ParentId = item.ParentId,
+                Metadata = item.Metadata,
                 IsSigned = item.Metadata != null && item.Metadata.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && item.Metadata.RootElement.TryGetProperty("IsSigned", out var isSig) && isSig.ValueKind == System.Text.Json.JsonValueKind.True,
                 IsSandboxed = item.Metadata != null && item.Metadata.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && item.Metadata.RootElement.TryGetProperty("IsSandboxed", out var isSb) && isSb.ValueKind == System.Text.Json.JsonValueKind.True,
                 CustomData = item.Metadata != null && item.Metadata.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && item.Metadata.RootElement.TryGetProperty("Data", out var dt) ? dt : (object?)null
             }).ToList()
         }).ToList();
 
-        return new
+        return new StationComponentTreeDto
         {
             StationId = station.Id,
             StationName = station.Name,
-            station.DisplayName,
-            station.CustomIdentifier,
-            station.MachineType,
-            station.GroupId,
+            DisplayName = station.DisplayName,
+            CustomIdentifier = station.CustomIdentifier,
+            MachineType = station.MachineType,
+            GroupId = station.GroupId,
             Controllers = controllers,
             InstalledParts = installedParts,
             TotalComponentsCount = installedParts.Count + controllers.Sum(ctrl => ctrl.InternalComponents.Count)
+        };
+    }
+
+    public async Task<InventoryFilterResultDto> FilterInventoryAsync(InventoryFilterRequest request, CancellationToken cancellationToken = default)
+    {
+        var allItemsQuery = _context.InventoryItems
+            .AsNoTracking()
+            .Include(i => i.Manufacturer)
+            .Include(i => i.ResponsibleTeams)
+            .AsQueryable();
+
+        // Compute KPIs across complete inventory
+        var totalGlobalCount = await allItemsQuery.CountAsync(cancellationToken);
+        var totalGlobalHardware = await allItemsQuery.CountAsync(i => i is HardwareComponent, cancellationToken);
+        var totalGlobalSoftware = await allItemsQuery.CountAsync(i => i is SoftwareComponent || i is SoftwareAsset, cancellationToken);
+        var totalGlobalParts = await allItemsQuery.CountAsync(i => i.MachineId != null, cancellationToken);
+        var totalGlobalStock = await allItemsQuery.CountAsync(i => i.IsStockItem, cancellationToken);
+        var totalGlobalCost = await allItemsQuery.SumAsync(i => (double?)i.CostInHUF ?? 0.0, cancellationToken);
+
+        var inStorage = await allItemsQuery.CountAsync(i => i.EquipmentStatus == "InStorage", cancellationToken);
+        var inMachine = await allItemsQuery.CountAsync(i => i.EquipmentStatus == "InMachine", cancellationToken);
+        var underRepair = await allItemsQuery.CountAsync(i => i.EquipmentStatus == "UnderRepair", cancellationToken);
+        var decommissioned = await allItemsQuery.CountAsync(i => i.EquipmentStatus == "Decommissioned", cancellationToken);
+        var lowStockCount = await allItemsQuery.CountAsync(i => i.IsStockItem && (i.StockQuantity ?? 0) <= (i.MinStockThreshold ?? 0), cancellationToken);
+
+        var kpis = new InventoryKpisDto
+        {
+            TotalGlobalCount = totalGlobalCount,
+            TotalGlobalHardware = totalGlobalHardware,
+            TotalGlobalSoftware = totalGlobalSoftware,
+            TotalGlobalParts = totalGlobalParts,
+            TotalGlobalStock = totalGlobalStock,
+            TotalGlobalCost = totalGlobalCost,
+            InStorage = inStorage,
+            InMachine = inMachine,
+            UnderRepair = underRepair,
+            Decommissioned = decommissioned,
+            LowStockCount = lowStockCount
+        };
+
+        // Filter filtered query
+        var query = allItemsQuery;
+
+        if (!string.IsNullOrWhiteSpace(request.Query))
+        {
+            var term = request.Query.Trim().ToLower();
+            query = query.Where(i =>
+                (i.Name != null && i.Name.ToLower().Contains(term)) ||
+                (i.DisplayName != null && i.DisplayName.ToLower().Contains(term)) ||
+                (i.SerialNumber != null && i.SerialNumber.ToLower().Contains(term)) ||
+                (i.StorageLocation != null && i.StorageLocation.ToLower().Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Type) && !string.Equals(request.Type, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            var typeLower = request.Type.ToLowerInvariant();
+            if (typeLower is "hardware" or "hardwarecomponent")
+            {
+                query = query.Where(i => i is HardwareComponent);
+            }
+            else if (typeLower is "software" or "softwarecomponent" or "softwareasset")
+            {
+                query = query.Where(i => i is SoftwareComponent || i is SoftwareAsset);
+            }
+            else if (typeLower is "machine" or "station")
+            {
+                query = query.Where(i => i is Machine);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.EquipmentStatus) && !string.Equals(request.EquipmentStatus, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(i => i.EquipmentStatus == request.EquipmentStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Technology) && !string.Equals(request.Technology, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(i => i.Technology == request.Technology);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.StorageLocation) && !string.Equals(request.StorageLocation, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(i => i.StorageLocation == request.StorageLocation);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ManufacturerId))
+        {
+            if (Guid.TryParse(request.ManufacturerId, out var mId))
+            {
+                query = query.Where(i => i.ManufacturerId == mId);
+            }
+            else
+            {
+                query = query.Where(i => i.Manufacturer != null && i.Manufacturer.Name.ToLower() == request.ManufacturerId.ToLower());
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.TeamId))
+        {
+            if (Guid.TryParse(request.TeamId, out var tId))
+            {
+                query = query.Where(i => i.ResponsibleTeams.Any(t => t.Id == tId));
+            }
+            else
+            {
+                query = query.Where(i => i.ResponsibleTeams.Any(t => t.Name.ToLower() == request.TeamId.ToLower()));
+            }
+        }
+
+        // Sorting
+        bool desc = string.Equals(request.SortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        query = (request.SortBy?.ToLowerInvariant()) switch
+        {
+            "displayname" => desc ? query.OrderByDescending(i => i.DisplayName) : query.OrderBy(i => i.DisplayName),
+            "serialnumber" => desc ? query.OrderByDescending(i => i.SerialNumber) : query.OrderBy(i => i.SerialNumber),
+            "equipmentstatus" => desc ? query.OrderByDescending(i => i.EquipmentStatus) : query.OrderBy(i => i.EquipmentStatus),
+            "cost" or "costinhuf" => desc ? query.OrderByDescending(i => i.CostInHUF) : query.OrderBy(i => i.CostInHUF),
+            _ => desc ? query.OrderByDescending(i => i.Name) : query.OrderBy(i => i.Name)
+        };
+
+        var filteredCount = await query.CountAsync(cancellationToken);
+        var totalCostHuf = await query.SumAsync(i => (double?)i.CostInHUF ?? 0.0, cancellationToken);
+
+        int page = request.Page > 0 ? request.Page : 1;
+        int pageSize = request.PageSize > 0 ? request.PageSize : 50;
+        int totalPages = (int)Math.Ceiling((double)filteredCount / pageSize);
+
+        var rawItems = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var items = rawItems
+            .Select(i => new InventoryItemSummaryDto
+            {
+                Id = i.Id,
+                Name = i.Name,
+                DisplayName = i.DisplayName,
+                SerialNumber = i.SerialNumber,
+                ItemType = i.ItemType,
+                CustomIdentifier = (i as Machine)?.CustomIdentifier,
+                CostInHUF = (double?)i.CostInHUF,
+                PurchaseDate = i.PurchaseDate,
+                Manufacturer = i.Manufacturer != null ? new InventoryRelationSummaryDto { Id = i.Manufacturer.Id.ToString(), Name = i.Manufacturer.Name } : null,
+                ResponsibleTeams = i.ResponsibleTeams.Select(t => new InventoryRelationSummaryDto { Id = t.Id.ToString(), Name = t.Name }).ToList(),
+                IsStockItem = i.IsStockItem,
+                EquipmentStatus = i.EquipmentStatus,
+                StorageLocation = i.StorageLocation,
+                StockQuantity = i.StockQuantity,
+                MinStockThreshold = i.MinStockThreshold,
+                Technology = i.Technology,
+                Metadata = i.Metadata,
+                MachineId = i.MachineId
+            })
+            .ToList();
+
+        return new InventoryFilterResultDto
+        {
+            Items = items,
+            TotalCount = filteredCount,
+            TotalPages = totalPages,
+            Page = page,
+            PageSize = pageSize,
+            TotalCostHuf = totalCostHuf,
+            Kpis = kpis
         };
     }
 }

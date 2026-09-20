@@ -10,6 +10,7 @@ using App.Shared.Errors;
 /// </summary>
 public static class CommandSanitizer
 {
+
     private static readonly char[] ShellMetacharacters =
     {
         '&', '|', ';', '`', '$', '>', '<', '\n', '\r', '(', ')'
@@ -18,7 +19,9 @@ public static class CommandSanitizer
     private static readonly string[] DangerousPayloadKeywords =
     {
         "rm -rf", "cmd.exe", "powershell -enc", "powershell -e", "sh -c", "bash -c",
-        "curl http", "wget http", "nc -e", "netcat", "eval(", "exec("
+        "curl http", "wget http", "nc -e", "netcat", "eval(", "exec(",
+        "sudo ", "dd if=", "mkfs", "python -c", "python3 -c", "perl -e", "ruby -e",
+        "chmod 777", "chown", "base64 -d", "invoke-expression", "iex("
     };
 
     /// <summary>

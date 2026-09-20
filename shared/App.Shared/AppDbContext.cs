@@ -149,6 +149,9 @@ public class AppDbContext : DbContext
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<QueuedAgentCommand> QueuedAgentCommands { get; set; }
     public DbSet<AgentEvent> AgentEvents { get; set; }
+    public DbSet<MachineGroup> MachineGroups { get; set; }
+    public DbSet<TechnicianRule> TechnicianRules { get; set; }
+    public DbSet<ShiftAbsence> ShiftAbsences { get; set; }
     
     // System Governance, Identity & PKI Sets
     public DbSet<SecurityGroupMapping> SecurityGroupMappings { get; set; }

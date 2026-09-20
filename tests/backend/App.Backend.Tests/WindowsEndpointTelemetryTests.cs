@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using App.Backend.Api.Services;
 using App.Shared.Data;
 using App.Shared.Entities;
 using App.Shared.Protos;
 using Google.Protobuf.WellKnownTypes;
-using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -27,12 +27,6 @@ public class WindowsEndpointTelemetryTests : IClassFixture<CustomWebApplicationF
     public async Task ReportSystemInfo_WindowsPayload_PersistsWindowsInvariantsAndTelemetry()
     {
         // Arrange
-        var client = _factory.CreateDefaultClient();
-        var channel = GrpcChannel.ForAddress(client.BaseAddress!, new GrpcChannelOptions
-        {
-            HttpClient = client
-        });
-        var grpcClient = new SystemInfoCollector.SystemInfoCollectorClient(channel);
 
         const string windowsHostname = "WIN-LTSC-OT01";
         const string windowsUuid = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
@@ -130,15 +124,16 @@ public class WindowsEndpointTelemetryTests : IClassFixture<CustomWebApplicationF
         });
 
         // Act
-        var response = await grpcClient.ReportSystemInfoAsync(request);
+        using var scope = _factory.Services.CreateScope();
+        var ingestionService = scope.ServiceProvider.GetRequiredService<ITelemetryIngestionService>();
+        var response = await ingestionService.ProcessSystemInfoAsync(request);
 
-        // Assert gRPC response
+        // Assert response
         Assert.NotNull(response);
         Assert.True(response.Success);
         Assert.Contains(windowsHostname, response.Message);
 
         // Verify Database persistence of Windows Invariants
-        using var scope = _factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var clientPc = await dbContext.ClientPcs
@@ -170,13 +165,6 @@ public class WindowsEndpointTelemetryTests : IClassFixture<CustomWebApplicationF
     public async Task ReportSystemInfo_WindowsEndpoint_ReceivesAndAcknowledgesQueuedCommands()
     {
         // Arrange
-        var client = _factory.CreateDefaultClient();
-        var channel = GrpcChannel.ForAddress(client.BaseAddress!, new GrpcChannelOptions
-        {
-            HttpClient = client
-        });
-        var grpcClient = new SystemInfoCollector.SystemInfoCollectorClient(channel);
-
         const string windowsHostname = "WIN-LTSC-CMD01";
         const string windowsMac = "00:15:5D:8A:2F:AA";
         const string targetFilePath = @"C:\ProgramData\Heimdall\agent.json";
@@ -221,7 +209,9 @@ public class WindowsEndpointTelemetryTests : IClassFixture<CustomWebApplicationF
         };
 
         // Act
-        var response = await grpcClient.ReportSystemInfoAsync(request);
+        using var actScope = _factory.Services.CreateScope();
+        var ingestionService = actScope.ServiceProvider.GetRequiredService<ITelemetryIngestionService>();
+        var response = await ingestionService.ProcessSystemInfoAsync(request);
 
         // Assert
         Assert.NotNull(response);

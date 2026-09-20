@@ -52,6 +52,7 @@ const {
   simulatedPersona,
   setSimulatedPersona,
   clearSimulatedPersona,
+  isPersonaSimulationAllowed,
   DEMO_PERSONAS
 } = useAuthSession()
 
@@ -320,7 +321,7 @@ onMounted(() => {
           <PaletteIcon class="size-4" />
           <span>Appearance</span>
         </TabsTrigger>
-        <TabsTrigger value="personas" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
+        <TabsTrigger v-if="isPersonaSimulationAllowed" value="personas" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
           <UserCheckIcon class="size-4 text-cyan-400" />
           <span>Persona Sandbox</span>
         </TabsTrigger>
@@ -671,7 +672,7 @@ onMounted(() => {
       </TabsContent>
 
       <!-- TAB 5: Persona Sandbox -->
-      <TabsContent value="personas" class="space-y-6">
+      <TabsContent v-if="isPersonaSimulationAllowed" value="personas" class="space-y-6">
         <Card class="border-border/80">
           <CardHeader>
             <div class="flex items-center justify-between">

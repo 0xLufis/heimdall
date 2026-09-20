@@ -22,10 +22,13 @@ public class Worker : BackgroundService
     private readonly ISystemInfoService _systemInfoService;
     private readonly ISystemInfoReporter _systemInfoReporter;
     private readonly ICommandHandler _commandHandler;
-    private readonly AdsSimulationServer _adsServer;
-    private readonly MinimalOpcServer _opcServer;
-    private readonly MinimalOpcClient _opcClient;
-    private readonly TelemetryTriggerEngine _triggerEngine;
+    private readonly IAdsSimulationServer _adsServer;
+    private readonly IMinimalOpcServer _opcServer;
+    private readonly IMinimalOpcClient _opcClient;
+    private readonly ITelemetryTriggerEngine _triggerEngine;
+    private readonly App.Contracts.Configuration.AgentFeatureFlags _featureFlags;
+    private readonly IAdsMemoryReporter? _adsMemoryReporter;
+    private readonly IMqttAgentClient? _mqttClient;
 
     private DateTimeOffset _lastReportedTime = DateTimeOffset.MinValue;
     private ushort _lastAdsState = AdsSimulationServer.ADSSTATE_RUN;
@@ -33,20 +36,26 @@ public class Worker : BackgroundService
     private string? _forceReportReason = null;
     private readonly AutoResetEvent _wakeUpSignal = new(false);
 
-    public AdsSimulationServer AdsServer => _adsServer;
-    public MinimalOpcServer OpcServer => _opcServer;
-    public MinimalOpcClient OpcClient => _opcClient;
-    public TelemetryTriggerEngine TriggerEngine => _triggerEngine;
+    public IAdsSimulationServer AdsServer => _adsServer;
+    public IMinimalOpcServer OpcServer => _opcServer;
+    public IMinimalOpcClient OpcClient => _opcClient;
+    public ITelemetryTriggerEngine TriggerEngine => _triggerEngine;
+    public App.Contracts.Configuration.AgentFeatureFlags FeatureFlags => _featureFlags;
+    public IAdsMemoryReporter? AdsMemoryReporter => _adsMemoryReporter;
+    public IMqttAgentClient? MqttClient => _mqttClient;
 
     public Worker(
         ILogger<Worker> logger,
         ISystemInfoService systemInfoService,
         ISystemInfoReporter systemInfoReporter,
         ICommandHandler commandHandler,
-        AdsSimulationServer? adsServer = null,
-        MinimalOpcServer? opcServer = null,
-        MinimalOpcClient? opcClient = null,
-        TelemetryTriggerEngine? triggerEngine = null)
+        IAdsSimulationServer? adsServer = null,
+        IMinimalOpcServer? opcServer = null,
+        IMinimalOpcClient? opcClient = null,
+        ITelemetryTriggerEngine? triggerEngine = null,
+        App.Contracts.Configuration.AgentFeatureFlags? featureFlags = null,
+        IAdsMemoryReporter? adsMemoryReporter = null,
+        IMqttAgentClient? mqttClient = null)
     {
         _logger = logger;
         _systemInfoService = systemInfoService;
@@ -57,6 +66,9 @@ public class Worker : BackgroundService
         _opcServer = opcServer ?? new MinimalOpcServer();
         _opcClient = opcClient ?? new MinimalOpcClient();
         _triggerEngine = triggerEngine ?? new TelemetryTriggerEngine();
+        _featureFlags = featureFlags ?? App.Contracts.Configuration.AgentFeatureFlags.FromEnvironment();
+        _adsMemoryReporter = adsMemoryReporter;
+        _mqttClient = mqttClient;
     }
 
     public void RequestImmediateReport(string reason = "On-demand telemetry requested")
@@ -68,18 +80,53 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Start industrial OT simulation services
+        // Start industrial OT simulation services only when development features are enabled
+        if (_featureFlags.EnableDevFeatures)
+        {
+            try
+            {
+                _adsServer.Start();
+                _opcServer.Start();
+                _logger.LogInformation("Industrial OT mock simulation servers initialized in Development mode (ADS: port {AdsPort}, OPC Server: port {OpcPort})",
+                    _adsServer.Port, _opcServer.Port);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting industrial OT simulation services");
+            }
+        }
+        else
+        {
+            _logger.LogInformation("Production mode active: Industrial OT mock simulation servers (TwinCAT ADS, Minimal OPC UA) are disabled (EnableDevFeatures = false).");
+        }
+
         try
         {
-            _adsServer.Start();
-            _opcServer.Start();
             _opcClient.Start(pollIntervalMs: 2000);
-            _logger.LogInformation("Industrial OT subsystems initialized (ADS: port {AdsPort}, OPC Server: port {OpcPort}, OPC Client: {OpcEndpoint})",
-                _adsServer.Port, _opcServer.Port, _opcClient.EndpointUrl);
+            _logger.LogInformation("Industrial OT OPC Client initialized (Endpoint: {OpcEndpoint})", _opcClient.EndpointUrl);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error starting industrial OT simulation services");
+            _logger.LogError(ex, "Error starting OPC Client");
+        }
+
+        if (_mqttClient != null)
+        {
+            try
+            {
+                var initialSysInfo = _systemInfoService.GetSystemInfo();
+                await _mqttClient.EnsureConnectedAsync(stoppingToken);
+                await _mqttClient.SubscribeToCommandsAsync(initialSysInfo.MachineIdentifier, async command =>
+                {
+                    var result = await _commandHandler.HandleCommandAsync(command);
+                    _logger.LogInformation("Async MQTT command handled: {CommandType} -> Success={Success}, Message={Message}",
+                        command.Type, result.Success, result.Message);
+                }, stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Initial MQTT connection/command subscription deferred to reporter loop.");
+            }
         }
 
         // Initial spread delay to prevent thundering herd
@@ -94,12 +141,12 @@ public class Worker : BackgroundService
                 // Populate Industrial OT telemetry
                 systemInfo.IndustrialOt = new IndustrialOtData
                 {
-                    AdsAmsNetId = $"{_adsServer.AmsNetId}:{_adsServer.AmsPort}",
-                    AdsPort = _adsServer.Port,
-                    AdsState = _adsServer.CurrentAdsState == AdsSimulationServer.ADSSTATE_RUN ? "RUN" :
+                    AdsAmsNetId = _featureFlags.EnableDevFeatures ? $"{_adsServer.AmsNetId}:{_adsServer.AmsPort}" : string.Empty,
+                    AdsPort = _featureFlags.EnableDevFeatures ? _adsServer.Port : 0,
+                    AdsState = _featureFlags.EnableDevFeatures ? (_adsServer.CurrentAdsState == AdsSimulationServer.ADSSTATE_RUN ? "RUN" :
                                _adsServer.CurrentAdsState == AdsSimulationServer.ADSSTATE_STOP ? "STOP" :
-                               $"State_{_adsServer.CurrentAdsState}",
-                    AdsSymbols = new Dictionary<string, object>(_adsServer.SimulatedVariables),
+                               $"State_{_adsServer.CurrentAdsState}") : "DISABLED",
+                    AdsSymbols = _featureFlags.EnableDevFeatures ? new Dictionary<string, object>(_adsServer.SimulatedVariables) : new Dictionary<string, object>(),
                     OpcEndpoint = _opcClient.EndpointUrl,
                     OpcConnected = _opcClient.IsConnected,
                     OpcNodes = new Dictionary<string, object>(_opcClient.MonitoredNodes)
@@ -157,6 +204,12 @@ public class Worker : BackgroundService
                                 command.Type, result.Success, result.Message);
                         }
                     }
+
+                    // Dispatch ADS PLC Memory telemetry via Protobuf over MQTT
+                    if (_adsMemoryReporter != null && _featureFlags.EnableDevFeatures)
+                    {
+                        await _adsMemoryReporter.ReportPlcMemoryAsync(systemInfo.MachineIdentifier, stoppingToken);
+                    }
                 }
                 else
                 {
@@ -174,8 +227,11 @@ public class Worker : BackgroundService
             await Task.Delay(baseDelayMs + jitterMs, stoppingToken);
         }
 
-        _adsServer.Stop();
-        _opcServer.Stop();
+        if (_featureFlags.EnableDevFeatures)
+        {
+            _adsServer.Stop();
+            _opcServer.Stop();
+        }
         _opcClient.Stop();
     }
 

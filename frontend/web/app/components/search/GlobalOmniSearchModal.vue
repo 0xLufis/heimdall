@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { Dialog, DialogContent } from '~/components/ui/dialog'
 import OmniSearchBar from './OmniSearchBar.vue'
 import type { SearchInstanceConfig } from '~/types/search'
-
 import { useRouter } from 'vue-router'
+import { useGlobalSearchModal } from '~/composables/useGlobalSearchModal'
 
 const router = useRouter()
-const open = ref(false)
+const { isOpen, closeModal, toggleModal, openModal } = useGlobalSearchModal()
 
 const globalConfig: SearchInstanceConfig = {
   instanceId: 'global',
@@ -18,7 +18,7 @@ const globalConfig: SearchInstanceConfig = {
 }
 
 const handleSearch = (q: string) => {
-  open.value = false
+  closeModal()
   if (q && q.trim()) {
     router.push(`/dashboard/inventory?query=${encodeURIComponent(q.trim())}`)
   }
@@ -34,10 +34,10 @@ const handleKeydown = (e: KeyboardEvent) => {
 
   if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'p')) {
     e.preventDefault()
-    open.value = !open.value
-  } else if (e.key === '/' && !isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey && !open.value) {
+    toggleModal()
+  } else if (e.key === '/' && !isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey && !isOpen.value) {
     e.preventDefault()
-    open.value = true
+    openModal()
   }
 }
 
@@ -55,7 +55,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="open = $event">
+  <Dialog :open="isOpen" @update:open="isOpen = $event">
     <DialogContent class="max-w-2xl bg-slate-950/95 backdrop-blur-xl border-slate-800 text-slate-100 p-6 rounded-3xl shadow-2xl">
       <div class="space-y-4">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
@@ -70,7 +70,7 @@ onUnmounted(() => {
           :config="globalConfig"
           :immediate="true"
           @search="handleSearch"
-          @select-result="open = false"
+          @select-result="closeModal"
         />
       </div>
     </DialogContent>

@@ -356,7 +356,7 @@ For local applications (e.g., Python vision algorithms, barcode scanners, propri
 ### 8.5 Component Tree Integration & Inventory Attachment
 Custom components registered via the Extension API are merged into the machine hierarchy:
 - `ExtensionComponentContributor` packages active sensors into the agent's gRPC payload.
-- `SystemInfoCollectorService` links the sensor to its parent equipment using `BaseInventoryItem.ParentId`.
+- `TelemetryIngestionService` links the sensor to its parent equipment using `BaseInventoryItem.ParentId`.
 - The Station Component Tree modal (`StationComponentTreeModal.vue`) displays custom sensors with `[Signed]` and `[Dev Sandbox]` trust badges, allowing operators to inspect dynamic JSON state directly from the CAD map or machinery views.
 
 ---

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { getPlantTechnicianRules } from './datasetLoader'
+import { featureFlags } from './featureFlags'
 
 export type ScopeType = 'technology' | 'group' | 'machine'
 export type UserRoleType = 'technician' | 'engineer' | 'shift_leader' | 'group_leader' | 'manager' | 'admin'
@@ -203,7 +204,7 @@ const FALLBACK_RULES: TechnicianRuleEntry[] = [
 ]
 
 function loadInitialRules(): TechnicianRuleEntry[] {
-  const result: TechnicianRuleEntry[] = [...FALLBACK_RULES]
+  const result: TechnicianRuleEntry[] = featureFlags.enableDevFeatures ? [...FALLBACK_RULES] : []
   try {
     const datasetRules = getPlantTechnicianRules()
     if (datasetRules && datasetRules.length > 0) {
@@ -235,7 +236,7 @@ function loadInitialRules(): TechnicianRuleEntry[] {
 
 let rules: TechnicianRuleEntry[] = loadInitialRules()
 
-let absences: ShiftAbsenceEntry[] = [
+const INITIAL_ABSENCES: ShiftAbsenceEntry[] = [
   {
     id: 'abs-001',
     technicianId: 'usr-kovacs',
@@ -250,7 +251,9 @@ let absences: ShiftAbsenceEntry[] = [
   }
 ]
 
-let teamsOoo: TeamsOooEntry[] = [
+let absences: ShiftAbsenceEntry[] = featureFlags.enableDevFeatures ? [...INITIAL_ABSENCES] : []
+
+const INITIAL_TEAMS_OOO: TeamsOooEntry[] = [
   {
     id: 'usr-sally',
     userId: 'usr-sally',
@@ -295,6 +298,8 @@ let teamsOoo: TeamsOooEntry[] = [
     isOutOfOffice: false
   }
 ]
+
+let teamsOoo: TeamsOooEntry[] = featureFlags.enableDevFeatures ? [...INITIAL_TEAMS_OOO] : []
 
 export function normalizeScopeType(raw: string): ScopeType {
   const lower = (raw || '').toLowerCase().trim()

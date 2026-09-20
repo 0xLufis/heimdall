@@ -1,6 +1,8 @@
 import { defineEventHandler, readBody, getMethod, getQuery } from 'h3'
+import { assertDevFeaturesEnabled } from '../../utils/featureFlags'
 
 export default defineEventHandler(async (event) => {
+  assertDevFeaturesEnabled()
   const method = getMethod(event)
   const action = event.context.params?.action || 'status'
   

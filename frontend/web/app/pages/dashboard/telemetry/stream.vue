@@ -37,6 +37,7 @@ import RbacButton from '@/components/common/RbacButton.vue'
 import ControllerCommandModal from '~/components/controllers/ControllerCommandModal.vue'
 import { useControllers } from '~/composables/useControllers'
 import { useRbacPermission } from '~/composables/useRbacPermission'
+import { useFeatureFlags } from '~/composables/useFeatureFlags'
 import type { IndustrialController } from '~/types/domain'
 
 definePageMeta({
@@ -59,6 +60,7 @@ interface DiagnosticSnapshotSummary {
 
 const { controllers, isLoading, fetchControllers } = useControllers()
 const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
+const { enableDebugFeatures } = useFeatureFlags()
 const router = useRouter()
 
 const searchQuery = ref('')
@@ -418,6 +420,7 @@ onUnmounted(() => {
           <!-- RBAC Gated Controls -->
           <div class="flex items-center gap-2">
             <Button
+              v-if="enableDebugFeatures"
               variant="outline"
               size="sm"
               @click="openHistoryModal"
@@ -428,6 +431,7 @@ onUnmounted(() => {
               <span>History</span>
             </Button>
             <RbacButton
+              v-if="enableDebugFeatures"
               capability="canManageEndpoints"
               variant="outline"
               size="sm"
@@ -462,7 +466,7 @@ onUnmounted(() => {
           </div>
 
           <!-- Real Diagnostic Snapshot Card -->
-          <div v-if="latestSnapshot" class="p-3.5 rounded-xl bg-slate-950/80 border border-emerald-500/30 text-slate-200 space-y-2.5 shadow-lg">
+          <div v-if="enableDebugFeatures && latestSnapshot" class="p-3.5 rounded-xl bg-slate-950/80 border border-emerald-500/30 text-slate-200 space-y-2.5 shadow-lg">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div class="flex items-center gap-2">
                 <div class="p-1 rounded-md bg-emerald-500/20 text-emerald-400">
@@ -655,7 +659,7 @@ onUnmounted(() => {
     />
 
     <!-- Diagnostic Snapshot Payload Dialog -->
-    <Dialog :open="isPayloadModalOpen" @update:open="isPayloadModalOpen = $event">
+    <Dialog v-if="enableDebugFeatures" :open="isPayloadModalOpen" @update:open="isPayloadModalOpen = $event">
       <DialogContent class="max-w-2xl bg-slate-950 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-2xl shadow-2xl">
         <DialogHeader class="p-5 border-b border-slate-800 bg-slate-900/50 flex flex-row items-center justify-between">
           <div class="flex items-center gap-2.5">
@@ -684,7 +688,7 @@ onUnmounted(() => {
     </Dialog>
 
     <!-- Diagnostic Snapshot History Dialog -->
-    <Dialog :open="isHistoryModalOpen" @update:open="isHistoryModalOpen = $event">
+    <Dialog v-if="enableDebugFeatures" :open="isHistoryModalOpen" @update:open="isHistoryModalOpen = $event">
       <DialogContent class="max-w-3xl bg-slate-950 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-2xl shadow-2xl">
         <DialogHeader class="p-5 border-b border-slate-800 bg-slate-900/50">
           <div class="flex items-center gap-2.5">

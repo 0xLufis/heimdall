@@ -8,6 +8,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Full Architectural Refactoring & Interface Decoupling (`REFACTOR.md` & `AGENTS.MD`)**:
+  - Extracted and implemented strict interface-implementation models across all backend, agent, and infrastructure layers:
+    - `IAdsSimulationServer` and `IAdsMemoryReporter` for Beckhoff TwinCAT ADS runtime.
+    - `IMinimalOpcServer` and `IMinimalOpcClient` for binary OPC UA TCP transport.
+    - `IMqttAgentClient` and `ITelemetryTriggerEngine` for industrial telemetry reporting.
+    - `ISecureIndustrialFileScanner` with configurable `FileSystemScannerOptions`.
+    - `ITelemetryIngestionService` and `TelemetryIngestionService` supporting both gRPC and embedded MQTT telemetry pipelines.
+    - `IOpcUaGatewayService`, `IPredictiveMaintenanceService`, `IReportExportService`, and `ICopiaIntegrationService`.
+    - `IMachineGroupRepository` / `MachineGroupRepository` and `ITechnicianRepository` / `TechnicianRepository`.
+  - Introduced strongly-typed domain enums in `App.Contracts.Enums`: `AgentCommandType`, `PlcMemoryAccessMode`, `TelemetryIngestionChannel`, `MachineGroupCategory`, `TechnicianRoleType`, and `DiagnosticSeverityLevel`.
+  - Implemented runtime feature flags and dev/debug gating across backend API endpoints and frontend composables (`featureFlags.ts`, `useFeatureFlags.ts`).
+  - Added dedicated unit tests: `AgentRefactoringAndFeatureFlagsTests.cs`, `BackendFeatureFlagsAndEndpointGuardsTests.cs`, `InventoryFilterAndDomainEndpointsTests.cs`, `MqttCommsTests.cs`, `FeatureFlagsAndDevGating.test.ts`, and `ComposablesReviewAndDevGating.test.ts`.
+- **Development Orchestrator & Process Lifecycle Modernization (`run_dev.sh` & `dev_layout.kdl`)**:
+  - Implemented `setsid` daemon detachment for all background services (Backend, Frontend, Agent, Simulator) ensuring persistence across subshell terminations.
+  - Added `kill_pid_tree()` recursive child process termination and `free_port()` with `fuser -k` guaranteeing clean socket release on ports 5099, 5001, 3000, 5055, and 5998.
+  - Resolved Zellij dual-execution port conflict: `start_dev --zellij` halts background daemons and allocates ports exclusively to interactive Zellij multiplexer panes.
+  - Updated `dev_layout.kdl` to dynamically detect active Windows Edge Agent containers and stream container logs instead of colliding on port 5998.
+
+### Fixed
+- **Frontend Syntax & Production Build Crashes**:
+  - Fixed missing `<script setup lang="ts">` tag in `GlobalOmniSearchModal.vue` causing Rolldown/Vite compilation failures (`RolldownError: Invalid end tag`).
+  - Fixed multiline string literal with raw newline in `OuCertificateRuleModal.vue` causing `SyntaxError: Unterminated string constant`.
+  - Updated `nuxt.config.ts` `server.allowedHosts: true` to resolve 403 Forbidden errors when accessing dev servers via LAN IP or Docker container bridges.
+  - Modernized Vite server HMR configuration to eliminate `server.hmr.protocol/clientPort` deprecation warnings in Vite 8.
+  - Formatted `ensureAdminUser.ts` database connection errors into a clean, single-line deferred initialization warning when PostgreSQL is offline at boot.
+- **Run Script Subshell PID Capture & Zombie Processes**:
+  - Replaced subshell launches `(cd ... && nohup ...)` with direct `--cwd` and `--project` flags, preventing orphaned grandchild processes from holding port 3000 across runs.
+  - Fixed `pkill` patterns in `stop_services` and `clean_environment` to properly match `@nuxt/cli`, `bun run dev`, `node.*nuxt`, and `dotnet exec.*App.Backend.Api`.
+
+### Tests
+- **Backend .NET Test Suite**: Expanded to **208 passing tests** (up from 162/165) with xUnit, in-memory SQLite, and WebApplicationFactory integration tests.
+- **Frontend Vitest Test Suite**: Expanded to **298 passing unit tests across 39 test files** (up from 275/37 suites).
+- **Python Fleet Suite**: 9/9 unit tests passing (`test_mock_cmi_runner.py`, `test_simulated_pc_integration.py`).
+- **Unified Pipeline**: Full `./run_dev.sh test all` verification passes cleanly with exit code 0.
+- **Production Build**: Verified `bun run build` completes cleanly with Nitro production preset.
+
+### Added (Previous)
 - **Real OPC UA Server in Agent Daemon (`MinimalOpcServer.cs`)**:
   - New lightweight OPC UA TCP server listening on port 4840 with full binary HEL/ACK handshake per OPC UA transport spec.
   - Tracks `ConnectionsHandled` counter; exposes `IsListening` / `ServerPort` properties.

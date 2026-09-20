@@ -1,4 +1,5 @@
 import { defineEventHandler, getQuery, getHeader } from 'h3'
+import { featureFlags } from '../../utils/featureFlags'
 
 // Rich seed datasets for offline/local dev fallback
 const SEED_MACHINES = [
@@ -310,7 +311,9 @@ export default defineEventHandler(async (event) => {
   }
 
   if (rawList.length === 0) {
-    rawList = primaryKey === 'client' ? SEED_CLIENTS : SEED_MACHINES
+    rawList = primaryKey === 'client'
+      ? (featureFlags.enableDevFeatures ? SEED_CLIENTS : [])
+      : (featureFlags.enableDevFeatures ? SEED_MACHINES : [])
   }
 
   let filtered = rawList.map(computeNodeMetrics)

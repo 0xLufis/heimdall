@@ -7,7 +7,7 @@ import {
   SelectPortal,
   SelectViewport,
   useForwardPropsEmits,
-} from 'radix-vue'
+} from 'reka-ui'
 import { cn } from '~/utils/cn'
 
 const props = defineProps<SelectContentProps & { class?: HTMLAttributes['class'] }>()

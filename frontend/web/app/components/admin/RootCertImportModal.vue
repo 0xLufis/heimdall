@@ -18,9 +18,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'imported', cert: any): void
+  close: []
+  imported: [cert: any]
 }>()
+
+const { enableDevFeatures } = useFeatureFlags()
 
 const rawPem = ref('')
 const profileName = ref('Corporate-Project-Root-CA')
@@ -121,6 +123,7 @@ async function submitImport() {
 }
 
 function loadSampleCert() {
+  if (!enableDevFeatures.value) return
   rawPem.value = `-----BEGIN CERTIFICATE-----
 MIIDXTCCAkWgAwIBAgIUWk+RLjsRAwEQAgEAMA0GCSqGSIb3DQEBCwUAMEUxCzAJ
 BgNVBAYTAlVTMScwJQYDVQQKDB5FbnRlcnByaXNlIEZhY3RvcnkgQXV0b21hdGlv
@@ -141,13 +144,15 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
           Install Corporate Root Certificate Authority
         </DialogTitle>
         <DialogDescription class="text-xs text-slate-400">
-          Upload an existing corporate Root CA or Intermediate Certificate Authority (PEM / CRT format) to anchor all factory edge device mTLS signatures.
+          Upload an existing corporate Root CA or Intermediate Certificate Authority (PEM / CRT format) to anchor all
+          factory edge device mTLS signatures.
         </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-4 py-3">
         <!-- Error Banner -->
-        <div v-if="errorMessage" class="p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+        <div v-if="errorMessage"
+          class="p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
           <AlertCircleIcon class="h-4 w-4 shrink-0" />
           <span>{{ errorMessage }}</span>
         </div>
@@ -156,29 +161,25 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="text-xs font-medium text-slate-300">Root CA Profile Name</label>
-            <Input v-model="profileName" placeholder="e.g. Corporate-Master-Root-CA" class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
+            <Input v-model="profileName" placeholder="e.g. Corporate-Master-Root-CA"
+              class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
           </div>
           <div>
             <label class="text-xs font-medium text-slate-300">Purpose / Description</label>
-            <Input v-model="description" placeholder="e.g. Factory Floor Mutual TLS" class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
+            <Input v-model="description" placeholder="e.g. Factory Floor Mutual TLS"
+              class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
           </div>
         </div>
 
         <!-- File Upload Area -->
-        <div
-          @click="triggerFileInput"
-          class="border-2 border-dashed border-slate-700 hover:border-emerald-500/50 bg-slate-950/60 rounded-xl p-5 text-center cursor-pointer transition-colors"
-        >
-          <input
-            ref="fileInputRef"
-            type="file"
-            accept=".crt,.pem,.cer,.cert"
-            class="hidden"
-            @change="handleFileUpload"
-          />
+        <div @click="triggerFileInput"
+          class="border-2 border-dashed border-slate-700 hover:border-emerald-500/50 bg-slate-950/60 rounded-xl p-5 text-center cursor-pointer transition-colors">
+          <input ref="fileInputRef" type="file" accept=".crt,.pem,.cer,.cert" class="hidden"
+            @change="handleFileUpload" />
           <UploadCloudIcon class="h-8 w-8 mx-auto text-slate-400 mb-2" />
           <p class="text-sm font-medium text-slate-200">Click or drag & drop to upload Certificate (.crt, .pem)</p>
-          <p class="text-xs text-slate-500 mt-1">Accepts standard X.509 ASCII PEM blocks with BEGIN CERTIFICATE headers</p>
+          <p class="text-xs text-slate-500 mt-1">Accepts standard X.509 ASCII PEM blocks with BEGIN CERTIFICATE headers
+          </p>
         </div>
 
         <!-- Textarea for Paste -->
@@ -188,24 +189,18 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
               <FileCodeIcon class="h-3.5 w-3.5 text-slate-400" />
               Raw PEM Payload
             </label>
-            <button
-              type="button"
-              class="text-xs text-emerald-400 hover:underline"
-              @click="loadSampleCert"
-            >
+            <button v-if="enableDevFeatures" type="button" class="text-xs text-emerald-400 hover:underline" @click="loadSampleCert">
               Load Industrial Demo CA Template
             </button>
           </div>
-          <textarea
-            v-model="rawPem"
-            rows="6"
+          <textarea v-model="rawPem" rows="6"
             placeholder="-----BEGIN CERTIFICATE-----&#10;MIID...&#10;-----END CERTIFICATE-----"
-            class="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          ></textarea>
+            class="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"></textarea>
         </div>
 
         <!-- Real-time Verification Preview -->
-        <div v-if="parsedPreview" class="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 flex items-center justify-between">
+        <div v-if="parsedPreview"
+          class="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 flex items-center justify-between">
           <div class="flex items-center gap-2">
             <KeyIcon class="h-4 w-4 text-emerald-400 shrink-0" />
             <div>
@@ -221,12 +216,8 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
         <Button variant="ghost" size="sm" @click="emit('close')" class="text-slate-400 hover:text-slate-200">
           Dismiss
         </Button>
-        <Button
-          size="sm"
-          class="bg-emerald-600 hover:bg-emerald-500 text-white"
-          :disabled="importing || !rawPem.trim()"
-          @click="submitImport"
-        >
+        <Button size="sm" class="bg-emerald-600 hover:bg-emerald-500 text-white" :disabled="importing || !rawPem.trim()"
+          @click="submitImport">
           <ShieldCheckIcon class="h-4 w-4 mr-1.5" />
           {{ importing ? 'Importing & Validating...' : 'Commit & Activate Root CA' }}
         </Button>
