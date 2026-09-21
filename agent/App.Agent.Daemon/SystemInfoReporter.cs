@@ -13,7 +13,8 @@ using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Reports endpoint telemetry and inventory via MQTT using binary Protobuf payloads.
+/// Aggregates multi-contributor component telemetry and inventory (hardware, software, drives, drivers, events, OT PLC memory),
+/// serializes them to Protobuf payloads, and publishes them over MQTT to the Heimdall Backend with offline spool fallback.
 /// </summary>
 public class SystemInfoReporter : ISystemInfoReporter
 {

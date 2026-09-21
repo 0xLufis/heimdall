@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 public class ExtensionRegistry : IExtensionRegistry
 {
-    private record RegisteredEntry(CustomComponentSubmission Submission, DateTimeOffset ExpiresAt);
+    private record RegisteredEntry(CustomComponentSubmission Submission, DateTimeOffset ExpiresAt, long MonotonicExpiryTimestamp);
 
     private readonly IConfigurationService _configService;
     private readonly ILogger<ExtensionRegistry> _logger;
@@ -23,8 +23,8 @@ public class ExtensionRegistry : IExtensionRegistry
 
     public ExtensionRegistry(IConfigurationService configService, ILogger<ExtensionRegistry> logger)
     {
-        _configService = configService;
-        _logger = logger;
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public bool RegisterOrUpdateComponent(CustomComponentSubmission submission, out string? error)
@@ -33,12 +33,14 @@ public class ExtensionRegistry : IExtensionRegistry
         if (submission == null)
         {
             error = "Submission cannot be null.";
+            _logger.LogWarning("Component registration rejected: submission payload is null.");
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(submission.ComponentName))
         {
             error = "ComponentName is required.";
+            _logger.LogWarning("Component registration rejected: ComponentName is required.");
             return false;
         }
 
@@ -63,6 +65,7 @@ public class ExtensionRegistry : IExtensionRegistry
             catch (Exception ex)
             {
                 error = $"Failed to serialize component data: {ex.Message}";
+                _logger.LogWarning(ex, "Component registration rejected for '{ComponentName}': data serialization failure.", safeName);
                 return false;
             }
         }
@@ -72,13 +75,16 @@ public class ExtensionRegistry : IExtensionRegistry
         if (!string.IsNullOrEmpty(submission.DataJson) && submission.DataJson.Length > maxBytes)
         {
             error = $"Payload size ({submission.DataJson.Length} bytes) exceeds configured limit ({maxBytes} bytes).";
+            _logger.LogWarning("Component registration rejected for '{ComponentName}': payload size {Size} exceeds limit {Limit}.", safeName, submission.DataJson.Length, maxBytes);
             return false;
         }
 
+        // Monotonic timer guarding against system clock manipulation / time drift
         int ttlSeconds = submission.TtlSeconds ?? _configService.Config.DefaultExtensionTtlSeconds;
         var expiresAt = DateTimeOffset.UtcNow.AddSeconds(ttlSeconds);
+        long monotonicExpiry = System.Diagnostics.Stopwatch.GetTimestamp() + (long)(ttlSeconds * (double)System.Diagnostics.Stopwatch.Frequency);
 
-        var entry = new RegisteredEntry(submission, expiresAt);
+        var entry = new RegisteredEntry(submission, expiresAt, monotonicExpiry);
         _components[safeName] = entry;
 
         _logger.LogInformation("Registered custom component '{ComponentName}' (Type: {Type}, Technology: {Tech}, TTL: {Ttl}s)",
@@ -100,12 +106,14 @@ public class ExtensionRegistry : IExtensionRegistry
 
     public IReadOnlyList<CustomComponentSubmission> GetActiveComponents()
     {
-        var now = DateTimeOffset.UtcNow;
+        var nowUtc = DateTimeOffset.UtcNow;
+        long nowTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         var active = new List<CustomComponentSubmission>();
 
         foreach (var kvp in _components)
         {
-            if (kvp.Value.ExpiresAt >= now)
+            // Verify expiry against both UTC clock and monotonic hardware timestamp
+            if (nowUtc < kvp.Value.ExpiresAt && nowTimestamp < kvp.Value.MonotonicExpiryTimestamp)
             {
                 active.Add(kvp.Value.Submission);
             }

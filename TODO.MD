@@ -219,6 +219,27 @@ The following subagents are defined for specialized execution of upcoming roadma
   - **Stability Soak Duration**: 12-hour intermittent network flapping test (simulated 10m, 30m, 2h disconnects).
   - **Target Metrics & Times**: Linux edge daemon RSS memory < 45 MB, CPU utilization < 2.5%, spool-to-cloud backlog drain time < 5 seconds upon link restoration.
 
+---
+
+## Milestone 15: Repository-Wide TODO Elimination, UI Polish & Standalone Packaging Independence
+- [x] **TODO-CLEAN-001**: Complete repository audit and resolution of all dangling `TODO` / `FIXME` comments in `App.Backend.Api` controllers (`ActiveDirectoryController`, `CertificateManagementController`, `ClientPcController`, `DashboardController`) and `App.Agent.Daemon`.
+- [x] **UI-OMNI-003**: Resolve search popup premature disappearance during keystrokes and dropdown navigation:
+  - Decoupled intermediate debounced search events from modal navigation / close triggers in `OmniSearchBar.vue` and `GlobalOmniSearchModal.vue`.
+  - Added click outside and blur suppression guards using `isInteractingWithDropdown`, `composedPath()`, and `@pointer-down-outside` event filters.
+- [x] **UI-STD-001**: UI Standardizations across buttons, colors, shapes, and accessibility hooks:
+  - Enforced `cursor-pointer` globally across all button variants in `button/index.ts`.
+  - Converted raw hex / legacy gray colors in search, auto-tag dropdown, and certificate dialogs to semantic tokens (`bg-card`, `bg-muted`, `border-border`, `text-primary`, `text-foreground`).
+  - Standardized consistent corner radii (`rounded-xl` / `rounded-2xl`) and added keyboard accessibility (`role="button"`, `tabindex="0"`, Enter/Space keydown) to file dropzones.
+- [x] **PKG-STANDALONE-001**: Standalone Edge Agent packaging with zero runtime dependencies:
+  - Self-contained single-file compilation for `linux-x64` and `win-x64`.
+  - Added native systemd service integration (`Microsoft.Extensions.Hosting.Systemd` / `builder.Host.UseSystemd()`) on Linux alongside Windows Services.
+  - Authored systemd service unit (`heimdall-agent.service`), bash installation/uninstallation scripts (`install-service.sh`, `uninstall-service.sh`), and PowerShell service scripts (`install-service.ps1`, `uninstall-service.ps1`).
+- [x] **PKG-CONTAINER-001**: Production multi-stage Docker container infrastructure:
+  - Multi-stage unprivileged Dockerfiles for Backend (`backend/Dockerfile`), Agent (`agent/Dockerfile`), and Frontend Web (`frontend/web/Dockerfile`).
+  - Created standalone turnkey production compose stack (`docker-compose.prod.yml`) for zero-configuration, independent production deployments.
+- [x] **PKG-TOOL-001**: Cross-platform packaging automation scripts (`scripts/package.sh`, `scripts/package.py`) outputting release tarballs and zip archives into `dist/`.
+
+
 
 
 

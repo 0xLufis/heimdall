@@ -393,6 +393,9 @@ public class SystemInfoService : ISystemInfoService
         return packages.OrderBy(p => p).ToList();
     }
 
+    /// <summary>
+    /// Ensures Windows Registry uninstall keys are populated for detected automation and runtime software packages.
+    /// </summary>
     [SupportedOSPlatform("windows")]
     public void EnsureIndustrialSoftwareRegistryKeys()
     {

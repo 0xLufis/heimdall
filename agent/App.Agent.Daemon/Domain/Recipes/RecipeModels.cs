@@ -30,7 +30,9 @@ public enum RecipeSourceType
     BeckhoffEtherCat,
     OpcUaSubscription,
     ModbusTcp,
-    TcpSocket
+    TcpSocket,
+    CustomExtension,
+    Snmp
 }
 
 /// <summary>
@@ -67,15 +69,31 @@ public enum EgressPriority
 }
 
 /// <summary>
-/// Inspection depth for OS process telemetry.
+/// Inspection depth level for OS process telemetry probes.
 /// </summary>
 public enum InspectionDepth
 {
+    /// <summary>
+    /// Captures process identifier, executable path, start time, and working set memory.
+    /// </summary>
     Basic = 1,
+
+    /// <summary>
+    /// Captures peak working set, private bytes, virtual memory size, and OS handle counts.
+    /// </summary>
     MemoryAndHandles = 2,
+
+    /// <summary>
+    /// Enumerates loaded native and managed modules, DLL version manifests, and active thread states.
+    /// </summary>
     ModulesAndThreads = 3,
+
+    /// <summary>
+    /// Captures diagnostic process memory heap and thread call stack analysis (requires diagnostic privilege).
+    /// </summary>
     FullDumpAnalysis = 4
 }
+
 
 /// <summary>
 /// Declarative Recipe document describing a set of collection probes for an industrial endpoint.
@@ -126,6 +144,8 @@ public record DataPointDefinition(
 [JsonDerivedType(typeof(OpcUaSourceConfig), "OpcUaSubscription")]
 [JsonDerivedType(typeof(ModbusTcpSourceConfig), "ModbusTcp")]
 [JsonDerivedType(typeof(TcpSocketSourceConfig), "TcpSocket")]
+[JsonDerivedType(typeof(CustomExtensionSourceConfig), "CustomExtension")]
+[JsonDerivedType(typeof(SnmpSourceConfig), "Snmp")]
 public abstract record SourceConfigBase
 {
     public abstract string GetCanonicalKey();
@@ -162,13 +182,16 @@ public record CimSourceConfig(
     List<string> ProjectedProperties
 ) : SourceConfigBase
 {
+    private const int TableNameSegmentIndex = 1;
+    private static readonly string[] FromClauseDelimiters = { "FROM ", "from " };
+
     public override string GetCanonicalKey() =>
         $"System.Cim:{Namespace.ToLowerInvariant()}:{ExtractTargetTable(WqlQuery).ToLowerInvariant()}";
 
     private static string ExtractTargetTable(string query)
     {
-        var parts = query.Split(new[] { "FROM ", "from " }, StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length > 1 ? parts[1].Trim().Split(' ')[0] : query;
+        var parts = query.Split(FromClauseDelimiters, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > TableNameSegmentIndex ? parts[TableNameSegmentIndex].Trim().Split(' ')[0] : query;
     }
 }
 
@@ -201,6 +224,10 @@ public record FileSystemSourceConfig(
         $"System.FileSystem:{TargetPath.ToLowerInvariant()}:{FileFilter.ToLowerInvariant()}";
 }
 
+/// <summary>
+/// Configuration for OPC UA subscription monitored items.
+/// Standard industrial sampling interval defaults to 250ms for process variables.
+/// </summary>
 public record OpcUaSourceConfig(
     string EndpointUrl,
     string NodeId,
@@ -225,23 +252,60 @@ public record ModbusTcpSourceConfig(
         $"Modbus.Tcp:{IpAddress}:{Port}:{UnitId}:FC{FunctionCode}:{RegisterAddress}:{Length}";
 }
 
+/// <summary>
+/// Configuration for raw TCP/IP socket probe endpoints.
+/// Supports TCP keep-alive to preserve long-lived industrial instrumentation sessions.
+/// </summary>
 public record TcpSocketSourceConfig(
     string Host,
     int Port,
     int TimeoutMs = 2000,
-    bool CheckTlsCert = false
+    bool CheckTlsCert = false,
+    bool KeepAlive = false,
+    int KeepAliveIntervalMs = 5000
 ) : SourceConfigBase
 {
     public override string GetCanonicalKey() =>
         $"Tcp.Socket:{Host.ToLowerInvariant()}:{Port}";
 }
 
+/// <summary>
+/// Configuration for custom third-party extension probes and sidecars.
+/// </summary>
+public record CustomExtensionSourceConfig(
+    string ExtensionName,
+    string ComponentId,
+    Dictionary<string, string>? Parameters = null
+) : SourceConfigBase
+{
+    public override string GetCanonicalKey() =>
+        $"Custom.Extension:{ExtensionName.ToLowerInvariant()}:{ComponentId.ToLowerInvariant()}";
+}
+
+/// <summary>
+/// Configuration for SNMP v2c/v3 network infrastructure device probes.
+/// </summary>
+public record SnmpSourceConfig(
+    string Host,
+    string Oid,
+    int Port = 161,
+    string Community = "public"
+) : SourceConfigBase
+{
+    public override string GetCanonicalKey() =>
+        $"Snmp:{Host.ToLowerInvariant()}:{Port}:{Oid}";
+}
+
+/// <summary>
+/// Scheduling and deadband configuration for probe evaluation.
+/// </summary>
 public record PollingStrategyConfig(
     PollingStrategyType StrategyType,
     int IntervalMs = 1000,
     string? CronExpression = null,
     DeadbandConfig? Deadband = null,
-    int MaxQuietPeriodMs = 900000 // 15 mins heartbeat
+    int MaxQuietPeriodMs = 900000, // 15 mins heartbeat
+    List<PollingStrategyType>? FallbackStrategies = null
 );
 
 public record DeadbandConfig(

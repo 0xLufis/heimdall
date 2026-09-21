@@ -10,6 +10,10 @@ using App.Shared.Entities;
 
 namespace App.Backend.Api.Controllers.V1;
 
+/// <summary>
+/// Controller for managing enterprise and industrial X.509 PKI certificates,
+/// root CAs, and Active Directory Organizational Unit (OU) certificate auto-enrollment rules.
+/// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize(Policy = "ItAdministration")]
@@ -18,12 +22,20 @@ public class CertificateManagementController : ControllerBase
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly ILogger<CertificateManagementController> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="CertificateManagementController"/>.
+    /// </summary>
+    /// <param name="dbContextFactory">Factory for creating database context instances.</param>
+    /// <param name="logger">Structured logger instance.</param>
     public CertificateManagementController(IDbContextFactory<AppDbContext> dbContextFactory, ILogger<CertificateManagementController> logger)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
     }
 
+    /// <summary>
+    /// Retrieves all client and machine certificates ordered by creation date.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -34,6 +46,9 @@ public class CertificateManagementController : ControllerBase
         return Ok(certs);
     }
 
+    /// <summary>
+    /// Retrieves the current active industrial Root CA certificate record, seeding a default CA if none exists.
+    /// </summary>
     [HttpGet("root-ca")]
     public async Task<IActionResult> GetRootCa()
     {
@@ -76,6 +91,11 @@ public class CertificateManagementController : ControllerBase
         return Ok(rootCert);
     }
 
+    /// <summary>
+    /// Imports or replaces an enterprise X.509 Root CA certificate.
+    /// Demotes any previously active Root CA certificates to Superseded and records the CA metadata.
+    /// </summary>
+    /// <param name="request">Request containing raw PEM or Base64 certificate text and profile metadata.</param>
     [HttpPost("root-ca/import")]
     public async Task<IActionResult> ImportRootCertificate([FromBody] ImportRootCertRequest request)
     {
@@ -179,6 +199,9 @@ public class CertificateManagementController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Downloads the active Project Root Certificate as an X.509 CRT file.
+    /// </summary>
     [HttpGet("root-ca/download")]
     public async Task<IActionResult> DownloadRootCertificate()
     {
@@ -195,6 +218,9 @@ public class CertificateManagementController : ControllerBase
         return File(bytes, "application/x-x509-ca-cert", "heimdall-project-root-ca.crt");
     }
 
+    /// <summary>
+    /// Retrieves all configured Active Directory OU certificate assignment and auto-enrollment rules.
+    /// </summary>
     [HttpGet("ou-rules")]
     public async Task<IActionResult> GetOuRules()
     {
@@ -251,6 +277,10 @@ public class CertificateManagementController : ControllerBase
         return Ok(rules);
     }
 
+    /// <summary>
+    /// Creates or updates an Active Directory OU certificate assignment rule.
+    /// </summary>
+    /// <param name="dto">Rule specification containing OU path, profile name, and validity parameters.</param>
     [HttpPost("ou-rules")]
     public async Task<IActionResult> SaveOuRule([FromBody] SaveOuRuleDto dto)
     {
@@ -297,6 +327,10 @@ public class CertificateManagementController : ControllerBase
         return Ok(rule);
     }
 
+    /// <summary>
+    /// Deletes an OU certificate assignment rule by its identifier.
+    /// </summary>
+    /// <param name="id">Unique identifier of the rule to delete.</param>
     [HttpDelete("ou-rules/{id}")]
     public async Task<IActionResult> DeleteOuRule(Guid id)
     {
@@ -310,6 +344,9 @@ public class CertificateManagementController : ControllerBase
         return Ok(new { Message = "Rule deleted successfully" });
     }
 
+    /// <summary>
+    /// Reconciles client PCs with active auto-enrollment OU certificate rules, issuing certificates for uncertified nodes.
+    /// </summary>
     [HttpPost("sync-ou-certificates")]
     public async Task<IActionResult> SyncOuCertificates()
     {
@@ -322,7 +359,7 @@ public class CertificateManagementController : ControllerBase
         foreach (var pc in pcs)
         {
             // Find rule matching OU path
-            var matchingRule = rules.FirstOrDefault(r => 
+            var matchingRule = rules.FirstOrDefault(r =>
                 pc.AdOuPath!.Equals(r.OuPath, StringComparison.OrdinalIgnoreCase) ||
                 pc.AdOuPath!.Contains(r.OuPath, StringComparison.OrdinalIgnoreCase));
 
@@ -372,6 +409,10 @@ public class CertificateManagementController : ControllerBase
         return Ok(new { Message = $"OU Certificate Synchronization complete. {syncedCount} hosts enrolled.", SyncedCount = syncedCount, ActiveRulesCount = rules.Count });
     }
 
+    /// <summary>
+    /// Generates and assigns an X.509 client certificate for a specified common name or industrial controller.
+    /// </summary>
+    /// <param name="request">Certificate generation request parameters.</param>
     [HttpPost("generate")]
     public async Task<IActionResult> GenerateCertificate([FromBody] GenerateCertRequest request)
     {
@@ -404,6 +445,10 @@ public class CertificateManagementController : ControllerBase
         return Ok(record);
     }
 
+    /// <summary>
+    /// Revokes an issued client certificate by its unique identifier.
+    /// </summary>
+    /// <param name="id">Unique identifier of the certificate record to revoke.</param>
     [HttpPost("{id}/revoke")]
     public async Task<IActionResult> RevokeCertificate(Guid id)
     {
@@ -419,26 +464,56 @@ public class CertificateManagementController : ControllerBase
     }
 }
 
+/// <summary>
+/// Request payload for generating an X.509 client certificate.
+/// </summary>
 public class GenerateCertRequest
 {
+    /// <summary>Certificate Subject Common Name (CN).</summary>
     public string CommonName { get; set; } = string.Empty;
+
+    /// <summary>Optional identifier of the client PC associated with this certificate.</summary>
     public Guid? ClientPcId { get; set; }
+
+    /// <summary>Certificate validity lifetime in years.</summary>
     public int ValidityYears { get; set; } = 1;
 }
 
+/// <summary>
+/// Request payload for importing an enterprise X.509 Root CA certificate.
+/// </summary>
 public class ImportRootCertRequest
 {
+    /// <summary>Raw PEM or Base64 encoded CRT text of the certificate.</summary>
     public string RawPem { get; set; } = string.Empty;
+
+    /// <summary>Profile name for certificate tracking.</summary>
     public string? ProfileName { get; set; }
+
+    /// <summary>Optional human-readable description.</summary>
     public string? Description { get; set; }
 }
 
+/// <summary>
+/// Data transfer object for saving or updating an Active Directory OU certificate auto-enrollment rule.
+/// </summary>
 public class SaveOuRuleDto
 {
+    /// <summary>Optional rule identifier for updates; null for creation.</summary>
     public Guid? Id { get; set; }
+
+    /// <summary>Distinguished name or pattern of the Active Directory Organizational Unit.</summary>
     public string OuPath { get; set; } = string.Empty;
+
+    /// <summary>Certificate profile name applied to nodes in this OU.</summary>
     public string ProfileName { get; set; } = string.Empty;
+
+    /// <summary>Certificate validity lifetime in years.</summary>
     public int ValidityYears { get; set; } = 2;
+
+    /// <summary>Indicates whether certificates should be automatically issued during OU synchronization.</summary>
     public bool AutoEnroll { get; set; } = true;
+
+    /// <summary>Cryptographic key algorithm to use (e.g., RSA-2048, ECDSA-P256).</summary>
     public string? KeyAlgorithm { get; set; } = "RSA-2048";
 }

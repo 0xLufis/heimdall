@@ -172,8 +172,14 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
         </div>
 
         <!-- File Upload Area -->
-        <div @click="triggerFileInput"
-          class="border-2 border-dashed border-slate-700 hover:border-emerald-500/50 bg-slate-950/60 rounded-xl p-5 text-center cursor-pointer transition-colors">
+        <div
+          role="button"
+          tabindex="0"
+          @click="triggerFileInput"
+          @keydown.enter.prevent="triggerFileInput"
+          @keydown.space.prevent="triggerFileInput"
+          class="border-2 border-dashed border-slate-700 hover:border-emerald-500/50 bg-slate-950/60 rounded-xl p-5 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+        >
           <input ref="fileInputRef" type="file" accept=".crt,.pem,.cer,.cert" class="hidden"
             @change="handleFileUpload" />
           <UploadCloudIcon class="h-8 w-8 mx-auto text-slate-400 mb-2" />

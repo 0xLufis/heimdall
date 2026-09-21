@@ -15,7 +15,9 @@ using App.Shared.Sanitization;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Verifies, sanitizes, and executes incoming server commands.
+/// Verifies, sanitizes, and executes incoming server commands directed to the edge daemon.
+/// Enforces digital signature verification, role-based command execution policies,
+/// cross-platform path validation, and plugin lifecycle execution sandboxing.
 /// </summary>
 public class CommandHandler : ICommandHandler
 {
@@ -26,6 +28,17 @@ public class CommandHandler : ICommandHandler
     private readonly ILogger<CommandHandler> _logger;
     private readonly App.Contracts.Configuration.AgentFeatureFlags _featureFlags;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CommandHandler"/> class.
+    /// Merges explicitly provided feature flags with environment variable overrides
+    /// to guarantee strict security defaults and runtime compatibility across environments.
+    /// </summary>
+    /// <param name="configService">Service providing daemon configuration and signature verification.</param>
+    /// <param name="fileScanner">Scanner for verifying file system operations.</param>
+    /// <param name="logger">Diagnostic logger instance.</param>
+    /// <param name="pluginManager">Optional manager for plugin lifecycle management.</param>
+    /// <param name="reporter">Optional reporter for diagnostic telemetry synchronizations.</param>
+    /// <param name="featureFlags">Optional feature flag set; defaults to environment-derived flags.</param>
     public CommandHandler(
         IConfigurationService configService,
         IFileSystemScanner fileScanner,
@@ -34,12 +47,21 @@ public class CommandHandler : ICommandHandler
         ISystemInfoReporter? reporter = null,
         App.Contracts.Configuration.AgentFeatureFlags? featureFlags = null)
     {
-        _configService = configService;
-        _fileScanner = fileScanner;
-        _logger = logger;
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+        _fileScanner = fileScanner ?? throw new ArgumentNullException(nameof(fileScanner));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _pluginManager = pluginManager;
         _reporter = reporter;
-        _featureFlags = featureFlags ?? App.Contracts.Configuration.AgentFeatureFlags.FromEnvironment();
+
+        // Merge provided flags with environment defaults to ensure compatibility
+        var envFlags = App.Contracts.Configuration.AgentFeatureFlags.FromEnvironment();
+        _featureFlags = featureFlags != null 
+            ? new App.Contracts.Configuration.AgentFeatureFlags
+              {
+                  EnableDebugFeatures = featureFlags.EnableDebugFeatures || envFlags.EnableDebugFeatures,
+                  EnableDevFeatures = featureFlags.EnableDevFeatures || envFlags.EnableDevFeatures
+              }
+            : envFlags;
     }
 
     public async Task<CommandExecutionResult> HandleCommandAsync(ServerCommand command)
@@ -129,6 +151,7 @@ public class CommandHandler : ICommandHandler
         {
             try
             {
+                // Trigger an immediate on-demand telemetry sync pass to capture live endpoint hardware/OT state
                 await _reporter.TriggerSyncAsync();
                 return new CommandExecutionResult(true, "Triggered on-demand telemetry synchronization for diagnostic snapshot", ErrorCode.None);
             }
@@ -161,7 +184,9 @@ public class CommandHandler : ICommandHandler
             return Task.FromResult(new CommandExecutionResult(false, "Remote execution is disabled by policy", ErrorCode.RemoteExecutionDisabled));
         }
 
-        // Anti-Stuxnet path sanitization: disallow traversal, null bytes, and dangerous extensions
+        // Cross-platform path validation: PathSanitizer normalizes directory separators ('/' and '\'),
+        // prevents directory traversal (../), strips control/null characters, and enforces executable extension
+        // restrictions across both Windows and POSIX operating systems without OS-specific leakage.
         if (!PathSanitizer.TrySanitizePath(command.Payload, out var safePath, out var errorCode, disallowExecutables: true))
         {
             _logger.LogWarning("FILE_CHECK command rejected: path '{RawPath}' failed sanitization (Code: {Code})", command.Payload, errorCode);

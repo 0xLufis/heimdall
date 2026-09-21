@@ -280,30 +280,62 @@ public class DriverDiscoveryService : IDriverDiscoveryService
 
     /// <summary>
     /// Classifies drivers into functional categories based on hardware characteristics and subsystem indicators.
+    /// Supports custom driver grouping patterns via the HEIMDALL_CUSTOM_DRIVER_GROUPS environment variable.
     /// </summary>
     private static string ClassifyDriver(string name, string service, string provider)
     {
         string combined = $"{name} {service} {provider}".ToLowerInvariant();
 
+        // Check custom environment-defined driver classifications (Format: GroupName=pattern1,pattern2;Group2=pattern3)
+        var customRules = Environment.GetEnvironmentVariable("HEIMDALL_CUSTOM_DRIVER_GROUPS");
+        if (!string.IsNullOrWhiteSpace(customRules))
+        {
+            foreach (var rule in customRules.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var kvp = rule.Split('=', 2);
+                if (kvp.Length == 2)
+                {
+                    string groupName = kvp[0].Trim();
+                    var patterns = kvp[1].Split(',', StringSplitOptions.RemoveEmptyEntries);
+                    if (patterns.Any(p => combined.Contains(p.Trim().ToLowerInvariant())))
+                    {
+                        return groupName;
+                    }
+                }
+            }
+        }
+
+        // Industrial Automation & PLC Runtimes
         if (combined.Contains("twincat") || combined.Contains("tcrtime") || combined.Contains("tcrth") || combined.Contains("beckhoff"))
             return "PlcRuntime";
 
-        if (combined.Contains("simatic") || combined.Contains("profinet") || combined.Contains("winac") || combined.Contains("cp1613"))
+        if (combined.Contains("codesys") || combined.Contains("cmpschedule") || combined.Contains("cmpplc") || combined.Contains("b&r") || combined.Contains("automation runtime"))
+            return "PlcRuntime";
+
+        // Fieldbus & Industrial Communications
+        if (combined.Contains("simatic") || combined.Contains("profinet") || combined.Contains("winac") || combined.Contains("cp1613") || combined.Contains("cp5611"))
             return "Fieldbus";
 
         if (combined.Contains("rslinx") || combined.Contains("1784") || combined.Contains("allen-bradley") || combined.Contains("rockwell"))
             return "Fieldbus";
 
-        if (combined.Contains("ni-") || combined.Contains("national instruments") || combined.Contains("daqmx"))
-            return "DataAcquisition";
-
-        if (combined.Contains("codesys") || combined.Contains("cmpschedule") || combined.Contains("cmpplc"))
-            return "PlcRuntime";
-
-        if (combined.Contains("ethercat") || combined.Contains("profibus") || combined.Contains("canbus") || combined.Contains("moxa"))
+        if (combined.Contains("ethercat") || combined.Contains("profibus") || combined.Contains("canbus") || combined.Contains("moxa") || combined.Contains("hilscher") || combined.Contains("anybus") || combined.Contains("kvaser") || combined.Contains("peak-system"))
             return "Fieldbus";
 
-        if (combined.Contains("realtek") || combined.Contains("intel") || combined.Contains("ethernet") || combined.Contains("gigabit") || combined.Contains("ndis"))
+        // Data Acquisition (DAQ) & Specialized Measurement Instrumentation
+        if (combined.Contains("ni-") || combined.Contains("national instruments") || combined.Contains("daqmx") || combined.Contains("labjack") || combined.Contains("dewetron") || combined.Contains("gantner") || combined.Contains("picoscope") || combined.Contains("mccdaq"))
+            return "DataAcquisition";
+
+        // Machine Vision & Industrial Cameras
+        if (combined.Contains("basler") || combined.Contains("cognex") || combined.Contains("teledyne") || combined.Contains("keyence") || combined.Contains("flir") || combined.Contains("ids imaging"))
+            return "IndustrialVision";
+
+        // Motion Controllers & Robotics
+        if (combined.Contains("kuka") || combined.Contains("fanuc") || combined.Contains("yaskawa") || combined.Contains("copley") || combined.Contains("elmo") || combined.Contains("kollmorgen"))
+            return "MotionAndRobotics";
+
+        // General Networking & NICs
+        if (combined.Contains("realtek") || combined.Contains("intel") || combined.Contains("ethernet") || combined.Contains("gigabit") || combined.Contains("ndis") || combined.Contains("broadcom"))
             return "Network";
 
         return "System";
@@ -313,9 +345,10 @@ public class DriverDiscoveryService : IDriverDiscoveryService
     {
         string lower = moduleName.ToLowerInvariant();
         if (lower.Contains("ec_master") || lower.Contains("soem") || lower.Contains("ethercat")) return "Fieldbus";
-        if (lower.Contains("can") || lower.Contains("vcan") || lower.Contains("c_can") || lower.Contains("peak_pci")) return "Fieldbus";
-        if (lower.Contains("iio")) return "DataAcquisition";
-        if (lower.Contains("e1000") || lower.Contains("igb") || lower.Contains("r8169")) return "Network";
+        if (lower.Contains("can") || lower.Contains("vcan") || lower.Contains("c_can") || lower.Contains("peak_pci") || lower.Contains("kvaser")) return "Fieldbus";
+        if (lower.Contains("iio") || lower.Contains("comedi") || lower.Contains("daq")) return "DataAcquisition";
+        if (lower.Contains("uvcvideo") || lower.Contains("v4l2")) return "IndustrialVision";
+        if (lower.Contains("e1000") || lower.Contains("igb") || lower.Contains("r8169") || lower.Contains("ixgbe")) return "Network";
         return "System";
     }
 }

@@ -4,8 +4,8 @@ Heimdall Agent Extension Plugin Reference Script
 Demonstrates how external software, scripts, and sidecars securely interface
 with the local Heimdall Agent to submit custom sensor inventory, live metrics,
 and operational events with component tree parent linkage.
+Usage: python3 custom_sensor_plugin.py
 """
-
 import os
 import sys
 import json

@@ -7,59 +7,185 @@ using App.Agent.Daemon.Interfaces;
 
 namespace App.Agent.Daemon;
 
+
+/// <summary>
+/// Strong configuration model for the edge daemon agent.
+/// Encapsulates master security governance, telemetry egress limits,
+/// hardware polling cadence, and plugin sandbox policies.
+/// </summary>
 public class AgentConfig
 {
-    // Schema Version
+    /// <summary>
+    /// Semantic version of the configuration schema manifest.
+    /// </summary>
     public string ConfigSchemaVersion { get; set; } = "1.0.0";
 
     // Connectivity
+    /// <summary>
+    /// Upstream Heimdall Backend base URL (gRPC/HTTP).
+    /// </summary>
     public string BackendUrl { get; set; } = "http://localhost:5001";
-    public string AuthType { get; set; } = "NoAuth"; // NoAuth, HeimdallCert, UserCert
+
+    /// <summary>
+    /// Authentication scheme for communicating with backend ('NoAuth', 'HeimdallCert', 'UserCert').
+    /// </summary>
+    public string AuthType { get; set; } = "NoAuth";
+
+    /// <summary>
+    /// Optional file path to client mTLS certificate file.
+    /// </summary>
     public string? ClientCertificatePath { get; set; }
-    public string? ServerPublicKey { get; set; } // RSA Public Key for verifying config updates
+
+    /// <summary>
+    /// Server RSA public key in PEM, XML, or SubjectPublicKeyInfo format for verifying signed commands.
+    /// </summary>
+    public string? ServerPublicKey { get; set; }
 
     // Master Governance & Encryption Template Flags
+    /// <summary>
+    /// Enforces hardware-bound key derivation for local encrypted secrets.
+    /// </summary>
     public bool EnforceHardwareBinding { get; set; } = true;
-    public string SpoolEncryptionMode { get; set; } = "AES_256_GCM"; // AES_256_GCM, DPAPI, Plaintext
+
+    /// <summary>
+    /// Spool storage encryption cipher ('AES_256_GCM', 'DPAPI', 'Plaintext').
+    /// </summary>
+    public string SpoolEncryptionMode { get; set; } = "AES_256_GCM";
+
+    /// <summary>
+    /// Encrypts in-flight telemetry payloads end-to-end.
+    /// </summary>
     public bool TelemetryPayloadEncryption { get; set; } = false;
+
+    /// <summary>
+    /// Master policy toggle allowing or prohibiting remote diagnostic/shell commands.
+    /// </summary>
     public bool AllowRemoteExecution { get; set; } = true;
-    public bool AllowUnsignedCommands { get; set; } = false; // Must be explicitly enabled in Dev/Testing; default fail-secure
-    public string PiiScrubberStrictLevel { get; set; } = "Strict"; // Strict, Standard, Disabled
+
+    /// <summary>
+    /// Allows execution of unsigned commands in development environments; must be false in production.
+    /// </summary>
+    public bool AllowUnsignedCommands { get; set; } = false;
+
+    /// <summary>
+    /// Strictness level for scrubbers stripping PII and tokens from telemetry payloads ('Strict', 'Standard', 'Disabled').
+    /// </summary>
+    public string PiiScrubberStrictLevel { get; set; } = "Strict";
 
     // Performance & Limits
+    /// <summary>
+    /// Token bucket network egress throttle in bytes per second.
+    /// </summary>
     public int MaxNetworkEgressBytesPerSec { get; set; } = 1048576; // 1 MB/s Token Bucket
-    public string DeltaEvaluationAlgorithm { get; set; } = "xxHash64"; // xxHash64, SHA256, None
+
+    /// <summary>
+    /// Algorithm for deadband delta hashing ('xxHash64', 'SHA256', 'None').
+    /// </summary>
+    public string DeltaEvaluationAlgorithm { get; set; } = "xxHash64";
+
+    /// <summary>
+    /// Deadband tolerance percentage below which telemetry delta updates are suppressed.
+    /// </summary>
     public double DeadbandTolerancePercentage { get; set; } = 1.0;
+
+    /// <summary>
+    /// Maximum disk space allocated to local offline telemetry spooling in megabytes.
+    /// </summary>
     public int MaxSpoolDiskMb { get; set; } = 500;
+
+    /// <summary>
+    /// Health check heartbeat interval in seconds.
+    /// </summary>
     public int HeartbeatIntervalSeconds { get; set; } = 10;
-    public int HardwarePollIntervalSeconds { get; set; } = 30; // Min 10-30s cache TTL for stable hardware metrics (POLL-001/002)
+
+    /// <summary>
+    /// Polling interval for stable hardware and OS inventory metrics in seconds.
+    /// </summary>
+    public int HardwarePollIntervalSeconds { get; set; } = 30;
 
     // Plugin & Extension Architecture
-    public string Environment { get; set; } = "Production"; // Production | Development
-    public bool AllowUnsignedPlugins { get; set; } = false; // Forced false in Production
+    /// <summary>
+    /// Runtime environment descriptor ('Production' or 'Development').
+    /// </summary>
+    public string Environment { get; set; } = "Production";
+
+    /// <summary>
+    /// Allows loading unsigned third-party plugins in development environments.
+    /// </summary>
+    public bool AllowUnsignedPlugins { get; set; } = false;
+
+    /// <summary>
+    /// API authentication key required for third-party local extension submissions.
+    /// </summary>
     public string ExtensionApiKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Directory containing installed agent plugins.
+    /// </summary>
     public string PluginsDirectory { get; set; } = "plugins";
+
+    /// <summary>
+    /// Directory containing isolated execution sandboxes for plugins.
+    /// </summary>
     public string SandboxesDirectory { get; set; } = "sandboxes";
+
+    /// <summary>
+    /// Maximum execution duration in seconds permitted for an invoked plugin probe.
+    /// </summary>
     public int PluginExecutionTimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Default time-to-live for third-party extension component data in seconds.
+    /// </summary>
     public int DefaultExtensionTtlSeconds { get; set; } = 3600;
+
+    /// <summary>
+    /// Maximum payload byte length accepted by the local extension endpoint.
+    /// </summary>
     public int ExtensionPayloadMaxBytes { get; set; } = 1048576; // 1 MB
+
+    /// <summary>
+    /// Requires extension API callers to originate strictly from loopback addresses (127.0.0.1 / ::1).
+    /// </summary>
     public bool RequireLoopbackForExtensions { get; set; } = false;
 }
 
+/// <summary>
+/// Thread-safe configuration manager providing atomic persistence,
+/// cryptographic signature verification, and environment variable fallbacks.
+/// </summary>
 public class ConfigurationService : IConfigurationService
 {
     private readonly ILogger<ConfigurationService> _logger;
     private readonly string _configPath;
+    private readonly object _syncLock = new();
     private AgentConfig _config;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ConfigurationService"/> class.
+    /// </summary>
+    /// <param name="logger">Diagnostic logger.</param>
+    /// <param name="initialConfig">Optional initial configuration instance; loads from disk if null.</param>
     public ConfigurationService(ILogger<ConfigurationService> logger, AgentConfig? initialConfig = null)
     {
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configPath = GetDefaultConfigPath();
         _config = initialConfig ?? LoadConfig();
     }
 
-    public AgentConfig Config => _config;
+    /// <summary>
+    /// Gets the current active daemon configuration snapshot.
+    /// </summary>
+    public AgentConfig Config
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _config;
+            }
+        }
+    }
 
     private string GetDefaultConfigPath()
     {
@@ -91,46 +217,64 @@ public class ConfigurationService : IConfigurationService
 
     private AgentConfig LoadConfig()
     {
-        AgentConfig config;
-        if (File.Exists(_configPath))
+        lock (_syncLock)
         {
-            try
+            AgentConfig config;
+            if (File.Exists(_configPath))
             {
-                var json = File.ReadAllText(_configPath);
-                config = JsonSerializer.Deserialize<AgentConfig>(json) ?? new AgentConfig();
+                try
+                {
+                    var json = File.ReadAllText(_configPath);
+                    config = JsonSerializer.Deserialize<AgentConfig>(json) ?? new AgentConfig();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error loading config from {Path}", _configPath);
+                    config = new AgentConfig();
+                }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error loading config from {Path}", _configPath);
                 config = new AgentConfig();
+                var envBackendUrl = Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL");
+                if (!string.IsNullOrEmpty(envBackendUrl))
+                {
+                    config.BackendUrl = envBackendUrl;
+                }
+                SaveConfigInternal(config);
             }
-        }
-        else
-        {
-            config = new AgentConfig();
-            var envBackendUrl = Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL");
-            if (!string.IsNullOrEmpty(envBackendUrl))
+
+            var envUrl = Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL");
+            if (!string.IsNullOrEmpty(envUrl) && config.BackendUrl == "http://localhost:5001")
             {
-                config.BackendUrl = envBackendUrl;
+                config.BackendUrl = envUrl;
             }
-            SaveConfig(config);
-        }
 
-        var envUrl = Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL");
-        if (!string.IsNullOrEmpty(envUrl) && config.BackendUrl == "http://localhost:5001")
-        {
-            config.BackendUrl = envUrl;
+            return config;
         }
-
-        return config;
     }
 
+    /// <summary>
+    /// Atomically persists the specified configuration to disk.
+    /// </summary>
+    /// <param name="config">The updated configuration instance.</param>
     public void SaveConfig(AgentConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        lock (_syncLock)
+        {
+            SaveConfigInternal(config);
+        }
+    }
+
+    private void SaveConfigInternal(AgentConfig config)
     {
         try
         {
             var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(_configPath, json);
+            string tmpPath = _configPath + ".tmp." + Guid.NewGuid().ToString("N");
+            File.WriteAllText(tmpPath, json);
+            File.Move(tmpPath, _configPath, overwrite: true);
             _config = config;
         }
         catch (Exception ex)

@@ -1,0 +1,32 @@
+[Unit]
+Description=Heimdall Industrial Edge Telemetry & Diagnostics Agent
+Documentation=https://github.com/0xLufis/heimdall
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=all
+User=heimdall-agent
+Group=heimdall-agent
+WorkingDirectory=/var/lib/heimdall-agent
+ExecStart=/usr/local/bin/heimdall-agent
+Restart=always
+RestartSec=5s
+TimeoutStopSec=15s
+
+# Configuration and runtime environment
+EnvironmentFile=-/etc/heimdall/agent.env
+Environment=DOTNET_ENVIRONMENT=Production
+Environment=AGENT_URLS=http://127.0.0.1:5998
+
+# Sandbox & Hardening
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/heimdall-agent /var/log/heimdall-agent /tmp
+PrivateTmp=true
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

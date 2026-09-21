@@ -92,12 +92,16 @@ public static class ExtensionApiEndpoints
             var info = sysInfoService.GetSystemInfo();
             var config = configService.Config;
 
+            string agentVersion = Environment.GetEnvironmentVariable("HEIMDALL_AGENT_VERSION")
+                ?? typeof(ExtensionApiEndpoints).Assembly.GetName().Version?.ToString(3)
+                ?? "1.0.0";
+
             var status = new AgentStatus
             {
                 Hostname = info.Hostname,
                 MachineIdentifier = info.MachineIdentifier,
                 MacAddress = info.MacAddress,
-                AgentVersion = "1.0.0",
+                AgentVersion = agentVersion,
                 BackendUrl = config.BackendUrl,
                 AuthType = config.AuthType,
                 BackendConnected = true,
@@ -114,17 +118,21 @@ public static class ExtensionApiEndpoints
         group.MapPost("/extensions/components", async (
             CustomComponentSubmission submission,
             IExtensionRegistry registry,
-            ISystemInfoReporter reporter) =>
+            ISystemInfoReporter reporter,
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("ExtensionApi");
             if (submission == null)
             {
+                logger.LogWarning("Rejecting null extension component submission payload.");
                 return Results.BadRequest(new ApiError(ErrorCode.InvalidInput, "Submission payload cannot be null."));
             }
 
             bool success = registry.RegisterOrUpdateComponent(submission, out var error);
             if (!success)
             {
-                return Results.BadRequest(new ApiError(ErrorCode.InvalidPayload, error));
+                logger.LogWarning("Extension component registration rejected for '{Name}': {Error}", submission.ComponentName, error);
+                return Results.BadRequest(new ApiError(ErrorCode.InvalidPayload, error ?? "Component registration failed"));
             }
 
             if (submission.ImmediateSync)
@@ -135,7 +143,10 @@ public static class ExtensionApiEndpoints
                     {
                         await reporter.TriggerSyncAsync();
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed executing background immediate telemetry sync pass.");
+                    }
                 });
             }
 
@@ -194,6 +205,11 @@ public static class ExtensionApiEndpoints
 
         // --- Plugins Query ---
         group.MapGet("/plugins", (IPluginManager pluginManager) =>
+        {
+            return Results.Ok(pluginManager.GetInstalledPlugins());
+        }).AddEndpointFilter<ExtensionAuthFilter>();
+
+        group.MapGet("/agent/plugins", (IPluginManager pluginManager) =>
         {
             return Results.Ok(pluginManager.GetInstalledPlugins());
         }).AddEndpointFilter<ExtensionAuthFilter>();

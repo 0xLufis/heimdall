@@ -8,9 +8,9 @@ using System.Threading;
 using App.Agent.Daemon.Interfaces;
 
 /// <summary>
-/// Record representing an identified industrial software or recipe configuration asset.
+/// Record representing an identified physical automation asset, PLC project, or runtime configuration.
 /// </summary>
-public record DiscoveredIndustrialAsset(
+public record DiscoveredProductionAsset(
     string FilePath,
     string FileName,
     string Extension,
@@ -19,11 +19,23 @@ public record DiscoveredIndustrialAsset(
     string Sha256Hash);
 
 /// <summary>
-/// High-performance industrial file scanner with strict directory pruning of all personal/PII data.
+/// Backwards-compatible alias for <see cref="DiscoveredProductionAsset"/>.
+/// </summary>
+public record DiscoveredIndustrialAsset(
+    string FilePath,
+    string FileName,
+    string Extension,
+    long SizeBytes,
+    DateTime LastModifiedUtc,
+    string Sha256Hash) : DiscoveredProductionAsset(FilePath, FileName, Extension, SizeBytes, LastModifiedUtc, Sha256Hash);
+
+/// <summary>
+/// Secure production file scanner with directory pruning of personal and PII directories.
+/// Traverses automation runtime directories and computes streaming SHA-256 hashes for discovered physical assets.
 /// </summary>
 public sealed class SecureIndustrialFileScanner : ISecureIndustrialFileScanner
 {
-    // Allowed industrial extensions: TwinCAT, Siemens TIA, Rockwell, CoDeSys, JSON/XML/YAML configs
+    // Allowed physical asset extensions: TwinCAT, Siemens TIA, Rockwell, CoDeSys, JSON/XML/YAML configs
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         // Beckhoff TwinCAT 2 & 3
@@ -32,7 +44,7 @@ public sealed class SecureIndustrialFileScanner : ISecureIndustrialFileScanner
         ".ap14", ".ap15", ".ap16", ".ap17", ".ap18", ".ap19",
         ".zal14", ".zal15", ".zal16", ".zal17", ".zal18", ".zal19",
         ".zap14", ".zap15", ".zap16", ".zap17", ".zap18", ".zap19",
-        // Industrial Configurations & Recipes
+        // Runtime Configurations & Recipes
         ".json", ".xml", ".ini", ".csv", ".yaml", ".yml", ".conf", ".cfg"
     };
 

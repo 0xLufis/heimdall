@@ -19,7 +19,7 @@ public class ActiveDirectoryController : ControllerBase
     private readonly BackendFeatureFlags _featureFlags;
 
     public ActiveDirectoryController(
-        IDbContextFactory<AppDbContext> dbContextFactory, 
+        IDbContextFactory<AppDbContext> dbContextFactory,
         ILogger<ActiveDirectoryController> logger,
         BackendFeatureFlags? featureFlags = null)
     {
@@ -369,7 +369,12 @@ public class ActiveDirectoryController : ControllerBase
         return list;
     }
 
-    private static List<AdOrganizationalUnit> GetFactoryActiveDirectoryOUs()
+    private List<AdOrganizationalUnit> GetFactoryActiveDirectoryOUs()
+    {
+        return GetFactoryActiveDirectoryOUs(_featureFlags.EnableDevFeatures);
+    }
+
+    internal static List<AdOrganizationalUnit> GetFactoryActiveDirectoryOUs(bool enableDevFallback)
     {
         var candidatePaths = new[]
         {
@@ -444,9 +449,14 @@ public class ActiveDirectoryController : ControllerBase
                 }
                 catch
                 {
-                    // Fall back to built-in list
+                    // Fall back to built-in seed dataset only when dev features are explicitly enabled
                 }
             }
+        }
+
+        if (!enableDevFallback)
+        {
+            return new List<AdOrganizationalUnit>();
         }
 
         return new List<AdOrganizationalUnit>

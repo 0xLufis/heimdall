@@ -16,7 +16,8 @@ using MQTTnet.Packets;
 using MQTTnet.Protocol;
 
 /// <summary>
-/// Resilient MQTT client for edge daemon communicating with Heimdall Backend over MQTT using Protobufs.
+/// Resilient MQTT client for edge daemon communicating with Heimdall Backend over MQTT using binary Protobuf payloads.
+/// Provides connection retries, mTLS encryption, token-bucket egress shaping, and command subscription multiplexing.
 /// </summary>
 public class MqttAgentClient : IMqttAgentClient
 {

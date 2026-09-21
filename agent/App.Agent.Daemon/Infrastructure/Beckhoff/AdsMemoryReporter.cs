@@ -22,15 +22,18 @@ public class AdsMemoryReporter : IAdsMemoryReporter
     private readonly ILogger<AdsMemoryReporter> _logger;
     private readonly IAdsSimulationServer _adsServer;
     private readonly IMqttAgentClient _mqttClient;
+    private readonly App.Contracts.Configuration.AgentFeatureFlags _featureFlags;
 
     public AdsMemoryReporter(
         ILogger<AdsMemoryReporter> logger,
         IAdsSimulationServer adsServer,
-        IMqttAgentClient mqttClient)
+        IMqttAgentClient mqttClient,
+        App.Contracts.Configuration.AgentFeatureFlags? featureFlags = null)
     {
-        _logger = logger;
-        _adsServer = adsServer;
-        _mqttClient = mqttClient;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _adsServer = adsServer ?? throw new ArgumentNullException(nameof(adsServer));
+        _mqttClient = mqttClient ?? throw new ArgumentNullException(nameof(mqttClient));
+        _featureFlags = featureFlags ?? App.Contracts.Configuration.AgentFeatureFlags.FromEnvironment();
     }
 
     public async Task<AdsPlcMemoryBlock?> ReportPlcMemoryAsync(string machineIdentifier, CancellationToken cancellationToken = default)

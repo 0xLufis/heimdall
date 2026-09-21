@@ -14,7 +14,8 @@ using App.Agent.Daemon.Configuration;
 // Load .env file
 Env.Load();
 
-// Enable cleartext HTTP/2 (h2c) support for gRPC client connections to backend
+// Enable cleartext HTTP/2 (h2c) support for local/intranet gRPC client connections to backend.
+// In production mTLS configurations, TLS termination is negotiated via configured HTTPS endpoints.
 AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,10 +24,14 @@ builder.Configuration.AddEnvironmentVariables();
 var featureFlags = builder.Configuration.ToAgentFeatureFlags(builder.Environment.EnvironmentName);
 builder.Services.AddSingleton(featureFlags);
 
-// Enable Windows Service lifecycle management when running on Windows
+// Enable OS native service lifecycle management (Windows Services & Linux systemd)
 if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
 {
     builder.Host.UseWindowsService();
+}
+else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
+{
+    builder.Host.UseSystemd();
 }
 
 // Configurable binding address (defaults to 0.0.0.0:5998 for container/endpoint reachability)
@@ -82,7 +87,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<Worker>());
 
 var app = builder.Build();
 
-// Modernized Industrial Agent Web Dashboard
+// Standalone self-contained edge node diagnostic web dashboard (served locally without external dependencies)
 app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -331,7 +336,7 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                 const res = await fetch('/api/status');
                 if (!res.ok) return;
                 const d = await res.json();
-                
+
                 document.getElementById('lblHostname').innerText = d.hostname || 'Heimdall Edge Node';
                 document.getElementById('valHost').innerText = d.hostname || '—';
                 document.getElementById('valUuid').innerText = d.machineIdentifier || '—';
@@ -341,7 +346,7 @@ app.MapGet("/", () => Results.Content(@"<!DOCTYPE html>
                 if (d.disk) {
                     document.getElementById('valDisk').innerText = (d.disk.free || '—') + ' / ' + (d.disk.total || '—');
                 }
-                
+
                 // Mode badges
                 const devBadge = document.getElementById('badgeDevMode');
                 const lblDev = document.getElementById('lblDevMode');
@@ -602,7 +607,8 @@ app.MapPost("/api/ads/toggle", (AdsSimulationServer adsServer, Worker worker, Ag
 
 app.MapGet("/api/config", (ConfigurationService configService) => configService.Config);
 
-app.MapPost("/api/config", (ConfigurationService configService, AgentConfig newConfig) => {
+app.MapPost("/api/config", (ConfigurationService configService, AgentConfig newConfig) =>
+{
     var config = configService.Config;
     config.BackendUrl = newConfig.BackendUrl;
     configService.SaveConfig(config);

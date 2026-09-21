@@ -1,0 +1,33 @@
+{
+  "Agent": {
+    "TelemetryIntervalSeconds": 30,
+    "HeartbeatIntervalSeconds": 10,
+    "DiagnosticSnapshotOnStartup": false,
+    "EnableCrashResistantSpooling": true,
+    "MaxSpoolSizeBytes": 104857600
+  },
+  "Scanning": {
+    "EnableFileSystemScanner": true,
+    "EnableDriverDiscovery": true,
+    "EnableProcessInspection": true,
+    "ExcludePaths": [
+      "/proc",
+      "/sys",
+      "/dev",
+      "/var/lib/docker",
+      "/var/lib/containerd"
+    ]
+  },
+  "IndustrialProtocols": {
+    "EnableBeckhoffAds": true,
+    "EnableOpcUa": true,
+    "EnableModbusTcp": false
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  }
+}

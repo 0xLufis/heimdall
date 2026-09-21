@@ -12,6 +12,7 @@ using App.Shared.Sanitization;
 /// <summary>
 /// High-performance file scanner with path sanitization, directory pruning,
 /// configurable custom banned file types, and configurable allowed file naming templates.
+/// Supports directory-based SCADA runtime trees, custom target paths, and versioned project archives.
 /// </summary>
 public sealed class FileSystemScanner : IFileSystemScanner
 {

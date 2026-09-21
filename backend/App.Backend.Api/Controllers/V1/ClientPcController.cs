@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace App.Backend.Api.Controllers.V1;
 
 /// <summary>
-/// Controller for managing Client PCs / Industrial Controllers.
+/// Controller for managing Client PCs / Industrial Controllers, hardware metadata,
+/// diagnostics, and point-in-time system snapshots.
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
@@ -19,8 +20,15 @@ public class ClientPcController : ControllerBase
     private readonly ICacheService? _cache;
     private readonly App.Contracts.Configuration.BackendFeatureFlags _featureFlags;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="ClientPcController"/>.
+    /// </summary>
+    /// <param name="repository">Controller and asset repository.</param>
+    /// <param name="logger">Structured logger instance.</param>
+    /// <param name="cache">Optional distributed or in-memory cache service.</param>
+    /// <param name="featureFlags">Backend feature flags governing debug exports.</param>
     public ClientPcController(
-        IControllerRepository repository, 
+        IControllerRepository repository,
         ILogger<ClientPcController> logger,
         ICacheService? cache = null,
         App.Contracts.Configuration.BackendFeatureFlags? featureFlags = null)
@@ -31,6 +39,10 @@ public class ClientPcController : ControllerBase
         _featureFlags = featureFlags ?? new App.Contracts.Configuration.BackendFeatureFlags { EnableDevFeatures = true, EnableDebugFeatures = true };
     }
 
+    /// <summary>
+    /// Retrieves all registered client PCs / industrial controllers with cached summary models.
+    /// </summary>
+    /// <returns>Collection of client PC summary DTOs.</returns>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<App.Backend.Api.Dtos.ClientPcDto>>> GetClientPcs()
     {
@@ -94,6 +106,10 @@ public class ClientPcController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Retrieves a specific client PC entity by its unique identifier.
+    /// </summary>
+    /// <param name="id">Unique identifier of the client PC.</param>
     [HttpGet("{id}")]
     public async Task<ActionResult<ClientPc>> GetClientPc(Guid id)
     {
@@ -105,6 +121,10 @@ public class ClientPcController : ControllerBase
         return Ok(pc);
     }
 
+    /// <summary>
+    /// Registers a new client PC in the system.
+    /// </summary>
+    /// <param name="pc">Client PC registration entity.</param>
     [HttpPost]
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<ActionResult<ClientPc>> CreateClientPc(ClientPc pc)
@@ -113,6 +133,11 @@ public class ClientPcController : ControllerBase
         return CreatedAtAction(nameof(GetClientPc), new { id = createdPc.Id }, createdPc);
     }
 
+    /// <summary>
+    /// Updates configuration, network hostname, and machine assignments for a client PC.
+    /// </summary>
+    /// <param name="id">Unique identifier of the client PC to update.</param>
+    /// <param name="update">Updated controller attributes.</param>
     [HttpPut("{id}")]
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<IActionResult> UpdateClientPc(Guid id, [FromBody] App.Backend.Api.Dtos.ClientPcUpdateDto update)
@@ -130,6 +155,10 @@ public class ClientPcController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Deletes a client PC record and its associations.
+    /// </summary>
+    /// <param name="id">Unique identifier of the client PC to delete.</param>
     [HttpDelete("{id}")]
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<IActionResult> DeleteClientPc(Guid id)
@@ -139,6 +168,10 @@ public class ClientPcController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Captures a point-in-time diagnostic snapshot of an industrial controller's state.
+    /// </summary>
+    /// <param name="id">Unique identifier of the target client PC.</param>
     [HttpPost("{id}/snapshot")]
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<ActionResult<App.Backend.Api.Dtos.DiagnosticSnapshotDetailDto>> CaptureDiagnosticSnapshot(Guid id)
@@ -179,6 +212,10 @@ public class ClientPcController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Retrieves all historical diagnostic snapshot summaries captured for a client PC.
+    /// </summary>
+    /// <param name="id">Unique identifier of the target client PC.</param>
     [HttpGet("{id}/snapshots")]
     public async Task<ActionResult<IEnumerable<App.Backend.Api.Dtos.DiagnosticSnapshotSummaryDto>>> GetDiagnosticSnapshots(Guid id)
     {
@@ -199,6 +236,11 @@ public class ClientPcController : ControllerBase
         return Ok(dtos);
     }
 
+    /// <summary>
+    /// Retrieves a detailed diagnostic snapshot by snapshot ID for a client PC.
+    /// </summary>
+    /// <param name="id">Client PC identifier.</param>
+    /// <param name="snapshotId">Diagnostic snapshot identifier.</param>
     [HttpGet("{id}/snapshots/{snapshotId}")]
     public async Task<ActionResult<App.Backend.Api.Dtos.DiagnosticSnapshotDetailDto>> GetDiagnosticSnapshot(Guid id, Guid snapshotId)
     {
@@ -223,6 +265,12 @@ public class ClientPcController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Exports and downloads a full JSON diagnostic snapshot payload for offline analysis.
+    /// Guarded behind EnableDebugFeatures.
+    /// </summary>
+    /// <param name="id">Client PC identifier.</param>
+    /// <param name="snapshotId">Diagnostic snapshot identifier.</param>
     [HttpGet("{id}/snapshots/{snapshotId}/download")]
     public async Task<IActionResult> DownloadDiagnosticSnapshot(Guid id, Guid snapshotId)
     {

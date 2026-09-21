@@ -8,7 +8,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Full Architectural Refactoring & Interface Decoupling (`REFACTOR.md` & `AGENTS.MD`)**:
+- **Independent Standalone Packaging Infrastructure**:
+  - **Self-Contained Edge Agent Packaging**:
+    - Packaged `App.Agent.Daemon` as a single-file, self-contained executable for `linux-x64` and `win-x64` with zero external runtime prerequisites.
+    - Integrated native Linux systemd service notification and watchdog integration (`Microsoft.Extensions.Hosting.Systemd` / `builder.Host.UseSystemd()`) alongside native Windows Services (`UseWindowsService()`).
+    - Provided production systemd unit file `packaging/agent/heimdall-agent.service` with strict sandboxing and unprivileged service user execution.
+    - Created automated service installer and uninstaller scripts for Linux (`install-service.sh`, `uninstall-service.sh`) and Windows PowerShell (`install-service.ps1`, `uninstall-service.ps1`).
+    - Bundled template environment configuration (`packaging/agent/agent.env.example`) and JSON configuration (`packaging/agent/default-config.json`).
+  - **Multi-Stage Production Containerization**:
+    - Authored multi-stage production Dockerfiles with non-root security:
+      - `agent/Dockerfile` (minimal ASP.NET 10 runtime, non-root user).
+      - `backend/Dockerfile` (optimized .NET 10 Web API, non-root user).
+      - `frontend/web/Dockerfile` (Bun multi-stage build, standalone Nitro server).
+    - Created turnkey `docker-compose.prod.yml` enabling completely independent, single-command production deployment with PostgreSQL, Redis, MQTT broker, Backend API, Frontend Web UI, and optional Agent profile.
+  - **Packaging Automation CLI**:
+    - Created `scripts/package.sh` and cross-platform `scripts/package.py` automating the assembly of standalone distributions and compressed archives (`.tar.gz`, `.zip`) into `dist/`.
+- **Repository-Wide Code Quality, XML Documentation & Architecture Modernization**:
+  - Audited and resolved all dangling `TODO` and `FIXME` comments repository-wide.
+  - Added XML documentation comments to backend controllers (`ActiveDirectoryController`, `CertificateManagementController`, `ClientPcController`, `DashboardController`).
+  - Safeguarded `ActiveDirectoryController` to only fall back to built-in mock OUs when `EnableDevFeatures` is explicitly enabled.
+  - Hardened `ConfigurationService` with thread-safe atomic config persistence (`.tmp` write followed by atomic `File.Move`).
+  - Hardened `LocalTelemetrySpooler` with crash-resistant atomic spool writes.
+  - Strengthened `ExtensionRegistry` with monotonic clock expiration tracking (`Stopwatch.GetTimestamp`) to prevent premature or stuck expirations caused by system clock adjustments.
+  - Refactored `SetupApiNative` to document Windows Driver Kit constants and eliminate magic numbers.
+- **General UI Standardizations & Design System Uniformity**:
+  - Global button cursor styling: Added `cursor-pointer` to all button variants in `frontend/web/app/components/ui/button/index.ts`.
+  - Harmonized colors and shapes in search modal, query dropdowns, and file dropzones to standard semantic design tokens (`bg-card`, `bg-muted`, `border-border`, `text-primary`, `text-foreground`, `rounded-xl`/`rounded-2xl`).
+  - Enhanced accessibility: Added `role="button"`, `tabindex="0"`, and Enter/Space keyboard event listeners to file dropzones in `RootCertImportModal.vue`.
+
+### Fixed
+- **Search Pop-up Premature Disappearance & Blur Race Conditions**:
+  - Fixed an issue where the global omni-search popup dialog prematurely closed and triggered route changes after typing only 1 or 2 characters:
+    - Root cause: `OmniSearchBar.vue` emitted debounced `@search` events on keystrokes, which `GlobalOmniSearchModal.vue` handled by immediately calling `closeModal()` and navigating to `/dashboard/inventory`.
+    - Fix: Decoupled intermediate debounced search query changes from explicit submission events (`@submit`), updating `GlobalOmniSearchModal.vue` to only close and navigate on user submit or item selection.
+  - Fixed search suggestion dropdown suddenly disappearing during interactive clicks or clicks on dropdown elements:
+    - Added `isInteractingWithDropdown` tracking, `e.composedPath()` inspection, and `@pointer-down-outside` event filtering with `data-omni-dropdown="true"`.
+- **Frontend Syntax & Production Build Crashes**:
   - Extracted and implemented strict interface-implementation models across all backend, agent, and infrastructure layers:
     - `IAdsSimulationServer` and `IAdsMemoryReporter` for Beckhoff TwinCAT ADS runtime.
     - `IMinimalOpcServer` and `IMinimalOpcClient` for binary OPC UA TCP transport.

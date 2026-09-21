@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { Dialog, DialogContent } from '~/components/ui/dialog'
 import OmniSearchBar from './OmniSearchBar.vue'
-import type { SearchInstanceConfig } from '~/types/search'
+import type { SearchInstanceConfig, SearchResultItem } from '~/types/search'
 import { useRouter } from 'vue-router'
 import { useGlobalSearchModal } from '~/composables/useGlobalSearchModal'
 
@@ -17,11 +17,17 @@ const globalConfig: SearchInstanceConfig = {
   showGlobalShortcut: true
 }
 
-const handleSearch = (q: string) => {
+// Only navigate and close on explicit search submission (e.g. Enter pressed or search button clicked)
+const handleSubmit = (q: string) => {
   closeModal()
   if (q && q.trim()) {
     router.push(`/dashboard/inventory?query=${encodeURIComponent(q.trim())}`)
   }
+}
+
+// On selecting a concrete item result, close the modal (navigation is handled by OmniSearchBar)
+const handleSelectResult = (_item: SearchResultItem) => {
+  closeModal()
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -56,21 +62,29 @@ onUnmounted(() => {
 
 <template>
   <Dialog :open="isOpen" @update:open="isOpen = $event">
-    <DialogContent class="max-w-2xl bg-slate-950/95 backdrop-blur-xl border-slate-800 text-slate-100 p-6 rounded-3xl shadow-2xl">
+    <DialogContent
+      class="max-w-2xl bg-card/95 backdrop-blur-xl border-border text-foreground p-6 rounded-2xl shadow-2xl"
+      @pointer-down-outside="(e) => {
+        const target = e.target as HTMLElement | null
+        if (target && target.closest('[data-omni-dropdown]')) {
+          e.preventDefault()
+        }
+      }"
+    >
       <div class="space-y-4">
-        <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
+        <div class="flex items-center justify-between pb-2 border-b border-border/80">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-black uppercase tracking-[0.2em] text-indigo-400">Heimdall FMFD</span>
-            <span class="text-[11px] text-slate-400 font-medium">— Find My Field Data</span>
+            <span class="text-xs font-black uppercase tracking-[0.2em] text-primary">Heimdall FMFD</span>
+            <span class="text-[11px] text-muted-foreground font-medium">— Find My Field Data</span>
           </div>
-          <span class="text-[10px] font-mono text-slate-500">Press ESC to exit</span>
+          <span class="text-[10px] font-mono text-muted-foreground">Press ESC to exit</span>
         </div>
 
         <OmniSearchBar
           :config="globalConfig"
-          :immediate="true"
-          @search="handleSearch"
-          @select-result="closeModal"
+          :immediate="false"
+          @submit="handleSubmit"
+          @select-result="handleSelectResult"
         />
       </div>
     </DialogContent>

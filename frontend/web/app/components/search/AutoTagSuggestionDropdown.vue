@@ -57,15 +57,15 @@ const crossTableItems = computed(() => {
 </script>
 
 <template>
-  <div class="w-full bg-slate-950/98 backdrop-blur-xl border border-slate-800/90 rounded-2xl shadow-2xl overflow-hidden divide-y divide-slate-900 z-50 text-slate-100">
+  <div data-omni-dropdown="true" class="w-full bg-card/98 backdrop-blur-xl border border-border rounded-xl shadow-2xl overflow-hidden divide-y divide-border/60 z-50 text-card-foreground">
     <!-- Value Lookup Dropdown (Triggered when typing `key:`, e.g. tech: or status:) -->
-    <div v-if="activePendingKey && valueSuggestions.length > 0" class="p-3 bg-indigo-950/30 border-b border-indigo-900/30">
-      <div class="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-2">
+    <div v-if="activePendingKey && valueSuggestions.length > 0" class="p-3 bg-muted/40 border-b border-border/60">
+      <div class="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-primary mb-2">
         <div class="flex items-center gap-1.5">
-          <CornerDownLeft class="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-          <span>Select Value for <span class="font-mono text-white bg-indigo-900/50 px-1.5 py-0.5 rounded">{{ activePendingKey }}:</span></span>
+          <CornerDownLeft class="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>Select Value for <span class="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded">{{ activePendingKey }}:</span></span>
         </div>
-        <span class="text-[8px] font-mono text-slate-500">Language Server Autocomplete</span>
+        <span class="text-[8px] font-mono text-muted-foreground">Language Server Autocomplete</span>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar">
         <button
@@ -73,13 +73,13 @@ const crossTableItems = computed(() => {
           :key="val.value"
           type="button"
           @click="emit('select-value', val.value)"
-          class="flex items-center justify-between p-2 rounded-xl bg-slate-900/90 hover:bg-indigo-600/30 border border-slate-800 hover:border-indigo-500/50 text-left transition-all group"
+          class="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-accent border border-border hover:border-primary/50 text-left transition-all group cursor-pointer"
         >
           <div class="flex items-center gap-2">
-            <span class="font-mono text-xs font-bold text-indigo-300 group-hover:text-white">{{ val.value }}</span>
-            <span v-if="val.description" class="text-[9px] text-slate-400 truncate max-w-[140px]">{{ val.description }}</span>
+            <span class="font-mono text-xs font-bold text-foreground group-hover:text-primary">{{ val.value }}</span>
+            <span v-if="val.description" class="text-[9px] text-muted-foreground truncate max-w-[140px]">{{ val.description }}</span>
           </div>
-          <CornerDownLeft class="w-3 h-3 text-slate-600 group-hover:text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          <CornerDownLeft class="w-3 h-3 text-muted-foreground group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </button>
       </div>
     </div>
@@ -109,48 +109,48 @@ const crossTableItems = computed(() => {
 
     <!-- Stage 1: Primary Indexing Table Matches -->
     <div v-if="primaryItems.length > 0" class="p-2 max-h-60 overflow-y-auto custom-scrollbar">
-      <div class="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-slate-500 px-3 py-1.5">
+      <div class="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground px-3 py-1.5">
         <span class="flex items-center gap-1.5">
-          <Database class="w-3 h-3 text-indigo-400" />
+          <Database class="w-3 h-3 text-primary" />
           <span>Stage 1: Primary Index Matches ({{ primaryItems.length }})</span>
         </span>
-        <span class="font-mono text-slate-600 uppercase">{{ instanceId }} table</span>
+        <span class="font-mono text-muted-foreground uppercase">{{ instanceId }} table</span>
       </div>
       <div
         v-for="item in primaryItems"
         :key="item.id"
         @click="emit('select-result', item)"
-        class="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-900 cursor-pointer transition-colors group"
+        class="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/60 cursor-pointer transition-colors group"
       >
         <div class="flex items-center gap-3">
-          <div class="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 group-hover:text-indigo-400 group-hover:border-indigo-500/30 transition-colors">
+          <div class="p-2 rounded-lg bg-muted border border-border text-muted-foreground group-hover:text-primary group-hover:border-primary/40 transition-colors">
             <Search class="w-4 h-4" />
           </div>
           <div>
-            <div class="text-xs font-bold text-slate-200 group-hover:text-white flex items-center gap-2">
+            <div class="text-xs font-bold text-foreground group-hover:text-primary flex items-center gap-2">
               <span>{{ item.name }}</span>
-              <span v-if="item.status" class="w-1.5 h-1.5 rounded-full" :class="item.status === 'online' ? 'bg-emerald-500' : 'bg-slate-600'"></span>
+              <span v-if="item.status" class="w-1.5 h-1.5 rounded-full" :class="item.status === 'online' ? 'bg-emerald-600' : 'bg-muted-foreground'"></span>
             </div>
-            <div class="text-[10px] text-slate-500 flex items-center gap-2 mt-0.5">
-              <span class="uppercase tracking-wider font-bold text-slate-400">{{ item.typeLabel || item.itemType }}</span>
+            <div class="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+              <span class="uppercase tracking-wider font-bold text-foreground/80">{{ item.typeLabel || item.itemType }}</span>
               <span v-if="item.manufacturerName">• {{ item.manufacturerName }}</span>
               <span v-if="item.subtitle" class="font-mono opacity-80">({{ item.subtitle }})</span>
             </div>
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-[8px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+          <span class="text-[8px] font-mono uppercase px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
             {{ item.sourceTable || instanceId }}
           </span>
-          <ArrowRight class="w-4 h-4 text-slate-600 group-hover:text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
+          <ArrowRight class="w-4 h-4 text-muted-foreground group-hover:text-foreground opacity-0 group-hover:opacity-100 transition-all" />
         </div>
       </div>
     </div>
 
     <!-- Stage 2: Filter Key Suggestions (Index table key names matching text) -->
-    <div v-if="!activePendingKey && matchingKeys && matchingKeys.length > 0" class="p-3 bg-slate-950">
-      <div class="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
-        <Tag class="w-3 h-3 text-slate-400" />
+    <div v-if="!activePendingKey && matchingKeys && matchingKeys.length > 0" class="p-3 bg-muted/30">
+      <div class="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+        <Tag class="w-3 h-3 text-muted-foreground" />
         <span>Stage 2: Filter Key Index (Type or Click to Complete)</span>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -159,10 +159,10 @@ const crossTableItems = computed(() => {
           :key="k.key"
           type="button"
           @click="emit('select-key', k.key)"
-          class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-indigo-950/60 text-slate-300 hover:text-indigo-300 border border-slate-800 hover:border-indigo-500/40 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider transition-colors shadow-sm group"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-accent text-foreground border border-border hover:border-primary/50 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider transition-colors shadow-xs group cursor-pointer"
         >
           <span>{{ k.key }}:</span>
-          <span v-if="k.description" class="text-[8px] text-slate-500 group-hover:text-indigo-400 font-sans normal-case tracking-normal">
+          <span v-if="k.description" class="text-[8px] text-muted-foreground group-hover:text-primary font-sans normal-case tracking-normal">
             {{ k.description }}
           </span>
         </button>
@@ -170,39 +170,39 @@ const crossTableItems = computed(() => {
     </div>
 
     <!-- Stage 3: Cross-Table Matches -->
-    <div v-if="crossTableItems.length > 0" class="p-2 max-h-48 overflow-y-auto custom-scrollbar bg-slate-950/60 border-t border-slate-900">
-      <div class="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-amber-500/80 px-3 py-1.5">
+    <div v-if="crossTableItems.length > 0" class="p-2 max-h-48 overflow-y-auto custom-scrollbar bg-muted/20 border-t border-border/50">
+      <div class="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 px-3 py-1.5">
         <span class="flex items-center gap-1.5">
-          <Network class="w-3 h-3 text-amber-400" />
+          <Network class="w-3 h-3 text-amber-600 dark:text-amber-400" />
           <span>Stage 3: Cross-Table Associations ({{ crossTableItems.length }})</span>
         </span>
-        <span class="font-mono text-amber-500/60 uppercase">Indexed Links</span>
+        <span class="font-mono text-amber-600/70 dark:text-amber-400/70 uppercase">Indexed Links</span>
       </div>
       <div
         v-for="item in crossTableItems"
         :key="item.id"
         @click="emit('select-result', item)"
-        class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-900 cursor-pointer transition-colors group"
+        class="flex items-center justify-between p-2 rounded-lg hover:bg-muted/60 cursor-pointer transition-colors group"
       >
         <div class="flex items-center gap-2.5">
-          <div class="p-1.5 rounded-lg bg-amber-950/30 border border-amber-800/30 text-amber-400">
+          <div class="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
             <Layers class="w-3.5 h-3.5" />
           </div>
           <div>
-            <div class="text-xs font-bold text-slate-300 group-hover:text-amber-200">
+            <div class="text-xs font-bold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400">
               {{ item.name }}
             </div>
-            <div class="text-[9px] text-slate-500 flex items-center gap-1.5">
+            <div class="text-[9px] text-muted-foreground flex items-center gap-1.5">
               <span class="uppercase tracking-wider font-semibold">{{ item.typeLabel || item.itemType }}</span>
               <span v-if="item.subtitle" class="font-mono">({{ item.subtitle }})</span>
             </div>
           </div>
         </div>
         <div class="flex items-center gap-1.5">
-          <span class="text-[8px] font-mono uppercase px-2 py-0.5 rounded bg-amber-950/50 text-amber-300 border border-amber-800/40">
+          <span class="text-[8px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30">
             Cross: {{ item.sourceTable }}
           </span>
-          <ArrowRight class="w-3.5 h-3.5 text-slate-600 group-hover:text-amber-300 opacity-0 group-hover:opacity-100 transition-all" />
+          <ArrowRight class="w-3.5 h-3.5 text-muted-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all" />
         </div>
       </div>
     </div>

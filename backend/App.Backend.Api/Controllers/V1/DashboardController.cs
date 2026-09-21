@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace App.Backend.Api.Controllers.V1;
 
+
+/// <summary>
+/// Controller providing aggregated plant overview telemetry, device counts,
+/// active node uptime metrics, and recent security events for the command dashboard.
+/// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize]
@@ -17,6 +22,14 @@ public class DashboardController : ControllerBase
     private readonly ICacheService _cache;
     private readonly ILogger<DashboardController> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="DashboardController"/>.
+    /// </summary>
+    /// <param name="controllerRepository">Repository for querying client PC controllers.</param>
+    /// <param name="assetRepository">Repository for querying assets and authorized users.</param>
+    /// <param name="ticketRepository">Repository for maintenance tickets and security audit events.</param>
+    /// <param name="cache">Cache service for caching high-frequency dashboard telemetry.</param>
+    /// <param name="logger">Structured logger instance.</param>
     public DashboardController(
         IControllerRepository controllerRepository,
         IAssetRepository assetRepository,
@@ -31,6 +44,11 @@ public class DashboardController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Retrieves aggregated dashboard summary metrics, including client uptime percentage,
+    /// active device counts, recent nodes, and security events. Cached for 30 seconds.
+    /// </summary>
+    /// <returns>Dashboard summary metrics DTO.</returns>
     [HttpGet]
     public async Task<ActionResult<DashboardDto>> GetDashboardData()
     {

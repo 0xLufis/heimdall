@@ -7,7 +7,7 @@ namespace App.Agent.Daemon.Infrastructure.Spooling;
 
 /// <summary>
 /// Offline local telemetry spooler buffering telemetry payloads when disconnected from Heimdall backend.
-/// Automatically enforces storage quotas with FIFO eviction (Guideline 21, 22, 23).
+/// Automatically enforces storage quotas with FIFO eviction, atomic snapshot writes, and process crash resilience.
 /// </summary>
 public class LocalTelemetrySpooler : ITelemetrySpooler
 {
@@ -18,8 +18,8 @@ public class LocalTelemetrySpooler : ITelemetrySpooler
 
     public LocalTelemetrySpooler(ILogger<LocalTelemetrySpooler> logger, IConfigurationService configService, string? spoolDirectory = null)
     {
-        _logger = logger;
-        _configService = configService;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _spoolDir = spoolDirectory ?? Path.Combine(AppContext.BaseDirectory, "telemetry_spool");
 
         try
@@ -36,7 +36,7 @@ public class LocalTelemetrySpooler : ITelemetrySpooler
     }
 
     /// <summary>
-    /// Spools a raw telemetry or system info JSON payload to local disk.
+    /// Spools a raw telemetry or system info JSON payload to local disk with atomic crash-resistant write.
     /// </summary>
     public async Task SpoolPayloadAsync(string payloadJson)
     {
@@ -47,15 +47,18 @@ public class LocalTelemetrySpooler : ITelemetrySpooler
 
         string fileName = $"spool_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Guid.NewGuid():N}.json";
         string filePath = Path.Combine(_spoolDir, fileName);
+        string tmpPath = filePath + ".tmp";
 
         try
         {
-            await File.WriteAllTextAsync(filePath, payloadJson, Encoding.UTF8);
+            await File.WriteAllTextAsync(tmpPath, payloadJson, Encoding.UTF8);
+            File.Move(tmpPath, filePath, overwrite: true);
             _logger.LogInformation("Spooled telemetry payload to {Path} ({Bytes} bytes)", fileName, payloadJson.Length);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to write spooled telemetry file to {Path}", filePath);
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { }
         }
     }
 

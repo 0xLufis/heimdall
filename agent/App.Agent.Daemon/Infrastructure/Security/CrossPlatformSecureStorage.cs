@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 /// <summary>
-/// Hardware-bound authenticated encryption for agent configuration and secrets.
+/// Hardware-bound authenticated encryption for agent configuration, spool payloads, and secrets.
 /// Uses Windows DPAPI on Windows and AES-256-GCM HKDF Machine-Binding on Linux.
 /// </summary>
 public sealed class CrossPlatformSecureStorage

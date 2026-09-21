@@ -20,12 +20,14 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'search', query: string): void
+  (e: 'submit', query: string): void
   (e: 'select-result', item: SearchResultItem): void
 }>()
 
 const router = useRouter()
 const containerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
+const isInteractingWithDropdown = ref(false)
 
 const {
   rawInput,
@@ -130,6 +132,7 @@ const handleKeydown = (e: KeyboardEvent) => {
     } else {
       executeSearch()
       emit('search', effectiveQueryString.value)
+      emit('submit', effectiveQueryString.value)
       isMenuExplicitlyClosed.value = true
       isFocused.value = false
       inputRef.value?.blur()
@@ -215,15 +218,25 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
 }
 
 function handleClickOutside(e: MouseEvent) {
-  if (containerRef.value && e.target instanceof Node && !containerRef.value.contains(e.target)) {
+  if (isInteractingWithDropdown.value) return
+  const path = (e.composedPath ? e.composedPath() : []) as Node[]
+  const isInside = (containerRef.value && path.includes(containerRef.value)) ||
+                   (containerRef.value && e.target instanceof Node && containerRef.value.contains(e.target))
+  if (!isInside) {
     isMenuExplicitlyClosed.value = true
     isFocused.value = false
   }
 }
 
-const handleBlur = () => {
+const handleBlur = (e: FocusEvent) => {
+  if (isInteractingWithDropdown.value) return
+  if (e.relatedTarget instanceof Node && containerRef.value?.contains(e.relatedTarget)) {
+    return
+  }
   setTimeout(() => {
-    isFocused.value = false
+    if (!isInteractingWithDropdown.value && !containerRef.value?.contains(document.activeElement)) {
+      isFocused.value = false
+    }
   }, 250)
 }
 
@@ -251,11 +264,11 @@ onUnmounted(() => {
   <div ref="containerRef" class="relative w-full">
     <!-- Main Search Input Container -->
     <div
-      class="flex flex-wrap items-center gap-2 p-2 bg-slate-900 border rounded-2xl transition-all shadow-lg"
-      :class="isFocused ? 'border-indigo-500 ring-4 ring-indigo-500/10' : 'border-slate-800 hover:border-slate-700'"
+      class="flex flex-wrap items-center gap-2 p-2 bg-card border rounded-xl transition-all shadow-md"
+      :class="isFocused ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:border-border/80'"
       @click="inputRef?.focus(); isFocused = true; isMenuExplicitlyClosed = false"
     >
-      <div class="pl-2 text-slate-500">
+      <div class="pl-2 text-muted-foreground">
         <SearchIcon class="w-4 h-4" />
       </div>
 
@@ -268,7 +281,7 @@ onUnmounted(() => {
         v-model="rawInput"
         type="text"
         :placeholder="tags.length === 0 ? (props.config?.placeholder || 'Search everything (e.g. Siemens, OP10, 15kW)...') : 'Type to add more filters...'"
-        class="flex-1 min-w-[160px] bg-transparent border-0 text-sm font-bold text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:ring-0 py-1"
+        class="flex-1 min-w-[160px] bg-transparent border-0 text-sm font-semibold text-foreground placeholder:text-muted-foreground placeholder:font-normal focus:outline-none focus:ring-0 py-1"
         @input="isMenuExplicitlyClosed = false; handleInputChange(($event.target as HTMLInputElement).value)"
         @focus="isFocused = true; isMenuExplicitlyClosed = false"
         @blur="handleBlur"
@@ -281,19 +294,19 @@ onUnmounted(() => {
           v-if="tags.length > 0 || rawInput.length > 0"
           type="button"
           @click.stop="handleClear"
-          class="p-1 text-slate-500 hover:text-slate-300 rounded-lg transition-colors"
+          class="p-1 text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
           title="Clear search"
         >
           <X class="w-4 h-4" />
         </button>
 
-        <div v-if="props.config?.showGlobalShortcut !== false" class="hidden sm:flex items-center gap-1.5 px-2 py-0.5 bg-slate-800/80 border border-slate-700/80 rounded-lg text-[10px] font-mono text-slate-400 select-none">
+        <div v-if="props.config?.showGlobalShortcut !== false" class="hidden sm:flex items-center gap-1.5 px-2 py-0.5 bg-muted/60 border border-border/80 rounded-lg text-[10px] font-mono text-muted-foreground select-none">
           <div class="flex items-center gap-0.5">
             <Command class="w-3 h-3" />
             <span>K</span>
           </div>
-          <span class="text-slate-600 font-sans">•</span>
-          <span class="text-indigo-400 font-sans tracking-tight" title="Press Ctrl+Space for autocomplete suggestions">^Space</span>
+          <span class="text-muted-foreground/60 font-sans">•</span>
+          <span class="text-primary font-sans tracking-tight" title="Press Ctrl+Space for autocomplete suggestions">^Space</span>
         </div>
       </div>
     </div>
@@ -302,6 +315,10 @@ onUnmounted(() => {
     <div
       v-if="showDropdown"
       class="absolute left-0 right-0 top-full mt-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+      @mousedown="isInteractingWithDropdown = true"
+      @mouseup="setTimeout(() => { isInteractingWithDropdown = false }, 200)"
+      @touchstart="isInteractingWithDropdown = true"
+      @touchend="setTimeout(() => { isInteractingWithDropdown = false }, 200)"
     >
       <AutoTagSuggestionDropdown
         :auto-suggestions="autoSuggestions"

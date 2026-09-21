@@ -33,17 +33,24 @@ public class MinimalOpcClient : IMinimalOpcClient
 
     public IReadOnlyDictionary<string, object> MonitoredNodes => _monitoredNodes;
 
-    public MinimalOpcClient(string endpointUrl = DefaultEndpointUrl, ILogger<MinimalOpcClient>? logger = null)
+    public MinimalOpcClient(string endpointUrl = DefaultEndpointUrl, ILogger<MinimalOpcClient>? logger = null, bool? enableSimulation = null)
     {
         EndpointUrl = endpointUrl;
         _logger = logger;
+        
+        // Gate synthetic industrial process nodes behind simulation flag (defaults to true for dev/testing, false for clean prod)
+        bool isSim = enableSimulation ?? (Environment.GetEnvironmentVariable("ENABLE_SIMULATION") != "false");
+        IsSimulatedMode = isSim;
 
-        // Register standard industrial process nodes
-        _monitoredNodes["ns=2;s=Line01.DriveSpeed"] = 1480.0;
-        _monitoredNodes["ns=2;s=Line01.MotorCurrent"] = 12.4;
-        _monitoredNodes["ns=2;s=Line01.QualityOk"] = true;
-        _monitoredNodes["ns=2;s=Line01.PartCount"] = 2450L;
-        _monitoredNodes["ns=2;s=Line01.SafetyInterlockEngaged"] = false;
+        if (isSim)
+        {
+            // Register standard simulated process telemetry nodes
+            _monitoredNodes["ns=2;s=Line01.DriveSpeed"] = 1480.0;
+            _monitoredNodes["ns=2;s=Line01.MotorCurrent"] = 12.4;
+            _monitoredNodes["ns=2;s=Line01.QualityOk"] = true;
+            _monitoredNodes["ns=2;s=Line01.PartCount"] = 2450L;
+            _monitoredNodes["ns=2;s=Line01.SafetyInterlockEngaged"] = false;
+        }
     }
 
     public void Start(int pollIntervalMs = 2000)
