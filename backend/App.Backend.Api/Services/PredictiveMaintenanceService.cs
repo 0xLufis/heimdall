@@ -135,7 +135,7 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
                 .Select(s => new StockDepletionItemDto
                 {
                     PartNumber = s.SerialNumber ?? s.Name ?? "PART-GEN-01",
-                    Description = s.DisplayName ?? s.Name,
+                    Description = s.DisplayName ?? s.Name ?? "Stock Component",
                     CurrentStock = s.StockQuantity ?? 0,
                     MinStockThreshold = s.MinStockThreshold ?? 0,
                     Criticality = (s.StockQuantity ?? 0) == 0 ? "Critical" : "Warning"

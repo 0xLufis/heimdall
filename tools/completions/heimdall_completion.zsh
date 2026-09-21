@@ -36,6 +36,7 @@ _heimdall_run_dev() {
         'logs:Tail log streams for a specific subsystem'
         'test:Execute verification test suites (all, backend, frontend, windows)'
         'build:Compile binaries or container images (agent-win, frontend, backend)'
+        'package:Assemble standalone distribution archives (agent, backend, frontend, all)'
         'zellij:Launch interactive multi-pane Zellij terminal workspace'
         'completion:Output shell completion script for bash or zsh'
         'install-completions:Install tab completion hooks into ~/.bashrc or ~/.zshrc'
@@ -86,6 +87,12 @@ _heimdall_run_dev() {
         'backend:Build ASP.NET Core API project'
         'all:Build all targets'
     )
+    package_targets=(
+        'agent:Package Linux and Windows standalone edge agents'
+        'backend:Package backend ASP.NET Core API distribution'
+        'frontend:Package standalone frontend Nitro bundle'
+        'all:Package all distributions'
+    )
 
     if (( CURRENT == 2 )); then
         _describe -t commands 'command' commands
@@ -105,6 +112,9 @@ _heimdall_run_dev() {
                 ;;
             build)
                 _describe -t build_targets 'build target' build_targets
+                ;;
+            package)
+                _describe -t package_targets 'package target' package_targets
                 ;;
             completion)
                 _values 'shell' 'bash' 'zsh' 'install'

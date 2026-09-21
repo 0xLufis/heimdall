@@ -32,11 +32,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Strengthened `ExtensionRegistry` with monotonic clock expiration tracking (`Stopwatch.GetTimestamp`) to prevent premature or stuck expirations caused by system clock adjustments.
   - Refactored `SetupApiNative` to document Windows Driver Kit constants and eliminate magic numbers.
 - **General UI Standardizations & Design System Uniformity**:
-  - Global button cursor styling: Added `cursor-pointer` to all button variants in `frontend/web/app/components/ui/button/index.ts`.
-  - Harmonized colors and shapes in search modal, query dropdowns, and file dropzones to standard semantic design tokens (`bg-card`, `bg-muted`, `border-border`, `text-primary`, `text-foreground`, `rounded-xl`/`rounded-2xl`).
+  - Global button cursor styling: Added `cursor-pointer` to all button variants in `frontend/web/app/components/ui/button/index.ts` and registered global `cursor: pointer` on `button` and `[role="button"]` in `frontend/web/app/assets/css/tailwind.css` `@layer base`.
+  - Harmonized colors and shapes in search modal, query dropdowns, file dropzones, and station tables/modals (`StationListTable.vue`, `StationDetailModal.vue`, `ControllerCommandModal.vue`) to standard semantic design tokens (`bg-card`, `bg-muted`, `border-border`, `text-primary`, `text-foreground`, `rounded-xl`/`rounded-2xl`).
+  - Replaced browser `alert()` popups in `ControllerCommandModal.vue` with inline reactive error banners (`errorMessage = ref('')`).
+  - Added explicit Escape key closure handler to `GlobalOmniSearchModal.vue`.
   - Enhanced accessibility: Added `role="button"`, `tabindex="0"`, and Enter/Space keyboard event listeners to file dropzones in `RootCertImportModal.vue`.
+- **Diagnostics, CLI & Shell Completion Enhancements**:
+  - Added `TotalSizeBytes` metric to `ITelemetrySpooler` and implemented live byte calculation across pending spool files in `LocalTelemetrySpooler.cs`.
+  - Exposed `spooler.totalSizeBytes` in the edge daemon `/api/status` diagnostics endpoint in `Program.cs`.
+  - Extended developer orchestrator `run_dev.sh` with `./run_dev.sh package [agent|backend|frontend|all]` delegating directly to `scripts/package.sh`.
+  - Updated Bash and Zsh shell completion scripts (`tools/completions/heimdall_completion.bash` and `tools/completions/heimdall_completion.zsh`) to support the `package` command and its targets.
 
 ### Fixed
+- **Compiler & Linter Warnings Elimination**:
+  - Resolved `CS8601` possible null assignment warning in `PredictiveMaintenanceService.cs` (`Description = s.DisplayName ?? s.Name ?? "Stock Component"`), bringing the backend solution to 0 warnings.
+  - Guarded `onMounted` with `getCurrentInstance()` in `useShortcuts.ts` to prevent Vue lifecycle warnings when composables are imported in headless or unit-test environments.
 - **Search Pop-up Premature Disappearance & Blur Race Conditions**:
   - Fixed an issue where the global omni-search popup dialog prematurely closed and triggered route changes after typing only 1 or 2 characters:
     - Root cause: `OmniSearchBar.vue` emitted debounced `@search` events on keystrokes, which `GlobalOmniSearchModal.vue` handled by immediately calling `closeModal()` and navigating to `/dashboard/inventory`.

@@ -518,7 +518,8 @@ app.MapGet("/api/status", (
         },
         spooler = new
         {
-            pendingRecords = spooler.PendingCount
+            pendingRecords = spooler.PendingCount,
+            totalSizeBytes = spooler.TotalSizeBytes
         },
         extensionsCount = extensionRegistry.GetActiveComponents().Count,
         pluginsCount = pluginManager.GetInstalledPlugins().Count,

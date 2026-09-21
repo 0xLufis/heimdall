@@ -239,6 +239,25 @@ The following subagents are defined for specialized execution of upcoming roadma
   - Created standalone turnkey production compose stack (`docker-compose.prod.yml`) for zero-configuration, independent production deployments.
 - [x] **PKG-TOOL-001**: Cross-platform packaging automation scripts (`scripts/package.sh`, `scripts/package.py`) outputting release tarballs and zip archives into `dist/`.
 
+---
+
+## Milestone 16: Code Quality, Diagnostics & Extended UI Quality-of-Life Refactoring
+- [x] **NET-WARN-001**: Zero-warning build baseline across entire .NET solution:
+  - Resolved `CS8601` nullability warning in `PredictiveMaintenanceService.cs`.
+  - Maintained 208/208 test pass rate with 0 warnings.
+- [x] **AGENT-DIAG-001**: Spool size live telemetry & diagnostics:
+  - Implemented `TotalSizeBytes` in `ITelemetrySpooler` and `LocalTelemetrySpooler.cs` computing spool directory disk footprint.
+  - Exposed spooler byte size in `App.Agent.Daemon` `/api/status` diagnostics endpoint.
+  - Added unit test validation in `MultiTenancyAndGovernanceTests.cs`.
+- [x] **UI-QOL-001**: Front-end composables lifecycle safety & button cursor standardizations:
+  - Guarded `onMounted` with `getCurrentInstance()` in `useShortcuts.ts` to cleanly support test suites and headless rendering without Vue warnings.
+  - Added global `cursor: pointer` on `button` and `[role="button"]` in Tailwind base layer (`tailwind.css`).
+  - Standardized `StationListTable.vue` and `StationDetailModal.vue` to semantic design tokens.
+  - Replaced browser `alert()` in `ControllerCommandModal.vue` with inline error banners and Escape key handler in `GlobalOmniSearchModal.vue`.
+- [x] **CLI-PKG-001**: Integrated packaging into developer CLI workflow:
+  - Added `package` subcommand to `run_dev.sh` with target routing (`agent`, `backend`, `frontend`, `all`).
+  - Added autocompletions for `run_dev.sh package` in both Bash and Zsh completions.
+
 
 
 

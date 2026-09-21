@@ -93,6 +93,9 @@ public class MultiTenancyAndGovernanceTests
             await spooler.SpoolPayloadAsync("{\"event\": 1}");
             await spooler.SpoolPayloadAsync("{\"event\": 2}");
 
+            Assert.Equal(2, spooler.PendingCount);
+            Assert.True(spooler.TotalSizeBytes > 0);
+
             var received = new List<string>();
             int drainedCount = await spooler.DrainSpoolAsync(payload =>
             {
@@ -105,6 +108,8 @@ public class MultiTenancyAndGovernanceTests
             Assert.Equal(2, received.Count);
             Assert.Contains("{\"event\": 1}", received);
             Assert.Contains("{\"event\": 2}", received);
+            Assert.Equal(0, spooler.PendingCount);
+            Assert.Equal(0, spooler.TotalSizeBytes);
 
             // Second drain should be 0 because spooled files are cleared
             int secondDrain = await spooler.DrainSpoolAsync(_ => Task.FromResult(true));

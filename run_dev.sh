@@ -675,6 +675,7 @@ show_help() {
     echo ""
     echo -e "${COLOR_BOLD}Verification & Tools:${COLOR_RESET}"
     echo -e "  ${COLOR_CYAN}test [subsystem]${COLOR_RESET}    Run test suite (all, backend, frontend, windows, smoke, seed)"
+    echo -e "  ${COLOR_CYAN}package [target]${COLOR_RESET}    Package standalone release bundles into dist/ (agent, backend, frontend, all)"
     echo -e "  ${COLOR_CYAN}docker [action]${COLOR_RESET}     Manage containerized development stack (up, down, ps, logs)"
     echo -e "  ${COLOR_CYAN}completion [shell]${COLOR_RESET}  Output tab completion code (bash, zsh)"
     echo -e "  ${COLOR_CYAN}install-completions${COLOR_RESET} Install tab completion hooks into ~/.bashrc or ~/.zshrc"
@@ -774,6 +775,9 @@ case "$CMD" in
                 windows_build_agent
                 ;;
         esac
+        ;;
+    package)
+        "$SCRIPT_DIR/scripts/package.sh" "$@"
         ;;
     completion)
         if [ "$1" = "install" ]; then

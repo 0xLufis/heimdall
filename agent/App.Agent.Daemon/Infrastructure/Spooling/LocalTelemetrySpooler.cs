@@ -78,6 +78,26 @@ public class LocalTelemetrySpooler : ITelemetrySpooler
     }
 
     /// <summary>
+    /// Returns total size in bytes of all spooled payloads buffered on disk.
+    /// </summary>
+    public long TotalSizeBytes
+    {
+        get
+        {
+            try
+            {
+                if (!Directory.Exists(_spoolDir)) return 0L;
+                var dirInfo = new DirectoryInfo(_spoolDir);
+                return dirInfo.GetFiles("spool_*.json").Sum(f => f.Length);
+            }
+            catch
+            {
+                return 0L;
+            }
+        }
+    }
+
+    /// <summary>
     /// Drains spooled payloads in chronological order and sends them via the provided send function.
     /// </summary>
     public async Task<int> DrainSpoolAsync(Func<string, Task<bool>> sendFunction)

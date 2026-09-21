@@ -41,6 +41,9 @@ const handleKeydown = (e: KeyboardEvent) => {
   if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'p')) {
     e.preventDefault()
     toggleModal()
+  } else if (e.key === 'Escape' && isOpen.value) {
+    e.preventDefault()
+    closeModal()
   } else if (e.key === '/' && !isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey && !isOpen.value) {
     e.preventDefault()
     openModal()

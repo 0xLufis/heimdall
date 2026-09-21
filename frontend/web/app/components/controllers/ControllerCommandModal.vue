@@ -23,11 +23,13 @@ const filePath = ref('C:\\TwinCAT\\3.1\\Boot\\CurrentConfig.xml')
 const signature = ref('')
 const isSubmitting = ref(false)
 const successMessage = ref('')
+const errorMessage = ref('')
 
 const handleQueueCommand = async () => {
   if (!props.controller) return
   isSubmitting.value = true
   successMessage.value = ''
+  errorMessage.value = ''
 
   try {
     const payload = commandType.value === 'UPDATE_CONFIG'
@@ -47,8 +49,8 @@ const handleQueueCommand = async () => {
       emit('submitted')
       emit('update:open', false)
     }, 1500)
-  } catch {
-    alert('Failed to queue command')
+  } catch (err: any) {
+    errorMessage.value = err?.data?.message || err?.message || 'Failed to queue command. Please verify network connectivity and permissions.'
   } finally {
     isSubmitting.value = false
   }
@@ -137,6 +139,10 @@ const handleQueueCommand = async () => {
 
         <div v-if="successMessage" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold text-center">
           {{ successMessage }}
+        </div>
+
+        <div v-if="errorMessage" class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold text-center">
+          {{ errorMessage }}
         </div>
 
         <div class="flex justify-end gap-3 pt-4 border-t border-slate-900">

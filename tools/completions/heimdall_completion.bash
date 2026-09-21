@@ -27,12 +27,13 @@ _heimdall_run_dev_completion() {
     local cur prev words cword
     _heimdall_init_completion || return
 
-    local commands="start stop clean restart status monitor watch tui windows docker logs test build zellij daemon completion install-completions help"
+    local commands="start stop clean restart status monitor watch tui windows docker logs test build package zellij daemon completion install-completions help"
     local services="backend frontend agent simulator windows windows-agent db all"
     local win_actions="start stop restart status logs build launch test vnc api"
     local docker_actions="up down restart logs ps build start stop"
     local test_subsystems="all backend frontend windows seed smoke"
     local build_targets="agent-win windows frontend backend all"
+    local package_targets="agent backend frontend all"
 
     if [ "$cword" -eq 1 ]; then
         if [[ "$cur" == -* ]]; then
@@ -71,6 +72,11 @@ _heimdall_run_dev_completion() {
         build)
             if [ "$cword" -eq 2 ]; then
                 COMPREPLY=( $(compgen -W "$build_targets" -- "$cur") )
+            fi
+            ;;
+        package)
+            if [ "$cword" -eq 2 ]; then
+                COMPREPLY=( $(compgen -W "$package_targets" -- "$cur") )
             fi
             ;;
         status)

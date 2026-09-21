@@ -19,6 +19,11 @@ public interface ITelemetrySpooler
     int PendingCount { get; }
 
     /// <summary>
+    /// Returns the total size in bytes of all spooled payloads buffered on disk.
+    /// </summary>
+    long TotalSizeBytes { get; }
+
+    /// <summary>
     /// Drains queued payloads sequentially, removing items only upon confirmed delivery. Returns number of drained items.
     /// </summary>
     Task<int> DrainSpoolAsync(Func<string, Task<bool>> sendDelegate);

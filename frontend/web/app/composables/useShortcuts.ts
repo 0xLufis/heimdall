@@ -1,10 +1,10 @@
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, getCurrentInstance } from 'vue'
 import { createSharedComposable, useActiveElement } from '@vueuse/core'
 
 export function _useShortcuts() {
-  const macOS = computed(() => import.meta.client && navigator && navigator.userAgent && navigator.userAgent.match(/Macintosh;/))
+  const macOS = computed(() => Boolean(import.meta.client && typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.match(/Macintosh;/)))
 
-  const metaSymbol = ref(' ')
+  const metaSymbol = ref(import.meta.client ? (macOS.value ? '⌘' : 'Ctrl') : ' ')
 
   const activeElement = useActiveElement()
   const usingInput = computed(() => {
@@ -20,9 +20,11 @@ export function _useShortcuts() {
     return false
   })
 
-  onMounted(() => {
-    metaSymbol.value = macOS.value ? '⌘' : 'Ctrl'
-  })
+  if (getCurrentInstance()) {
+    onMounted(() => {
+      metaSymbol.value = macOS.value ? '⌘' : 'Ctrl'
+    })
+  }
 
   return {
     macOS,
