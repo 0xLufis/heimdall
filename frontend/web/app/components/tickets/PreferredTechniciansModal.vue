@@ -547,54 +547,54 @@ onMounted(async () => {
 
 // ─── Style helpers ───────────────────────────────────────────────────────────
 const statusColor: Record<string, string> = {
-  'Available': 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10',
-  'Absent':    'border-rose-500/30 text-rose-400 bg-rose-500/10',
-  'Teams OOO': 'border-amber-500/30 text-amber-400 bg-amber-500/10',
+  'Available': 'border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10',
+  'Absent':    'border-rose-500/30 text-rose-700 dark:text-rose-400 bg-rose-500/10',
+  'Teams OOO': 'border-amber-500/30 text-amber-800 dark:text-amber-400 bg-amber-500/10',
 }
 
 const scopeColor: Record<string, string> = {
-  'Technology': 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30',
-  'technology': 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30',
-  'Line/Group': 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
-  'group':      'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
-  'Machine':    'text-violet-400 bg-violet-500/10 border-violet-500/30',
-  'machine':    'text-violet-400 bg-violet-500/10 border-violet-500/30',
+  'Technology': 'text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/30',
+  'technology': 'text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/30',
+  'Line/Group': 'text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+  'group':      'text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+  'Machine':    'text-violet-700 dark:text-violet-400 bg-violet-500/10 border-violet-500/30',
+  'machine':    'text-violet-700 dark:text-violet-400 bg-violet-500/10 border-violet-500/30',
 }
 </script>
 
 <template>
   <Dialog :open="open" @update:open="(v) => { if (!v) emit('close') }">
-    <DialogContent class="max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-0 overflow-y-auto max-h-[90vh] flex flex-col scrollbar-thin">
+    <DialogContent :show-close="false" class="max-w-4xl w-full bg-card border border-border rounded-3xl shadow-2xl p-0 overflow-y-auto max-h-[90vh] flex flex-col scrollbar-thin text-foreground">
 
       <!-- ── Header ─────────────────────────────────────────────────────── -->
-      <DialogHeader class="p-6 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md sticky top-0 z-20 shrink-0">
+      <DialogHeader class="p-6 border-b border-border bg-card/95 backdrop-blur-md sticky top-0 z-20 shrink-0">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="p-2.5 rounded-2xl bg-violet-600/10 text-violet-400 border border-violet-500/20">
+            <div class="p-2.5 rounded-2xl bg-violet-600/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
               <Shield class="h-6 w-6" />
             </div>
             <div>
-              <DialogTitle class="text-lg font-black uppercase tracking-tight text-slate-100 flex items-center gap-2">
+              <DialogTitle class="text-lg font-black uppercase tracking-tight text-foreground flex items-center gap-2">
                 <span>Preferred Technicians & Governance</span>
-                <Badge variant="outline" class="text-[9px] uppercase tracking-wider font-bold border-indigo-500/40 text-indigo-300 bg-indigo-500/10">
+                <Badge variant="outline" class="text-[9px] uppercase tracking-wider font-bold border-indigo-500/40 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10">
                   Multi-Tier Role Access
                 </Badge>
               </DialogTitle>
-              <DialogDescription class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+              <DialogDescription class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                 Shift Attendance · Dedication Rules · Machine Group Clusters
               </DialogDescription>
             </div>
           </div>
-          <Button variant="ghost" size="icon" @click="emit('close')" class="text-slate-400 hover:text-white rounded-xl">
+          <Button variant="ghost" size="icon" @click="emit('close')" class="text-muted-foreground hover:text-foreground rounded-xl">
             <X class="h-5 w-5" />
           </Button>
         </div>
 
         <!-- Role Simulator Bar (Allows switching test role live to test governance) -->
-        <div v-if="isPersonaSimulationAllowed" class="mt-4 p-2.5 bg-slate-950/80 rounded-2xl border border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+        <div v-if="isPersonaSimulationAllowed" class="mt-4 p-2.5 bg-muted/40 rounded-2xl border border-border flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Sparkles class="w-3.5 h-3.5 text-amber-400" />
+            <span class="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Sparkles class="w-3.5 h-3.5 text-amber-500" />
               <span>Simulate Role Persona:</span>
             </span>
             <div class="flex flex-wrap gap-1">
@@ -607,7 +607,7 @@ const scopeColor: Record<string, string> = {
                 :class="[
                   user?.name === p.name
                     ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-400'
-                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted'
                 ]"
               >
                 <span>{{ p.name.replace(' (Plant Manager)', '') }}</span>
@@ -618,13 +618,13 @@ const scopeColor: Record<string, string> = {
 
           <!-- Active Tier Badge -->
           <div class="flex items-center gap-1.5">
-            <span class="text-[9px] font-mono text-slate-500">Tier:</span>
+            <span class="text-[9px] font-mono text-muted-foreground">Tier:</span>
             <Badge variant="outline" class="text-[9px] font-black uppercase tracking-wider"
               :class="[
-                dedicationTier === 'self' ? 'border-amber-500/40 text-amber-300 bg-amber-500/10' :
-                dedicationTier === 'shift' ? 'border-cyan-500/40 text-cyan-300 bg-cyan-500/10' :
-                dedicationTier === 'group' ? 'border-violet-500/40 text-violet-300 bg-violet-500/10' :
-                'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                dedicationTier === 'self' ? 'border-amber-500/40 text-amber-800 dark:text-amber-300 bg-amber-500/10' :
+                dedicationTier === 'shift' ? 'border-cyan-500/40 text-cyan-800 dark:text-cyan-300 bg-cyan-500/10' :
+                dedicationTier === 'group' ? 'border-violet-500/40 text-violet-800 dark:text-violet-300 bg-violet-500/10' :
+                'border-emerald-500/40 text-emerald-800 dark:text-emerald-300 bg-emerald-500/10'
               ]"
             >
               {{ dedicationTier === 'self' ? 'Self-Dedication Only' : dedicationTier === 'shift' ? 'Shift Leader Authority' : dedicationTier === 'group' ? 'Group Leader Authority' : 'Manager / Full Governance' }}
@@ -633,7 +633,7 @@ const scopeColor: Record<string, string> = {
         </div>
 
         <!-- Tab row -->
-        <div class="flex gap-1 mt-4 p-1 bg-slate-950/60 rounded-xl border border-slate-800 w-fit">
+        <div class="flex gap-1 mt-4 p-1 bg-muted/50 rounded-xl border border-border w-fit">
           <button
             v-for="tab in tabs"
             :key="tab.id"
@@ -641,8 +641,8 @@ const scopeColor: Record<string, string> = {
             :class="[
               'flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all',
               activeTab === tab.id
-                ? 'bg-slate-800 text-slate-100 shadow'
-                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                ? 'bg-card text-foreground shadow border border-border'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
             ]"
           >
             <component :is="tab.icon" class="h-3.5 w-3.5" />
@@ -659,30 +659,30 @@ const scopeColor: Record<string, string> = {
         <!-- ══════════════════════════════════════════════════════════════ -->
         <div v-if="activeTab === 'attendance'" class="p-6 space-y-3">
           <div class="flex items-center justify-between mb-4">
-            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">Current Shift Roster</span>
+            <span class="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Current Shift Roster</span>
             <Button variant="ghost" size="sm" @click="loadAttendanceData" :disabled="attendanceLoading"
-              class="h-7 text-slate-400 hover:text-slate-200 text-[10px] uppercase font-black tracking-wider">
+              class="h-7 text-muted-foreground hover:text-foreground text-[10px] uppercase font-black tracking-wider">
               <RefreshCw class="h-3 w-3 mr-1.5" :class="attendanceLoading && 'animate-spin'" />
               Refresh
             </Button>
           </div>
 
-          <div v-if="attendanceLoading" class="flex items-center justify-center py-12 text-slate-500">
+          <div v-if="attendanceLoading" class="flex items-center justify-center py-12 text-muted-foreground">
             <RefreshCw class="h-5 w-5 animate-spin mr-2" /> Loading…
           </div>
 
           <div v-else class="space-y-2">
             <div v-for="name in allTechnicians" :key="name"
-              class="bg-slate-950 border border-slate-800 rounded-xl">
+              class="bg-card border border-border rounded-xl">
 
               <!-- Row -->
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="flex items-center gap-3">
-                  <div class="h-8 w-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-black text-slate-300">
+                  <div class="h-8 w-8 rounded-lg bg-muted border border-border flex items-center justify-center text-xs font-black text-foreground">
                     {{ name.split(' ').map((n: string) => n[0]).join('').slice(0, 2) }}
                   </div>
                   <div>
-                    <p class="text-sm font-bold text-slate-200">{{ name }}</p>
+                    <p class="text-sm font-bold text-foreground">{{ name }}</p>
                     <Badge variant="outline"
                       :class="statusColor[technicianStatus(name)]"
                       class="text-[9px] font-black uppercase tracking-widest mt-0.5">
@@ -698,8 +698,8 @@ const scopeColor: Record<string, string> = {
                     :class="[
                       'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all',
                       oooToggles[name]
-                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                        : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
+                        : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
                     ]"
                     title="Simulate Teams OOO (dev mode)"
                   >Teams OOO</button>
@@ -708,14 +708,14 @@ const scopeColor: Record<string, string> = {
                   <template v-if="technicianStatus(name) === 'Absent'">
                     <Button size="sm"
                       @click="resolveAbsence(absences.find(a => a.technicianName === name)!)"
-                      class="h-7 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                      class="h-7 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-black uppercase tracking-wider">
                       <Check class="h-3 w-3 mr-1" /> Resolve
                     </Button>
                   </template>
                   <template v-else>
                     <Button size="sm"
                       @click="absenceFormTarget === name ? closeAbsenceForm() : openAbsenceForm(name)"
-                      class="h-7 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                      class="h-7 bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 rounded-lg text-[10px] font-black uppercase tracking-wider">
                       Mark Absent
                       <component :is="absenceFormTarget === name ? ChevronUp : ChevronDown" class="h-3 w-3 ml-1" />
                     </Button>
@@ -725,30 +725,30 @@ const scopeColor: Record<string, string> = {
 
               <!-- Absence sub-form -->
               <div v-if="absenceFormTarget === name"
-                class="border-t border-slate-800 px-4 py-4 bg-slate-900/60 space-y-3 rounded-b-xl">
-                <div v-if="absenceError" class="flex items-center gap-2 text-xs text-rose-400 bg-rose-950/30 border border-rose-900/50 rounded-lg px-3 py-2">
+                class="border-t border-border px-4 py-4 bg-muted/20 space-y-3 rounded-b-xl">
+                <div v-if="absenceError" class="flex items-center gap-2 text-xs text-rose-700 dark:text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
                   <AlertTriangle class="h-3.5 w-3.5 shrink-0" /> {{ absenceError }}
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Reason</label>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Reason</label>
                     <Select v-model="absenceForm.reason">
-                      <SelectTrigger class="h-8 bg-slate-950 border-slate-700 text-slate-200 text-xs rounded-lg">
+                      <SelectTrigger class="h-8 bg-background border-border text-foreground text-xs rounded-lg">
                         <SelectValue placeholder="Select reason…" />
                       </SelectTrigger>
-                      <SelectContent class="bg-slate-900 border-slate-700">
-                        <SelectItem v-for="r in ABSENCE_REASONS" :key="r" :value="r" class="text-xs text-slate-200">{{ r }}</SelectItem>
+                      <SelectContent class="bg-card border-border">
+                        <SelectItem v-for="r in ABSENCE_REASONS" :key="r" :value="r" class="text-xs text-foreground">{{ r }}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Return Date</label>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Return Date</label>
                     <input v-model="absenceForm.endDate" type="date"
-                      class="w-full h-8 bg-slate-950 border border-slate-700 rounded-lg px-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+                      class="w-full h-8 bg-background border border-border rounded-lg px-2.5 text-xs text-foreground focus:outline-none focus:border-indigo-500" />
                   </div>
                 </div>
                 <div>
-                  <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Backup Technician (Query or Free-Text)</label>
+                  <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Backup Technician (Query or Free-Text)</label>
                   <SearchableTargetCombobox
                     v-model="absenceForm.backupTechnician"
                     placeholder="Search technician or enter custom backup name..."
@@ -758,7 +758,7 @@ const scopeColor: Record<string, string> = {
                   />
                 </div>
                 <div class="flex justify-end gap-2 pt-1">
-                  <Button variant="ghost" size="sm" @click="closeAbsenceForm" class="h-7 text-slate-400 text-[10px] uppercase font-black">Cancel</Button>
+                  <Button variant="ghost" size="sm" @click="closeAbsenceForm" class="h-7 text-muted-foreground hover:text-foreground text-[10px] uppercase font-black">Cancel</Button>
                   <Button size="sm" @click="submitAbsence" :disabled="absenceSubmitting"
                     class="h-7 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black uppercase tracking-wider rounded-lg">
                     {{ absenceSubmitting ? 'Submitting…' : 'Confirm Absence' }}
@@ -768,11 +768,11 @@ const scopeColor: Record<string, string> = {
 
               <!-- Active absence detail row -->
               <div v-else-if="technicianStatus(name) === 'Absent'"
-                class="border-t border-slate-800 px-4 py-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-400 bg-rose-950/10 rounded-b-xl">
-                <span><span class="text-slate-500 font-bold">Reason:</span> {{ absences.find(a => a.technicianName === name)?.reason }}</span>
-                <span><span class="text-slate-500 font-bold">Until:</span> {{ absences.find(a => a.technicianName === name)?.endDate }}</span>
+                class="border-t border-border px-4 py-2 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground bg-rose-500/5 rounded-b-xl">
+                <span><span class="text-foreground font-bold">Reason:</span> {{ absences.find(a => a.technicianName === name)?.reason }}</span>
+                <span><span class="text-foreground font-bold">Until:</span> {{ absences.find(a => a.technicianName === name)?.endDate }}</span>
                 <span v-if="absences.find(a => a.technicianName === name)?.backupTechnician">
-                  <span class="text-slate-500 font-bold">Backup:</span> {{ absences.find(a => a.technicianName === name)?.backupTechnician }}
+                  <span class="text-foreground font-bold">Backup:</span> {{ absences.find(a => a.technicianName === name)?.backupTechnician }}
                 </span>
               </div>
 
@@ -786,8 +786,8 @@ const scopeColor: Record<string, string> = {
         <div v-else-if="activeTab === 'dedication'" class="p-6 space-y-4">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Dedication Rules</span>
-              <p class="text-[11px] text-slate-400 mt-0.5">
+              <span class="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Dedication Rules</span>
+              <p class="text-[11px] text-muted-foreground mt-0.5">
                 Governed scope assignment for stations, lines, and technology domains.
               </p>
             </div>
@@ -798,28 +798,28 @@ const scopeColor: Record<string, string> = {
           </div>
 
           <!-- Add rule form with Governance & Free-Text Resolution -->
-          <div v-if="showAddRule" class="bg-slate-950 border border-indigo-500/30 rounded-2xl p-5 space-y-4 mb-4">
+          <div v-if="showAddRule" class="bg-card border border-indigo-500/30 rounded-2xl p-5 space-y-4 mb-4">
             <div class="flex items-center justify-between">
-              <h4 class="text-xs font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
+              <h4 class="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                 <span>New Dedication Rule</span>
-                <Badge variant="outline" class="text-[8px] uppercase tracking-wider border-indigo-500/30 text-indigo-300">
+                <Badge variant="outline" class="text-[8px] uppercase tracking-wider border-indigo-500/30 text-indigo-700 dark:text-indigo-300">
                   {{ dedicationTier === 'self' ? 'Tier 1 (Self)' : dedicationTier === 'shift' ? 'Tier 2 (Shift)' : dedicationTier === 'group' ? 'Tier 3 (Group)' : 'Tier 4 (Manager)' }}
                 </Badge>
               </h4>
             </div>
 
-            <div v-if="ruleError" class="flex items-center gap-2 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-xl px-3 py-2.5">
-              <AlertTriangle class="h-4 w-4 shrink-0 text-rose-400" />
+            <div v-if="ruleError" class="flex items-center gap-2 text-xs text-rose-700 dark:text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl px-3 py-2.5">
+              <AlertTriangle class="h-4 w-4 shrink-0 text-rose-500" />
               <span>{{ ruleError }}</span>
             </div>
 
             <!-- Scope type -->
             <div>
               <div class="flex items-center justify-between mb-2">
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   Scope Type
                 </label>
-                <span v-if="dedicationTier === 'shift'" class="text-[9px] text-amber-400">
+                <span v-if="dedicationTier === 'shift'" class="text-[9px] text-amber-500 font-medium">
                   (Technology scope restricted to Group Leaders & Managers)
                 </span>
               </div>
@@ -832,8 +832,8 @@ const scopeColor: Record<string, string> = {
                     :disabled="dedicationTier === 'shift'"
                     :class="[
                       'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5',
-                      dedicationTier === 'shift' ? 'opacity-40 cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600' :
-                      ruleForm.scopeType === 'Technology' ? scopeColor['Technology'] : 'border-slate-700 bg-slate-900 text-slate-500 hover:text-slate-300'
+                      dedicationTier === 'shift' ? 'opacity-40 cursor-not-allowed border-border bg-muted text-muted-foreground' :
+                      ruleForm.scopeType === 'Technology' ? scopeColor['Technology'] : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground'
                     ]"
                   >
                     <Layers class="w-3 h-3" />
@@ -846,7 +846,7 @@ const scopeColor: Record<string, string> = {
                   @click="ruleForm.scopeType = 'Line/Group'; ruleForm.target = ''"
                   :class="[
                     'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5',
-                    ruleForm.scopeType === 'Line/Group' ? scopeColor['Line/Group'] : 'border-slate-700 bg-slate-900 text-slate-500 hover:text-slate-300'
+                    ruleForm.scopeType === 'Line/Group' ? scopeColor['Line/Group'] : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground'
                   ]"
                 >
                   <GitBranch class="w-3 h-3" />
@@ -858,7 +858,7 @@ const scopeColor: Record<string, string> = {
                   @click="ruleForm.scopeType = 'Machine'; ruleForm.target = ''"
                   :class="[
                     'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5',
-                    ruleForm.scopeType === 'Machine' ? scopeColor['Machine'] : 'border-slate-700 bg-slate-900 text-slate-500 hover:text-slate-300'
+                    ruleForm.scopeType === 'Machine' ? scopeColor['Machine'] : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground'
                   ]"
                 >
                   <Cpu class="w-3 h-3" />
@@ -869,7 +869,7 @@ const scopeColor: Record<string, string> = {
 
             <!-- Target with Free-text & Queried Resolution -->
             <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+              <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">
                 Scope Target (Select Queried Target or Type Free-Text for Undefined Type)
               </label>
               <SearchableTargetCombobox
@@ -884,9 +884,9 @@ const scopeColor: Record<string, string> = {
             <!-- Technician Name Input (Locked to self if Tier 1, or queried combobox + free text if higher tiers) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 flex items-center justify-between">
+                <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 flex items-center justify-between">
                   <span>Assigned Person / Lead</span>
-                  <span v-if="dedicationTier === 'self'" class="text-[9px] text-amber-400 font-bold uppercase">
+                  <span v-if="dedicationTier === 'self'" class="text-[9px] text-amber-500 font-bold uppercase">
                     Self-Assignment Only
                   </span>
                 </label>
@@ -902,7 +902,7 @@ const scopeColor: Record<string, string> = {
               </div>
 
               <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">
                   Technical Discipline / Category (Query or Free-Text)
                 </label>
                 <SearchableTargetCombobox
@@ -918,7 +918,7 @@ const scopeColor: Record<string, string> = {
             <!-- Backup Technician & Contact -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">
                   Backup Technician (Optional Free-Text or Query)
                 </label>
                 <SearchableTargetCombobox
@@ -931,21 +931,21 @@ const scopeColor: Record<string, string> = {
               </div>
 
               <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">
                   Technician Email / Contact (Optional)
                 </label>
                 <Input
                   v-model="ruleForm.technicianEmail"
                   placeholder="e.g. sally.milling@heimdall.dev"
                   type="email"
-                  class="h-9 bg-slate-950 border-slate-800 text-xs rounded-xl"
+                  class="h-9 bg-background border-border text-foreground text-xs rounded-xl"
                 />
               </div>
             </div>
 
             <!-- Buttons -->
-            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800/80">
-              <Button variant="ghost" size="sm" @click="showAddRule = false" class="h-8 text-slate-400 text-xs font-bold">
+            <div class="flex justify-end gap-2 pt-2 border-t border-border">
+              <Button variant="ghost" size="sm" @click="showAddRule = false" class="h-8 text-muted-foreground hover:text-foreground text-xs font-bold">
                 Cancel
               </Button>
               <Button size="sm" @click="saveRule" :disabled="ruleSubmitting"
@@ -956,55 +956,55 @@ const scopeColor: Record<string, string> = {
           </div>
 
           <!-- Rules table -->
-          <div v-if="rulesLoading" class="flex items-center justify-center py-12 text-slate-500">
+          <div v-if="rulesLoading" class="flex items-center justify-center py-12 text-muted-foreground">
             <RefreshCw class="h-5 w-5 animate-spin mr-2" /> Loading rules…
           </div>
-          <div v-else-if="rules.length === 0 && !showAddRule" class="flex flex-col items-center justify-center py-12 text-slate-500">
+          <div v-else-if="rules.length === 0 && !showAddRule" class="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Users class="h-8 w-8 mb-2 opacity-30" />
             <p class="text-xs font-bold uppercase tracking-widest">No dedication rules configured</p>
-            <p class="text-[11px] mt-1 text-slate-600">Click "Add Rule" to assign technicians to technologies or lines.</p>
+            <p class="text-[11px] mt-1 text-muted-foreground">Click "Add Rule" to assign technicians to technologies or lines.</p>
           </div>
-          <div v-else class="overflow-x-auto rounded-xl border border-slate-800">
+          <div v-else class="overflow-x-auto rounded-xl border border-border">
             <table class="w-full text-xs">
               <thead>
-                <tr class="bg-slate-950 border-b border-slate-800">
-                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-slate-500 px-4 py-2.5">Scope / Target</th>
-                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-slate-500 px-4 py-2.5">Technician / Lead</th>
-                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-slate-500 px-4 py-2.5">Category</th>
-                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-slate-500 px-4 py-2.5">Backup</th>
-                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-slate-500 px-4 py-2.5">Governance Tier</th>
+                <tr class="bg-muted/40 border-b border-border">
+                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground px-4 py-2.5">Scope / Target</th>
+                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground px-4 py-2.5">Technician / Lead</th>
+                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground px-4 py-2.5">Category</th>
+                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground px-4 py-2.5">Backup</th>
+                  <th class="text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground px-4 py-2.5">Governance Tier</th>
                   <th class="px-4 py-2.5"></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="rule in rules" :key="rule.id"
-                  class="border-b border-slate-800/50 hover:bg-slate-950/60 transition-colors">
+                  class="border-b border-border/60 hover:bg-muted/30 transition-colors">
                   <td class="px-4 py-3">
-                    <Badge variant="outline" :class="scopeColor[rule.scopeType] || 'border-slate-700 text-slate-300'"
+                    <Badge variant="outline" :class="scopeColor[rule.scopeType] || 'border-border text-muted-foreground'"
                       class="text-[9px] font-black uppercase tracking-wider mr-1.5">
                       {{ rule.scopeType }}
                     </Badge>
-                    <span class="text-slate-200 font-mono text-[11px] font-semibold">{{ rule.target || rule.targetId }}</span>
+                    <span class="text-foreground font-mono text-[11px] font-semibold">{{ rule.target || rule.targetId }}</span>
                   </td>
                   <td class="px-4 py-3">
-                    <p class="text-slate-200 font-bold">{{ rule.technicianName }}</p>
-                    <p v-if="rule.technicianEmail" class="text-slate-500 font-mono text-[10px]">{{ rule.technicianEmail }}</p>
+                    <p class="text-foreground font-bold">{{ rule.technicianName }}</p>
+                    <p v-if="rule.technicianEmail" class="text-muted-foreground font-mono text-[10px]">{{ rule.technicianEmail }}</p>
                   </td>
-                  <td class="px-4 py-3 text-slate-400">
-                    <span v-if="rule.categoryFilter" class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] text-indigo-300">
+                  <td class="px-4 py-3 text-muted-foreground">
+                    <span v-if="rule.categoryFilter" class="px-2 py-0.5 rounded bg-muted border border-border text-[10px] text-indigo-700 dark:text-indigo-300">
                       {{ rule.categoryFilter }}
                     </span>
-                    <span v-else class="text-slate-600">—</span>
+                    <span v-else class="text-muted-foreground">—</span>
                   </td>
-                  <td class="px-4 py-3 text-slate-400">{{ rule.backupTechnician || rule.backupTechnicianName || '—' }}</td>
+                  <td class="px-4 py-3 text-muted-foreground">{{ rule.backupTechnician || rule.backupTechnicianName || '—' }}</td>
                   <td class="px-4 py-3">
-                    <Badge variant="outline" class="text-[9px] font-black uppercase tracking-wider border-violet-500/30 text-violet-400 bg-violet-500/10">
+                    <Badge variant="outline" class="text-[9px] font-black uppercase tracking-wider border-violet-500/30 text-violet-700 dark:text-violet-400 bg-violet-500/10">
                       {{ (rule.assignedByRole || rule.role || 'System').replace('_', ' ') }}
                     </Badge>
                   </td>
                   <td class="px-4 py-3 text-right">
                     <Button variant="ghost" size="icon" @click="deleteRule(rule)"
-                      class="h-6 w-6 text-slate-600 hover:text-rose-400 hover:bg-rose-950/20 rounded-lg">
+                      class="h-6 w-6 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 rounded-lg">
                       <Trash2 class="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -1020,8 +1020,8 @@ const scopeColor: Record<string, string> = {
         <div v-else-if="activeTab === 'clusters'" class="p-6 space-y-4">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Group Hierarchy & Clusters</span>
-              <p class="text-[11px] text-slate-400 mt-0.5">Managers can cluster machine types and line cells recursively.</p>
+              <span class="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Group Hierarchy & Clusters</span>
+              <p class="text-[11px] text-muted-foreground mt-0.5">Managers can cluster machine types and line cells recursively.</p>
             </div>
             <Button size="sm" @click="openCreateGroup"
               class="h-7 bg-cyan-600 hover:bg-cyan-700 text-white text-[10px] font-black uppercase tracking-wider rounded-lg">
@@ -1030,50 +1030,50 @@ const scopeColor: Record<string, string> = {
           </div>
 
           <!-- Create group form -->
-          <div v-if="showCreateGroup" class="bg-slate-950 border border-cyan-500/30 rounded-xl p-5 space-y-4 mb-4">
-            <h4 class="text-xs font-black uppercase tracking-widest text-cyan-400">New Machine Group</h4>
-            <div v-if="groupError" class="flex items-center gap-2 text-xs text-rose-400 bg-rose-950/30 border border-rose-900/50 rounded-lg px-3 py-2">
+          <div v-if="showCreateGroup" class="bg-card border border-cyan-500/30 rounded-xl p-5 space-y-4 mb-4">
+            <h4 class="text-xs font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">New Machine Group</h4>
+            <div v-if="groupError" class="flex items-center gap-2 text-xs text-rose-700 dark:text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
               <AlertTriangle class="h-3.5 w-3.5 shrink-0" /> {{ groupError }}
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Group Name</label>
+                <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Group Name</label>
                 <Input v-model="createForm.name" placeholder="e.g. SMT Line A"
-                  class="h-9 bg-slate-900 border-slate-700 text-xs rounded-lg" />
+                  class="h-9 bg-background border-border text-foreground text-xs rounded-lg" />
               </div>
               <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Parent Group (optional)</label>
+                <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Parent Group (optional)</label>
                 <Select v-model="createForm.parentGroupId">
-                  <SelectTrigger class="h-9 bg-slate-900 border-slate-700 text-slate-200 text-xs rounded-lg">
+                  <SelectTrigger class="h-9 bg-background border-border text-foreground text-xs rounded-lg">
                     <SelectValue placeholder="None (top-level)" />
                   </SelectTrigger>
-                  <SelectContent class="bg-slate-900 border-slate-700 max-h-48 overflow-y-auto">
-                    <SelectItem value="" class="text-xs text-slate-400">None (top-level)</SelectItem>
-                    <SelectItem v-for="g in groups" :key="g.id" :value="g.id" class="text-xs text-slate-200">{{ g.name }}</SelectItem>
+                  <SelectContent class="bg-card border-border max-h-48 overflow-y-auto">
+                    <SelectItem value="" class="text-xs text-muted-foreground">None (top-level)</SelectItem>
+                    <SelectItem v-for="g in groups" :key="g.id" :value="g.id" class="text-xs text-foreground">{{ g.name }}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Description (optional)</label>
+              <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Description (optional)</label>
               <Input v-model="createForm.description" placeholder="Short description of this group…"
-                class="h-9 bg-slate-900 border-slate-700 text-xs rounded-lg" />
+                class="h-9 bg-background border-border text-foreground text-xs rounded-lg" />
             </div>
             <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Machine Types</label>
+              <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Machine Types</label>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 <button v-for="mt in MACHINE_TYPES" :key="mt" @click="toggleCreateMachineType(mt)"
                   :class="['flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold text-left transition-all',
                     createForm.machineTypes.includes(mt)
-                      ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
-                      : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300']">
+                      ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-700 dark:text-cyan-400'
+                      : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground']">
                   <component :is="createForm.machineTypes.includes(mt) ? CheckSquare : Square" class="h-3.5 w-3.5 shrink-0" />
                   {{ mt }}
                 </button>
               </div>
             </div>
             <div class="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" size="sm" @click="showCreateGroup = false" class="h-7 text-slate-400 text-[10px] uppercase font-black">Cancel</Button>
+              <Button variant="ghost" size="sm" @click="showCreateGroup = false" class="h-7 text-muted-foreground hover:text-foreground text-[10px] uppercase font-black">Cancel</Button>
               <Button size="sm" @click="createGroup" :disabled="groupSubmitting"
                 class="h-7 bg-cyan-600 hover:bg-cyan-700 text-white text-[10px] font-black uppercase tracking-wider rounded-lg">
                 {{ groupSubmitting ? 'Creating…' : 'Create Group' }}
@@ -1082,32 +1082,32 @@ const scopeColor: Record<string, string> = {
           </div>
 
           <!-- Groups list -->
-          <div v-if="groupsLoading" class="flex items-center justify-center py-12 text-slate-500">
+          <div v-if="groupsLoading" class="flex items-center justify-center py-12 text-muted-foreground">
             <RefreshCw class="h-5 w-5 animate-spin mr-2" /> Loading groups…
           </div>
-          <div v-else-if="groups.length === 0 && !showCreateGroup" class="flex flex-col items-center justify-center py-12 text-slate-500">
+          <div v-else-if="groups.length === 0 && !showCreateGroup" class="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <GitBranch class="h-8 w-8 mb-2 opacity-30" />
             <p class="text-xs font-bold uppercase tracking-widest">No machine groups found</p>
           </div>
           <div v-else class="space-y-3">
-            <div v-for="group in groups" :key="group.id" class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+            <div v-for="group in groups" :key="group.id" class="bg-card border border-border rounded-xl overflow-hidden">
               <!-- Group header -->
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="flex items-center gap-3">
-                  <div class="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                  <div class="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400">
                     <GitBranch class="h-4 w-4" />
                   </div>
                   <div>
-                    <p class="text-sm font-bold text-slate-200">{{ group.name }}</p>
-                    <p v-if="group.description" class="text-[11px] text-slate-500 mt-0.5">{{ group.description }}</p>
-                    <p v-if="group.parentGroupId" class="text-[10px] text-slate-600 mt-0.5">
+                    <p class="text-sm font-bold text-foreground">{{ group.name }}</p>
+                    <p v-if="group.description" class="text-[11px] text-muted-foreground mt-0.5">{{ group.description }}</p>
+                    <p v-if="group.parentGroupId" class="text-[10px] text-muted-foreground mt-0.5">
                       Parent: {{ groups.find(g => g.id === group.parentGroupId)?.name ?? group.parentGroupId }}
                     </p>
                   </div>
                 </div>
                 <Button size="sm"
                   @click="editingGroupId === group.id ? closeEditGroup() : openEditGroup(group)"
-                  class="h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                  class="h-7 bg-muted hover:bg-muted/80 text-foreground border border-border text-[10px] font-black uppercase tracking-wider rounded-lg">
                   <Edit2 class="h-3 w-3 mr-1.5" /> Edit Cluster
                 </Button>
               </div>
@@ -1115,36 +1115,36 @@ const scopeColor: Record<string, string> = {
               <!-- Machine type badges -->
               <div class="px-4 pb-3 flex flex-wrap gap-1.5 items-center" v-if="group.machineTypes?.length">
                 <Badge v-for="mt in group.machineTypes" :key="mt" variant="outline"
-                  class="text-[9px] font-black uppercase tracking-wider border-slate-700 text-slate-400 bg-slate-900">
+                  class="text-[9px] font-black uppercase tracking-wider border-border text-muted-foreground bg-muted">
                   {{ mt }}
                 </Badge>
-                <span v-if="group.leadEngineer" class="ml-auto text-[10px] text-slate-500">
-                  Lead: <span class="text-slate-300 font-bold">{{ group.leadEngineer }}</span>
+                <span v-if="group.leadEngineer" class="ml-auto text-[10px] text-muted-foreground">
+                  Lead: <span class="text-foreground font-bold">{{ group.leadEngineer }}</span>
                 </span>
               </div>
-              <div v-else class="px-4 pb-3 text-[11px] text-slate-600 italic">No machine types assigned</div>
+              <div v-else class="px-4 pb-3 text-[11px] text-muted-foreground italic">No machine types assigned</div>
 
               <!-- Edit cluster inline form -->
               <div v-if="editingGroupId === group.id"
-                class="border-t border-slate-800 px-4 py-4 bg-slate-900/60 space-y-4">
-                <div v-if="groupError" class="flex items-center gap-2 text-xs text-rose-400 bg-rose-950/30 border border-rose-900/50 rounded-lg px-3 py-2">
+                class="border-t border-border px-4 py-4 bg-muted/20 space-y-4">
+                <div v-if="groupError" class="flex items-center gap-2 text-xs text-rose-700 dark:text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
                   <AlertTriangle class="h-3.5 w-3.5 shrink-0" /> {{ groupError }}
                 </div>
                 <div>
-                  <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Machine Types</label>
+                  <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Machine Types</label>
                   <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                     <button v-for="mt in MACHINE_TYPES" :key="mt" @click="toggleEditMachineType(mt)"
                       :class="['flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold text-left transition-all',
                         editForm.machineTypes.includes(mt)
-                          ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
-                          : 'bg-slate-950 border-slate-700 text-slate-500 hover:text-slate-300']">
+                          ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-700 dark:text-cyan-400'
+                          : 'bg-background border-border text-muted-foreground hover:text-foreground']">
                       <component :is="editForm.machineTypes.includes(mt) ? CheckSquare : Square" class="h-3.5 w-3.5 shrink-0" />
                       {{ mt }}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Lead Engineer (Query or Free-Text)</label>
+                  <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Lead Engineer (Query or Free-Text)</label>
                   <SearchableTargetCombobox
                     v-model="editForm.leadEngineer"
                     placeholder="Search candidate engineer or enter custom name..."
@@ -1154,7 +1154,7 @@ const scopeColor: Record<string, string> = {
                   />
                 </div>
                 <div class="flex justify-end gap-2 pt-1">
-                  <Button variant="ghost" size="sm" @click="closeEditGroup" class="h-7 text-slate-400 text-[10px] uppercase font-black">Cancel</Button>
+                  <Button variant="ghost" size="sm" @click="closeEditGroup" class="h-7 text-muted-foreground hover:text-foreground text-[10px] uppercase font-black">Cancel</Button>
                   <Button size="sm" @click="saveGroupCluster(group.id)" :disabled="groupSubmitting"
                     class="h-7 bg-cyan-600 hover:bg-cyan-700 text-white text-[10px] font-black uppercase tracking-wider rounded-lg">
                     {{ groupSubmitting ? 'Saving…' : 'Save Cluster' }}

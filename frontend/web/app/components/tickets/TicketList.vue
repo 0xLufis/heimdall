@@ -37,31 +37,31 @@ const sortByField = ref<string>('created_at')
 const getPriorityBadge = (priority: string) => {
   switch (priority) {
     case 'Critical':
-      return { class: 'bg-rose-500/10 text-rose-400 border border-rose-500/20', label: 'CRITICAL' }
+      return { class: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30', label: 'CRITICAL' }
     case 'High':
-      return { class: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', label: 'HIGH' }
+      return { class: 'bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/30', label: 'HIGH' }
     case 'Medium':
-      return { class: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20', label: 'MEDIUM' }
+      return { class: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/30', label: 'MEDIUM' }
     case 'Low':
     default:
-      return { class: 'bg-slate-800 text-slate-400 border border-slate-700', label: 'LOW' }
+      return { class: 'bg-muted text-muted-foreground border border-border', label: 'LOW' }
   }
 }
 
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'Open':
-      return { class: 'bg-blue-500/10 text-blue-400 border border-blue-500/20', label: 'Open' }
+      return { class: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30', label: 'Open' }
     case 'In_Progress':
-      return { class: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20', label: 'In Progress' }
+      return { class: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/30', label: 'In Progress' }
     case 'Pending_Parts':
-      return { class: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', label: 'Pending Parts' }
+      return { class: 'bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/30', label: 'Pending Parts' }
     case 'Resolved':
-      return { class: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20', label: 'Resolved' }
+      return { class: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30', label: 'Resolved' }
     case 'Closed':
-      return { class: 'bg-slate-800 text-slate-400 border border-slate-700', label: 'Closed' }
+      return { class: 'bg-muted text-muted-foreground border border-border', label: 'Closed' }
     default:
-      return { class: 'bg-slate-800 text-slate-400 border border-slate-700', label: status }
+      return { class: 'bg-muted text-muted-foreground border border-border', label: status }
   }
 }
 
@@ -200,11 +200,11 @@ function handleFilter() {
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
       <div class="flex items-center gap-2 flex-1 max-w-sm">
         <div class="relative flex-1">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input 
             v-model="searchQuery"
             placeholder="Search tickets, stations, technicians..."
-            class="pl-9 pr-3 bg-slate-950 border-slate-800 rounded-lg text-xs h-8 text-slate-200"
+            class="pl-9 pr-3 bg-background border-border rounded-lg text-xs h-8 text-foreground placeholder:text-muted-foreground"
             @input="handleFilter"
           />
         </div>
@@ -212,7 +212,7 @@ function handleFilter() {
 
       <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
         <!-- Status Tabs -->
-        <div class="flex p-0.5 bg-slate-900 rounded-lg border border-slate-800 gap-0.5">
+        <div class="flex p-0.5 bg-muted rounded-lg border border-border gap-0.5">
           <Button
             v-for="st in [
               { id: 'all', label: 'All' },
@@ -225,7 +225,7 @@ function handleFilter() {
             variant="ghost"
             size="sm"
             @click="activeStatusTab = st.id; handleFilter()"
-            :class="activeStatusTab === st.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeStatusTab === st.id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             class="rounded-md text-xs font-medium px-2.5 h-7 transition-colors"
           >
             {{ st.label }}
@@ -236,7 +236,7 @@ function handleFilter() {
         <select
           v-model="activePriorityFilter"
           @change="handleFilter"
-          class="bg-slate-950 border border-slate-800 text-slate-300 text-xs font-medium rounded-lg px-2.5 h-8 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          class="bg-background border border-border text-foreground text-xs font-medium rounded-lg px-2.5 h-8 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
           <option value="all">All Priorities</option>
           <option value="Critical">Critical</option>
@@ -248,15 +248,15 @@ function handleFilter() {
     </div>
 
     <!-- Tickets Table -->
-    <div class="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden shadow-sm">
+    <div class="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       <Table>
-        <TableHeader class="bg-slate-950/60 border-b border-slate-800">
-          <TableRow class="border-b border-slate-800 hover:bg-transparent">
+        <TableHeader class="bg-muted/50 border-b border-border">
+          <TableRow class="border-b border-border hover:bg-transparent">
             <TableHead
               sortable
               :sort-direction="activeSortColumn === 'ticket' ? activeSortDirection : null"
               @sort="handleSort('ticket', $event)"
-              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4"
             >
               Ticket / Station
             </TableHead>
@@ -264,7 +264,7 @@ function handleFilter() {
               sortable
               :sort-direction="activeSortColumn === 'priority' ? activeSortDirection : null"
               @sort="handleSort('priority', $event)"
-              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4"
             >
               Priority
             </TableHead>
@@ -272,7 +272,7 @@ function handleFilter() {
               sortable
               :sort-direction="activeSortColumn === 'status' ? activeSortDirection : null"
               @sort="handleSort('status', $event)"
-              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4"
             >
               Status
             </TableHead>
@@ -280,7 +280,7 @@ function handleFilter() {
               sortable
               :sort-direction="activeSortColumn === 'tech' ? activeSortDirection : null"
               @sort="handleSort('tech', $event)"
-              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4"
             >
               Assigned Tech
             </TableHead>
@@ -288,18 +288,18 @@ function handleFilter() {
               sortable
               :sort-direction="activeSortColumn === 'sla' ? activeSortDirection : null"
               @sort="handleSort('sla', $event)"
-              class="text-xs font-semibold uppercase tracking-wider text-slate-400 py-3 px-4"
+              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4"
             >
               SLA Due
             </TableHead>
-            <TableHead class="text-xs font-semibold uppercase tracking-wider text-slate-400 text-right py-3 px-4">Action</TableHead>
+            <TableHead class="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right py-3 px-4">Action</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           <template v-if="processedTickets.length === 0">
             <TableRow>
-              <TableCell colspan="6" class="h-32 text-center text-slate-500 font-medium text-xs">
+              <TableCell colspan="6" class="h-32 text-center text-muted-foreground font-medium text-xs">
                 No maintenance tickets match the selected filters.
               </TableCell>
             </TableRow>
@@ -309,24 +309,24 @@ function handleFilter() {
             <TableRow 
               v-for="tkt in processedTickets" 
               :key="tkt.id"
-              class="border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors group cursor-pointer"
+              class="border-b border-border hover:bg-muted/50 transition-colors group cursor-pointer"
               @click="emit('selectTicket', tkt)"
             >
               <!-- Ticket & Station -->
               <TableCell class="py-3 px-4">
                 <div class="flex items-start gap-3">
-                  <div class="p-2 rounded-lg bg-slate-800 text-indigo-400 group-hover:text-indigo-300 transition-colors">
+                  <div class="p-2 rounded-lg bg-muted text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
                     <Cpu class="size-4" />
                   </div>
                   <div>
                     <div class="flex items-center gap-2">
-                      <span class="text-xs font-mono font-medium text-indigo-400">{{ tkt.ticketNumber }}</span>
-                      <span class="text-[11px] text-slate-500 font-medium">[{{ tkt.stationName }}]</span>
+                      <span class="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400">{{ tkt.ticketNumber }}</span>
+                      <span class="text-[11px] text-muted-foreground font-medium">[{{ tkt.stationName }}]</span>
                     </div>
-                    <h5 class="text-sm font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors mt-0.5">
+                    <h5 class="text-sm font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mt-0.5">
                       {{ tkt.title }}
                     </h5>
-                    <p class="text-xs text-slate-400 line-clamp-1 max-w-md mt-0.5">
+                    <p class="text-xs text-muted-foreground line-clamp-1 max-w-md mt-0.5">
                       {{ tkt.description }}
                     </p>
                   </div>
@@ -350,10 +350,10 @@ function handleFilter() {
               <!-- Technician -->
               <TableCell class="py-3 px-4 text-xs">
                 <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-xs font-semibold">
+                  <div class="w-6 h-6 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-semibold">
                     {{ tkt.assignedTechnicianName ? tkt.assignedTechnicianName.charAt(0) : '?' }}
                   </div>
-                  <span class="text-slate-300 font-medium text-xs">
+                  <span class="text-foreground font-medium text-xs">
                     {{ tkt.assignedTechnicianName || 'Unassigned' }}
                   </span>
                 </div>
@@ -361,7 +361,7 @@ function handleFilter() {
 
               <!-- SLA Due -->
               <TableCell class="py-3 px-4">
-                <div class="flex items-center gap-1.5 font-mono text-xs" :class="formatSlaDue(tkt.slaDueAt, tkt.status).overdue ? 'text-rose-400 font-medium' : 'text-slate-400'">
+                <div class="flex items-center gap-1.5 font-mono text-xs" :class="formatSlaDue(tkt.slaDueAt, tkt.status).overdue ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-muted-foreground'">
                   <Clock class="size-3.5" />
                   <span>{{ formatSlaDue(tkt.slaDueAt, tkt.status).text }}</span>
                 </div>
@@ -371,8 +371,8 @@ function handleFilter() {
               <TableCell class="text-right py-3 px-4">
                 <Button 
                   variant="ghost" 
-                  size="sm"
-                  class="size-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
+                  size="sm" 
+                  class="size-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
                   @click.stop="emit('selectTicket', tkt)"
                 >
                   <ChevronRight class="size-4" />

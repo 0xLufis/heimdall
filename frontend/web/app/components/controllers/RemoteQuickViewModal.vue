@@ -449,74 +449,86 @@ onUnmounted(() => {
   <Dialog :open="open" @update:open="emit('update:open', $event)">
     <DialogContent
       v-if="controller"
+      :show-close="false"
       :class="[
         isFullscreen ? 'fixed inset-0 w-screen h-screen max-w-none max-h-none rounded-none z-50 p-0 m-0 flex flex-col' : 'w-[95vw] sm:max-w-5xl lg:max-w-6xl max-h-[92vh] flex flex-col',
-        'bg-slate-950 border-slate-800 text-slate-100 overflow-hidden rounded-2xl shadow-2xl transition-all'
+        'bg-card border-border text-foreground overflow-hidden rounded-2xl shadow-2xl transition-all'
       ]"
     >
       <!-- Dialog Header -->
-      <div class="px-6 pt-5 pb-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between flex-wrap gap-3">
+      <div class="px-6 pt-5 pb-4 border-b border-border bg-muted/30 flex items-center justify-between flex-wrap gap-3">
         <div class="flex items-center gap-3">
-          <div class="p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+          <div class="p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-primary">
             <Monitor class="w-5 h-5" />
           </div>
           <div>
-            <DialogTitle class="text-base font-semibold text-slate-100 flex items-center gap-2">
+            <DialogTitle class="text-base font-semibold text-foreground flex items-center gap-2">
               <span>{{ controller.name }}</span>
-              <Badge variant="outline" class="text-[10px] font-mono border-slate-700 bg-slate-800/80 text-slate-300">
+              <Badge variant="outline" class="text-[10px] font-mono border-border bg-muted text-muted-foreground">
                 {{ controller.ipAddress || vncHost }}
               </Badge>
               <Badge
-                :class="controller.isOnline ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30' : 'bg-rose-950/60 text-rose-400 border-rose-500/30'"
+                :class="controller.isOnline ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-destructive/10 text-destructive border-destructive/30'"
                 class="text-[10px] border"
               >
                 {{ controller.isOnline ? 'Online' : 'Offline' }}
               </Badge>
             </DialogTitle>
-            <DialogDescription class="text-xs text-slate-400 mt-0.5">
+            <DialogDescription class="text-xs text-muted-foreground mt-0.5">
               Remote Control & In-Browser Viewport (VNC / DameWare MRC / RDP)
             </DialogDescription>
           </div>
         </div>
 
-        <!-- Provider Switcher Tabs -->
-        <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
+        <div class="flex items-center gap-2">
+          <!-- Provider Switcher Tabs -->
+          <div class="flex items-center bg-background p-1 rounded-lg border border-border text-xs font-medium">
+            <button
+              type="button"
+              @click="activeProvider = 'vnc'"
+              :class="activeProvider === 'vnc' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+              class="px-3 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Zap class="w-3 h-3" />
+              <span>HTML5 VNC</span>
+            </button>
+            <button
+              type="button"
+              @click="activeProvider = 'dameware'"
+              :class="activeProvider === 'dameware' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+              class="px-3 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Radio class="w-3 h-3" />
+              <span>DameWare MRC</span>
+            </button>
+            <button
+              type="button"
+              @click="activeProvider = 'rdp'"
+              :class="activeProvider === 'rdp' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+              class="px-3 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Terminal class="w-3 h-3" />
+              <span>RDP</span>
+            </button>
+          </div>
+
           <button
             type="button"
-            @click="activeProvider = 'vnc'"
-            :class="activeProvider === 'vnc' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer"
+            @click="emit('update:open', false)"
+            class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+            title="Close session"
           >
-            <Zap class="w-3 h-3" />
-            <span>HTML5 VNC</span>
-          </button>
-          <button
-            type="button"
-            @click="activeProvider = 'dameware'"
-            :class="activeProvider === 'dameware' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Radio class="w-3 h-3" />
-            <span>DameWare MRC</span>
-          </button>
-          <button
-            type="button"
-            @click="activeProvider = 'rdp'"
-            :class="activeProvider === 'rdp' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Terminal class="w-3 h-3" />
-            <span>RDP</span>
+            <X class="w-4 h-4" />
           </button>
         </div>
       </div>
 
       <!-- Unauthorized Alert when user lacks canExecuteRemote -->
-      <div v-if="!canExecuteRemote" class="p-4 mx-6 mt-4 rounded-xl bg-amber-950/30 border border-amber-500/30 flex items-center gap-3">
-        <Lock class="w-4 h-4 text-amber-400 shrink-0" />
-        <div class="text-xs text-amber-200">
+      <div v-if="!canExecuteRemote" class="p-4 mx-6 mt-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-3">
+        <Lock class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+        <div class="text-xs text-amber-900 dark:text-amber-200">
           <span class="font-semibold">Restricted Operational Privilege:</span> Remote session interaction requires
-          <code class="px-1 py-0.5 bg-amber-950/60 rounded text-amber-300 font-mono">canExecuteRemote</code>
+          <code class="px-1 py-0.5 bg-amber-500/15 rounded text-amber-800 dark:text-amber-300 font-mono">canExecuteRemote</code>
           (Technician or System Administrator role). Active sessions run in read-only audit mode.
         </div>
       </div>
@@ -526,43 +538,43 @@ onUnmounted(() => {
         <!-- PROVIDER 1: HTML5 VNC VIEWPORT -->
         <template v-if="activeProvider === 'vnc'">
           <!-- Viewport Controls Toolbar -->
-          <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 flex-wrap gap-2">
+          <div class="flex items-center justify-between p-2.5 rounded-lg bg-card border border-border text-xs text-foreground flex-wrap gap-2">
             <div class="flex items-center gap-3 flex-wrap">
               <!-- Live State Indicator Badge -->
               <div v-if="vncMode === 'live'" class="flex items-center gap-2">
                 <template v-if="connectionState === 'connected'">
-                  <span class="size-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span class="font-mono text-emerald-400 text-[11px] font-semibold">RFB 3.8 Connected</span>
-                  <span v-if="desktopName" class="text-slate-400 text-[10px] font-mono">({{ desktopName }})</span>
+                  <span class="size-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
+                  <span class="font-mono text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold">RFB 3.8 Connected</span>
+                  <span v-if="desktopName" class="text-muted-foreground text-[10px] font-mono">({{ desktopName }})</span>
                 </template>
                 <template v-else-if="connectionState === 'connecting'">
-                  <span class="size-2 rounded-full bg-amber-400 animate-pulse"></span>
-                  <span class="font-mono text-amber-300 text-[11px]">Connecting ws://{{ vncHost }}:{{ vncPort }}...</span>
+                  <span class="size-2 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse"></span>
+                  <span class="font-mono text-amber-600 dark:text-amber-300 text-[11px]">Connecting ws://{{ vncHost }}:{{ vncPort }}...</span>
                 </template>
                 <template v-else-if="connectionState === 'error'">
                   <span class="size-2 rounded-full bg-rose-500"></span>
-                  <span class="font-mono text-rose-400 text-[11px]">VNC Connection Failed</span>
+                  <span class="font-mono text-rose-600 dark:text-rose-400 text-[11px]">VNC Connection Failed</span>
                 </template>
                 <template v-else>
-                  <span class="size-2 rounded-full bg-slate-500"></span>
-                  <span class="font-mono text-slate-400 text-[11px]">Disconnected</span>
+                  <span class="size-2 rounded-full bg-muted-foreground"></span>
+                  <span class="font-mono text-muted-foreground text-[11px]">Disconnected</span>
                 </template>
               </div>
 
               <!-- Simulation Mode Indicator Badge -->
               <div v-else class="flex items-center gap-1.5">
-                <span class="size-2 rounded-full bg-blue-400"></span>
-                <span class="font-mono text-blue-300 text-[11px]">TwinCAT Viewport Simulation</span>
+                <span class="size-2 rounded-full bg-blue-500 dark:bg-blue-400"></span>
+                <span class="font-mono text-blue-600 dark:text-blue-300 text-[11px]">TwinCAT Viewport Simulation</span>
               </div>
 
-              <div class="h-3 w-px bg-slate-800 hidden sm:block"></div>
+              <div class="h-3 w-px bg-border hidden sm:block"></div>
 
               <!-- Live / Simulation Mode Switcher -->
-              <div class="flex items-center bg-slate-950 rounded p-0.5 border border-slate-800 text-[11px]">
+              <div class="flex items-center bg-muted/40 rounded p-0.5 border border-border text-[11px]">
                 <button
                   type="button"
                   @click="handleSwitchToLive"
-                  :class="vncMode === 'live' ? 'bg-indigo-600 text-white font-medium shadow-xs' : 'text-slate-400 hover:text-slate-200'"
+                  :class="vncMode === 'live' ? 'bg-indigo-600 text-white font-medium shadow-xs' : 'text-muted-foreground hover:text-foreground'"
                   class="px-2 py-0.5 rounded transition-all cursor-pointer"
                 >
                   Live RFB
@@ -570,7 +582,7 @@ onUnmounted(() => {
                 <button
                   type="button"
                   @click="handleSwitchToSimulation"
-                  :class="vncMode === 'simulation' ? 'bg-indigo-600 text-white font-medium shadow-xs' : 'text-slate-400 hover:text-slate-200'"
+                  :class="vncMode === 'simulation' ? 'bg-indigo-600 text-white font-medium shadow-xs' : 'text-muted-foreground hover:text-foreground'"
                   class="px-2 py-0.5 rounded transition-all cursor-pointer"
                 >
                   Simulation
@@ -586,10 +598,10 @@ onUnmounted(() => {
                 type="button"
                 :disabled="connectionState !== 'connected' || !canExecuteRemote"
                 @click="handleSendCtrlAltDel"
-                class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-1 transition-all cursor-pointer"
+                class="px-2.5 py-1 rounded bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:pointer-events-none text-foreground text-xs font-medium border border-border flex items-center gap-1 transition-all cursor-pointer"
                 title="Send Ctrl+Alt+Del to Windows Node"
               >
-                <Keyboard class="w-3 h-3 text-indigo-400" />
+                <Keyboard class="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span class="hidden sm:inline">Ctrl+Alt+Del</span>
               </button>
 
@@ -597,7 +609,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 @click="handleToggleReadOnly"
-                :class="isReadOnly ? 'bg-amber-950/50 text-amber-300 border-amber-500/30' : 'bg-slate-800 text-slate-300 border-slate-700'"
+                :class="isReadOnly ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' : 'bg-muted text-muted-foreground border-border'"
                 class="px-2.5 py-1 rounded border text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
                 :title="isReadOnly ? 'Click to make session interactive' : 'Click to lock session to read-only'"
               >
@@ -609,7 +621,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 @click="toggleFullscreen"
-                :class="isFullscreen ? 'bg-indigo-600/40 text-indigo-300 border-indigo-500/40' : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'"
+                :class="isFullscreen ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/40' : 'bg-muted text-muted-foreground hover:text-foreground border-border'"
                 class="p-1.5 rounded border transition-colors cursor-pointer"
                 :title="isFullscreen ? 'Exit Fullscreen' : '16:9 HD Fullscreen Mode'"
               >
@@ -621,7 +633,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 @click="showSettings = !showSettings"
-                :class="showSettings ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/40' : 'bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'"
+                :class="showSettings ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/40' : 'bg-muted text-muted-foreground hover:text-foreground border-border'"
                 class="p-1.5 rounded border transition-colors cursor-pointer"
                 title="Configure VNC Host & Port"
               >
@@ -632,7 +644,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 @click="vncMode === 'live' ? connectRfb() : startLoop()"
-                class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+                class="p-1.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border transition-colors cursor-pointer"
                 title="Reconnect / Refresh Stream"
               >
                 <RefreshCw class="w-3.5 h-3.5" :class="connectionState === 'connecting' ? 'animate-spin' : ''" />
@@ -641,49 +653,49 @@ onUnmounted(() => {
           </div>
 
           <!-- Mobile / Phone responsive touch helper bar -->
-          <div class="sm:hidden px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-            <span class="flex items-center gap-1.5 text-indigo-300">
+          <div class="sm:hidden px-3 py-1.5 rounded-lg bg-muted/40 border border-border text-[11px] text-muted-foreground flex items-center justify-between">
+            <span class="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-300">
               <Smartphone class="w-3.5 h-3.5" />
               <span>Mobile Touch Optimized (Pinch to zoom / tap to click)</span>
             </span>
-            <span class="font-mono text-[10px] text-slate-500">Auto-scale</span>
+            <span class="font-mono text-[10px] text-muted-foreground">Auto-scale</span>
           </div>
 
           <!-- Connection Settings Dropdown / Panel -->
-          <div v-if="showSettings" class="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2 animate-in fade-in duration-200">
-            <div class="flex items-center justify-between text-xs font-semibold text-slate-300 border-b border-slate-800 pb-2">
+          <div v-if="showSettings" class="p-3 bg-card border border-border rounded-xl space-y-2 animate-in fade-in duration-200">
+            <div class="flex items-center justify-between text-xs font-semibold text-foreground border-b border-border pb-2">
               <span class="flex items-center gap-1.5">
-                <Sliders class="w-3.5 h-3.5 text-indigo-400" />
+                <Sliders class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 VNC WebSocket Connection Parameters
               </span>
-              <span class="text-[10px] text-slate-500">Windows Docker Container: port 8006, path /websockify</span>
+              <span class="text-[10px] text-muted-foreground">Windows Docker Container: port 8006, path /websockify</span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
               <div>
-                <label class="block text-[10px] text-slate-400 font-mono mb-1">Host / IP</label>
+                <label class="block text-[10px] text-muted-foreground font-mono mb-1">Host / IP</label>
                 <input
                   v-model="vncHost"
                   type="text"
                   placeholder="127.0.0.1"
-                  class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                  class="w-full bg-background border border-input rounded px-2 py-1 text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
-                <label class="block text-[10px] text-slate-400 font-mono mb-1">Port</label>
+                <label class="block text-[10px] text-muted-foreground font-mono mb-1">Port</label>
                 <input
                   v-model.number="vncPort"
                   type="number"
                   placeholder="8006"
-                  class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                  class="w-full bg-background border border-input rounded px-2 py-1 text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
-                <label class="block text-[10px] text-slate-400 font-mono mb-1">WebSocket Path</label>
+                <label class="block text-[10px] text-muted-foreground font-mono mb-1">WebSocket Path</label>
                 <input
                   v-model="vncPath"
                   type="text"
                   placeholder="websockify"
-                  class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+                  class="w-full bg-background border border-input rounded px-2 py-1 text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div class="flex items-end">
@@ -705,7 +717,7 @@ onUnmounted(() => {
             :class="[
               isFullscreen
                 ? 'fixed inset-0 z-50 w-screen h-screen bg-black rounded-none border-none flex items-center justify-center p-0 m-0'
-                : 'relative rounded-xl overflow-hidden border border-slate-800 bg-black aspect-video flex items-center justify-center'
+                : 'relative rounded-xl overflow-hidden border border-border bg-black aspect-video flex items-center justify-center'
             ]"
           >
             <!-- Fullscreen Exit Floating Button -->
@@ -713,10 +725,10 @@ onUnmounted(() => {
               v-if="isFullscreen"
               type="button"
               @click="toggleFullscreen"
-              class="absolute top-4 right-4 z-50 px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 backdrop-blur-xs transition-all cursor-pointer shadow-xl text-xs flex items-center gap-1.5"
+              class="absolute top-4 right-4 z-50 px-3 py-1.5 rounded-lg bg-card/90 hover:bg-card text-foreground border border-border backdrop-blur-xs transition-all cursor-pointer shadow-xl text-xs flex items-center gap-1.5"
               title="Exit Fullscreen (Esc)"
             >
-              <Minimize2 class="w-3.5 h-3.5 text-indigo-400" />
+              <Minimize2 class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>Exit Fullscreen</span>
             </button>
 
@@ -739,18 +751,18 @@ onUnmounted(() => {
             <!-- Error Overlay with Action Buttons -->
             <div
               v-if="vncMode === 'live' && connectionState === 'error'"
-              class="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in"
+              class="absolute inset-0 bg-background/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in"
             >
-              <div class="p-3 rounded-full bg-rose-950/50 border border-rose-500/30 text-rose-400">
+              <div class="p-3 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400">
                 <AlertCircle class="w-8 h-8" />
               </div>
               <div class="space-y-1 max-w-md">
-                <h4 class="text-sm font-semibold text-slate-200">Unable to Connect to Live VNC Stream</h4>
-                <p class="text-xs text-slate-400">
+                <h4 class="text-sm font-semibold text-foreground">Unable to Connect to Live VNC Stream</h4>
+                <p class="text-xs text-muted-foreground">
                   {{ errorMessage || `Could not establish WebSocket connection to ws://${vncHost}:${vncPort}/${vncPath}` }}
                 </p>
-                <p class="text-[11px] text-slate-500 mt-2">
-                  Ensure the Windows Docker container is running (<code class="text-slate-400 font-mono">docker compose up windows-agent</code>).
+                <p class="text-[11px] text-muted-foreground mt-2">
+                  Ensure the Windows Docker container is running (<code class="text-foreground font-mono">docker compose up windows-agent</code>).
                 </p>
               </div>
               <div class="flex items-center gap-3 pt-2">
@@ -765,9 +777,9 @@ onUnmounted(() => {
                 <button
                   type="button"
                   @click="handleSwitchToSimulation"
-                  class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+                  class="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-medium rounded-lg border border-border flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Play class="w-3.5 h-3.5 text-blue-400" />
+                  <Play class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   <span>Switch to Simulated Viewport</span>
                 </button>
               </div>
@@ -779,43 +791,43 @@ onUnmounted(() => {
               class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3"
             >
               <div class="size-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
-              <span class="text-xs font-mono text-slate-300">Connecting to RFB 3.8 WebSocket...</span>
+              <span class="text-xs font-mono text-muted-foreground">Connecting to RFB 3.8 WebSocket...</span>
             </div>
           </div>
         </template>
 
         <!-- PROVIDER 2: DAMEWARE MRC DEEP-LINK -->
         <template v-else-if="activeProvider === 'dameware'">
-          <div class="p-6 rounded-xl bg-slate-900/80 border border-slate-800 space-y-5">
+          <div class="p-6 rounded-xl bg-card border border-border space-y-5">
             <div class="flex items-start gap-4">
-              <div class="p-3 rounded-xl bg-teal-950/40 border border-teal-600/30 text-teal-300 shrink-0">
+              <div class="p-3 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 shrink-0">
                 <Radio class="w-6 h-6" />
               </div>
               <div class="space-y-1">
-                <h4 class="text-sm font-semibold text-slate-100">DameWare Mini Remote Control (MRC) Integration</h4>
-                <p class="text-xs text-slate-400 leading-relaxed">
-                  Launch an optimized, native DameWare MRC session using registered deep-link handler URI scheme (<code class="font-mono text-teal-300 text-[11px]">dwmrc://</code>).
+                <h4 class="text-sm font-semibold text-foreground">DameWare Mini Remote Control (MRC) Integration</h4>
+                <p class="text-xs text-muted-foreground leading-relaxed">
+                  Launch an optimized, native DameWare MRC session using registered deep-link handler URI scheme (<code class="font-mono text-teal-600 dark:text-teal-300 text-[11px]">dwmrc://</code>).
                   Seamlessly bypasses browser sandbox limitations with zero-install native client bridging.
                 </p>
               </div>
             </div>
 
             <!-- Endpoint Configuration Box -->
-            <div class="p-4 rounded-lg bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
-              <div class="flex items-center justify-between text-slate-400">
+            <div class="p-4 rounded-lg bg-muted/40 border border-border space-y-3 font-mono text-xs">
+              <div class="flex items-center justify-between text-muted-foreground">
                 <span>DameWare URI Scheme:</span>
-                <span class="text-emerald-400 font-sans text-[11px] flex items-center gap-1">
-                  <span class="size-1.5 rounded-full bg-emerald-400"></span> DWRCS Service Listening (Port {{ damewarePort }})
+                <span class="text-emerald-600 dark:text-emerald-400 font-sans text-[11px] flex items-center gap-1">
+                  <span class="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span> DWRCS Service Listening (Port {{ damewarePort }})
                 </span>
               </div>
-              <div class="p-2.5 rounded bg-slate-900 border border-slate-800 text-teal-300 flex items-center justify-between overflow-x-auto gap-2">
+              <div class="p-2.5 rounded bg-card border border-border text-teal-600 dark:text-teal-300 flex items-center justify-between overflow-x-auto gap-2">
                 <span class="select-all truncate">{{ damewareUri }}</span>
                 <button
                   type="button"
                   @click="handleCopyDamewareUri"
-                  class="shrink-0 p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                  class="shrink-0 p-1.5 rounded bg-muted hover:bg-muted/80 text-foreground transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
                 >
-                  <Check v-if="isCopied" class="w-3.5 h-3.5 text-emerald-400" />
+                  <Check v-if="isCopied" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <Copy v-else class="w-3.5 h-3.5" />
                   <span>{{ isCopied ? 'Copied' : 'Copy' }}</span>
                 </button>
@@ -828,7 +840,7 @@ onUnmounted(() => {
                 :has-permission="canExecuteRemote"
                 capability="canExecuteRemote"
                 @click="handleLaunchDameware"
-                class="bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm border border-zinc-600/50 cursor-pointer"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm cursor-pointer"
               >
                 <ExternalLink class="w-3.5 h-3.5" />
                 <span>Launch DameWare Client</span>
@@ -837,7 +849,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 @click="handleCopyDamewareUri"
-                class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-lg border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+                class="bg-muted hover:bg-muted/80 text-foreground text-xs font-medium px-3.5 py-2 rounded-lg border border-border flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Copy class="w-3.5 h-3.5" />
                 <span>Copy Launch Link</span>
@@ -848,27 +860,27 @@ onUnmounted(() => {
 
         <!-- PROVIDER 3: RDP CONNECTION -->
         <template v-else-if="activeProvider === 'rdp'">
-          <div class="p-6 rounded-xl bg-slate-900/80 border border-slate-800 space-y-5">
+          <div class="p-6 rounded-xl bg-card border border-border space-y-5">
             <div class="flex items-start gap-4">
-              <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shrink-0">
+              <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shrink-0">
                 <Terminal class="w-6 h-6" />
               </div>
               <div class="space-y-1">
-                <h4 class="text-sm font-semibold text-slate-100">Microsoft Remote Desktop Protocol (RDP)</h4>
-                <p class="text-xs text-slate-400 leading-relaxed">
-                  Download a pre-configured <code class="font-mono text-indigo-300 text-[11px]">.rdp</code> configuration file for high-performance Windows Terminal Services session with multi-monitor support.
+                <h4 class="text-sm font-semibold text-foreground">Microsoft Remote Desktop Protocol (RDP)</h4>
+                <p class="text-xs text-muted-foreground leading-relaxed">
+                  Download a pre-configured <code class="font-mono text-indigo-600 dark:text-indigo-300 text-[11px]">.rdp</code> configuration file for high-performance Windows Terminal Services session with multi-monitor support.
                 </p>
               </div>
             </div>
 
-            <div class="p-4 rounded-lg bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs">
-              <div class="flex items-center justify-between text-slate-400">
+            <div class="p-4 rounded-lg bg-muted/40 border border-border space-y-2 font-mono text-xs">
+              <div class="flex items-center justify-between text-muted-foreground">
                 <span>RDP Host Address:</span>
-                <span class="text-slate-200">{{ controller.ipAddress || vncHost }}:{{ rdpPort }}</span>
+                <span class="text-foreground">{{ controller.ipAddress || vncHost }}:{{ rdpPort }}</span>
               </div>
-              <div class="flex items-center justify-between text-slate-400">
+              <div class="flex items-center justify-between text-muted-foreground">
                 <span>Target Architecture:</span>
-                <span class="text-slate-200">{{ controller.osVersion || 'Windows 10 Enterprise LTSC' }}</span>
+                <span class="text-foreground">{{ controller.osVersion || 'Windows 10 Enterprise LTSC' }}</span>
               </div>
             </div>
 
@@ -888,16 +900,16 @@ onUnmounted(() => {
       </div>
 
       <!-- Dialog Footer -->
-      <div class="px-6 py-3 border-t border-slate-800 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400 flex-wrap gap-2">
+      <div class="px-6 py-3 border-t border-border bg-card flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
         <div class="flex items-center gap-2">
-          <ShieldCheck class="w-3.5 h-3.5 text-emerald-400" />
+          <ShieldCheck class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>Sessions are cryptographically audited with operator token binding.</span>
         </div>
         <Button
           variant="outline"
           size="sm"
           @click="emit('update:open', false)"
-          class="border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white text-xs cursor-pointer"
+          class="border-border bg-card text-muted-foreground hover:text-foreground text-xs cursor-pointer"
         >
           Close Session
         </Button>

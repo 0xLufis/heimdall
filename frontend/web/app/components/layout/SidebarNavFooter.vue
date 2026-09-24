@@ -107,7 +107,7 @@ async function handleLogout() {
                   <Icon v-if="colorMode.preference === 'dark'" name="i-lucide-check" class="ml-auto h-3.5 w-3.5 text-primary" />
                 </DropdownMenuItem>
                 <DropdownMenuItem @click="colorMode.preference = 'system'" class="flex items-center gap-2 cursor-pointer">
-                  <Icon name="i-lucide-monitor" class="h-4 w-4 text-slate-400" />
+                  <Icon name="i-lucide-monitor" class="h-4 w-4 text-muted-foreground" />
                   <span>System</span>
                   <Icon v-if="colorMode.preference === 'system'" name="i-lucide-check" class="ml-auto h-3.5 w-3.5 text-primary" />
                 </DropdownMenuItem>

@@ -237,33 +237,33 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
 <template>
   <div class="space-y-6 pb-12">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
       <div
         role="button"
         tabindex="0"
         @click="resetPageFilters"
         @keydown.enter="resetPageFilters"
-        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-slate-900/60"
+        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-muted/50"
         title="Click to reset filters and refresh tickets"
       >
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 group-hover:bg-indigo-500/20 transition-all">
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 group-hover:scale-105 group-hover:bg-indigo-500/20 transition-all">
           <Wrench class="size-6" />
         </div>
         <div>
           <div class="flex items-center gap-2.5">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-100 group-hover:text-white transition-colors">
+            <h1 class="text-2xl font-bold tracking-tight text-foreground group-hover:text-foreground/90 transition-colors">
               Maintenance & Incident Management
             </h1>
             <Badge
               v-if="pendingOfflineCount > 0"
               variant="outline"
-              class="border-amber-500/40 text-amber-400 bg-amber-500/10 text-xs font-medium flex items-center gap-1.5 px-2 py-0.5 rounded-md"
+              class="border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10 text-xs font-medium flex items-center gap-1.5 px-2 py-0.5 rounded-md"
             >
               <WifiOff class="size-3" />
               <span>{{ pendingOfflineCount }} Offline Queued</span>
             </Badge>
           </div>
-          <p class="text-sm text-slate-400 mt-0.5 group-hover:text-slate-300 transition-colors">
+          <p class="text-sm text-muted-foreground mt-0.5 group-hover:text-foreground transition-colors">
             Plant floor incident lifecycle, 4-tier templates, technician delegation, and machine groups
           </p>
         </div>
@@ -272,11 +272,11 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
       <!-- Action Toolbar -->
       <div class="flex flex-wrap items-center gap-2">
         <!-- 3-Way View Switch -->
-        <div class="bg-slate-900 p-0.5 rounded-lg border border-slate-800 flex gap-0.5">
+        <div class="bg-muted p-0.5 rounded-lg border border-border flex gap-0.5">
           <Button
             variant="ghost"
             @click="activeViewMode = 'list'"
-            :class="activeViewMode === 'list' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeViewMode === 'list' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
           >
             <LayoutList class="w-3.5 h-3.5 mr-1" />
@@ -286,7 +286,7 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           <Button
             variant="ghost"
             @click="activeViewMode = 'kanban'"
-            :class="activeViewMode === 'kanban' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeViewMode === 'kanban' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
           >
             <Columns class="w-3.5 h-3.5 mr-1" />
@@ -296,7 +296,7 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           <Button
             variant="ghost"
             @click="activeViewMode = 'resolved'"
-            :class="activeViewMode === 'resolved' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeViewMode === 'resolved' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
           >
             <History class="w-3.5 h-3.5 mr-1" />
@@ -309,10 +309,10 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           <Button
             variant="outline"
             size="sm"
-            class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
             title="Manage recursive machine groups and technology clusters"
           >
-            <FolderTree class="h-3.5 w-3.5 text-indigo-400" />
+            <FolderTree class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>Machine Groups</span>
           </Button>
         </NuxtLink>
@@ -321,10 +321,10 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           <Button
             variant="outline"
             size="sm"
-            class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
             title="Manage shift attendance, engineer dedication, and Teams OOO state"
           >
-            <Users class="h-3.5 w-3.5 text-cyan-400" />
+            <Users class="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
             <span>Delegation & Roster</span>
           </Button>
         </NuxtLink>
@@ -333,10 +333,10 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           variant="outline"
           size="sm"
           @click="showQrGeneratorModal = true"
-          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+          class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
           title="Generate Actionable QR Code URIs"
         >
-          <QrCode class="h-3.5 w-3.5 text-indigo-400" />
+          <QrCode class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>Action QR</span>
         </Button>
 
@@ -344,9 +344,9 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           variant="outline"
           size="sm"
           @click="showSimulatorModal = true"
-          class="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+          class="border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
         >
-          <Activity class="h-3.5 w-3.5 text-indigo-400" />
+          <Activity class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>Fleet Sim</span>
         </Button>
 
@@ -354,16 +354,16 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
           variant="outline"
           size="sm"
           @click="showQrScanner = true"
-          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+          class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
         >
-          <Camera class="h-3.5 w-3.5 text-indigo-400" />
+          <Camera class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>Scan QR</span>
         </Button>
 
         <Button
           size="sm"
           @click="showCreateModal = true"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3.5 h-8 text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
+          class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-3.5 h-8 text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
         >
           <Plus class="h-3.5 w-3.5" />
           <span>Report Incident</span>
@@ -372,7 +372,7 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
     </div>
 
     <!-- QR Scanner Modal Popup -->
-    <div v-if="showQrScanner" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div v-if="showQrScanner" class="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-4">
       <QrScanner @scanned="onQrScanned" @close="showQrScanner = false" />
     </div>
 
@@ -386,16 +386,16 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
     <!-- Active Metric Filter Chip Bar -->
     <div
       v-if="activeMetricFilter"
-      class="flex items-center justify-between px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 animate-in fade-in duration-200 shadow-sm"
+      class="flex items-center justify-between px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-700 dark:text-indigo-300 animate-in fade-in duration-200 shadow-sm"
     >
       <div class="flex items-center gap-2">
-        <Filter class="size-3.5 text-indigo-400" />
-        <span>Filtering by: <strong class="text-white capitalize">{{ activeMetricFilterLabel }}</strong></span>
-        <span class="text-slate-400">({{ displayedTickets.length }} incident{{ displayedTickets.length === 1 ? '' : 's' }} matched)</span>
+        <Filter class="size-3.5 text-indigo-600 dark:text-indigo-400" />
+        <span>Filtering by: <strong class="text-foreground capitalize">{{ activeMetricFilterLabel }}</strong></span>
+        <span class="text-muted-foreground">({{ displayedTickets.length }} incident{{ displayedTickets.length === 1 ? '' : 's' }} matched)</span>
       </div>
       <button
         @click="clearMetricFilter"
-        class="text-xs text-indigo-300 hover:text-white flex items-center gap-1 font-medium px-2 py-0.5 rounded hover:bg-indigo-500/20 transition-colors"
+        class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-foreground flex items-center gap-1 font-medium px-2 py-0.5 rounded hover:bg-indigo-500/20 transition-colors"
       >
         <X class="size-3.5" />
         <span>Clear Filter</span>
@@ -403,7 +403,7 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
     </div>
 
     <!-- Tag Cloud Filter Bar -->
-    <div v-if="availableTags.length > 0" class="p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-sm">
+    <div v-if="availableTags.length > 0" class="p-3 bg-card border border-border rounded-xl shadow-sm">
       <TagFilterBar
         :available-tags="availableTags"
         :selected-tags="selectedTags"

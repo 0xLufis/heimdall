@@ -554,16 +554,16 @@ async function pushToAllHosts() {
 <template>
   <div class="space-y-6">
     <!-- Header Section -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
           <SlidersHorizontal class="size-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+          <h1 class="text-2xl font-bold tracking-tight text-foreground">
             Fleet Telemetry Orchestration
           </h1>
-          <p class="text-sm text-slate-400 mt-0.5">
+          <p class="text-sm text-muted-foreground mt-0.5">
             Active Directory OU & asset tag policy engine, security sealing, and high-scale node configuration
           </p>
         </div>
@@ -583,17 +583,17 @@ async function pushToAllHosts() {
     </div>
 
     <!-- Alert / Status Notifications -->
-    <div v-if="saveSuccess" class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-2.5">
+    <div v-if="saveSuccess" class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium flex items-center gap-2.5">
       <CheckCircle2 class="size-4 shrink-0" />
       <span>Fleet Master Policy and OU & asset tag rules saved successfully.</span>
     </div>
 
-    <div v-if="dispatchSuccessMessage" class="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium flex items-center gap-2.5">
+    <div v-if="dispatchSuccessMessage" class="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-medium flex items-center gap-2.5">
       <CheckCircle2 class="size-4 shrink-0" />
       <span>{{ dispatchSuccessMessage }}</span>
     </div>
 
-    <div v-if="isPushingBulk" class="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium flex items-center justify-between">
+    <div v-if="isPushingBulk" class="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-medium flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <RefreshCw class="size-4 animate-spin shrink-0" />
         <span>Deploying configuration across fleet: {{ bulkProgress.current }} / {{ bulkProgress.total }} nodes completed...</span>
@@ -604,16 +604,16 @@ async function pushToAllHosts() {
     </div>
 
     <!-- Section 1: OU & Asset Tag Recipe Rules -->
-    <Card class="bg-slate-900 border-slate-800 rounded-xl shadow-sm">
-      <CardHeader class="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <Card class="bg-card border-border rounded-xl shadow-sm">
+      <CardHeader class="p-5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-2">
-            <Sparkles class="size-4 text-indigo-400" />
-            <CardTitle class="text-base font-semibold text-slate-100">
+            <Sparkles class="size-4 text-indigo-600 dark:text-indigo-400" />
+            <CardTitle class="text-base font-semibold text-foreground">
               Active Directory OU & Asset Tag Recipe Rules
             </CardTitle>
           </div>
-          <CardDescription class="text-xs text-slate-400 mt-1">
+          <CardDescription class="text-xs text-muted-foreground mt-1">
             Rules evaluate in priority order. When a controller's Active Directory OU and asset tags match (e.g. Beckhoff + IPC + Controller), it automatically receives the designated telemetry recipe.
           </CardDescription>
         </div>
@@ -626,7 +626,7 @@ async function pushToAllHosts() {
       </CardHeader>
 
       <CardContent class="p-5">
-        <div v-if="!fleetPolicy.ouTagRules || fleetPolicy.ouTagRules.length === 0" class="text-center py-8 text-slate-500 text-xs font-medium">
+        <div v-if="!fleetPolicy.ouTagRules || fleetPolicy.ouTagRules.length === 0" class="text-center py-8 text-muted-foreground text-xs font-medium">
           No OU/Tag rules configured. Nodes will use the default fleet recipe.
         </div>
 
@@ -643,16 +643,16 @@ async function pushToAllHosts() {
             @dragend="onRuleDragEnd"
             class="flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-xl border transition-all select-none"
             :class="[
-              rule.enabled ? 'bg-slate-950/60 border-slate-800 hover:border-slate-700' : 'bg-slate-950/30 border-slate-900 opacity-60',
+              rule.enabled ? 'bg-card border-border hover:border-border/80' : 'bg-muted/30 border-border/60 opacity-60',
               draggedRuleIdx === idx ? 'opacity-40 border-dashed border-indigo-500/70 scale-[0.99]' : '',
-              dragOverRuleIdx === idx && draggedRuleIdx !== idx ? 'border-indigo-500 ring-2 ring-indigo-500/40 bg-indigo-950/30' : ''
+              dragOverRuleIdx === idx && draggedRuleIdx !== idx ? 'border-indigo-500 ring-2 ring-indigo-500/40 bg-indigo-500/10' : ''
             ]"
           >
             <!-- Left Info -->
             <div class="flex items-start gap-3">
               <!-- Drag Grip Handle -->
               <div
-                class="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-200 rounded-md hover:bg-slate-800/60 transition-colors flex items-center justify-center mt-0.5 shrink-0"
+                class="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors flex items-center justify-center mt-0.5 shrink-0"
                 title="Drag and drop to reorder evaluation priority"
               >
                 <GripVertical class="size-4" />
@@ -660,7 +660,7 @@ async function pushToAllHosts() {
 
               <!-- Priority Badge -->
               <div class="flex flex-col items-center gap-1 mt-0.5 shrink-0">
-                <Badge variant="outline" class="bg-indigo-500/10 text-indigo-400 border-indigo-500/30 text-xs font-mono font-medium px-2 py-0.5 rounded-md">
+                <Badge variant="outline" class="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/30 text-xs font-mono font-medium px-2 py-0.5 rounded-md">
                   #{{ rule.priority }}
                 </Badge>
                 <div class="flex items-center gap-0.5">
@@ -668,7 +668,7 @@ async function pushToAllHosts() {
                     @click.stop="moveRulePriority(idx, 'up')"
                     @mousedown.stop
                     :disabled="idx === 0"
-                    class="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-slate-100 disabled:opacity-30"
+                    class="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30"
                     title="Increase Priority"
                   >
                     <ArrowUp class="size-3" />
@@ -677,7 +677,7 @@ async function pushToAllHosts() {
                     @click.stop="moveRulePriority(idx, 'down')"
                     @mousedown.stop
                     :disabled="idx === (fleetPolicy.ouTagRules?.length || 0) - 1"
-                    class="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-slate-100 disabled:opacity-30"
+                    class="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30"
                     title="Decrease Priority"
                   >
                     <ArrowDown class="size-3" />
@@ -688,16 +688,16 @@ async function pushToAllHosts() {
               <!-- Rule Details -->
               <div class="space-y-1.5">
                 <div class="flex items-center gap-2.5">
-                  <span class="text-sm font-semibold text-slate-100">{{ rule.name }}</span>
-                  <Badge class="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 text-xs font-medium px-2 py-0.5 rounded-md">
+                  <span class="text-sm font-semibold text-foreground">{{ rule.name }}</span>
+                  <Badge class="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-medium px-2 py-0.5 rounded-md">
                     → {{ templateNamesById[rule.targetTemplateId] || rule.targetTemplateId }}
                   </Badge>
-                  <span v-if="!rule.enabled" class="text-xs text-amber-500 font-medium">
+                  <span v-if="!rule.enabled" class="text-xs text-amber-600 dark:text-amber-500 font-medium">
                     (Disabled)
                   </span>
                 </div>
 
-                <p v-if="rule.description" class="text-xs text-slate-400">
+                <p v-if="rule.description" class="text-xs text-muted-foreground">
                   {{ rule.description }}
                 </p>
 
@@ -705,19 +705,19 @@ async function pushToAllHosts() {
                 <div class="flex flex-wrap items-center gap-2 pt-1">
                   <!-- OU Pattern -->
                   <div v-if="rule.ouPatterns && rule.ouPatterns.length > 0" class="flex items-center gap-1.5 text-xs">
-                    <span class="text-xs text-slate-400 font-medium">OU ({{ rule.ouMatchMode }}):</span>
-                    <Badge v-for="ou in rule.ouPatterns" :key="ou" variant="outline" class="bg-slate-900 border-slate-700 text-slate-300 text-xs font-mono px-2 py-0.5 rounded-md">
+                    <span class="text-xs text-muted-foreground font-medium">OU ({{ rule.ouMatchMode }}):</span>
+                    <Badge v-for="ou in rule.ouPatterns" :key="ou" variant="outline" class="bg-muted border-border text-foreground text-xs font-mono px-2 py-0.5 rounded-md">
                       {{ ou }}
                     </Badge>
                   </div>
-                  <div v-else class="text-xs text-slate-500">
-                    <span class="text-slate-400 font-medium">OU:</span> All OUs
+                  <div v-else class="text-xs text-muted-foreground/80">
+                    <span class="text-muted-foreground font-medium">OU:</span> All OUs
                   </div>
 
                   <!-- Tag Criteria -->
                   <div v-if="rule.tags && rule.tags.length > 0" class="flex items-center gap-1.5 text-xs">
-                    <span class="text-xs text-slate-400 font-medium">Tags ({{ rule.tagMatchMode }}):</span>
-                    <Badge v-for="tag in rule.tags" :key="tag" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium px-2 py-0.5 rounded-md">
+                    <span class="text-xs text-muted-foreground font-medium">Tags ({{ rule.tagMatchMode }}):</span>
+                    <Badge v-for="tag in rule.tags" :key="tag" class="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-xs font-medium px-2 py-0.5 rounded-md">
                       {{ tag }}
                     </Badge>
                   </div>
@@ -726,21 +726,21 @@ async function pushToAllHosts() {
             </div>
 
             <!-- Right Actions -->
-            <div class="flex items-center gap-2 mt-4 lg:mt-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-800" @mousedown.stop>
+            <div class="flex items-center gap-2 mt-4 lg:mt-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-border" @mousedown.stop>
               <input
                 type="checkbox"
                 v-model="rule.enabled"
                 @change="saveFleetPolicy"
                 @click.stop
                 @mousedown.stop
-                class="size-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 mr-2"
+                class="size-4 rounded border-border text-indigo-600 focus:ring-indigo-500 mr-2"
                 title="Enable / Disable Rule"
               />
-              <Button variant="ghost" size="sm" @click.stop="openEditRuleModal(rule)" @mousedown.stop class="text-slate-400 hover:text-slate-100 hover:bg-slate-800 text-xs rounded-lg h-8">
+              <Button variant="ghost" size="sm" @click.stop="openEditRuleModal(rule)" @mousedown.stop class="text-muted-foreground hover:text-foreground hover:bg-muted text-xs rounded-lg h-8">
                 <Edit2 class="size-3.5 mr-1" />
                 Edit
               </Button>
-              <Button variant="ghost" size="sm" @click.stop="deleteRule(rule.id)" @mousedown.stop class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs rounded-lg h-8">
+              <Button variant="ghost" size="sm" @click.stop="deleteRule(rule.id)" @mousedown.stop class="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-500/10 text-xs rounded-lg h-8">
                 <Trash2 class="size-3.5 mr-1" />
                 Delete
               </Button>
@@ -751,12 +751,12 @@ async function pushToAllHosts() {
     </Card>
 
     <!-- Section 2: Fleet Agent Master Policy -->
-    <Card class="bg-slate-900 border-slate-800 rounded-xl shadow-sm">
-      <CardHeader class="p-5 border-b border-slate-800">
-        <CardTitle class="text-base font-semibold text-slate-100">
+    <Card class="bg-card border-border rounded-xl shadow-sm">
+      <CardHeader class="p-5 border-b border-border">
+        <CardTitle class="text-base font-semibold text-foreground">
           Fleet Agent Master Policy & Security Controls
         </CardTitle>
-        <CardDescription class="text-xs text-slate-400 mt-1">
+        <CardDescription class="text-xs text-muted-foreground mt-1">
           Global operational baselines and cryptographic tamper protection applied to all nodes
         </CardDescription>
       </CardHeader>
@@ -764,14 +764,14 @@ async function pushToAllHosts() {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
           <!-- Backend URL -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Master Ingestion URL</Label>
-            <Input v-model="fleetPolicy.backendUrl" class="bg-slate-950 border-slate-800 text-slate-100 font-mono text-xs h-9 rounded-lg" />
+            <Label class="text-xs font-medium text-muted-foreground">Master Ingestion URL</Label>
+            <Input v-model="fleetPolicy.backendUrl" class="bg-background border-border text-foreground font-mono text-xs h-9 rounded-lg" />
           </div>
 
           <!-- Delta Evaluation -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Delta Evaluation Algorithm</Label>
-            <select v-model="fleetPolicy.deltaEvaluationAlgorithm" class="w-full h-9 px-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs font-medium focus:ring-1 focus:ring-indigo-500">
+            <Label class="text-xs font-medium text-muted-foreground">Delta Evaluation Algorithm</Label>
+            <select v-model="fleetPolicy.deltaEvaluationAlgorithm" class="w-full h-9 px-3 rounded-lg bg-background border border-border text-foreground text-xs font-medium focus:ring-1 focus:ring-indigo-500">
               <option value="xxHash64">xxHash64 (Sub-millisecond Industrial)</option>
               <option value="SHA256">SHA-256 (Cryptographic Integrity)</option>
               <option v-if="enableDebugFeatures" value="None">None (Stream all raw packets - Debug)</option>
@@ -780,8 +780,8 @@ async function pushToAllHosts() {
 
           <!-- Encryption Mode -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Spool Disk Encryption</Label>
-            <select v-model="fleetPolicy.spoolEncryptionMode" class="w-full h-9 px-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs font-medium focus:ring-1 focus:ring-indigo-500">
+            <Label class="text-xs font-medium text-muted-foreground">Spool Disk Encryption</Label>
+            <select v-model="fleetPolicy.spoolEncryptionMode" class="w-full h-9 px-3 rounded-lg bg-background border border-border text-foreground text-xs font-medium focus:ring-1 focus:ring-indigo-500">
               <option value="AES_256_GCM">AES-256-GCM (Hardware Bound)</option>
               <option value="DPAPI">Windows DPAPI</option>
               <option value="Plaintext">Plaintext (Development only)</option>
@@ -790,8 +790,8 @@ async function pushToAllHosts() {
 
           <!-- PII Scrubber -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">PII & IP Scrubber Level</Label>
-            <select v-model="fleetPolicy.piiScrubberStrictLevel" class="w-full h-9 px-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs font-medium focus:ring-1 focus:ring-indigo-500">
+            <Label class="text-xs font-medium text-muted-foreground">PII & IP Scrubber Level</Label>
+            <select v-model="fleetPolicy.piiScrubberStrictLevel" class="w-full h-9 px-3 rounded-lg bg-background border border-border text-foreground text-xs font-medium focus:ring-1 focus:ring-indigo-500">
               <option value="Strict">Strict (Mask Hostnames & Subnets)</option>
               <option value="Standard">Standard (Mask Credentials)</option>
               <option value="Disabled">Disabled</option>
@@ -800,14 +800,14 @@ async function pushToAllHosts() {
 
           <!-- Max Spool Size -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Max Spool Disk (MB)</Label>
-            <Input v-model.number="fleetPolicy.maxSpoolDiskMb" type="number" class="bg-slate-950 border-slate-800 text-slate-100 font-mono text-xs h-9 rounded-lg" />
+            <Label class="text-xs font-medium text-muted-foreground">Max Spool Disk (MB)</Label>
+            <Input v-model.number="fleetPolicy.maxSpoolDiskMb" type="number" class="bg-background border-border text-foreground font-mono text-xs h-9 rounded-lg" />
           </div>
 
           <!-- Default Template -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Default Fleet Recipe (Fallback)</Label>
-            <select v-model="fleetPolicy.assignedTemplateId" class="w-full h-9 px-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs font-medium focus:ring-1 focus:ring-indigo-500">
+            <Label class="text-xs font-medium text-muted-foreground">Default Fleet Recipe (Fallback)</Label>
+            <select v-model="fleetPolicy.assignedTemplateId" class="w-full h-9 px-3 rounded-lg bg-background border border-border text-foreground text-xs font-medium focus:ring-1 focus:ring-indigo-500">
               <option v-for="t in allTemplates" :key="t.recipeId" :value="t.recipeId">
                 {{ t.name }}
               </option>
@@ -816,41 +816,41 @@ async function pushToAllHosts() {
         </div>
 
         <!-- Master Security Switches -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800">
-          <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
+          <div class="flex items-center justify-between p-3.5 rounded-xl bg-muted/30 border border-border">
             <div>
-              <div class="text-xs font-semibold text-slate-200">Hardware-Bound Cryptographic Sealing</div>
-              <div class="text-xs text-slate-400 mt-0.5">Binds secrets and agent tokens to CPU/Machine-ID and TPM</div>
+              <div class="text-xs font-semibold text-foreground">Hardware-Bound Cryptographic Sealing</div>
+              <div class="text-xs text-muted-foreground mt-0.5">Binds secrets and agent tokens to CPU/Machine-ID and TPM</div>
             </div>
-            <input type="checkbox" v-model="fleetPolicy.enforceHardwareBinding" class="size-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" />
+            <input type="checkbox" v-model="fleetPolicy.enforceHardwareBinding" class="size-4 rounded border-border text-indigo-600 focus:ring-indigo-500" />
           </div>
 
-          <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+          <div class="flex items-center justify-between p-3.5 rounded-xl bg-muted/30 border border-border">
             <div>
-              <div class="text-xs font-semibold text-slate-200">Allow Remote Diagnostic & File Checks</div>
-              <div class="text-xs text-slate-400 mt-0.5">Master kill-switch for remote commands (locked to Admin)</div>
+              <div class="text-xs font-semibold text-foreground">Allow Remote Diagnostic & File Checks</div>
+              <div class="text-xs text-muted-foreground mt-0.5">Master kill-switch for remote commands (locked to Admin)</div>
             </div>
-            <input type="checkbox" v-model="fleetPolicy.allowRemoteExecution" class="size-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" />
+            <input type="checkbox" v-model="fleetPolicy.allowRemoteExecution" class="size-4 rounded border-border text-indigo-600 focus:ring-indigo-500" />
           </div>
         </div>
       </CardContent>
     </Card>
 
     <!-- Section 3: Fleet Node Deployment & Assignment Matrix -->
-    <Card class="bg-slate-900 border-slate-800 rounded-xl shadow-sm">
-      <CardHeader class="p-5 border-b border-slate-800 flex flex-col gap-4">
+    <Card class="bg-card border-border rounded-xl shadow-sm">
+      <CardHeader class="p-5 border-b border-border flex flex-col gap-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <CardTitle class="text-base font-semibold text-slate-100 flex items-center gap-2">
-              <Server class="size-4 text-indigo-400" />
+            <CardTitle class="text-base font-semibold text-foreground flex items-center gap-2">
+              <Server class="size-4 text-indigo-600 dark:text-indigo-400" />
               Fleet Node Deployment & Assignment Matrix
             </CardTitle>
-            <CardDescription class="text-xs text-slate-400 mt-1">
+            <CardDescription class="text-xs text-muted-foreground mt-1">
               Real-time rule evaluation, Active Directory OU & asset tag badges, and high-scale paginated dispatch
             </CardDescription>
           </div>
           <div class="flex flex-wrap items-center gap-2.5">
-            <Button variant="outline" size="sm" @click="fetchControllers(false)" class="border-slate-800 bg-slate-950 hover:bg-slate-800 text-xs font-medium rounded-lg h-8">
+            <Button variant="outline" size="sm" @click="fetchControllers(false)" class="border-border bg-card hover:bg-muted text-foreground text-xs font-medium rounded-lg h-8">
               <RefreshCw class="size-3.5 mr-1" />
               Refresh Nodes
             </Button>
@@ -869,7 +869,7 @@ async function pushToAllHosts() {
               size="sm"
               @click="pushToAllHosts"
               :disabled="controllers.length === 0 || isPushingBulk"
-              class="bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium px-3 h-8 border border-slate-700 transition-colors"
+              class="bg-muted hover:bg-muted/80 text-foreground rounded-lg text-xs font-medium px-3 h-8 border border-border transition-colors"
             >
               Push Entire Fleet ({{ controllers.length }})
             </RbacButton>
@@ -877,19 +877,19 @@ async function pushToAllHosts() {
         </div>
 
         <!-- Real-Time Search Bar & Filter Mode Bar -->
-        <div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-3 border-t border-slate-800">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-3 border-t border-border">
           <!-- Omni Search Input -->
           <div class="relative w-full md:w-80">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               v-model="searchQuery"
               placeholder="Search hostname, IP, MAC, OU, or tags..."
-              class="pl-9 pr-8 bg-slate-950 border-slate-800 text-xs text-slate-200 h-8 rounded-lg"
+              class="pl-9 pr-8 bg-background border-border text-xs text-foreground h-8 rounded-lg"
             />
             <button
               v-if="searchQuery"
               @click="searchQuery = ''"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-slate-500 hover:text-slate-300"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground"
             >
               <X class="size-3.5" />
             </button>
@@ -900,14 +900,14 @@ async function pushToAllHosts() {
             <button
               @click="filterMode = 'all'"
               class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
-              :class="filterMode === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'"
+              :class="filterMode === 'all' ? 'bg-indigo-600 text-white' : 'bg-card text-muted-foreground hover:text-foreground border border-border'"
             >
               All ({{ countsByMode.all }})
             </button>
             <button
               @click="filterMode = 'rule'"
               class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
-              :class="filterMode === 'rule' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'"
+              :class="filterMode === 'rule' ? 'bg-indigo-600 text-white' : 'bg-card text-muted-foreground hover:text-foreground border border-border'"
             >
               <Sparkles class="size-3" />
               Rule Matched ({{ countsByMode.rule }})
@@ -915,14 +915,14 @@ async function pushToAllHosts() {
             <button
               @click="filterMode = 'manual'"
               class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
-              :class="filterMode === 'manual' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'"
+              :class="filterMode === 'manual' ? 'bg-indigo-600 text-white' : 'bg-card text-muted-foreground hover:text-foreground border border-border'"
             >
               Manual Override ({{ countsByMode.manual }})
             </button>
             <button
               @click="filterMode = 'default'"
               class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
-              :class="filterMode === 'default' ? 'bg-indigo-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'"
+              :class="filterMode === 'default' ? 'bg-indigo-600 text-white' : 'bg-card text-muted-foreground hover:text-foreground border border-border'"
             >
               Default ({{ countsByMode.default }})
             </button>
@@ -932,13 +932,13 @@ async function pushToAllHosts() {
 
       <CardContent class="p-0">
         <Table>
-          <TableHeader class="bg-slate-950/60 border-b border-slate-800">
-            <TableRow class="border-b border-slate-800 hover:bg-transparent">
+          <TableHeader class="bg-muted/50 border-b border-border">
+            <TableRow class="border-b border-border hover:bg-transparent">
               <TableHead
                 sortable
                 :sort-direction="sortKey === 'hostname' ? sortOrder : null"
                 @sort="handleSort('hostname', $event)"
-                class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider"
+                class="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
               >
                 Host Node / Controller
               </TableHead>
@@ -946,7 +946,7 @@ async function pushToAllHosts() {
                 sortable
                 :sort-direction="sortKey === 'ou' ? sortOrder : null"
                 @sort="handleSort('ou', $event)"
-                class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider"
+                class="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
               >
                 Active Directory OU & Tags
               </TableHead>
@@ -954,7 +954,7 @@ async function pushToAllHosts() {
                 sortable
                 :sort-direction="sortKey === 'network' ? sortOrder : null"
                 @sort="handleSort('network', $event)"
-                class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider"
+                class="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
               >
                 Network Identity
               </TableHead>
@@ -962,7 +962,7 @@ async function pushToAllHosts() {
                 sortable
                 :sort-direction="sortKey === 'status' ? sortOrder : null"
                 @sort="handleSort('status', $event)"
-                class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider"
+                class="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
               >
                 Status & Heartbeat
               </TableHead>
@@ -970,11 +970,11 @@ async function pushToAllHosts() {
                 sortable
                 :sort-direction="sortKey === 'recipe' ? sortOrder : null"
                 @sort="handleSort('recipe', $event)"
-                class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider w-72"
+                class="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-72"
               >
                 Assigned Telemetry Recipe
               </TableHead>
-              <TableHead class="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <TableHead class="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Action
               </TableHead>
             </TableRow>
@@ -983,7 +983,7 @@ async function pushToAllHosts() {
           <TableBody>
             <template v-if="paginationResult.items.length === 0">
               <TableRow>
-                <TableCell colspan="6" class="h-32 text-center text-slate-500 font-medium text-xs">
+                <TableCell colspan="6" class="h-32 text-center text-muted-foreground font-medium text-xs">
                   {{ controllers.length === 0 ? 'No controllers detected. Verify fleet agents are running.' : 'No controllers match the specified search query or filter.' }}
                 </TableCell>
               </TableRow>
@@ -993,17 +993,17 @@ async function pushToAllHosts() {
               <TableRow
                 v-for="c in paginationResult.items"
                 :key="c.id"
-                class="hover:bg-slate-800/40 border-b border-slate-800/60"
+                class="hover:bg-muted/40 border-b border-border/60"
               >
                 <!-- Host Identity -->
                 <TableCell class="px-4 py-3">
                   <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg bg-slate-800 text-slate-300">
+                    <div class="p-2 rounded-lg bg-muted text-foreground">
                       <Server class="size-4" />
                     </div>
                     <div>
-                      <div class="text-slate-100 font-semibold text-xs">{{ c.hostname }}</div>
-                      <div class="text-[11px] text-slate-500 font-mono">{{ c.id }}</div>
+                      <div class="text-foreground font-semibold text-xs">{{ c.hostname }}</div>
+                      <div class="text-[11px] text-muted-foreground font-mono">{{ c.id }}</div>
                     </div>
                   </div>
                 </TableCell>
@@ -1012,8 +1012,8 @@ async function pushToAllHosts() {
                 <TableCell class="px-4 py-3">
                   <div class="space-y-1 max-w-xs">
                     <!-- AD OU Path Badge -->
-                    <div v-if="fleetEvaluations[c.id]?.adOuPath" class="text-slate-400 font-mono text-[11px] truncate" :title="fleetEvaluations[c.id].adOuPath">
-                      <span class="text-indigo-400 font-medium">OU:</span> {{ fleetEvaluations[c.id].adOuPath }}
+                    <div v-if="fleetEvaluations[c.id]?.adOuPath" class="text-muted-foreground font-mono text-[11px] truncate" :title="fleetEvaluations[c.id].adOuPath">
+                      <span class="text-indigo-600 dark:text-indigo-400 font-medium">OU:</span> {{ fleetEvaluations[c.id].adOuPath }}
                     </div>
                     <!-- Detected Tags Chips -->
                     <div class="flex flex-wrap gap-1">
@@ -1021,11 +1021,11 @@ async function pushToAllHosts() {
                         v-for="tag in (fleetEvaluations[c.id]?.detectedTags || []).slice(0, 4)"
                         :key="tag"
                         variant="outline"
-                        class="bg-slate-950 border-slate-800 text-slate-400 text-[10px] px-1.5 py-0.5 rounded"
+                        class="bg-muted border-border text-muted-foreground text-[10px] px-1.5 py-0.5 rounded"
                       >
                         {{ tag }}
                       </Badge>
-                      <span v-if="(fleetEvaluations[c.id]?.detectedTags?.length || 0) > 4" class="text-[10px] text-slate-500">
+                      <span v-if="(fleetEvaluations[c.id]?.detectedTags?.length || 0) > 4" class="text-[10px] text-muted-foreground">
                         +{{ (fleetEvaluations[c.id]?.detectedTags?.length || 0) - 4 }}
                       </span>
                     </div>
@@ -1033,20 +1033,20 @@ async function pushToAllHosts() {
                 </TableCell>
 
                 <!-- Network -->
-                <TableCell class="px-4 py-3 text-xs font-mono text-slate-400">
+                <TableCell class="px-4 py-3 text-xs font-mono text-muted-foreground">
                   <div>{{ c.ipAddress || '10.10.x.x' }}</div>
-                  <div class="text-[11px] text-slate-500">{{ c.macAddress }}</div>
+                  <div class="text-[11px] text-muted-foreground/80">{{ c.macAddress }}</div>
                 </TableCell>
 
                 <!-- Heartbeat -->
                 <TableCell class="px-4 py-3">
                   <div class="flex items-center gap-2">
                     <span class="size-2 rounded-full" :class="c.telemetry?.isOnline ? 'bg-emerald-400' : 'bg-rose-500'" />
-                    <span class="text-xs font-medium" :class="c.telemetry?.isOnline ? 'text-emerald-400' : 'text-slate-500'">
+                    <span class="text-xs font-medium" :class="c.telemetry?.isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'">
                       {{ c.telemetry?.isOnline ? 'Online' : 'Offline' }}
                     </span>
                   </div>
-                  <div class="text-[11px] text-slate-500 mt-0.5">
+                  <div class="text-[11px] text-muted-foreground mt-0.5">
                     CPU: {{ c.telemetry?.cpuUsagePercent || 0 }}% • RAM: {{ c.telemetry?.ramUsagePercent || 0 }}%
                   </div>
                 </TableCell>
@@ -1057,7 +1057,7 @@ async function pushToAllHosts() {
                     <select
                       :value="fleetEvaluations[c.id]?.recipeId"
                       @change="(e: any) => handleHostRecipeChange(c.id, e.target.value)"
-                      class="w-full h-8 px-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs font-medium focus:ring-1 focus:ring-indigo-500"
+                      class="w-full h-8 px-2 rounded-lg bg-background border border-border text-foreground text-xs font-medium focus:ring-1 focus:ring-indigo-500"
                     >
                       <option v-for="tpl in allTemplates" :key="tpl.recipeId" :value="tpl.recipeId">
                         {{ tpl.name }}
@@ -1069,7 +1069,7 @@ async function pushToAllHosts() {
                       <!-- Rule Mode -->
                       <Badge
                         v-if="fleetEvaluations[c.id]?.assignmentMode === 'rule'"
-                        class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 text-[10px] px-1.5 py-0 flex items-center gap-1 font-medium rounded"
+                        class="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/30 text-[10px] px-1.5 py-0 flex items-center gap-1 font-medium rounded"
                         :title="`Matched Rule #${fleetEvaluations[c.id].matchedRule?.priority}: ${fleetEvaluations[c.id].matchedRule?.name}`"
                       >
                         <Sparkles class="size-2.5" />
@@ -1078,12 +1078,12 @@ async function pushToAllHosts() {
 
                       <!-- Manual Override Mode -->
                       <div v-else-if="fleetEvaluations[c.id]?.assignmentMode === 'manual'" class="flex items-center gap-1.5">
-                        <Badge class="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] px-1.5 py-0 font-medium rounded">
+                        <Badge class="bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 text-[10px] px-1.5 py-0 font-medium rounded">
                           Manual Override
                         </Badge>
                         <button
                           @click="revertToRule(c.id)"
-                          class="text-[10px] text-slate-400 hover:text-indigo-300 underline flex items-center gap-0.5"
+                          class="text-[10px] text-muted-foreground hover:text-foreground underline flex items-center gap-0.5"
                           title="Revert to evaluated rule recipe"
                         >
                           <Undo2 class="size-2.5" />
@@ -1092,7 +1092,7 @@ async function pushToAllHosts() {
                       </div>
 
                       <!-- Default Mode -->
-                      <Badge v-else class="bg-slate-800 text-slate-400 border-0 text-[10px] px-1.5 py-0 rounded">
+                      <Badge v-else class="bg-muted text-muted-foreground border-0 text-[10px] px-1.5 py-0 rounded">
                         Fleet Default
                       </Badge>
                     </div>
@@ -1119,34 +1119,34 @@ async function pushToAllHosts() {
         </Table>
 
         <!-- Configurable Pagination Bar -->
-        <div class="p-4 bg-slate-950/60 border-t border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs text-slate-400">
+        <div class="p-4 bg-muted/30 border-t border-border flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs text-muted-foreground">
           <!-- Left: Showing items count -->
           <div>
-            Showing <span class="text-slate-200 font-medium">{{ paginationResult.startItem }}</span> to
-            <span class="text-slate-200 font-medium">{{ paginationResult.endItem }}</span> of
-            <span class="text-slate-200 font-medium">{{ paginationResult.filteredTotal }}</span> controllers
-            <span v-if="paginationResult.filteredTotal < controllers.length" class="text-slate-500">
+            Showing <span class="text-foreground font-medium">{{ paginationResult.startItem }}</span> to
+            <span class="text-foreground font-medium">{{ paginationResult.endItem }}</span> of
+            <span class="text-foreground font-medium">{{ paginationResult.filteredTotal }}</span> controllers
+            <span v-if="paginationResult.filteredTotal < controllers.length" class="text-muted-foreground/80">
               (filtered from {{ controllers.length }} total)
             </span>
           </div>
 
           <!-- Center: Page Size Selector (5, 10, 100, 1000, Custom) -->
           <div class="flex items-center gap-2">
-            <span class="text-xs text-slate-400 font-medium">Show:</span>
-            <div class="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5">
+            <span class="text-xs text-muted-foreground font-medium">Show:</span>
+            <div class="inline-flex rounded-lg bg-card border border-border p-0.5">
               <button
                 v-for="opt in ['5', '10', '100', '1000'] as const"
                 :key="opt"
                 @click="selectedPageSizeOption = opt"
                 class="px-2 py-1 rounded-md text-xs font-medium transition-colors"
-                :class="selectedPageSizeOption === opt ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                :class="selectedPageSizeOption === opt ? 'bg-indigo-600 text-white' : 'text-muted-foreground hover:text-foreground'"
               >
                 {{ opt }}
               </button>
               <button
                 @click="selectedPageSizeOption = 'custom'"
                 class="px-2 py-1 rounded-md text-xs font-medium transition-colors"
-                :class="selectedPageSizeOption === 'custom' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                :class="selectedPageSizeOption === 'custom' ? 'bg-indigo-600 text-white' : 'text-muted-foreground hover:text-foreground'"
               >
                 Custom
               </button>
@@ -1159,7 +1159,7 @@ async function pushToAllHosts() {
                 min="1"
                 max="10000"
                 v-model.number="customPageSizeInput"
-                class="w-16 h-8 bg-slate-900 border-slate-800 text-slate-200 text-xs text-center font-mono p-1 rounded-lg"
+                class="w-16 h-8 bg-background border-border text-foreground text-xs text-center font-mono p-1 rounded-lg"
               />
             </div>
           </div>
@@ -1171,7 +1171,7 @@ async function pushToAllHosts() {
               size="sm"
               @click="currentPage = 1"
               :disabled="paginationResult.currentPage === 1"
-              class="size-8 p-0 border-slate-800 bg-slate-900 hover:bg-slate-800 rounded-lg disabled:opacity-30"
+              class="size-8 p-0 border-border bg-card hover:bg-muted text-foreground rounded-lg disabled:opacity-30"
               title="First Page"
             >
               <ChevronsLeft class="size-4" />
@@ -1181,13 +1181,13 @@ async function pushToAllHosts() {
               size="sm"
               @click="currentPage = Math.max(1, currentPage - 1)"
               :disabled="paginationResult.currentPage === 1"
-              class="size-8 p-0 border-slate-800 bg-slate-900 hover:bg-slate-800 rounded-lg disabled:opacity-30"
+              class="size-8 p-0 border-border bg-card hover:bg-muted text-foreground rounded-lg disabled:opacity-30"
               title="Previous Page"
             >
               <ChevronLeft class="size-4" />
             </Button>
 
-            <span class="px-2 font-medium text-slate-300">
+            <span class="px-2 font-medium text-foreground">
               Page {{ paginationResult.currentPage }} of {{ paginationResult.totalPages }}
             </span>
 
@@ -1196,7 +1196,7 @@ async function pushToAllHosts() {
               size="sm"
               @click="currentPage = Math.min(paginationResult.totalPages, currentPage + 1)"
               :disabled="paginationResult.currentPage === paginationResult.totalPages"
-              class="size-8 p-0 border-slate-800 bg-slate-900 hover:bg-slate-800 rounded-lg disabled:opacity-30"
+              class="size-8 p-0 border-border bg-card hover:bg-muted text-foreground rounded-lg disabled:opacity-30"
               title="Next Page"
             >
               <ChevronRight class="size-4" />
@@ -1206,7 +1206,7 @@ async function pushToAllHosts() {
               size="sm"
               @click="currentPage = paginationResult.totalPages"
               :disabled="paginationResult.currentPage === paginationResult.totalPages"
-              class="size-8 p-0 border-slate-800 bg-slate-900 hover:bg-slate-800 rounded-lg disabled:opacity-30"
+              class="size-8 p-0 border-border bg-card hover:bg-muted text-foreground rounded-lg disabled:opacity-30"
               title="Last Page"
             >
               <ChevronsRight class="size-4" />
@@ -1217,10 +1217,10 @@ async function pushToAllHosts() {
     </Card>
 
     <!-- Dispatched Audit History -->
-    <Card v-if="dispatchedLogs.length > 0" class="bg-slate-900 border-slate-800 rounded-xl shadow-sm">
+    <Card v-if="dispatchedLogs.length > 0" class="bg-card border-border rounded-xl shadow-sm">
       <CardHeader class="p-4 pb-2">
-        <CardTitle class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <Clock class="size-3.5 text-indigo-400" />
+        <CardTitle class="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Clock class="size-3.5 text-indigo-600 dark:text-indigo-400" />
           Recent Command Dispatch Activity
         </CardTitle>
       </CardHeader>
@@ -1228,16 +1228,16 @@ async function pushToAllHosts() {
         <div
           v-for="log in dispatchedLogs.slice(0, 5)"
           :key="log.id"
-          class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-xs font-mono"
+          class="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 border border-border text-xs font-mono"
         >
           <div class="flex items-center gap-2">
-            <CheckCircle2 class="size-3.5 text-emerald-400" />
-            <span class="text-slate-200 font-medium">{{ log.hostname }}</span>
-            <span class="text-slate-500">→ {{ log.template }}</span>
+            <CheckCircle2 class="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span class="text-foreground font-medium">{{ log.hostname }}</span>
+            <span class="text-muted-foreground">→ {{ log.template }}</span>
           </div>
           <div class="flex items-center gap-3">
-            <span class="text-[11px] text-indigo-400 font-medium">{{ log.status }}</span>
-            <span class="text-[11px] text-slate-500">{{ log.time }}</span>
+            <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">{{ log.status }}</span>
+            <span class="text-[11px] text-muted-foreground">{{ log.time }}</span>
           </div>
         </div>
       </CardContent>
@@ -1246,24 +1246,24 @@ async function pushToAllHosts() {
     <!-- Rule Creation / Editing Modal -->
     <div
       v-if="isRuleModalOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in"
     >
-      <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden space-y-5 p-6">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div class="w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl overflow-hidden space-y-5 p-6">
+        <div class="flex items-center justify-between border-b border-border pb-4">
           <div class="flex items-center gap-2.5">
-            <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
               <Sparkles class="size-5" />
             </div>
             <div>
-              <h3 class="text-base font-bold text-slate-100">
+              <h3 class="text-base font-bold text-foreground">
                 {{ editingRuleId ? 'Edit OU & Tag Recipe Rule' : 'Add New OU & Tag Recipe Rule' }}
               </h3>
-              <p class="text-xs text-slate-400 mt-0.5">
+              <p class="text-xs text-muted-foreground mt-0.5">
                 Target recipe automatically selected when criteria match
               </p>
             </div>
           </div>
-          <button @click="isRuleModalOpen = false" class="text-slate-400 hover:text-slate-200 p-1">
+          <button @click="isRuleModalOpen = false" class="text-muted-foreground hover:text-foreground p-1">
             <X class="size-5" />
           </button>
         </div>
@@ -1271,20 +1271,20 @@ async function pushToAllHosts() {
         <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <!-- Rule Name -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Rule Name</Label>
-            <Input v-model="newRuleForm.name" placeholder="e.g. Beckhoff IPC & Motion Controllers" class="bg-slate-950 border-slate-800 text-slate-100 text-xs h-9 rounded-lg" />
+            <Label class="text-xs font-medium text-muted-foreground">Rule Name</Label>
+            <Input v-model="newRuleForm.name" placeholder="e.g. Beckhoff IPC & Motion Controllers" class="bg-background border-border text-foreground text-xs h-9 rounded-lg" />
           </div>
 
           <!-- Description -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Description (Optional)</Label>
-            <Input v-model="newRuleForm.description" placeholder="Brief description of the rule criteria and target" class="bg-slate-950 border-slate-800 text-slate-100 text-xs h-9 rounded-lg" />
+            <Label class="text-xs font-medium text-muted-foreground">Description (Optional)</Label>
+            <Input v-model="newRuleForm.description" placeholder="Brief description of the rule criteria and target" class="bg-background border-border text-foreground text-xs h-9 rounded-lg" />
           </div>
 
           <!-- Target Recipe Selector -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Target Telemetry Recipe</Label>
-            <select v-model="newRuleForm.targetTemplateId" class="w-full h-9 px-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs font-medium focus:ring-1 focus:ring-indigo-500">
+            <Label class="text-xs font-medium text-muted-foreground">Target Telemetry Recipe</Label>
+            <select v-model="newRuleForm.targetTemplateId" class="w-full h-9 px-3 rounded-lg bg-background border border-border text-foreground text-xs font-medium focus:ring-1 focus:ring-indigo-500">
               <option v-for="t in allTemplates" :key="t.recipeId" :value="t.recipeId">
                 {{ t.name }}
               </option>
@@ -1293,17 +1293,17 @@ async function pushToAllHosts() {
 
           <!-- Priority -->
           <div class="space-y-1.5">
-            <Label class="text-xs font-medium text-slate-400">Evaluation Priority (1 = Highest)</Label>
-            <Input v-model.number="newRuleForm.priority" type="number" min="1" class="bg-slate-950 border-slate-800 text-slate-100 font-mono text-xs h-9 rounded-lg" />
+            <Label class="text-xs font-medium text-muted-foreground">Evaluation Priority (1 = Highest)</Label>
+            <Input v-model.number="newRuleForm.priority" type="number" min="1" class="bg-background border-border text-foreground font-mono text-xs h-9 rounded-lg" />
           </div>
 
           <!-- Active Directory OU Pattern -->
-          <div class="space-y-2 pt-3 border-t border-slate-800">
+          <div class="space-y-2 pt-3 border-t border-border">
             <div class="flex items-center justify-between">
-              <Label class="text-xs font-medium text-slate-400">Active Directory OU Wildcards</Label>
+              <Label class="text-xs font-medium text-muted-foreground">Active Directory OU Wildcards</Label>
               <div class="flex items-center gap-2 text-xs">
-                <span class="text-slate-500 text-xs">Match:</span>
-                <select v-model="newRuleForm.ouMatchMode" class="bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-xs text-slate-300 font-medium">
+                <span class="text-muted-foreground text-xs">Match:</span>
+                <select v-model="newRuleForm.ouMatchMode" class="bg-background border border-border rounded px-2 py-0.5 text-xs text-foreground font-medium">
                   <option value="ANY">ANY Pattern</option>
                   <option value="ALL">ALL Patterns</option>
                 </select>
@@ -1315,9 +1315,9 @@ async function pushToAllHosts() {
                 v-model="newOuPatternInput"
                 @keyup.enter="addOuPatternToForm"
                 placeholder="e.g. *LINE-A* or OU=Fastening*"
-                class="bg-slate-950 border-slate-800 text-slate-100 font-mono text-xs h-9 rounded-lg"
+                class="bg-background border-border text-foreground font-mono text-xs h-9 rounded-lg"
               />
-              <Button size="sm" @click="addOuPatternToForm" variant="outline" class="border-slate-800 bg-slate-950 hover:bg-slate-800 text-xs rounded-lg h-9 px-3 font-medium">
+              <Button size="sm" @click="addOuPatternToForm" variant="outline" class="border-border bg-muted hover:bg-muted/80 text-foreground text-xs rounded-lg h-9 px-3 font-medium">
                 Add
               </Button>
             </div>
@@ -1327,26 +1327,26 @@ async function pushToAllHosts() {
                 v-for="(ou, idx) in newRuleForm.ouPatterns"
                 :key="ou"
                 variant="outline"
-                class="bg-slate-950 border-slate-800 text-slate-300 font-mono text-xs flex items-center gap-1 rounded px-2 py-0.5"
+                class="bg-muted border-border text-foreground font-mono text-xs flex items-center gap-1 rounded px-2 py-0.5"
               >
                 {{ ou }}
-                <button @click="removeOuPatternFromForm(idx)" class="text-slate-500 hover:text-rose-400">
+                <button @click="removeOuPatternFromForm(idx)" class="text-muted-foreground hover:text-rose-500">
                   <X class="size-3" />
                 </button>
               </Badge>
-              <span v-if="newRuleForm.ouPatterns.length === 0" class="text-xs text-slate-500 italic">
+              <span v-if="newRuleForm.ouPatterns.length === 0" class="text-xs text-muted-foreground italic">
                 No OU pattern specified (matches all OUs)
               </span>
             </div>
           </div>
 
           <!-- Tag Criteria & Match Mode -->
-          <div class="space-y-2 pt-3 border-t border-slate-800">
+          <div class="space-y-2 pt-3 border-t border-border">
             <div class="flex items-center justify-between">
-              <Label class="text-xs font-medium text-slate-400">Required Asset Tags / Criteria</Label>
+              <Label class="text-xs font-medium text-muted-foreground">Required Asset Tags / Criteria</Label>
               <div class="flex items-center gap-2 text-xs">
-                <span class="text-slate-500 text-xs">Mode:</span>
-                <select v-model="newRuleForm.tagMatchMode" class="bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-xs text-slate-300 font-medium">
+                <span class="text-muted-foreground text-xs">Mode:</span>
+                <select v-model="newRuleForm.tagMatchMode" class="bg-background border border-border rounded px-2 py-0.5 text-xs text-foreground font-medium">
                   <option value="ALL">Match ALL Tags (AND)</option>
                   <option value="ANY">Match ANY Tag (OR)</option>
                 </select>
@@ -1358,9 +1358,9 @@ async function pushToAllHosts() {
                 v-model="newTagInput"
                 @keyup.enter="addTagToForm"
                 placeholder="Type tag (e.g. Beckhoff, IPC, Controller) and press Enter"
-                class="bg-slate-950 border-slate-800 text-slate-100 text-xs h-9 rounded-lg"
+                class="bg-background border-border text-foreground text-xs h-9 rounded-lg"
               />
-              <Button size="sm" @click="addTagToForm" variant="outline" class="border-slate-800 bg-slate-950 hover:bg-slate-800 text-xs rounded-lg h-9 px-3 font-medium">
+              <Button size="sm" @click="addTagToForm" variant="outline" class="border-border bg-muted hover:bg-muted/80 text-foreground text-xs rounded-lg h-9 px-3 font-medium">
                 Add
               </Button>
             </div>
@@ -1369,22 +1369,22 @@ async function pushToAllHosts() {
               <Badge
                 v-for="(tag, idx) in newRuleForm.tags"
                 :key="tag"
-                class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs flex items-center gap-1 rounded px-2 py-0.5 font-medium"
+                class="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs flex items-center gap-1 rounded px-2 py-0.5 font-medium"
               >
                 {{ tag }}
-                <button @click="removeTagFromForm(idx)" class="text-emerald-500 hover:text-rose-400">
+                <button @click="removeTagFromForm(idx)" class="text-emerald-700 dark:text-emerald-400 hover:text-rose-500">
                   <X class="size-3" />
                 </button>
               </Badge>
-              <span v-if="newRuleForm.tags.length === 0" class="text-xs text-slate-500 italic">
+              <span v-if="newRuleForm.tags.length === 0" class="text-xs text-muted-foreground italic">
                 No tag criteria specified
               </span>
             </div>
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-          <Button variant="ghost" size="sm" @click="isRuleModalOpen = false" class="text-xs font-medium text-slate-400 hover:text-slate-200 rounded-lg h-8">
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <Button variant="ghost" size="sm" @click="isRuleModalOpen = false" class="text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg h-8">
             Cancel
           </Button>
           <Button size="sm" @click="saveRuleModal" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-4 rounded-lg h-8 shadow-sm transition-colors">

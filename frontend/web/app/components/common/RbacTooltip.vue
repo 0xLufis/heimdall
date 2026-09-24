@@ -23,9 +23,9 @@ const props = withDefaults(defineProps<{
           <slot />
         </span>
       </TooltipTrigger>
-      <TooltipContent :side="side" :align="align" class="bg-slate-900 border-slate-700 text-slate-100 text-xs shadow-xl max-w-xs z-50">
+      <TooltipContent :side="side" :align="align" class="bg-popover border-border text-popover-foreground text-xs shadow-xl max-w-xs z-50">
         <div class="flex items-center gap-1.5 font-medium">
-          <Lock class="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <Lock class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
           <span>{{ tooltip }}</span>
         </div>
       </TooltipContent>

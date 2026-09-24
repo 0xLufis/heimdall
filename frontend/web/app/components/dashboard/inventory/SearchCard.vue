@@ -42,18 +42,18 @@ function removeCondition(index: number) {
 </script>
 
 <template>
-  <Card class="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl shadow-inner text-sm">
+  <Card class="bg-card border border-border p-4 rounded-2xl shadow-sm text-sm text-foreground">
     <div class="flex items-center gap-2 mb-4">
       <Select v-model="modelValue.logic">
-        <SelectTrigger class="w-28 h-8 bg-slate-800 border-slate-700 rounded-lg text-[10px] font-bold uppercase tracking-widest">
+        <SelectTrigger class="w-28 h-8 bg-background border-border rounded-lg text-[10px] font-bold uppercase tracking-widest text-foreground">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent class="bg-card border-border">
           <SelectItem value="and">Match ALL</SelectItem>
           <SelectItem value="or">Match ANY</SelectItem>
         </SelectContent>
       </Select>
-      <div class="h-px flex-grow bg-slate-800/50"></div>
+      <div class="h-px flex-grow bg-border"></div>
     </div>
 
     <div class="space-y-3">
@@ -61,22 +61,22 @@ function removeCondition(index: number) {
         <!-- Condition -->
         <template>
           <Select v-model="item.field">
-            <SelectTrigger class="w-48 h-10 bg-slate-800 border-slate-700 rounded-lg text-xs font-bold uppercase tracking-wider">
+            <SelectTrigger class="w-48 h-10 bg-background border-border rounded-lg text-xs font-bold uppercase tracking-wider text-foreground">
               <SelectValue placeholder="Select field..." />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent class="bg-card border-border">
               <template v-for="group in availableFields[activeTab]" :key="group.label">
-                <label class="text-xs text-slate-500 px-2 py-1.5 font-bold">{{ group.label }}</label>
+                <label class="text-xs text-muted-foreground px-2 py-1.5 font-bold">{{ group.label }}</label>
                 <SelectItem v-for="field in group.fields" :key="field" :value="field">{{ field }}</SelectItem>
               </template>
             </SelectContent>
           </Select>
           
           <Select v-model="item.operator">
-            <SelectTrigger class="w-40 h-10 bg-slate-800 border-slate-700 rounded-lg text-xs font-bold uppercase tracking-wider">
+            <SelectTrigger class="w-40 h-10 bg-background border-border rounded-lg text-xs font-bold uppercase tracking-wider text-foreground">
               <SelectValue placeholder="Operator..." />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent class="bg-card border-border">
               <SelectItem value="contains">Contains</SelectItem>
               <SelectItem value="equals">Equals</SelectItem>
               <SelectItem value="startsWith">Starts With</SelectItem>
@@ -86,17 +86,17 @@ function removeCondition(index: number) {
             </SelectContent>
           </Select>
           
-          <Input v-model="item.value" class="h-10 bg-slate-800 border-slate-700 rounded-lg" placeholder="Value..." />
+          <Input v-model="item.value" class="h-10 bg-background border-border text-foreground rounded-lg" placeholder="Value..." />
           
-          <Button @click="removeCondition(index)" variant="ghost" size="icon" class="h-8 w-8 text-slate-500 hover:text-rose-500 flex-shrink-0">
+          <Button @click="removeCondition(index)" variant="ghost" size="icon" class="h-8 w-8 text-muted-foreground hover:text-rose-500 flex-shrink-0">
             <XIcon class="h-4 w-4" />
           </Button>
         </template>
       </div>
     </div>
     
-    <div class="flex items-center gap-3 mt-4 pt-4 border-t border-slate-800/50">
-      <Button @click="addCondition" variant="outline" size="sm" class="text-xs font-bold uppercase tracking-wider border-slate-700 hover:bg-slate-800">
+    <div class="flex items-center gap-3 mt-4 pt-4 border-t border-border">
+      <Button @click="addCondition" variant="outline" size="sm" class="text-xs font-bold uppercase tracking-wider border-border bg-card text-foreground hover:bg-muted">
         <PlusIcon class="h-4 w-4 mr-2" /> Add Filter
       </Button>
     </div>

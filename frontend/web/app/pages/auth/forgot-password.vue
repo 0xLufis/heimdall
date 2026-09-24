@@ -29,51 +29,51 @@ async function handleReset(e: Event) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-6 selection:bg-zinc-700 selection:text-white">
-    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-8">
+  <div class="min-h-screen bg-background flex flex-col justify-center items-center p-6 selection:bg-primary selection:text-primary-foreground">
+    <div class="w-full max-w-md bg-card border border-border rounded-3xl shadow-2xl overflow-hidden p-8">
       
-      <NuxtLink to="/auth/login" class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors mb-6">
+      <NuxtLink to="/auth/login" class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors mb-6">
         <ArrowLeft class="w-4 h-4" />
         Return to Login
       </NuxtLink>
 
       <div class="flex items-center gap-3 mb-6">
-        <div class="p-3 rounded-2xl bg-zinc-800 text-zinc-300 border border-zinc-700">
+        <div class="p-3 rounded-2xl bg-muted text-foreground border border-border">
           <KeyRound class="w-6 h-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-black uppercase tracking-tight text-slate-100">
+          <h1 class="text-2xl font-black uppercase tracking-tight text-foreground">
             Access Recovery
           </h1>
-          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+          <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
             Security Protocol Terminal Reset
           </p>
         </div>
       </div>
 
-      <div v-if="isSubmitted" class="p-6 bg-emerald-950/20 border border-emerald-500/30 rounded-2xl text-center space-y-3 animate-in fade-in zoom-in-95 duration-200">
-        <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+      <div v-if="isSubmitted" class="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-3 animate-in fade-in zoom-in-95 duration-200">
+        <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
           <CheckCircle class="w-6 h-6" />
         </div>
-        <h3 class="text-sm font-black uppercase tracking-tight text-emerald-200">
+        <h3 class="text-sm font-black uppercase tracking-tight text-emerald-700 dark:text-emerald-300">
           Recovery Token Dispatched
         </h3>
-        <p class="text-xs text-slate-400">
+        <p class="text-xs text-muted-foreground">
           If an identity matches the identifier, authorization reset instructions have been forwarded.
         </p>
-        <Button @click="isSubmitted = false" variant="outline" class="w-full mt-4 text-xs font-bold uppercase tracking-widest border-emerald-500/30 text-emerald-300">
+        <Button @click="isSubmitted = false" variant="outline" class="w-full mt-4 text-xs font-bold uppercase tracking-widest border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10">
           Submit Another Request
         </Button>
       </div>
 
       <form v-else @submit="handleReset" class="space-y-6">
-        <div class="p-1 bg-slate-950 rounded-xl border border-slate-800 flex gap-1">
+        <div class="p-1 bg-muted rounded-xl border border-border flex gap-1">
           <Button 
             type="button" 
             variant="ghost" 
             size="sm" 
             @click="activeTab = 'email'"
-            :class="activeTab === 'email' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-slate-500 hover:text-slate-300'"
+            :class="activeTab === 'email' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'"
             class="flex-1 rounded-lg text-[10px] font-black uppercase"
           >
             <Mail class="w-3.5 h-3.5 mr-1.5" />
@@ -84,7 +84,7 @@ async function handleReset(e: Event) {
             variant="ghost" 
             size="sm" 
             @click="activeTab = 'key'"
-            :class="activeTab === 'key' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-slate-500 hover:text-slate-300'"
+            :class="activeTab === 'key' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'"
             class="flex-1 rounded-lg text-[10px] font-black uppercase"
           >
             <ShieldAlert class="w-3.5 h-3.5 mr-1.5" />
@@ -93,7 +93,7 @@ async function handleReset(e: Event) {
         </div>
 
         <div v-if="activeTab === 'email'" class="space-y-2">
-          <Label class="text-xs uppercase font-bold tracking-widest text-slate-400">
+          <Label class="text-xs uppercase font-bold tracking-widest text-muted-foreground">
             Registered Email or Username
           </Label>
           <Input 
@@ -101,12 +101,12 @@ async function handleReset(e: Event) {
             type="text" 
             placeholder="operator@factory.domain"
             required
-            class="bg-slate-950 border-slate-800 rounded-xl h-11 text-slate-100 placeholder:text-slate-600"
+            class="bg-background border-border rounded-xl h-11 text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
         <div v-else class="space-y-2">
-          <Label class="text-xs uppercase font-bold tracking-widest text-slate-400">
+          <Label class="text-xs uppercase font-bold tracking-widest text-muted-foreground">
             256-Bit Emergency Master Key
           </Label>
           <Input 
@@ -114,14 +114,14 @@ async function handleReset(e: Event) {
             type="password" 
             placeholder="XXXX-XXXX-XXXX-XXXX"
             required
-            class="bg-slate-950 border-slate-800 rounded-xl h-11 text-slate-100 font-mono placeholder:text-slate-600"
+            class="bg-background border-border rounded-xl h-11 text-foreground font-mono placeholder:text-muted-foreground"
           />
         </div>
 
         <Button 
           type="submit" 
           :disabled="isLoading"
-          class="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-black uppercase tracking-widest py-6 h-auto rounded-2xl shadow-md border border-zinc-600/50"
+          class="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest py-6 h-auto rounded-2xl shadow-md border border-primary/20"
         >
           {{ isLoading ? 'Verifying Identity...' : 'Dispatch Reset Token' }}
         </Button>

@@ -60,17 +60,17 @@ const tableSubtitle = computed(() => {
 </script>
 
 <template>
-  <Card class="border-slate-800 shadow-sm overflow-hidden bg-slate-900/50" :class="{'!bg-transparent !shadow-none !border-none': isChild}">
-    <CardHeader v-if="!isChild" class="p-4 sm:p-5 border-b border-slate-800 flex flex-row items-center justify-between">
+  <Card class="border-border shadow-xs overflow-hidden bg-card" :class="{'!bg-transparent !shadow-none !border-none': isChild}">
+    <CardHeader v-if="!isChild" class="p-4 sm:p-5 border-b border-border bg-muted/30 flex flex-row items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+        <div class="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20">
           <HardDrive class="w-4 h-4" />
         </div>
         <div>
-          <CardTitle class="text-base font-semibold text-slate-100">
+          <CardTitle class="text-base font-semibold text-foreground">
             {{ tableTitle }}
           </CardTitle>
-          <p class="text-xs text-slate-400 mt-0.5">
+          <p class="text-xs text-muted-foreground mt-0.5">
             {{ tableSubtitle }}
           </p>
         </div>
@@ -79,27 +79,27 @@ const tableSubtitle = computed(() => {
     
     <CardContent class="p-0">
       <Table>
-        <TableHeader v-if="!isChild" class="bg-slate-950/60">
-          <TableRow class="border-b border-slate-800 hover:bg-transparent">
-            <TableHead class="px-4 py-3 uppercase tracking-wider font-semibold text-slate-400 text-xs w-[35%]">
+        <TableHeader v-if="!isChild" class="bg-muted/50">
+          <TableRow class="border-b border-border hover:bg-transparent">
+            <TableHead class="px-4 py-3 uppercase tracking-wider font-semibold text-muted-foreground text-xs w-[35%]">
               Asset Identity / Class
             </TableHead>
-            <TableHead v-if="columns.manufacturer" class="px-4 py-3 uppercase tracking-wider font-semibold text-slate-400 text-xs">
+            <TableHead v-if="columns.manufacturer" class="px-4 py-3 uppercase tracking-wider font-semibold text-muted-foreground text-xs">
               Manufacturer
             </TableHead>
-            <TableHead class="px-4 py-3 uppercase tracking-wider font-semibold text-slate-400 text-xs">
+            <TableHead class="px-4 py-3 uppercase tracking-wider font-semibold text-muted-foreground text-xs">
               Responsible Teams
             </TableHead>
-            <TableHead v-if="columns.specs" class="px-4 py-3 uppercase tracking-wider font-semibold text-slate-400 text-xs">
+            <TableHead v-if="columns.specs" class="px-4 py-3 uppercase tracking-wider font-semibold text-muted-foreground text-xs">
               Parameters & Specs
             </TableHead>
-            <TableHead v-if="columns.tags" class="px-4 py-3 uppercase tracking-wider font-semibold text-slate-400 text-xs">
+            <TableHead v-if="columns.tags" class="px-4 py-3 uppercase tracking-wider font-semibold text-muted-foreground text-xs">
               Attributes
             </TableHead>
-            <TableHead v-if="columns.purchaseDate" class="px-4 py-3 uppercase tracking-wider font-semibold text-slate-400 text-xs">
+            <TableHead v-if="columns.purchaseDate" class="px-4 py-3 uppercase tracking-wider font-semibold text-muted-foreground text-xs">
               Deployment Date
             </TableHead>
-            <TableHead v-if="columns.cost" class="px-4 py-3 uppercase tracking-wider font-semibold text-slate-400 text-xs text-right">
+            <TableHead v-if="columns.cost" class="px-4 py-3 uppercase tracking-wider font-semibold text-muted-foreground text-xs text-right">
               Valuation (HUF)
             </TableHead>
             <TableHead class="w-10"></TableHead>
@@ -109,39 +109,39 @@ const tableSubtitle = computed(() => {
         <TableBody>
           <!-- Skeleton Loading State when initial load and no items yet -->
           <template v-if="loading && items.length === 0 && !isChild">
-            <TableRow v-for="n in 5" :key="'skel-' + n" class="border-b border-slate-800/60 hover:bg-transparent">
+            <TableRow v-for="n in 5" :key="'skel-' + n" class="border-b border-border hover:bg-transparent">
               <TableCell class="px-4 py-3">
                 <div class="flex items-center gap-3">
-                  <Skeleton class="w-6 h-6 rounded-lg bg-slate-800/80" />
+                  <Skeleton class="w-6 h-6 rounded-lg bg-muted" />
                   <div class="space-y-2">
-                    <Skeleton class="h-4 w-44 rounded bg-slate-800/80" />
+                    <Skeleton class="h-4 w-44 rounded bg-muted" />
                     <div class="flex gap-2">
-                      <Skeleton class="h-3 w-14 rounded-md bg-slate-800/60" />
-                      <Skeleton class="h-3 w-20 rounded-md bg-slate-800/60" />
+                      <Skeleton class="h-3 w-14 rounded-md bg-muted/60" />
+                      <Skeleton class="h-3 w-20 rounded-md bg-muted/60" />
                     </div>
                   </div>
                 </div>
               </TableCell>
               <TableCell v-if="columns.manufacturer" class="px-4 py-3">
-                <Skeleton class="h-3.5 w-24 rounded bg-slate-800/70" />
+                <Skeleton class="h-3.5 w-24 rounded bg-muted/80" />
               </TableCell>
               <TableCell class="px-4 py-3">
-                <Skeleton class="h-3.5 w-28 rounded bg-slate-800/70" />
+                <Skeleton class="h-3.5 w-28 rounded bg-muted/80" />
               </TableCell>
               <TableCell v-if="columns.specs" class="px-4 py-3">
                 <div class="flex gap-1.5">
-                  <Skeleton class="h-4 w-14 rounded-md bg-slate-800/60" />
-                  <Skeleton class="h-4 w-16 rounded-md bg-slate-800/60" />
+                  <Skeleton class="h-4 w-14 rounded-md bg-muted/60" />
+                  <Skeleton class="h-4 w-16 rounded-md bg-muted/60" />
                 </div>
               </TableCell>
               <TableCell v-if="columns.tags" class="px-4 py-3">
-                <Skeleton class="h-4 w-20 rounded bg-slate-800/60" />
+                <Skeleton class="h-4 w-20 rounded bg-muted/60" />
               </TableCell>
               <TableCell v-if="columns.purchaseDate" class="px-4 py-3">
-                <Skeleton class="h-3.5 w-20 rounded bg-slate-800/70" />
+                <Skeleton class="h-3.5 w-20 rounded bg-muted/80" />
               </TableCell>
               <TableCell v-if="columns.cost" class="px-4 py-3 text-right">
-                <Skeleton class="h-4 w-20 rounded ml-auto bg-slate-800/70" />
+                <Skeleton class="h-4 w-20 rounded ml-auto bg-muted/80" />
               </TableCell>
               <TableCell class="w-10"></TableCell>
             </TableRow>
@@ -149,7 +149,7 @@ const tableSubtitle = computed(() => {
 
           <template v-else-if="items.length === 0 && !isChild">
             <TableRow>
-              <TableCell colspan="8" class="h-32 text-center text-slate-400 font-medium text-xs">
+              <TableCell colspan="8" class="h-32 text-center text-muted-foreground font-medium text-xs">
                 No {{ type }} assets found matching criteria.
               </TableCell>
             </TableRow>
@@ -160,8 +160,8 @@ const tableSubtitle = computed(() => {
               <TableRow 
                 v-if="item" 
                 @click="emit('edit', item)"
-                class="hover:bg-slate-800/50 transition-colors group border-b border-slate-800 last:border-0 cursor-pointer" 
-                :class="{'bg-slate-950/80': isChild}"
+                class="hover:bg-muted/40 transition-colors group border-b border-border last:border-0 cursor-pointer" 
+                :class="{'bg-muted/20': isChild}"
               >
                 <!-- Identity -->
                 <TableCell class="px-4 py-3 font-medium">
@@ -171,68 +171,68 @@ const tableSubtitle = computed(() => {
                       @click.stop="toggle(item.id)" 
                       variant="ghost" 
                       size="icon" 
-                      class="h-6 w-6 text-slate-400 hover:bg-slate-800 rounded-md shrink-0"
+                      class="h-6 w-6 text-muted-foreground hover:bg-muted rounded-md shrink-0"
                     >
-                      <ChevronRight class="h-4 w-4 transition-transform duration-200" :class="{'rotate-90 text-indigo-400': expanded[item.id]}" />
+                      <ChevronRight class="h-4 w-4 transition-transform duration-200" :class="{'rotate-90 text-primary': expanded[item.id]}" />
                     </Button>
                     <div v-else class="w-6 h-6 flex items-center justify-center shrink-0">
-                      <div class="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+                      <div class="w-1.5 h-1.5 rounded-full bg-border"></div>
                     </div>
                     <div>
-                      <div class="text-slate-100 group-hover:text-indigo-300 transition-colors font-semibold text-xs flex flex-wrap items-center gap-1.5">
+                      <div class="text-foreground group-hover:text-primary transition-colors font-semibold text-xs flex flex-wrap items-center gap-1.5">
                         <span>{{ item.name }}</span>
                         <Badge 
                           variant="outline" 
-                          class="text-xs font-medium px-2 py-0.5 rounded-md border-indigo-500/30 text-indigo-400 bg-indigo-500/10 inline-flex items-center shadow-sm"
+                          class="text-xs font-medium px-2 py-0.5 rounded-md border-primary/30 text-primary bg-primary/10 inline-flex items-center shadow-xs"
                         >
                           {{ item.itemType || 'Hardware' }}
                         </Badge>
                         <Badge 
                           v-if="item.isStockItem"
                           variant="outline" 
-                          class="text-xs font-medium px-2 py-0.5 rounded-md border-purple-500/30 text-purple-300 bg-purple-950/40 inline-flex items-center gap-1 shadow-sm"
+                          class="text-xs font-medium px-2 py-0.5 rounded-md border-purple-500/30 text-purple-700 dark:text-purple-300 bg-purple-500/10 inline-flex items-center gap-1 shadow-xs"
                         >
                           Stock: {{ item.stockQuantity ?? 1 }} units
                         </Badge>
                         <Badge 
                           v-else
                           variant="outline" 
-                          class="text-xs font-medium px-2 py-0.5 rounded-md border-teal-500/30 text-teal-300 bg-teal-950/40 inline-flex items-center gap-1 shadow-sm"
+                          class="text-xs font-medium px-2 py-0.5 rounded-md border-teal-500/30 text-teal-700 dark:text-teal-300 bg-teal-500/10 inline-flex items-center gap-1 shadow-xs"
                         >
                           Serialized Part
                         </Badge>
                         <Badge 
                           v-if="item.equipmentStatus"
                           variant="outline" 
-                          class="text-xs font-medium px-2 py-0.5 rounded-md inline-flex items-center gap-1 shadow-sm"
-                          :class="item.equipmentStatus === 'InMachine' ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30' : item.equipmentStatus === 'InStorage' ? 'bg-blue-950/40 text-blue-300 border-blue-500/30' : 'bg-amber-950/40 text-amber-300 border-amber-500/30'"
+                          class="text-xs font-medium px-2 py-0.5 rounded-md inline-flex items-center gap-1 shadow-xs"
+                          :class="item.equipmentStatus === 'InMachine' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : item.equipmentStatus === 'InStorage' ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'"
                         >
                           {{ item.equipmentStatus }}
                         </Badge>
                         <Badge 
                           v-if="item.technology"
                           variant="outline" 
-                          class="text-xs font-medium px-2 py-0.5 rounded-md border-teal-500/30 text-teal-300 bg-teal-950/30 inline-flex items-center"
+                          class="text-xs font-medium px-2 py-0.5 rounded-md border-teal-500/30 text-teal-700 dark:text-teal-300 bg-teal-500/10 inline-flex items-center"
                         >
                           {{ item.technology }}
                         </Badge>
                         <Badge 
                           v-if="item.telemetry?.isOnline !== undefined"
                           variant="outline" 
-                          class="text-xs font-medium px-2 py-0.5 rounded-md inline-flex items-center gap-1.5 shadow-sm"
-                          :class="item.telemetry.isOnline ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'"
+                          class="text-xs font-medium px-2 py-0.5 rounded-md inline-flex items-center gap-1.5 shadow-xs"
+                          :class="item.telemetry.isOnline ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-muted text-muted-foreground border-border'"
                         >
-                          <span class="size-1.5 rounded-full" :class="item.telemetry.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'" />
+                          <span class="size-1.5 rounded-full" :class="item.telemetry.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground'" />
                           {{ item.telemetry.isOnline ? 'Live Agent' : 'Offline' }}
                         </Badge>
                       </div>
-                      <div class="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                      <div class="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
                         <span>{{ item.displayName || item.customIdentifier || item.hostname || '' }}</span>
-                        <span v-if="item.storageLocation" class="text-xs text-slate-500 font-mono">
+                        <span v-if="item.storageLocation" class="text-xs text-muted-foreground font-mono">
                           [Pos: {{ item.storageLocation }}]
                         </span>
                       </div>
-                      <div class="text-xs text-slate-500 font-mono mt-0.5">
+                      <div class="text-xs text-muted-foreground font-mono mt-0.5">
                         {{ item.isStockItem ? (item.serialNumber ? 'ID: ' + item.serialNumber : 'Bulk Stock Batch: ' + (item.metadata?.Batch || 'LOT-STD')) : 'SN: ' + (item.serialNumber || 'UNTRACKED') }}
                       </div>
                     </div>
@@ -240,7 +240,7 @@ const tableSubtitle = computed(() => {
                 </TableCell>
 
                 <!-- Manufacturer -->
-                <TableCell v-if="columns.manufacturer" class="px-4 py-3 text-xs font-medium text-slate-300">
+                <TableCell v-if="columns.manufacturer" class="px-4 py-3 text-xs font-medium text-foreground">
                   {{ item.manufacturer?.name || (typeof item.manufacturer === 'string' ? item.manufacturer : 'N/A') }}
                 </TableCell>
 
@@ -251,11 +251,11 @@ const tableSubtitle = computed(() => {
                       v-for="team in item.responsibleTeams" 
                       :key="team.id || team.name" 
                       variant="secondary" 
-                      class="bg-indigo-950/40 text-indigo-300 border border-indigo-800/40 text-xs font-medium px-2 py-0.5 rounded-md inline-flex items-center shadow-sm"
+                      class="bg-primary/10 text-primary border border-primary/20 text-xs font-medium px-2 py-0.5 rounded-md inline-flex items-center shadow-xs"
                     >
                       {{ team.name || team }}
                     </Badge>
-                    <Badge v-if="!item.responsibleTeams?.length" variant="outline" class="text-slate-500 border-slate-800 text-xs px-2 py-0.5 rounded-md">
+                    <Badge v-if="!item.responsibleTeams?.length" variant="outline" class="text-muted-foreground border-border text-xs px-2 py-0.5 rounded-md">
                       Unassigned
                     </Badge>
                   </div>
@@ -264,28 +264,28 @@ const tableSubtitle = computed(() => {
                 <!-- Specs -->
                 <TableCell v-if="columns.specs" class="px-4 py-3">
                   <div class="flex flex-wrap gap-1 max-w-xs">
-                    <span v-if="item.telemetry?.cpuUsagePercent !== undefined" class="text-xs font-mono font-medium border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-md text-emerald-400 inline-flex items-center shadow-sm">
+                    <span v-if="item.telemetry?.cpuUsagePercent !== undefined" class="text-xs font-mono font-medium border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-md text-emerald-600 dark:text-emerald-400 inline-flex items-center shadow-xs">
                       CPU: {{ item.telemetry.cpuUsagePercent }}%
                     </span>
-                    <span v-if="item.telemetry?.ramUsagePercent !== undefined" class="text-xs font-mono font-medium border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 rounded-md text-indigo-400 inline-flex items-center shadow-sm">
+                    <span v-if="item.telemetry?.ramUsagePercent !== undefined" class="text-xs font-mono font-medium border border-primary/30 bg-primary/10 px-2 py-0.5 rounded-md text-primary inline-flex items-center shadow-xs">
                       RAM: {{ item.telemetry.ramUsagePercent }}%
                     </span>
-                    <span v-if="item.telemetry?.freeDiskSpace?.totalFreeGB !== undefined" class="text-xs font-mono font-medium border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 rounded-md text-blue-400 inline-flex items-center shadow-sm">
+                    <span v-if="item.telemetry?.freeDiskSpace?.totalFreeGB !== undefined" class="text-xs font-mono font-medium border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 rounded-md text-blue-600 dark:text-blue-400 inline-flex items-center shadow-xs">
                       {{ item.telemetry.freeDiskSpace.totalFreeGB }}GB Free
                     </span>
-                    <span v-if="item.metadata?.Power" class="text-xs font-medium border border-amber-900/30 bg-amber-900/10 px-2 py-0.5 rounded-md text-amber-400 inline-flex items-center shadow-sm">
+                    <span v-if="item.metadata?.Power" class="text-xs font-medium border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-md text-amber-700 dark:text-amber-400 inline-flex items-center shadow-xs">
                       {{ item.metadata.Power }}
                     </span>
-                    <span v-if="item.metadata?.Voltage" class="text-xs font-medium border border-blue-900/30 bg-blue-900/10 px-2 py-0.5 rounded-md text-blue-400 inline-flex items-center shadow-sm">
+                    <span v-if="item.metadata?.Voltage" class="text-xs font-medium border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 rounded-md text-blue-700 dark:text-blue-400 inline-flex items-center shadow-xs">
                       {{ item.metadata.Voltage }}
                     </span>
-                    <span v-if="item.metadata?.Resolution" class="text-xs font-medium border border-purple-900/30 bg-purple-900/10 px-2 py-0.5 rounded-md text-purple-400 inline-flex items-center shadow-sm">
+                    <span v-if="item.metadata?.Resolution" class="text-xs font-medium border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 rounded-md text-purple-700 dark:text-purple-400 inline-flex items-center shadow-xs">
                       {{ item.metadata.Resolution }}
                     </span>
-                    <span v-if="item.metadata?.Version || item.version" class="text-xs font-medium border border-emerald-900/30 bg-emerald-900/10 px-2 py-0.5 rounded-md text-emerald-400 inline-flex items-center shadow-sm">
+                    <span v-if="item.metadata?.Version || item.version" class="text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-md text-emerald-700 dark:text-emerald-400 inline-flex items-center shadow-xs">
                       v{{ item.metadata?.Version || item.version }}
                     </span>
-                    <span v-if="item.modelNumber" class="text-xs font-medium border border-slate-700 bg-slate-800 px-2 py-0.5 rounded-md text-slate-300 inline-flex items-center shadow-sm">
+                    <span v-if="item.modelNumber" class="text-xs font-medium border border-border bg-muted px-2 py-0.5 rounded-md text-foreground inline-flex items-center shadow-xs">
                       {{ item.modelNumber }}
                     </span>
                   </div>
@@ -295,7 +295,7 @@ const tableSubtitle = computed(() => {
                 <TableCell v-if="columns.tags" class="px-4 py-3">
                   <div class="flex flex-wrap gap-1 max-w-xs">
                     <template v-for="(val, key) in item.metadata" :key="key">
-                      <span v-if="!['Power', 'Voltage', 'Resolution', 'Version'].includes(key as string)" class="px-2 py-0.5 rounded-md bg-slate-950 text-xs font-medium text-slate-300 border border-slate-800 inline-flex items-center shadow-sm">
+                      <span v-if="!['Power', 'Voltage', 'Resolution', 'Version'].includes(key as string)" class="px-2 py-0.5 rounded-md bg-muted text-xs font-medium text-foreground border border-border inline-flex items-center shadow-xs">
                         {{ key }}: {{ val }}
                       </span>
                     </template>
@@ -303,28 +303,28 @@ const tableSubtitle = computed(() => {
                 </TableCell>
 
                 <!-- Purchase Date -->
-                <TableCell v-if="columns.purchaseDate" class="px-4 py-3 text-xs font-mono text-slate-400">
+                <TableCell v-if="columns.purchaseDate" class="px-4 py-3 text-xs font-mono text-muted-foreground">
                   {{ item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : '-' }}
                 </TableCell>
 
                 <!-- Cost -->
                 <TableCell v-if="columns.cost" class="px-4 py-3 text-right">
-                  <div class="text-xs font-semibold text-slate-100 font-mono">
+                  <div class="text-xs font-semibold text-foreground font-mono">
                     {{ formatCurrency(item.costInHUF) }}
-                    <span v-if="item.costInHUF || item.costInHUF === 0" class="text-xs text-slate-500 font-sans ml-1">HUF</span>
+                    <span v-if="item.costInHUF || item.costInHUF === 0" class="text-xs text-muted-foreground font-sans ml-1">HUF</span>
                   </div>
                 </TableCell>
 
                 <!-- Edit Action -->
                 <TableCell class="pr-4 text-right">
-                  <div class="p-1 rounded-md text-slate-400 group-hover:text-indigo-400 group-hover:bg-slate-800 transition-all inline-flex items-center justify-center">
+                  <div class="p-1 rounded-md text-muted-foreground group-hover:text-primary group-hover:bg-muted transition-all inline-flex items-center justify-center">
                     <Edit3 class="w-3.5 h-3.5" />
                   </div>
                 </TableCell>
               </TableRow>
 
               <!-- Child Rows -->
-              <TableRow v-if="expanded[item.id] && item.children && item.children.length > 0" class="bg-slate-950/70 border-b border-slate-800 last:border-0">
+              <TableRow v-if="expanded[item.id] && item.children && item.children.length > 0" class="bg-muted/10 border-b border-border last:border-0">
                 <TableCell colspan="8" class="p-0 pl-8">
                   <DashboardInventoryTable 
                     :items="item.children" 

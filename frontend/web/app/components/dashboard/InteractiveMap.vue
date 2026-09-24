@@ -210,16 +210,16 @@ const getBlockAsset = (name: string) => {
 </script>
 
 <template>
-    <Card class="w-full h-full relative overflow-hidden bg-slate-950 border-slate-800 shadow-2xl group p-0">
+    <Card class="w-full h-full relative overflow-hidden bg-card border-border shadow-2xl group p-0">
         <CardContent class="p-0 w-full h-full">
-            <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+            <div v-if="loading" class="absolute inset-0 z-20 flex items-center justify-center bg-card/80 backdrop-blur-sm">
                 <div class="flex flex-col items-center gap-4">
-                    <div class="w-12 h-12 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
-                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest animate-pulse">Synchronizing Plant Layout...</p>
+                    <div class="w-12 h-12 border-4 border-border border-t-emerald-500 rounded-full animate-spin"></div>
+                    <p class="text-muted-foreground text-[10px] font-black uppercase tracking-widest animate-pulse">Synchronizing Plant Layout...</p>
                 </div>
             </div>
             
-            <div v-else-if="error" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-950 p-6 text-red-400">
+            <div v-else-if="error" class="absolute inset-0 z-20 flex items-center justify-center bg-card p-6 text-rose-600 dark:text-rose-400">
                 <div class="text-center">
                     <p class="text-xs font-black uppercase tracking-widest mb-2">Protocol Error</p>
                     <p class="text-[10px] opacity-70">{{ error }}</p>
@@ -241,7 +241,7 @@ const getBlockAsset = (name: string) => {
                 <!-- Background Grid -->
                 <defs>
                     <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="0.5"/>
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" class="text-foreground/5" stroke-width="0.5"/>
                     </pattern>
                     <filter id="glow">
                         <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
@@ -314,7 +314,7 @@ const getBlockAsset = (name: string) => {
                                       :stroke="isHighlighted(entity.handle) ? '#10b981' : '#64748b'"
                                       stroke-width="1.5"
                                       stroke-linejoin="round"
-                                      class="transition-colors duration-300 group-hover/insert:stroke-slate-300"
+                                      class="transition-colors duration-300 group-hover/insert:stroke-primary"
                                 />
                                 <path :d="getBlockAsset(entity.name).detail" 
                                       fill="none"

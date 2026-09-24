@@ -22,7 +22,7 @@ const isOpen = computed({
 
 <template>
   <Dialog v-model:open="isOpen">
-    <DialogContent class="max-w-4xl bg-slate-950 border-slate-800 text-slate-100 p-6 shadow-2xl">
+    <DialogContent class="max-w-4xl bg-card border-border text-foreground p-6 shadow-2xl">
       <MachineGroupManager
         :is-modal="true"
         @close="emit('close')"

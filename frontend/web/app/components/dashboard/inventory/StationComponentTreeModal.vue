@@ -275,50 +275,58 @@ const getAttachedComponentsForPart = (part: any) => {
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="max-w-4xl max-h-[85vh] flex flex-col bg-slate-950/98 backdrop-blur-2xl border-slate-800 text-slate-100 p-6 rounded-3xl shadow-2xl overflow-hidden">
+    <DialogContent :show-close="false" class="max-w-4xl max-h-[85vh] flex flex-col bg-card border-border text-card-foreground p-6 rounded-3xl shadow-2xl overflow-hidden">
       <!-- Header Area -->
-      <DialogHeader class="border-b border-slate-900 pb-4 shrink-0">
+      <DialogHeader class="border-b border-border pb-4 shrink-0">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div class="flex items-center gap-3">
-            <div class="p-2.5 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+            <div class="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20">
               <FolderTree class="w-5 h-5" />
             </div>
             <div>
-              <DialogTitle class="text-base font-black uppercase tracking-tight text-white flex items-center gap-2">
+              <DialogTitle class="text-base font-black uppercase tracking-tight text-foreground flex items-center gap-2">
                 <span>Station Component Tree</span>
-                <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-900/60 text-indigo-300 font-mono font-bold">
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-primary/15 text-primary font-mono font-bold">
                   {{ treeData?.stationName || 'Loading...' }}
                 </span>
               </DialogTitle>
-              <DialogDescription class="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+              <DialogDescription class="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-0.5">
                 Hierarchical mapping of Host IPCs, internal modules, and installed serialized parts
               </DialogDescription>
             </div>
           </div>
 
-          <!-- Station Selector -->
+          <!-- Station Selector & Close -->
           <div class="flex items-center gap-2">
-            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">Station:</span>
+            <span class="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Station:</span>
             <select
               v-model="selectedStationId"
-              class="h-9 px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-200 focus:outline-none focus:border-indigo-500"
+              class="h-9 px-3 bg-background border border-border rounded-xl text-xs font-bold text-foreground focus:outline-none focus:border-primary"
             >
               <option v-for="st in stationsList" :key="st.id" :value="st.id">
                 {{ st.name }} ({{ st.groupId || 'Default' }})
               </option>
             </select>
+            <button
+              type="button"
+              @click="emit('update:open', false)"
+              class="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors ml-1 cursor-pointer"
+              title="Close modal"
+            >
+              <X class="w-4 h-4" />
+            </button>
           </div>
         </div>
 
         <!-- Filter & Control Toolbar -->
-        <div class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-900">
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-border">
           <div class="relative flex-1 min-w-[200px] max-w-sm">
-            <Search class="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search class="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               v-model="searchQuery"
               type="text"
               placeholder="Filter node or parts in tree..."
-              class="w-full pl-9 pr-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              class="w-full pl-9 pr-3 py-1.5 bg-background border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -327,7 +335,7 @@ const getAttachedComponentsForPart = (part: any) => {
               variant="outline"
               size="sm"
               @click="expandAll"
-              class="h-8 px-2.5 border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200 text-[9px] font-black uppercase tracking-wider rounded-lg"
+              class="h-8 px-2.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted text-[9px] font-black uppercase tracking-wider rounded-lg"
             >
               Expand All
             </Button>
@@ -335,7 +343,7 @@ const getAttachedComponentsForPart = (part: any) => {
               variant="outline"
               size="sm"
               @click="collapseAll"
-              class="h-8 px-2.5 border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200 text-[9px] font-black uppercase tracking-wider rounded-lg"
+              class="h-8 px-2.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted text-[9px] font-black uppercase tracking-wider rounded-lg"
             >
               Collapse All
             </Button>
@@ -345,128 +353,128 @@ const getAttachedComponentsForPart = (part: any) => {
 
       <!-- Scrollable Tree Canvas -->
       <div class="flex-1 overflow-y-auto custom-scrollbar py-4 space-y-4">
-        <div v-if="loading" class="p-8 text-center text-xs font-bold uppercase tracking-widest text-slate-500">
+        <div v-if="loading" class="p-8 text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
           Traversing station topology and equipment records...
         </div>
 
         <div v-else-if="treeData" class="space-y-3">
           <!-- Root Station Node -->
-          <div class="p-4 rounded-2xl bg-slate-900/90 border border-indigo-500/30 shadow-lg">
+          <div class="p-4 rounded-2xl bg-card border border-primary/30 shadow-xs">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <button 
                   type="button" 
                   @click="toggleNode('root')"
-                  class="p-1 text-slate-500 hover:text-slate-300 rounded transition-transform"
+                  class="p-1 text-muted-foreground hover:text-foreground rounded transition-transform"
                 >
-                  <ChevronDown v-if="expandedNodes['root']" class="w-4 h-4 text-indigo-400" />
+                  <ChevronDown v-if="expandedNodes['root']" class="w-4 h-4 text-primary" />
                   <ChevronRight v-else class="w-4 h-4" />
                 </button>
-                <div class="p-2 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                <div class="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
                   <FolderTree class="w-4 h-4" />
                 </div>
                 <div>
-                  <div class="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
+                  <div class="text-sm font-black text-foreground uppercase tracking-tight flex items-center gap-2">
                     <span>{{ treeData.stationName }}</span>
-                    <Badge variant="outline" class="text-[8px] uppercase tracking-widest font-black text-indigo-400 border-indigo-500/40 bg-indigo-950/40">
+                    <Badge variant="outline" class="text-[8px] uppercase tracking-widest font-black text-primary border-primary/40 bg-primary/10">
                       {{ treeData.technology || 'Assembly' }}
                     </Badge>
                   </div>
-                  <div class="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">
-                    Production Line: <span class="text-slate-200 font-bold">{{ treeData.lineName || 'Line 1' }}</span>
+                  <div class="text-[10px] text-muted-foreground font-semibold uppercase mt-0.5">
+                    Production Line: <span class="text-foreground font-bold">{{ treeData.lineName || 'Line 1' }}</span>
                   </div>
                 </div>
               </div>
 
               <div class="flex items-center gap-2 text-[9px] font-mono">
-                <span class="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                <span class="px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border">
                   {{ filteredControllers.length }} Controller(s)
                 </span>
-                <span class="px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-800/50">
+                <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
                   {{ filteredParts.length }} Serialized Parts
                 </span>
               </div>
             </div>
 
             <!-- Children of Station: Controllers & Parts -->
-            <div v-if="expandedNodes['root']" class="mt-4 pl-6 border-l-2 border-slate-800 space-y-3">
+            <div v-if="expandedNodes['root']" class="mt-4 pl-6 border-l-2 border-border space-y-3">
               
               <!-- SECTION: Host Industrial PCs / Controllers -->
               <div class="space-y-2">
-                <div class="text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                  <Monitor class="w-3.5 h-3.5 text-blue-400" />
+                <div class="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Monitor class="w-3.5 h-3.5 text-primary" />
                   <span>Host Controller IPCs ({{ filteredControllers.length }})</span>
                 </div>
 
                 <div 
                   v-for="ctrl in filteredControllers" 
                   :key="ctrl.id"
-                  class="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 hover:border-slate-700 transition-colors"
+                  class="p-3 rounded-xl bg-muted/40 border border-border hover:border-primary/40 transition-colors"
                 >
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
                       <button 
                         type="button" 
                         @click="toggleNode(`ctrl-${ctrl.id}`)"
-                        class="p-0.5 text-slate-500 hover:text-slate-300"
+                        class="p-0.5 text-muted-foreground hover:text-foreground"
                       >
-                        <ChevronDown v-if="expandedNodes[`ctrl-${ctrl.id}`]" class="w-3.5 h-3.5 text-blue-400" />
+                        <ChevronDown v-if="expandedNodes[`ctrl-${ctrl.id}`]" class="w-3.5 h-3.5 text-primary" />
                         <ChevronRight v-else class="w-3.5 h-3.5" />
                       </button>
-                      <Monitor class="w-4 h-4 text-blue-400 shrink-0" />
+                      <Monitor class="w-4 h-4 text-primary shrink-0" />
                       <div>
-                        <div class="text-xs font-bold text-slate-200 font-mono flex items-center gap-2">
+                        <div class="text-xs font-bold text-foreground font-mono flex items-center gap-2">
                           <span>{{ ctrl.hostname }}</span>
-                          <span class="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span class="size-2 rounded-full bg-emerald-500 animate-pulse" />
                         </div>
-                        <div class="text-[9px] text-slate-500 font-mono mt-0.5">
+                        <div class="text-[9px] text-muted-foreground font-mono mt-0.5">
                           IP: {{ ctrl.ipAddress || 'DHCP' }} • MAC: {{ ctrl.macAddress || 'N/A' }}
                         </div>
                       </div>
                     </div>
 
-                    <Badge variant="outline" class="text-[8px] uppercase tracking-wider font-mono text-blue-400 border-blue-500/30 bg-blue-950/20">
+                    <Badge variant="outline" class="text-[8px] uppercase tracking-wider font-mono text-primary border-primary/30 bg-primary/10">
                       Industrial IPC
                     </Badge>
                   </div>
 
                   <!-- Internal Hardware Components of the IPC -->
-                  <div v-if="expandedNodes[`ctrl-${ctrl.id}`] && ctrl.hardware?.length > 0" class="mt-2.5 pl-6 border-l border-slate-800/80 space-y-1.5">
-                    <div class="text-[8px] font-black uppercase tracking-wider text-slate-600">Reported Hardware Modules & Extensions:</div>
+                  <div v-if="expandedNodes[`ctrl-${ctrl.id}`] && ctrl.hardware?.length > 0" class="mt-2.5 pl-6 border-l border-border space-y-1.5">
+                    <div class="text-[8px] font-black uppercase tracking-wider text-muted-foreground">Reported Hardware Modules & Extensions:</div>
                     <div 
                       v-for="hw in ctrl.hardware" 
                       :key="hw.id || hw.name"
-                      class="flex flex-col p-2 rounded-lg bg-slate-900/60 border border-slate-850 text-[10px] space-y-1"
+                      class="flex flex-col p-2 rounded-lg bg-card border border-border text-[10px] space-y-1"
                     >
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                          <Cpu class="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span class="font-bold text-slate-300">{{ hw.name }}</span>
-                          <Badge v-if="hw.technology" variant="outline" class="text-[7.5px] px-1.5 py-0 uppercase font-mono text-slate-400 border-slate-700 bg-slate-800/50">
+                          <Cpu class="w-3 h-3 text-emerald-500 shrink-0" />
+                          <span class="font-bold text-foreground">{{ hw.name }}</span>
+                          <Badge v-if="hw.technology" variant="outline" class="text-[7.5px] px-1.5 py-0 uppercase font-mono text-muted-foreground border-border bg-muted/50">
                             {{ hw.technology }}
                           </Badge>
                         </div>
                         <div class="flex items-center gap-1.5">
-                          <Badge v-if="hw.isSigned" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-emerald-400 border-emerald-800/60 bg-emerald-950/40 flex items-center gap-1">
+                          <Badge v-if="hw.isSigned" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 flex items-center gap-1">
                             <ShieldCheck class="w-2.5 h-2.5" />
                             <span>Signed</span>
                           </Badge>
-                          <Badge v-else-if="hw.isSandboxed" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-amber-400 border-amber-800/60 bg-amber-950/40 flex items-center gap-1">
+                          <Badge v-else-if="hw.isSandboxed" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
                             <AlertTriangle class="w-2.5 h-2.5" />
                             <span>Dev Sandbox</span>
                           </Badge>
-                          <span class="text-[8px] font-mono uppercase text-slate-500">{{ hw.type || 'Internal' }}</span>
+                          <span class="text-[8px] font-mono uppercase text-muted-foreground">{{ hw.type || 'Internal' }}</span>
                           <button 
                             v-if="hw.customData || hw.metadata" 
                             type="button" 
                             @click="togglePayload(hw.id || hw.name)"
-                            class="text-[8px] font-mono text-indigo-400 hover:text-indigo-300 underline underline-offset-2 ml-1"
+                            class="text-[8px] font-mono text-primary hover:underline underline-offset-2 ml-1"
                           >
                             {{ expandedPayloads[hw.id || hw.name] ? 'Hide' : 'Data' }}
                           </button>
                         </div>
                       </div>
-                      <div v-if="expandedPayloads[hw.id || hw.name]" class="mt-1 p-2 rounded bg-slate-950 border border-slate-800 text-[9px] font-mono text-slate-300 overflow-x-auto">
+                      <div v-if="expandedPayloads[hw.id || hw.name]" class="mt-1 p-2 rounded bg-muted/80 border border-border text-[9px] font-mono text-foreground overflow-x-auto">
                         <pre>{{ JSON.stringify(hw.customData || hw.metadata, null, 2) }}</pre>
                       </div>
                     </div>
@@ -476,33 +484,33 @@ const getAttachedComponentsForPart = (part: any) => {
 
               <!-- SECTION: Attached Serialized Equipment & Parts -->
               <div class="space-y-2 pt-2">
-                <div class="text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                  <Layers class="w-3.5 h-3.5 text-emerald-400" />
+                <div class="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Layers class="w-3.5 h-3.5 text-emerald-500" />
                   <span>Installed High-Value Serialized Parts ({{ filteredParts.length }})</span>
                 </div>
 
                 <div 
                   v-for="part in filteredParts" 
                   :key="part.id"
-                  class="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 hover:border-emerald-500/30 transition-colors"
+                  class="p-3 rounded-xl bg-muted/40 border border-border hover:border-emerald-500/30 transition-colors"
                 >
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
-                      <div class="p-1.5 rounded-lg bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
+                      <div class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                         <Zap class="w-3.5 h-3.5" />
                       </div>
                       <div>
-                        <div class="text-xs font-bold text-slate-200 uppercase tracking-tight flex items-center gap-2">
+                        <div class="text-xs font-bold text-foreground uppercase tracking-tight flex items-center gap-2">
                           <span>{{ part.name }}</span>
                           <span 
                             class="text-[7.5px] uppercase font-bold px-2 py-0.5 rounded-full"
-                            :class="part.equipmentStatus === 'InMachine' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'"
+                            :class="part.equipmentStatus === 'InMachine' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30'"
                           >
                             {{ part.equipmentStatus || 'InMachine' }}
                           </span>
                         </div>
-                        <div class="text-[9px] text-slate-400 flex items-center gap-2 mt-0.5">
-                          <span class="font-mono text-indigo-300 font-bold">SN: {{ part.serialNumber || 'UNTRACKED' }}</span>
+                        <div class="text-[9px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                          <span class="font-mono text-primary font-bold">SN: {{ part.serialNumber || 'UNTRACKED' }}</span>
                           <span v-if="part.manufacturer">• MFR: {{ part.manufacturer }}</span>
                           <span v-if="part.storageLocation">• Pos: {{ part.storageLocation }}</span>
                         </div>
@@ -510,40 +518,40 @@ const getAttachedComponentsForPart = (part: any) => {
                     </div>
 
                     <div class="flex items-center gap-2">
-                      <Badge variant="outline" class="text-[8px] uppercase tracking-wider font-mono text-emerald-400 border-emerald-500/30 bg-emerald-950/20">
+                      <Badge variant="outline" class="text-[8px] uppercase tracking-wider font-mono text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
                         {{ part.technology || 'Assembly' }}
                       </Badge>
-                      <span v-if="part.costInHUF" class="text-[9px] font-mono text-slate-400">
+                      <span v-if="part.costInHUF" class="text-[9px] font-mono text-muted-foreground">
                         {{ new Intl.NumberFormat('hu-HU').format(part.costInHUF) }} HUF
                       </span>
                     </div>
                   </div>
 
                   <!-- Attached Child Plugins/Sensors nested under this Part -->
-                  <div v-if="getAttachedComponentsForPart(part).length > 0" class="mt-2.5 pl-4 border-l-2 border-emerald-800/50 space-y-1.5">
-                    <div class="text-[8px] font-black uppercase tracking-wider text-emerald-500 flex items-center gap-1">
+                  <div v-if="getAttachedComponentsForPart(part).length > 0" class="mt-2.5 pl-4 border-l-2 border-emerald-500/30 space-y-1.5">
+                    <div class="text-[8px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                       <Zap class="w-2.5 h-2.5" />
                       <span>Attached Sensor & Plugin Extensions:</span>
                     </div>
                     <div 
                       v-for="childHw in getAttachedComponentsForPart(part)" 
                       :key="childHw.id || childHw.name"
-                      class="p-2 rounded-lg bg-slate-900/80 border border-emerald-950/80 text-[10px] space-y-1"
+                      class="p-2 rounded-lg bg-card border border-border text-[10px] space-y-1"
                     >
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                          <Activity class="w-3 h-3 text-indigo-400" />
-                          <span class="font-bold text-slate-200">{{ childHw.name }}</span>
-                          <Badge v-if="childHw.technology" variant="outline" class="text-[7.5px] px-1.5 py-0 uppercase font-mono text-slate-400 border-slate-700 bg-slate-800/50">
+                          <Activity class="w-3 h-3 text-primary" />
+                          <span class="font-bold text-foreground">{{ childHw.name }}</span>
+                          <Badge v-if="childHw.technology" variant="outline" class="text-[7.5px] px-1.5 py-0 uppercase font-mono text-muted-foreground border-border bg-muted/50">
                             {{ childHw.technology }}
                           </Badge>
                         </div>
                         <div class="flex items-center gap-1.5">
-                          <Badge v-if="childHw.isSigned" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-emerald-400 border-emerald-800/60 bg-emerald-950/40 flex items-center gap-1">
+                          <Badge v-if="childHw.isSigned" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 flex items-center gap-1">
                             <ShieldCheck class="w-2.5 h-2.5" />
                             <span>Signed</span>
                           </Badge>
-                          <Badge v-else-if="childHw.isSandboxed" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-amber-400 border-amber-800/60 bg-amber-950/40 flex items-center gap-1">
+                          <Badge v-else-if="childHw.isSandboxed" variant="outline" class="text-[7.5px] px-1.5 py-0 font-bold uppercase text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
                             <AlertTriangle class="w-2.5 h-2.5" />
                             <span>Dev Sandbox</span>
                           </Badge>
@@ -551,13 +559,13 @@ const getAttachedComponentsForPart = (part: any) => {
                             v-if="childHw.customData || childHw.metadata" 
                             type="button" 
                             @click="togglePayload(childHw.id || childHw.name)"
-                            class="text-[8px] font-mono text-indigo-400 hover:text-indigo-300 underline underline-offset-2 ml-1"
+                            class="text-[8px] font-mono text-primary hover:underline underline-offset-2 ml-1"
                           >
                             {{ expandedPayloads[childHw.id || childHw.name] ? 'Hide' : 'Data' }}
                           </button>
                         </div>
                       </div>
-                      <div v-if="expandedPayloads[childHw.id || childHw.name]" class="mt-1 p-2 rounded bg-slate-950 border border-slate-800 text-[9px] font-mono text-slate-300 overflow-x-auto">
+                      <div v-if="expandedPayloads[childHw.id || childHw.name]" class="mt-1 p-2 rounded bg-muted/80 border border-border text-[9px] font-mono text-foreground overflow-x-auto">
                         <pre>{{ JSON.stringify(childHw.customData || childHw.metadata, null, 2) }}</pre>
                       </div>
                     </div>
@@ -569,7 +577,7 @@ const getAttachedComponentsForPart = (part: any) => {
           </div>
         </div>
 
-        <div v-else class="p-8 text-center text-xs text-slate-500 font-bold uppercase tracking-widest">
+        <div v-else class="p-8 text-center text-xs text-muted-foreground font-bold uppercase tracking-widest">
           No station selected or topology data unavailable.
         </div>
       </div>

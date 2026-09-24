@@ -428,50 +428,59 @@ const templateCategories = [
 
 <template>
   <Dialog :open="open" @update:open="(val) => emit('update:open', val)">
-    <DialogContent class="max-w-4xl bg-slate-950 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-[2rem] shadow-2xl flex flex-col max-h-[92vh]">
+    <DialogContent :show-close="false" class="max-w-4xl bg-card border-border text-foreground p-0 overflow-hidden rounded-[2rem] shadow-2xl flex flex-col max-h-[92vh]">
       
       <!-- Top Modal Header -->
-      <DialogHeader class="bg-indigo-950/40 p-6 sm:p-7 border-b border-slate-900 shrink-0">
+      <DialogHeader class="bg-muted/30 p-6 sm:p-7 border-b border-border shrink-0">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3.5">
-            <div class="p-3 bg-indigo-500/20 rounded-2xl text-indigo-400 border border-indigo-500/30 shadow-inner">
+            <div class="p-3 bg-primary/10 rounded-2xl text-primary border border-primary/20 shadow-inner">
               <Cpu v-if="form.itemType === 'HardwareComponent'" class="h-6 w-6" />
               <FileJson v-else-if="form.itemType === 'SoftwareComponent'" class="h-6 w-6" />
               <Layers v-else class="h-6 w-6" />
             </div>
             <div>
-              <DialogTitle class="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-100 flex items-center gap-3">
+              <DialogTitle class="text-xl sm:text-2xl font-black uppercase tracking-tight text-foreground flex items-center gap-3">
                 <span>{{ mode === 'create' ? 'Provision Asset Node' : 'Edit Asset Record' }}</span>
-                <Badge variant="outline" class="text-[8px] font-mono font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border-indigo-500/30 px-3.5 py-1.5 rounded-full inline-flex items-center justify-center shrink-0 whitespace-nowrap leading-none shadow-sm">
+                <Badge variant="outline" class="text-[8px] font-mono font-black uppercase tracking-widest bg-primary/10 text-primary border-primary/30 px-3.5 py-1.5 rounded-full inline-flex items-center justify-center shrink-0 whitespace-nowrap leading-none shadow-xs">
                   {{ form.itemType }}
                 </Badge>
               </DialogTitle>
-              <DialogDescription class="text-indigo-400/70 text-xs font-bold uppercase tracking-widest mt-1">
+              <DialogDescription class="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">
                 Industrial OT/IT graph infrastructure, parameter specifications & unique key cache
               </DialogDescription>
             </div>
           </div>
+
+          <button
+            type="button"
+            @click="emit('update:open', false)"
+            class="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+            title="Close editor"
+          >
+            <X class="w-5 h-5" />
+          </button>
         </div>
 
         <!-- Template Applied Alert Toast -->
-        <div v-if="templateAppliedBanner" class="mt-4 p-3 bg-emerald-950/60 border border-emerald-500/30 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <div class="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+        <div v-if="templateAppliedBanner" class="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
             <CheckCircle2 class="size-4 shrink-0" />
             <span>Template parameters and metadata successfully mapped to asset!</span>
           </div>
-          <Button variant="ghost" size="sm" @click="activeTab = 'identity'" class="h-7 text-[10px] font-black uppercase text-emerald-300 hover:bg-emerald-900/50">
+          <Button variant="ghost" size="sm" @click="activeTab = 'identity'" class="h-7 text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20">
             View Details
           </Button>
         </div>
       </DialogHeader>
 
       <!-- Navigation Tabs Bar -->
-      <div class="bg-slate-900/90 border-b border-slate-800/80 px-6 pt-3 flex items-center justify-between shrink-0 overflow-x-auto custom-scrollbar gap-2">
+      <div class="bg-muted/40 border-b border-border px-6 pt-3 flex items-center justify-between shrink-0 overflow-x-auto custom-scrollbar gap-2">
         <div class="flex items-center gap-1.5 min-w-max pb-3">
           <button
             @click="activeTab = 'identity'"
-            :class="activeTab === 'identity' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'"
-            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-transparent shrink-0 whitespace-nowrap leading-none"
+            :class="activeTab === 'identity' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'"
+            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-transparent shrink-0 whitespace-nowrap leading-none cursor-pointer"
           >
             <Tag class="size-3.5 shrink-0" />
             <span>Identity & Core</span>
@@ -479,8 +488,8 @@ const templateCategories = [
 
           <button
             @click="activeTab = 'topology'"
-            :class="activeTab === 'topology' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'"
-            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-transparent shrink-0 whitespace-nowrap leading-none"
+            :class="activeTab === 'topology' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'"
+            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-transparent shrink-0 whitespace-nowrap leading-none cursor-pointer"
           >
             <Network class="size-3.5 shrink-0" />
             <span>Topology & Graph</span>
@@ -488,8 +497,8 @@ const templateCategories = [
 
           <button
             @click="activeTab = 'commercial'"
-            :class="activeTab === 'commercial' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'"
-            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-transparent shrink-0 whitespace-nowrap leading-none"
+            :class="activeTab === 'commercial' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'"
+            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-transparent shrink-0 whitespace-nowrap leading-none cursor-pointer"
           >
             <DollarSign class="size-3.5 shrink-0" />
             <span>Commercial</span>
@@ -497,28 +506,28 @@ const templateCategories = [
 
           <button
             @click="activeTab = 'specs'"
-            :class="activeTab === 'specs' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'"
-            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-transparent shrink-0 whitespace-nowrap leading-none"
+            :class="activeTab === 'specs' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'"
+            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border border-transparent shrink-0 whitespace-nowrap leading-none cursor-pointer"
           >
             <Sliders class="size-3.5 shrink-0" />
             <span>Specs & Params</span>
-            <span v-if="Object.keys(customData).length > 0" class="h-5 px-2 text-[7.5px] bg-slate-800 text-slate-300 rounded-full inline-flex items-center justify-center leading-none font-black ml-1">
+            <span v-if="Object.keys(customData).length > 0" class="h-5 px-2 text-[7.5px] bg-muted text-muted-foreground rounded-full inline-flex items-center justify-center leading-none font-black ml-1">
               {{ Object.keys(customData).length }}
             </span>
           </button>
 
           <button
             @click="activeTab = 'templates'"
-            :class="activeTab === 'templates' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/40 bg-indigo-950/20 border-indigo-800/30'"
-            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border shrink-0 whitespace-nowrap leading-none"
+            :class="activeTab === 'templates' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-primary hover:text-primary/80 hover:bg-primary/10 bg-primary/5 border-primary/20'"
+            class="px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 border shrink-0 whitespace-nowrap leading-none cursor-pointer"
           >
-            <Sparkles class="size-3.5 text-indigo-300 shrink-0" />
+            <Sparkles class="size-3.5 text-primary shrink-0" />
             <span>JSON & Templates</span>
           </button>
         </div>
 
         <div class="hidden sm:flex items-center gap-2 pb-3 shrink-0">
-          <span class="text-[9px] font-mono font-bold text-slate-400 border border-slate-800 bg-slate-900/80 px-3.5 py-1.5 rounded-full inline-flex items-center justify-center leading-none tracking-wider shadow-sm">
+          <span class="text-[9px] font-mono font-bold text-muted-foreground border border-border bg-card px-3.5 py-1.5 rounded-full inline-flex items-center justify-center leading-none tracking-wider shadow-xs">
             Valuation: {{ formatHuf(form.costInHUF) }} HUF
           </span>
         </div>
@@ -533,14 +542,14 @@ const templateCategories = [
             
             <!-- Asset Class / Type -->
             <div class="space-y-2 col-span-1 sm:col-span-2">
-              <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Asset Classification</Label>
+              <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Asset Classification</Label>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   @click="form.itemType = 'HardwareComponent'"
-                  :class="form.itemType === 'HardwareComponent' ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
-                  class="rounded-xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 px-3 text-center"
+                  :class="form.itemType === 'HardwareComponent' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground'"
+                  class="rounded-xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 px-3 text-center cursor-pointer"
                 >
                   <Cpu class="size-4 shrink-0" />
                   <span class="truncate">Hardware Node</span>
@@ -550,8 +559,8 @@ const templateCategories = [
                   type="button"
                   variant="outline"
                   @click="form.itemType = 'SoftwareComponent'"
-                  :class="form.itemType === 'SoftwareComponent' ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
-                  class="rounded-xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 px-3 text-center"
+                  :class="form.itemType === 'SoftwareComponent' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground'"
+                  class="rounded-xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 px-3 text-center cursor-pointer"
                 >
                   <FileJson class="size-4 shrink-0" />
                   <span class="truncate">Software / License</span>
@@ -561,8 +570,8 @@ const templateCategories = [
                   type="button"
                   variant="outline"
                   @click="form.itemType = 'Machine'"
-                  :class="form.itemType === 'Machine' ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'"
-                  class="rounded-xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 px-3 text-center"
+                  :class="form.itemType === 'Machine' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground'"
+                  class="rounded-xl h-11 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 px-3 text-center cursor-pointer"
                 >
                   <Layers class="size-4 shrink-0" />
                   <span class="truncate">Process Station</span>
@@ -573,31 +582,31 @@ const templateCategories = [
             <!-- Internal Handle / Name -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Internal Identifier / Handle</Label>
-                <span class="text-[9px] text-indigo-400 font-mono">Unique Tag</span>
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Internal Identifier / Handle</Label>
+                <span class="text-[9px] text-primary font-mono">Unique Tag</span>
               </div>
               <Input
                 v-model="form.name"
                 placeholder="e.g. S7-1500-ROOT or MTR-OP10-01"
-                class="rounded-xl h-11 bg-slate-900 border-slate-800 text-slate-100 font-bold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="rounded-xl h-11 bg-background border-border text-foreground font-bold focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
 
             <!-- Display Name -->
             <div class="space-y-2">
-              <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">User Display Name</Label>
+              <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">User Display Name</Label>
               <Input
                 v-model="form.displayName"
                 placeholder="e.g. Main CNC Spindle Motor"
-                class="rounded-xl h-11 bg-slate-900 border-slate-800 text-slate-100 font-bold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="rounded-xl h-11 bg-background border-border text-foreground font-bold focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
 
             <!-- Technology Stack (Select or Type with Cached Search Source) -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Technology Stack</Label>
-                <span class="text-[9px] text-slate-500">Cached source</span>
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Technology Stack</Label>
+                <span class="text-[9px] text-muted-foreground">Cached source</span>
               </div>
               <SearchableSelect
                 v-model="form.technology"
@@ -608,23 +617,23 @@ const templateCategories = [
 
             <!-- Quantity -->
             <div class="space-y-2">
-              <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Quantity / Unit Count</Label>
+              <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Quantity / Unit Count</Label>
               <Input
                 v-model.number="form.quantity"
                 type="number"
                 min="1"
-                class="rounded-xl h-11 bg-slate-900 border-slate-800 text-slate-100 font-bold font-mono"
+                class="rounded-xl h-11 bg-background border-border text-foreground font-bold font-mono"
               />
             </div>
 
             <!-- Serial Number with Generator Helper -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Serial Number</Label>
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Serial Number</Label>
                 <button
                   type="button"
                   @click="generateSerial"
-                  class="text-[9px] font-mono text-indigo-400 hover:text-indigo-300 flex items-center gap-1 uppercase"
+                  class="text-[9px] font-mono text-primary hover:underline flex items-center gap-1 uppercase cursor-pointer"
                 >
                   <RefreshCw class="size-3" /> Auto-Gen SN
                 </button>
@@ -632,15 +641,15 @@ const templateCategories = [
               <Input
                 v-model="form.serialNumber"
                 placeholder="e.g. SN-SPINDLE-994"
-                class="rounded-xl h-11 bg-slate-900 border-slate-800 text-slate-100 font-mono text-xs"
+                class="rounded-xl h-11 bg-background border-border text-foreground font-mono text-xs"
               />
             </div>
 
             <!-- Model / Part Number (Select or Type with Cached Search Source) -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Model / Part Number</Label>
-                <span class="text-[9px] text-slate-500">Cached catalog</span>
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Model / Part Number</Label>
+                <span class="text-[9px] text-muted-foreground">Cached catalog</span>
               </div>
               <SearchableSelect
                 v-model="form.modelNumber"
@@ -658,78 +667,78 @@ const templateCategories = [
             <!-- Linked Host PC / IPC (Search source: parentPcs cache) -->
             <div class="space-y-2">
               <div class="flex items-center gap-1.5">
-                <Monitor class="size-3.5 text-blue-400 shrink-0" />
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Reporting Host IPC / PC</Label>
+                <Monitor class="size-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Reporting Host IPC / PC</Label>
               </div>
               <SearchableSelect
                 v-model="form.clientPcId"
                 :options="pcOptions"
                 placeholder="Select or Search Reporting Host PC"
               />
-              <p class="text-[9px] text-slate-500 leading-tight">Link this component to a reporting Edge industrial PC.</p>
+              <p class="text-[9px] text-muted-foreground leading-tight">Link this component to a reporting Edge industrial PC.</p>
             </div>
 
             <!-- Linked Machine / Station (Search source: stations cache) -->
             <div class="space-y-2">
               <div class="flex items-center gap-1.5">
-                <Layers class="size-3.5 text-indigo-400 shrink-0" />
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Production Station / Cell</Label>
+                <Layers class="size-3.5 text-primary shrink-0" />
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Production Station / Cell</Label>
               </div>
               <SearchableSelect
                 v-model="form.machineId"
                 :options="machineOptions"
                 placeholder="Select or Type Production Station"
               />
-              <p class="text-[9px] text-slate-500 leading-tight">Assign node to a station process envelope.</p>
+              <p class="text-[9px] text-muted-foreground leading-tight">Assign node to a station process envelope.</p>
             </div>
 
             <!-- Parent Asset Link (Hierarchical Sub-assembly) (Search source: components cache) -->
             <div class="space-y-2">
               <div class="flex items-center gap-1.5">
-                <ChevronRight class="size-3.5 text-emerald-400 shrink-0" />
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Parent Assembly / Enclosure</Label>
+                <ChevronRight class="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Parent Assembly / Enclosure</Label>
               </div>
               <SearchableSelect
                 v-model="form.parentId"
                 :options="componentOptions"
                 placeholder="Select Parent Assembly (Optional)"
               />
-              <p class="text-[9px] text-slate-500 leading-tight">For recursive hierarchy (e.g. servo drive inside electrical cabinet).</p>
+              <p class="text-[9px] text-muted-foreground leading-tight">For recursive hierarchy (e.g. servo drive inside electrical cabinet).</p>
             </div>
 
             <!-- Lateral Dependency Link (Search source: components cache) -->
             <div class="space-y-2">
               <div class="flex items-center gap-1.5">
-                <Network class="size-3.5 text-amber-400 shrink-0" />
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Lateral Link / Dependency</Label>
+                <Network class="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Lateral Link / Dependency</Label>
               </div>
               <SearchableSelect
                 v-model="form.lateralLinkId"
                 :options="componentOptions"
                 placeholder="Select Dependent Fieldbus Peer"
               />
-              <p class="text-[9px] text-slate-500 leading-tight">Interconnect link for OT fieldbus peers.</p>
+              <p class="text-[9px] text-muted-foreground leading-tight">Interconnect link for OT fieldbus peers.</p>
             </div>
           </div>
 
           <!-- Responsible Engineering Teams (Search source: responsibleTeams cache) -->
-          <div class="space-y-3 pt-4 border-t border-slate-900">
+          <div class="space-y-3 pt-4 border-t border-border">
             <div class="flex items-center justify-between">
-              <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Responsible Engineering Teams</Label>
-              <span class="text-[9px] text-slate-500">Multi-select team ownership</span>
+              <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Responsible Engineering Teams</Label>
+              <span class="text-[9px] text-muted-foreground">Multi-select team ownership</span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div
                 v-for="team in availableTeams"
                 :key="team.id"
                 @click="toggleTeam(team.id)"
-                :class="form.responsibleTeamIds.includes(team.id) ? 'border-indigo-500 bg-indigo-950/30 text-indigo-300' : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700'"
+                :class="form.responsibleTeamIds.includes(team.id) ? 'border-primary bg-primary/10 text-primary dark:text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'"
                 class="p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-2"
               >
                 <span class="text-[11px] font-bold uppercase truncate">{{ team.name }}</span>
                 <div
                   class="size-4 rounded border flex items-center justify-center shrink-0"
-                  :class="form.responsibleTeamIds.includes(team.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-700 bg-slate-950'"
+                  :class="form.responsibleTeamIds.includes(team.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-border bg-background'"
                 >
                   <Check v-if="form.responsibleTeamIds.includes(team.id)" class="size-3" />
                 </div>
@@ -745,8 +754,8 @@ const templateCategories = [
             <!-- OEM / Manufacturer (Search source: oems cache) -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">OEM / Manufacturer</Label>
-                <span class="text-[9px] text-slate-500">Cached OEMs</span>
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">OEM / Manufacturer</Label>
+                <span class="text-[9px] text-muted-foreground">Cached OEMs</span>
               </div>
               <SearchableSelect
                 v-model="form.manufacturerId"
@@ -758,8 +767,8 @@ const templateCategories = [
             <!-- Importer / Vendor / Supplier (Search source: importers cache) -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Importer / Vendor / Supplier</Label>
-                <span class="text-[9px] text-slate-500">Cached Vendors</span>
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Importer / Vendor / Supplier</Label>
+                <span class="text-[9px] text-muted-foreground">Cached Vendors</span>
               </div>
               <SearchableSelect
                 v-model="form.supplierId"
@@ -771,23 +780,23 @@ const templateCategories = [
             <!-- Capital Valuation (HUF) -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Capital Valuation (HUF)</Label>
-                <span class="text-xs font-mono font-black text-emerald-400">{{ formatHuf(form.costInHUF) }} HUF</span>
+                <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Capital Valuation (HUF)</Label>
+                <span class="text-xs font-mono font-black text-emerald-700 dark:text-emerald-400">{{ formatHuf(form.costInHUF) }} HUF</span>
               </div>
               <Input
                 v-model.number="form.costInHUF"
                 type="number"
-                class="rounded-xl h-11 bg-slate-900 border-slate-800 text-slate-100 font-mono font-bold"
+                class="rounded-xl h-11 bg-background border-border text-foreground font-mono font-bold"
               />
             </div>
 
             <!-- Purchase / Commissioning Date -->
             <div class="space-y-2">
-              <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Commissioning / Purchase Date</Label>
+              <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Commissioning / Purchase Date</Label>
               <Input
                 v-model="form.purchaseDate"
                 type="date"
-                class="rounded-xl h-11 bg-slate-900 border-slate-800 text-slate-100 font-mono text-xs"
+                class="rounded-xl h-11 bg-background border-border text-foreground font-mono text-xs"
               />
             </div>
           </div>
@@ -799,8 +808,8 @@ const templateCategories = [
           <!-- Quick Add Suggestion Chips (Populated from Cached Metadata Keys) -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Select or Type Industrial Parameters</Label>
-              <span class="text-[9px] text-slate-500">Click pill to toggle attribute</span>
+              <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Select or Type Industrial Parameters</Label>
+              <span class="text-[9px] text-muted-foreground">Click pill to toggle attribute</span>
             </div>
             <div class="flex flex-wrap gap-2">
               <button
@@ -808,10 +817,10 @@ const templateCategories = [
                 :key="key"
                 type="button"
                 @click="addSuggestedField(key)"
-                :class="customData[key] !== undefined ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/50 ring-1 ring-indigo-500/40 shadow-sm' : 'bg-slate-900 hover:bg-indigo-950/40 border-slate-800 hover:border-indigo-500/40 text-slate-400 hover:text-indigo-300'"
-                class="px-3.5 py-1.5 rounded-full border text-[9px] font-mono font-bold uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap leading-none shadow-sm cursor-pointer"
+                :class="customData[key] !== undefined ? 'bg-primary/20 text-primary dark:text-primary-foreground border-primary/50 ring-1 ring-primary/40 shadow-xs' : 'bg-card hover:bg-muted border-border hover:border-primary/40 text-muted-foreground hover:text-foreground'"
+                class="px-3.5 py-1.5 rounded-full border text-[9px] font-mono font-bold uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap leading-none shadow-xs cursor-pointer"
               >
-                <Check v-if="customData[key] !== undefined" class="size-2.5 text-indigo-400 shrink-0" />
+                <Check v-if="customData[key] !== undefined" class="size-2.5 text-primary shrink-0" />
                 <Plus v-else class="size-2.5 shrink-0" />
                 <span class="whitespace-nowrap">{{ key }}</span>
               </button>
@@ -821,34 +830,34 @@ const templateCategories = [
           <!-- Parameter Table / List with Value Autocomplete Suggestions -->
           <div class="space-y-3 pt-2">
             <div class="flex items-center justify-between">
-              <Label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Custom Metadata Schema Attributes ({{ Object.keys(customData).length }})</Label>
+              <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Custom Metadata Schema Attributes ({{ Object.keys(customData).length }})</Label>
             </div>
 
-            <div v-if="Object.keys(customData).length === 0" class="p-8 text-center bg-slate-900/30 rounded-2xl border border-dashed border-slate-800">
-              <Sliders class="size-6 text-slate-700 mx-auto mb-2" />
-              <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">No custom parameters configured</p>
-              <p class="text-[10px] text-slate-600 mt-1">Use the quick chips above or add custom key/value parameters below.</p>
+            <div v-if="Object.keys(customData).length === 0" class="p-8 text-center bg-muted/20 rounded-2xl border border-dashed border-border">
+              <Sliders class="size-6 text-muted-foreground mx-auto mb-2" />
+              <p class="text-xs font-bold text-muted-foreground uppercase tracking-widest">No custom parameters configured</p>
+              <p class="text-[10px] text-muted-foreground/70 mt-1">Use the quick chips above or add custom key/value parameters below.</p>
             </div>
 
             <div v-else class="space-y-2.5">
               <div
                 v-for="(val, key) in customData"
                 :key="key"
-                class="p-2.5 bg-slate-900/50 rounded-xl border border-slate-800/80 hover:border-slate-700 transition-colors space-y-2"
+                class="p-2.5 bg-muted/40 rounded-xl border border-border hover:border-border/80 transition-colors space-y-2"
               >
                 <div class="flex items-center gap-3">
-                  <span class="h-9 px-3.5 bg-slate-950 border border-slate-800 text-indigo-400 font-mono text-[9px] font-black uppercase tracking-wider shrink-0 max-w-[180px] inline-flex items-center justify-center rounded-full whitespace-nowrap leading-none shadow-sm">
+                  <span class="h-9 px-3.5 bg-card border border-border text-primary font-mono text-[9px] font-black uppercase tracking-wider shrink-0 max-w-[180px] inline-flex items-center justify-center rounded-full whitespace-nowrap leading-none shadow-xs">
                     <span class="truncate">{{ key }}</span>
                   </span>
                   <Input
                     v-model="customData[key]"
                     placeholder="Parameter value..."
-                    class="flex-1 rounded-xl h-8 bg-slate-950 border-slate-800 text-slate-200 text-xs font-mono"
+                    class="flex-1 rounded-xl h-8 bg-background border-border text-foreground text-xs font-mono"
                   />
                   <Button
                     variant="ghost"
                     size="icon"
-                    class="h-8 w-8 text-slate-600 hover:text-rose-400 shrink-0"
+                    class="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
                     @click="removeCustomField(key)"
                   >
                     <Trash2 class="w-3.5 h-3.5" />
@@ -857,13 +866,13 @@ const templateCategories = [
 
                 <!-- Cached Value Suggestions for this specific Key -->
                 <div v-if="getSuggestionsForKey(key).length > 0" class="flex flex-wrap gap-1.5 pl-2 items-center">
-                  <span class="text-[8px] font-mono text-slate-600 uppercase">Cached:</span>
+                  <span class="text-[8px] font-mono text-muted-foreground uppercase">Cached:</span>
                   <button
                     v-for="sVal in getSuggestionsForKey(key).slice(0, 6)"
                     :key="sVal"
                     type="button"
                     @click="customData[key] = sVal"
-                    :class="customData[key] === sVal ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm' : 'bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-indigo-200 border-slate-800'"
+                    :class="customData[key] === sVal ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border'"
                     class="px-2.5 py-0.5 rounded-full border text-[8px] font-mono transition-all inline-flex items-center justify-center whitespace-nowrap leading-none cursor-pointer"
                   >
                     {{ sVal }}
@@ -873,23 +882,23 @@ const templateCategories = [
             </div>
 
             <!-- Add Parameter Input Row -->
-            <div class="flex gap-2 pt-3 border-t border-slate-900">
+            <div class="flex gap-2 pt-3 border-t border-border">
               <Input
                 v-model="newFieldKey"
                 placeholder="Parameter Name (e.g. Voltage, Protocol, Firmware)"
-                class="flex-1 rounded-xl h-9 bg-slate-950 border-slate-800 text-slate-300 text-xs uppercase font-bold"
+                class="flex-1 rounded-xl h-9 bg-background border-border text-foreground text-xs uppercase font-bold"
                 @keyup.enter="addCustomField"
               />
               <Input
                 v-model="newFieldValue"
                 placeholder="Default Value..."
-                class="flex-1 rounded-xl h-9 bg-slate-950 border-slate-800 text-slate-300 text-xs font-mono"
+                class="flex-1 rounded-xl h-9 bg-background border-border text-foreground text-xs font-mono"
                 @keyup.enter="addCustomField"
               />
               <Button
                 variant="outline"
                 size="sm"
-                class="h-9 px-4 rounded-xl border-slate-800 bg-slate-900 text-xs font-bold uppercase tracking-wider hover:bg-slate-800"
+                class="h-9 px-4 rounded-xl border-border bg-card text-foreground text-xs font-bold uppercase tracking-wider hover:bg-accent cursor-pointer"
                 @click="addCustomField"
               >
                 <Plus class="size-3.5 mr-1" />
@@ -908,8 +917,8 @@ const templateCategories = [
               v-for="cat in templateCategories"
               :key="cat.id"
               @click="selectedCategory = cat.id"
-              :class="selectedCategory === cat.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'"
-              class="px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0 transition-all whitespace-nowrap inline-flex items-center justify-center leading-none shadow-sm"
+              :class="selectedCategory === cat.id ? 'bg-primary text-primary-foreground shadow-xs' : 'bg-card text-muted-foreground hover:text-foreground border border-border'"
+              class="px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0 transition-all whitespace-nowrap inline-flex items-center justify-center leading-none shadow-xs cursor-pointer"
             >
               {{ cat.label }}
             </button>
@@ -921,27 +930,27 @@ const templateCategories = [
               v-for="tpl in filteredTemplates"
               :key="tpl.id"
               @click="selectTemplate(tpl.id)"
-              :class="selectedTemplateId === tpl.id ? 'border-indigo-500 bg-indigo-950/40 ring-1 ring-indigo-500/50' : 'border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700'"
+              :class="selectedTemplateId === tpl.id ? 'border-primary bg-primary/10 ring-1 ring-primary/40' : 'border-border bg-card hover:bg-muted/40 hover:border-border/80'"
               class="p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between group"
             >
               <div>
                 <div class="flex items-center justify-between gap-2 mb-1.5">
-                  <span class="text-[8px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-indigo-500/30 text-indigo-400 bg-indigo-500/10 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">
+                  <span class="text-[8px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-primary/30 text-primary bg-primary/10 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-xs">
                     {{ tpl.category }}
                   </span>
-                  <span v-if="tpl.isCustom" class="text-[8px] font-mono font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-amber-500/30 text-amber-400 bg-amber-500/10 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-sm">Custom</span>
+                  <span v-if="tpl.isCustom" class="text-[8px] font-mono font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 inline-flex items-center justify-center whitespace-nowrap leading-none shadow-xs">Custom</span>
                 </div>
-                <h4 class="text-xs font-black text-slate-100 group-hover:text-indigo-300 transition-colors uppercase leading-snug">
+                <h4 class="text-xs font-black text-foreground group-hover:text-primary transition-colors uppercase leading-snug">
                   {{ tpl.name }}
                 </h4>
-                <p class="text-[10px] text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                <p class="text-[10px] text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
                   {{ tpl.description }}
                 </p>
               </div>
 
-              <div class="flex items-center justify-between mt-3 pt-2 border-t border-slate-800/60 text-[9px] font-mono text-slate-500">
+              <div class="flex items-center justify-between mt-3 pt-2 border-t border-border/60 text-[9px] font-mono text-muted-foreground">
                 <span>{{ tpl.variables.length }} Variables</span>
-                <span class="text-indigo-400 group-hover:underline flex items-center gap-1 font-bold uppercase">
+                <span class="text-primary group-hover:underline flex items-center gap-1 font-bold uppercase">
                   Select <ChevronRight class="size-3" />
                 </span>
               </div>
@@ -949,25 +958,25 @@ const templateCategories = [
           </div>
 
           <!-- Active Template Variable Interpolation Form & Preview -->
-          <div v-if="activeTemplate" class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-5">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div v-if="activeTemplate" class="p-5 rounded-2xl bg-muted/30 border border-border space-y-5">
+            <div class="flex items-center justify-between border-b border-border pb-3">
               <div class="flex items-center gap-2.5">
-                <Sparkles class="size-4 text-indigo-400 shrink-0" />
+                <Sparkles class="size-4 text-primary shrink-0" />
                 <div>
-                  <h4 class="text-xs font-black text-slate-200 uppercase tracking-wider">
+                  <h4 class="text-xs font-black text-foreground uppercase tracking-wider">
                     Template: {{ activeTemplate.name }}
                   </h4>
-                  <p class="text-[10px] text-slate-500 mt-0.5">{{ activeTemplate.description }}</p>
+                  <p class="text-[10px] text-muted-foreground mt-0.5">{{ activeTemplate.description }}</p>
                 </div>
               </div>
 
               <div class="flex items-center gap-2">
-                <Button variant="ghost" size="sm" @click="resetVariables" class="h-7 text-[10px] font-bold text-slate-400 uppercase">
+                <Button variant="ghost" size="sm" @click="resetVariables" class="h-7 text-[10px] font-bold text-muted-foreground uppercase cursor-pointer">
                   <RefreshCw class="size-3 mr-1" /> Reset
                 </Button>
                 <Button
                   @click="handleApplyTemplate"
-                  class="h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider px-4 shadow-lg shadow-emerald-600/20 flex items-center gap-1.5"
+                  class="h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider px-4 shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
                   <Check class="size-3.5" />
                   <span>Apply Template to Asset</span>
@@ -983,10 +992,10 @@ const templateCategories = [
                 class="space-y-1.5"
               >
                 <div class="flex items-center justify-between">
-                  <Label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                    {{ v.label }} <span v-if="v.required" class="text-rose-400">*</span>
+                  <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+                    {{ v.label }} <span v-if="v.required" class="text-destructive">*</span>
                   </Label>
-                  <code class="text-[9px] text-slate-600 font-mono">&#123;&#123;{{ v.name }}&#125;&#125;</code>
+                  <code class="text-[9px] text-muted-foreground font-mono">&#123;&#123;{{ v.name }}&#125;&#125;</code>
                 </div>
 
                 <!-- Select option if variable has options -->
@@ -994,7 +1003,7 @@ const templateCategories = [
                   <select
                     :value="variableValues[v.name]"
                     @change="setVariable(v.name, ($event.target as HTMLSelectElement).value)"
-                    class="w-full rounded-xl h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 text-xs font-bold focus:border-indigo-500 focus:outline-none"
+                    class="w-full rounded-xl h-10 px-3 bg-background border border-border text-foreground text-xs font-bold focus:border-primary focus:outline-hidden"
                   >
                     <option v-for="opt in v.options" :key="opt" :value="opt">{{ opt }}</option>
                   </select>
@@ -1005,7 +1014,7 @@ const templateCategories = [
                       :key="opt"
                       type="button"
                       @click="setVariable(v.name, opt)"
-                      :class="variableValues[v.name] === opt ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-800 hover:border-slate-700'"
+                      :class="variableValues[v.name] === opt ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card text-muted-foreground hover:text-foreground border-border hover:border-primary/40'"
                       class="px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-wider transition-all inline-flex items-center justify-center whitespace-nowrap leading-none cursor-pointer"
                     >
                       {{ opt }}
@@ -1019,7 +1028,7 @@ const templateCategories = [
                   type="number"
                   :value="variableValues[v.name]"
                   @input="setVariable(v.name, parseFloat(($event.target as HTMLInputElement).value) || 0)"
-                  class="rounded-xl h-10 bg-slate-950 border-slate-800 text-slate-200 font-mono text-xs"
+                  class="rounded-xl h-10 bg-background border-border text-foreground font-mono text-xs"
                 />
 
                 <!-- Text Input -->
@@ -1029,70 +1038,70 @@ const templateCategories = [
                   :value="variableValues[v.name]"
                   :placeholder="v.placeholder || `Enter ${v.label}...`"
                   @input="setVariable(v.name, ($event.target as HTMLInputElement).value)"
-                  class="rounded-xl h-10 bg-slate-950 border-slate-800 text-slate-200 font-bold text-xs"
+                  class="rounded-xl h-10 bg-background border-border text-foreground font-bold text-xs"
                 />
 
-                <p v-if="v.description" class="text-[9px] text-slate-500">{{ v.description }}</p>
+                <p v-if="v.description" class="text-[9px] text-muted-foreground">{{ v.description }}</p>
               </div>
             </div>
 
             <!-- Live Evaluated JSON Preview Accordion / Code Box -->
-            <div class="space-y-2 pt-2 border-t border-slate-800">
+            <div class="space-y-2 pt-2 border-t border-border">
               <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400">
-                  <Code class="size-3 text-indigo-400" />
+                <div class="flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground">
+                  <Code class="size-3 text-primary" />
                   <span>Live Evaluated JSON Result</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" @click="copyEvaluatedJson" class="h-6 text-[9px] font-mono text-slate-400 uppercase">
+                  <Button variant="ghost" size="sm" @click="copyEvaluatedJson" class="h-6 text-[9px] font-mono text-muted-foreground uppercase cursor-pointer">
                     <Copy v-if="!copyJsonFeedback" class="size-3 mr-1" />
-                    <Check v-else class="size-3 mr-1 text-emerald-400" />
+                    <Check v-else class="size-3 mr-1 text-emerald-600 dark:text-emerald-400" />
                     <span>{{ copyJsonFeedback ? 'Copied' : 'Copy JSON' }}</span>
                   </Button>
                 </div>
               </div>
 
-              <pre class="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] font-mono text-indigo-300 max-h-48 overflow-y-auto custom-scrollbar whitespace-pre-wrap leading-relaxed">{{ evaluatedJsonString }}</pre>
+              <pre class="p-4 rounded-xl bg-background border border-border text-[11px] font-mono text-foreground max-h-48 overflow-y-auto custom-scrollbar whitespace-pre-wrap leading-relaxed">{{ evaluatedJsonString }}</pre>
             </div>
           </div>
 
           <!-- Save Current Asset As Custom Template Trigger -->
-          <div class="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-900/30 flex items-center justify-between">
+          <div class="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
+              <div class="p-2 rounded-xl bg-primary/10 text-primary">
                 <Save class="size-4" />
               </div>
               <div>
-                <h4 class="text-xs font-black text-slate-200 uppercase tracking-wider">Save Current Configuration as Template</h4>
-                <p class="text-[10px] text-slate-500 mt-0.5">Persist this asset setup into your reusable template library.</p>
+                <h4 class="text-xs font-black text-foreground uppercase tracking-wider">Save Current Configuration as Template</h4>
+                <p class="text-[10px] text-muted-foreground mt-0.5">Persist this asset setup into your reusable template library.</p>
               </div>
             </div>
             <Button
               variant="outline"
               size="sm"
               @click="showSaveTemplateModal = true"
-              class="rounded-xl border-indigo-500/30 bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white text-xs font-bold uppercase tracking-wider h-9"
+              class="rounded-xl border-border bg-card text-foreground hover:bg-accent text-xs font-bold uppercase tracking-wider h-9 cursor-pointer"
             >
               Save as Template
             </Button>
           </div>
 
           <!-- Save Template Modal Mini Dialog -->
-          <div v-if="showSaveTemplateModal" class="p-5 rounded-2xl bg-slate-900 border border-indigo-500/50 shadow-2xl space-y-4 animate-in fade-in">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-              <h4 class="text-xs font-black text-white uppercase tracking-wider">Name New Template Preset</h4>
-              <button @click="showSaveTemplateModal = false" class="text-slate-500 hover:text-white">
+          <div v-if="showSaveTemplateModal" class="p-5 rounded-2xl bg-card border border-border shadow-2xl space-y-4 animate-in fade-in">
+            <div class="flex items-center justify-between border-b border-border pb-2">
+              <h4 class="text-xs font-black text-foreground uppercase tracking-wider">Name New Template Preset</h4>
+              <button @click="showSaveTemplateModal = false" class="text-muted-foreground hover:text-foreground cursor-pointer">
                 <X class="size-4" />
               </button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div class="space-y-1">
-                <Label class="text-[10px] font-black text-slate-400 uppercase">Template Name</Label>
-                <Input v-model="newTemplateName" placeholder="e.g. Standard CNC Machine Node" class="h-9 rounded-xl bg-slate-950 border-slate-800 text-xs text-white font-bold" />
+                <Label class="text-[10px] font-black text-muted-foreground uppercase">Template Name</Label>
+                <Input v-model="newTemplateName" placeholder="e.g. Standard CNC Machine Node" class="h-9 rounded-xl bg-background border-border text-xs text-foreground font-bold" />
               </div>
               <div class="space-y-1">
-                <Label class="text-[10px] font-black text-slate-400 uppercase">Category</Label>
-                <select v-model="newTemplateCategory" class="w-full h-9 rounded-xl px-3 bg-slate-950 border border-slate-800 text-xs text-white font-bold">
+                <Label class="text-[10px] font-black text-muted-foreground uppercase">Category</Label>
+                <select v-model="newTemplateCategory" class="w-full h-9 rounded-xl px-3 bg-background border border-border text-xs text-foreground font-bold">
                   <option value="Controller">Controller</option>
                   <option value="Vision">Vision</option>
                   <option value="Motion">Motion</option>
@@ -1104,13 +1113,13 @@ const templateCategories = [
                 </select>
               </div>
               <div class="space-y-1 col-span-2">
-                <Label class="text-[10px] font-black text-slate-400 uppercase">Description</Label>
-                <Input v-model="newTemplateDesc" placeholder="Brief explanation of the template..." class="h-9 rounded-xl bg-slate-950 border-slate-800 text-xs text-slate-300" />
+                <Label class="text-[10px] font-black text-muted-foreground uppercase">Description</Label>
+                <Input v-model="newTemplateDesc" placeholder="Brief explanation of the template..." class="h-9 rounded-xl bg-background border-border text-xs text-muted-foreground" />
               </div>
             </div>
             <div class="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" size="sm" @click="showSaveTemplateModal = false" class="text-xs text-slate-400 uppercase font-bold">Cancel</Button>
-              <Button size="sm" @click="handleSaveAsCustomTemplate" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase px-4">Save Preset</Button>
+              <Button variant="ghost" size="sm" @click="showSaveTemplateModal = false" class="text-xs text-muted-foreground uppercase font-bold cursor-pointer">Cancel</Button>
+              <Button size="sm" @click="handleSaveAsCustomTemplate" class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase px-4 cursor-pointer">Save Preset</Button>
             </div>
           </div>
 
@@ -1119,11 +1128,11 @@ const templateCategories = [
       </div>
 
       <!-- Action Footer -->
-      <div class="p-6 bg-slate-900/70 border-t border-slate-900 flex items-center justify-between gap-4 shrink-0">
+      <div class="p-6 bg-muted/30 border-t border-border flex items-center justify-between gap-4 shrink-0">
         <Button
           variant="ghost"
           @click="emit('update:open', false)"
-          class="rounded-xl h-11 text-xs font-black text-slate-400 uppercase tracking-wider hover:bg-slate-800 hover:text-slate-200 border border-slate-800 px-6"
+          class="rounded-xl h-11 text-xs font-black text-muted-foreground uppercase tracking-wider hover:bg-accent hover:text-foreground border border-border px-6 cursor-pointer"
         >
           Cancel
         </Button>
@@ -1133,7 +1142,7 @@ const templateCategories = [
             v-if="activeTab !== 'templates'"
             variant="outline"
             @click="activeTab = 'templates'"
-            class="rounded-xl h-11 text-xs font-bold text-indigo-400 uppercase tracking-wider border-indigo-800/40 bg-indigo-950/20 hover:bg-indigo-900/40 hidden sm:flex items-center gap-2"
+            class="rounded-xl h-11 text-xs font-bold text-primary uppercase tracking-wider border-border bg-card hover:bg-accent hidden sm:flex items-center gap-2 cursor-pointer"
           >
             <Sparkles class="size-3.5" />
             <span>Load Template</span>
@@ -1141,7 +1150,7 @@ const templateCategories = [
 
           <Button
             @click="handleSave"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-11 text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 px-8"
+            class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-11 text-xs font-black uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 px-8 cursor-pointer"
           >
             <Zap class="w-4 h-4" />
             <span>{{ mode === 'create' ? 'Commit to Infrastructure' : 'Save Asset Record' }}</span>

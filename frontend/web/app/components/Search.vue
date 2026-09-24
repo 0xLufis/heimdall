@@ -23,11 +23,11 @@ const emit = defineEmits<{
 }>()
 
 const { metaSymbol } = useShortcuts()
-const { openModal } = useGlobalSearchModal()
+const { triggerSearch } = useGlobalSearchModal()
 
 defineShortcuts({
-  Meta_K: () => openModal(),
-  Meta_P: () => openModal()
+  Meta_K: () => triggerSearch(),
+  Meta_P: () => triggerSearch()
 })
 </script>
 
@@ -38,7 +38,7 @@ defineShortcuts({
       class="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground bg-muted/40 hover:bg-muted/70 hover:text-foreground border border-border/60 rounded-xl transition-all duration-150 cursor-pointer group shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
       title="Open Global Search (⌘K)"
       aria-label="Open Global Search"
-      @click="openModal"
+      @click="triggerSearch"
     >
       <div class="flex items-center gap-2.5 overflow-hidden">
         <Icon

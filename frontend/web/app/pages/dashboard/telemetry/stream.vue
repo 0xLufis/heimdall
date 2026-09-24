@@ -221,29 +221,29 @@ onUnmounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header Section -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
       <div
         role="button"
         tabindex="0"
         @click="resetTelemetryView"
         @keydown.enter="resetTelemetryView"
-        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-slate-900/60"
+        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-muted/60"
         title="Click to reset filters and refresh telemetry stream"
       >
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 group-hover:bg-indigo-500/20 transition-all">
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 group-hover:scale-105 group-hover:bg-indigo-500/20 transition-all">
           <Activity class="size-6" />
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-100 group-hover:text-white transition-colors">
+            <h1 class="text-2xl font-bold tracking-tight text-foreground transition-colors">
               Live Industrial Telemetry Stream
             </h1>
-            <Badge variant="outline" class="border-emerald-500/30 text-emerald-400 bg-emerald-950/20 text-xs gap-1 py-0.5">
-              <span class="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <Badge variant="outline" class="border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 text-xs gap-1 py-0.5">
+              <span class="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse"></span>
               SignalR Connected
             </Badge>
           </div>
-          <p class="text-sm text-slate-400 mt-0.5 group-hover:text-slate-300 transition-colors">
+          <p class="text-sm text-muted-foreground mt-0.5 transition-colors">
             Real-time IPC telemetry, Beckhoff ADS cycle diagnostics, and sensor gauges
           </p>
         </div>
@@ -254,7 +254,7 @@ onUnmounted(() => {
           variant="outline"
           size="sm"
           @click="fetchControllers(false)"
-          class="border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 text-xs font-medium h-8"
+          class="border-border bg-card text-foreground hover:bg-muted text-xs font-medium h-8"
         >
           <RefreshCw class="size-3.5 mr-1" :class="{ 'animate-spin': isLoading }" />
           Refresh
@@ -263,7 +263,7 @@ onUnmounted(() => {
           <Button
             variant="outline"
             size="sm"
-            class="border-slate-800 bg-slate-900 text-indigo-400 hover:text-indigo-300 text-xs font-medium h-8"
+            class="border-border bg-card text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 text-xs font-medium h-8"
           >
             <SlidersHorizontal class="size-3.5 mr-1" />
             Config & Recipes
@@ -279,65 +279,65 @@ onUnmounted(() => {
         tabindex="0"
         @click="filterOnlineOnly = !filterOnlineOnly"
         @keydown.enter="filterOnlineOnly = !filterOnlineOnly"
-        class="bg-slate-900 border-slate-800 cursor-pointer transition-all hover:scale-[1.02] hover:border-emerald-500/40 select-none"
+        class="bg-card border-border cursor-pointer transition-all hover:scale-[1.02] hover:border-emerald-500/40 select-none"
         :class="{ 'ring-2 ring-emerald-500/60 border-emerald-500/60': filterOnlineOnly }"
         :title="filterOnlineOnly ? 'Click to show all nodes' : 'Click to filter to online nodes only'"
       >
         <CardContent class="p-4 flex items-center justify-between">
           <div>
-            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
               <span>Active Nodes</span>
-              <Badge v-if="filterOnlineOnly" variant="outline" class="text-[9px] py-0 px-1 border-emerald-500/40 text-emerald-400 bg-emerald-500/10">
+              <Badge v-if="filterOnlineOnly" variant="outline" class="text-[9px] py-0 px-1 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10">
                 Online Only
               </Badge>
             </div>
-            <div class="text-2xl font-bold text-slate-100 mt-1">
+            <div class="text-2xl font-bold text-foreground mt-1">
               {{ fleetStats.online }} / {{ fleetStats.total }}
             </div>
           </div>
-          <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+          <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
             <Wifi class="size-5" />
           </div>
         </CardContent>
       </Card>
 
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardContent class="p-4 flex items-center justify-between">
           <div>
-            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Fleet Avg CPU</div>
-            <div class="text-2xl font-bold text-slate-100 mt-1">
+            <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Fleet Avg CPU</div>
+            <div class="text-2xl font-bold text-foreground mt-1">
               {{ fleetStats.avgCpu }}%
             </div>
           </div>
-          <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+          <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
             <Cpu class="size-5" />
           </div>
         </CardContent>
       </Card>
 
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardContent class="p-4 flex items-center justify-between">
           <div>
-            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Fleet Avg RAM</div>
-            <div class="text-2xl font-bold text-slate-100 mt-1">
+            <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Fleet Avg RAM</div>
+            <div class="text-2xl font-bold text-foreground mt-1">
               {{ fleetStats.avgRam }}%
             </div>
           </div>
-          <div class="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+          <div class="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400">
             <Gauge class="size-5" />
           </div>
         </CardContent>
       </Card>
 
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardContent class="p-4 flex items-center justify-between">
           <div>
-            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Streaming Heartbeat</div>
-            <div class="text-2xl font-bold text-emerald-400 mt-1">
+            <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Streaming Heartbeat</div>
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
               1.2s
             </div>
           </div>
-          <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+          <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
             <Radio class="size-5" />
           </div>
         </CardContent>
@@ -347,20 +347,20 @@ onUnmounted(() => {
     <!-- Main Live Gauge & Inspection Section -->
     <div v-if="activeController" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Node Selector Card -->
-      <Card class="bg-slate-900 border-slate-800 lg:col-span-1">
-        <CardHeader class="p-4 border-b border-slate-800">
-          <CardTitle class="text-sm text-slate-200 flex items-center justify-between">
+      <Card class="bg-card border-border lg:col-span-1">
+        <CardHeader class="p-4 border-b border-border">
+          <CardTitle class="text-sm text-foreground flex items-center justify-between">
             <span>Select Controller Node</span>
-            <Badge variant="outline" class="text-[10px] font-mono text-indigo-400 border-indigo-500/30">
+            <Badge variant="outline" class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 border-indigo-500/30">
               {{ filteredControllers.length }} Hosts
             </Badge>
           </CardTitle>
           <div class="relative mt-2">
-            <Search class="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search class="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               v-model="searchQuery"
               placeholder="Search hostname or IP..."
-              class="h-8 pl-8 text-xs bg-slate-950 border-slate-800 text-slate-200"
+              class="h-8 pl-8 text-xs bg-background border-border text-foreground"
             />
           </div>
         </CardHeader>
@@ -373,22 +373,22 @@ onUnmounted(() => {
             :class="[
               'w-full text-left p-2.5 rounded-lg text-xs transition-colors flex items-center justify-between border',
               c.id === activeController.id
-                ? 'bg-indigo-950/40 border-indigo-500/40 text-white'
-                : 'bg-slate-950/40 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                ? 'bg-indigo-500/10 border-indigo-500/40 text-foreground font-semibold'
+                : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
             ]"
           >
             <div class="truncate">
-              <div class="font-semibold text-slate-200 truncate flex items-center gap-1.5">
+              <div class="font-semibold text-foreground truncate flex items-center gap-1.5">
                 <span
                   class="size-2 rounded-full shrink-0"
-                  :class="c.telemetry?.isOnline ? 'bg-emerald-400' : 'bg-slate-600'"
+                  :class="c.telemetry?.isOnline ? 'bg-emerald-400' : 'bg-muted-foreground/60'"
                 ></span>
                 <span>{{ c.hostname || c.name }}</span>
               </div>
-              <div class="text-[10px] font-mono text-slate-500 mt-0.5 truncate">{{ c.macAddress || 'No MAC' }}</div>
+              <div class="text-[10px] font-mono text-muted-foreground mt-0.5 truncate">{{ c.macAddress || 'No MAC' }}</div>
             </div>
             <div class="text-right shrink-0">
-              <span class="font-mono font-medium text-[11px] text-slate-300">
+              <span class="font-mono font-medium text-[11px] text-foreground">
                 {{ c.telemetry?.cpuUsagePercent ?? 0 }}% CPU
               </span>
             </div>
@@ -397,22 +397,22 @@ onUnmounted(() => {
       </Card>
 
       <!-- Gauges & Telemetry Detail -->
-      <Card class="bg-slate-900 border-slate-800 lg:col-span-2">
-        <CardHeader class="p-5 pb-3 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <Card class="bg-card border-border lg:col-span-2">
+        <CardHeader class="p-5 pb-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div class="flex items-center gap-2">
-              <CardTitle class="text-base text-slate-100">
+              <CardTitle class="text-base text-foreground">
                 {{ activeController.hostname || activeController.name }}
               </CardTitle>
               <Badge
                 variant="outline"
                 class="text-xs font-mono"
-                :class="activeController.telemetry?.isOnline ? 'border-emerald-500/30 text-emerald-400 bg-emerald-950/20' : 'border-slate-800 text-slate-500'"
+                :class="activeController.telemetry?.isOnline ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : 'border-border text-muted-foreground'"
               >
                 {{ activeController.telemetry?.isOnline ? 'Active Stream' : 'Offline' }}
               </Badge>
             </div>
-            <CardDescription class="text-xs text-slate-400 mt-0.5 font-mono">
+            <CardDescription class="text-xs text-muted-foreground mt-0.5 font-mono">
               MAC: {{ activeController.macAddress || 'N/A' }} • IP: {{ activeController.ipAddress || '192.168.10.x' }}
             </CardDescription>
           </div>
@@ -424,10 +424,10 @@ onUnmounted(() => {
               variant="outline"
               size="sm"
               @click="openHistoryModal"
-              class="border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 hover:bg-slate-800 text-xs h-8"
+              class="border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-8"
               title="View Historical Snapshots"
             >
-              <History class="size-3.5 mr-1 text-slate-400" />
+              <History class="size-3.5 mr-1 text-muted-foreground" />
               <span>History</span>
             </Button>
             <RbacButton
@@ -437,10 +437,10 @@ onUnmounted(() => {
               size="sm"
               @click="triggerDiagnosticSnapshot"
               :disabled="isCapturingSnapshot"
-              class="border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-800 text-xs h-8"
+              class="border-border bg-card text-foreground hover:bg-muted text-xs h-8"
             >
-              <Zap v-if="!isCapturingSnapshot" class="size-3.5 mr-1 text-amber-400" />
-              <Loader2 v-else class="size-3.5 mr-1 text-amber-400 animate-spin" />
+              <Zap v-if="!isCapturingSnapshot" class="size-3.5 mr-1 text-amber-600 dark:text-amber-400" />
+              <Loader2 v-else class="size-3.5 mr-1 text-amber-600 dark:text-amber-400 animate-spin" />
               <span>{{ isCapturingSnapshot ? 'Capturing...' : 'Snapshot' }}</span>
             </RbacButton>
             <RbacButton
@@ -457,24 +457,24 @@ onUnmounted(() => {
 
         <CardContent class="p-5 space-y-6">
           <!-- Error Alert Banner -->
-          <div v-if="snapshotError" class="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium flex items-center justify-between">
+          <div v-if="snapshotError" class="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-medium flex items-center justify-between">
             <div class="flex items-center gap-2">
               <AlertTriangle class="size-4 shrink-0" />
               <span>{{ snapshotError }}</span>
             </div>
-            <Button variant="ghost" size="sm" class="h-6 text-[10px] text-rose-300 hover:bg-rose-500/20" @click="snapshotError = null">Dismiss</Button>
+            <Button variant="ghost" size="sm" class="h-6 text-[10px] text-rose-600 dark:text-rose-300 hover:bg-rose-500/20" @click="snapshotError = null">Dismiss</Button>
           </div>
 
           <!-- Real Diagnostic Snapshot Card -->
-          <div v-if="enableDebugFeatures && latestSnapshot" class="p-3.5 rounded-xl bg-slate-950/80 border border-emerald-500/30 text-slate-200 space-y-2.5 shadow-lg">
+          <div v-if="enableDebugFeatures && latestSnapshot" class="p-3.5 rounded-xl bg-muted/30 border border-emerald-500/30 text-foreground space-y-2.5 shadow-lg">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <div class="p-1 rounded-md bg-emerald-500/20 text-emerald-400">
+                <div class="p-1 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 class="size-4" />
                 </div>
                 <div>
-                  <span class="text-xs font-bold text-emerald-400">Diagnostic Snapshot Captured</span>
-                  <span class="text-[11px] text-slate-400 ml-2">
+                  <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400">Diagnostic Snapshot Captured</span>
+                  <span class="text-[11px] text-muted-foreground ml-2">
                     {{ new Date(latestSnapshot.capturedAtUtc).toLocaleString() }}
                   </span>
                 </div>
@@ -483,62 +483,62 @@ onUnmounted(() => {
                 <Button
                   size="sm"
                   variant="outline"
-                  class="h-7 text-xs border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 px-2.5"
+                  class="h-7 text-xs border-border bg-card text-foreground hover:bg-muted px-2.5"
                   @click="isPayloadModalOpen = true"
                 >
-                  <Eye class="size-3.5 mr-1 text-indigo-400" />
+                  <Eye class="size-3.5 mr-1 text-indigo-600 dark:text-indigo-400" />
                   View Payload
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  class="h-7 text-xs border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 px-2.5"
+                  class="h-7 text-xs border-border bg-card text-foreground hover:bg-muted px-2.5"
                   @click="downloadSnapshot(latestSnapshot)"
                 >
-                  <Download class="size-3.5 mr-1 text-emerald-400" />
+                  <Download class="size-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
                   Download JSON
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  class="size-7 p-0 text-slate-500 hover:text-slate-300"
+                  class="size-7 p-0 text-muted-foreground hover:text-foreground"
                   @click="latestSnapshot = null"
                 >
                   <X class="size-3.5" />
                 </Button>
               </div>
             </div>
-            <div class="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 pt-1 border-t border-slate-800/80">
-              <span>ID: <code class="text-slate-300 font-mono">{{ latestSnapshot.id.substring(0, 8) }}...</code></span>
+            <div class="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground pt-1 border-t border-border/80">
+              <span>ID: <code class="text-foreground font-mono">{{ latestSnapshot.id.substring(0, 8) }}...</code></span>
               <span class="flex items-center gap-1">
                 SHA-256: 
-                <code class="text-indigo-300 font-mono">{{ latestSnapshot.payloadHashSha256.substring(0, 16) }}...</code>
+                <code class="text-indigo-600 dark:text-indigo-300 font-mono">{{ latestSnapshot.payloadHashSha256.substring(0, 16) }}...</code>
                 <button
                   type="button"
                   @click="copyHash(latestSnapshot.payloadHashSha256)"
-                  class="hover:text-white transition-colors"
+                  class="hover:text-foreground transition-colors"
                   title="Copy full SHA-256 digest"
                 >
                   <Copy v-if="!copiedHash" class="size-3" />
-                  <Check v-else class="size-3 text-emerald-400" />
+                  <Check v-else class="size-3 text-emerald-600 dark:text-emerald-400" />
                 </button>
               </span>
-              <span>Operator: <span class="text-slate-300">{{ latestSnapshot.capturedByUserName || latestSnapshot.capturedByUserId }}</span></span>
-              <span>Audit: <span class="text-emerald-400 font-semibold">TISAX / NIS2 Recorded</span></span>
+              <span>Operator: <span class="text-foreground font-medium">{{ latestSnapshot.capturedByUserName || latestSnapshot.capturedByUserId }}</span></span>
+              <span>Audit: <span class="text-emerald-600 dark:text-emerald-400 font-semibold">TISAX / NIS2 Recorded</span></span>
             </div>
           </div>
 
           <!-- Radial Dials Grid -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <!-- CPU Gauge -->
-            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-center space-y-2">
-              <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-center gap-1">
-                <Cpu class="size-3.5 text-indigo-400" /> CPU Load
+            <div class="p-4 rounded-xl bg-muted/30 border border-border text-center space-y-2">
+              <div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-1">
+                <Cpu class="size-3.5 text-indigo-600 dark:text-indigo-400" /> CPU Load
               </div>
               <div class="relative size-20 mx-auto flex items-center justify-center">
                 <svg class="size-full -rotate-90" viewBox="0 0 36 36">
                   <path
-                    class="text-slate-800"
+                    class="text-muted/60"
                     stroke-width="3.5"
                     stroke="currentColor"
                     fill="none"
@@ -554,21 +554,21 @@ onUnmounted(() => {
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   />
                 </svg>
-                <div class="absolute font-mono font-bold text-sm text-white">
+                <div class="absolute font-mono font-bold text-sm text-foreground">
                   {{ activeController.telemetry?.cpuUsagePercent ?? 0 }}%
                 </div>
               </div>
             </div>
 
             <!-- RAM Gauge -->
-            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-center space-y-2">
-              <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-center gap-1">
-                <Gauge class="size-3.5 text-purple-400" /> Memory
+            <div class="p-4 rounded-xl bg-muted/30 border border-border text-center space-y-2">
+              <div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-1">
+                <Gauge class="size-3.5 text-purple-600 dark:text-purple-400" /> Memory
               </div>
               <div class="relative size-20 mx-auto flex items-center justify-center">
                 <svg class="size-full -rotate-90" viewBox="0 0 36 36">
                   <path
-                    class="text-slate-800"
+                    class="text-muted/60"
                     stroke-width="3.5"
                     stroke="currentColor"
                     fill="none"
@@ -584,33 +584,33 @@ onUnmounted(() => {
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   />
                 </svg>
-                <div class="absolute font-mono font-bold text-sm text-white">
+                <div class="absolute font-mono font-bold text-sm text-foreground">
                   {{ activeController.telemetry?.ramUsagePercent ?? 0 }}%
                 </div>
               </div>
             </div>
 
             <!-- Beckhoff ADS Cycle Time -->
-            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-center space-y-2">
-              <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-center gap-1">
-                <Zap class="size-3.5 text-amber-400" /> Cycle Time
+            <div class="p-4 rounded-xl bg-muted/30 border border-border text-center space-y-2">
+              <div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-1">
+                <Zap class="size-3.5 text-amber-600 dark:text-amber-400" /> Cycle Time
               </div>
               <div class="pt-3">
-                <div class="text-xl font-bold font-mono text-amber-300">2.1 ms</div>
-                <div class="text-[10px] text-slate-500 mt-1">TwinCAT RT 1000µs</div>
+                <div class="text-xl font-bold font-mono text-amber-600 dark:text-amber-300">2.1 ms</div>
+                <div class="text-[10px] text-muted-foreground mt-1">TwinCAT RT 1000µs</div>
               </div>
             </div>
 
             <!-- Free Storage Headroom -->
-            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-center space-y-2">
-              <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-center gap-1">
-                <HardDrive class="size-3.5 text-cyan-400" /> Disk Free
+            <div class="p-4 rounded-xl bg-muted/30 border border-border text-center space-y-2">
+              <div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-1">
+                <HardDrive class="size-3.5 text-cyan-600 dark:text-cyan-400" /> Disk Free
               </div>
               <div class="pt-3">
-                <div class="text-xl font-bold font-mono text-cyan-300">
+                <div class="text-xl font-bold font-mono text-cyan-600 dark:text-cyan-300">
                   {{ activeController.freeDiskSpace?.totalFreeGB ? Math.round(activeController.freeDiskSpace.totalFreeGB) + ' GB' : '64 GB' }}
                 </div>
-                <div class="text-[10px] text-slate-500 mt-1">SSD NVMe Spool</div>
+                <div class="text-[10px] text-muted-foreground mt-1">SSD NVMe Spool</div>
               </div>
             </div>
           </div>
@@ -618,16 +618,16 @@ onUnmounted(() => {
           <!-- Real-Time OT Signals Table -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Active Process Data Probes
               </h4>
-              <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+              <span class="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                 <span class="size-1.5 rounded-full bg-emerald-400"></span> Live Ingestion
               </span>
             </div>
-            <div class="rounded-lg border border-slate-800 overflow-hidden">
+            <div class="rounded-lg border border-border overflow-hidden">
               <table class="w-full text-xs text-left">
-                <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
+                <thead class="bg-muted/50 text-muted-foreground uppercase text-[10px] border-b border-border">
                   <tr>
                     <th class="px-4 py-2.5">Tag Identifier</th>
                     <th class="px-4 py-2.5">Live Value</th>
@@ -635,12 +635,12 @@ onUnmounted(() => {
                     <th class="px-4 py-2.5 text-right">Data Quality</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800 font-mono">
-                  <tr v-for="tag in liveTags" :key="tag.name" class="hover:bg-slate-800/30">
-                    <td class="px-4 py-2.5 text-slate-200">{{ tag.name }}</td>
-                    <td class="px-4 py-2.5 font-bold text-indigo-300">{{ tag.value }}</td>
-                    <td class="px-4 py-2.5 text-slate-400">{{ tag.unit }}</td>
-                    <td class="px-4 py-2.5 text-right text-emerald-400">{{ tag.quality }}</td>
+                <tbody class="divide-y divide-border font-mono">
+                  <tr v-for="tag in liveTags" :key="tag.name" class="hover:bg-muted/40">
+                    <td class="px-4 py-2.5 text-foreground">{{ tag.name }}</td>
+                    <td class="px-4 py-2.5 font-bold text-indigo-600 dark:text-indigo-300">{{ tag.value }}</td>
+                    <td class="px-4 py-2.5 text-muted-foreground">{{ tag.unit }}</td>
+                    <td class="px-4 py-2.5 text-right text-emerald-600 dark:text-emerald-400">{{ tag.quality }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -660,13 +660,13 @@ onUnmounted(() => {
 
     <!-- Diagnostic Snapshot Payload Dialog -->
     <Dialog v-if="enableDebugFeatures" :open="isPayloadModalOpen" @update:open="isPayloadModalOpen = $event">
-      <DialogContent class="max-w-2xl bg-slate-950 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-2xl shadow-2xl">
-        <DialogHeader class="p-5 border-b border-slate-800 bg-slate-900/50 flex flex-row items-center justify-between">
+      <DialogContent class="max-w-2xl bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl shadow-2xl">
+        <DialogHeader class="p-5 border-b border-border bg-muted/30 flex flex-row items-center justify-between">
           <div class="flex items-center gap-2.5">
-            <FileText class="size-5 text-indigo-400" />
+            <FileText class="size-5 text-indigo-600 dark:text-indigo-400" />
             <div>
-              <DialogTitle class="text-base font-bold text-slate-100">Diagnostic Snapshot Payload</DialogTitle>
-              <DialogDescription class="text-xs text-slate-400">
+              <DialogTitle class="text-base font-bold text-foreground">Diagnostic Snapshot Payload</DialogTitle>
+              <DialogDescription class="text-xs text-muted-foreground">
                 Node: {{ latestSnapshot?.hostname }} (Captured: {{ latestSnapshot ? new Date(latestSnapshot.capturedAtUtc).toLocaleString() : '' }})
               </DialogDescription>
             </div>
@@ -674,54 +674,54 @@ onUnmounted(() => {
           <Button
             size="sm"
             variant="outline"
-            class="border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 h-8 text-xs"
+            class="border-border bg-card text-foreground hover:bg-muted h-8 text-xs"
             @click="downloadSnapshot(latestSnapshot)"
           >
-            <Download class="size-3.5 mr-1 text-emerald-400" />
+            <Download class="size-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
             Download
           </Button>
         </DialogHeader>
         <div class="p-5 max-h-[500px] overflow-y-auto">
-          <pre class="text-xs font-mono bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-slate-300 overflow-x-auto whitespace-pre-wrap">{{ latestSnapshot?.snapshotPayloadJson || JSON.stringify(latestSnapshot, null, 2) }}</pre>
+          <pre class="text-xs font-mono bg-background p-4 rounded-xl border border-border text-foreground overflow-x-auto whitespace-pre-wrap">{{ latestSnapshot?.snapshotPayloadJson || JSON.stringify(latestSnapshot, null, 2) }}</pre>
         </div>
       </DialogContent>
     </Dialog>
 
     <!-- Diagnostic Snapshot History Dialog -->
     <Dialog v-if="enableDebugFeatures" :open="isHistoryModalOpen" @update:open="isHistoryModalOpen = $event">
-      <DialogContent class="max-w-3xl bg-slate-950 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-2xl shadow-2xl">
-        <DialogHeader class="p-5 border-b border-slate-800 bg-slate-900/50">
+      <DialogContent class="max-w-3xl bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl shadow-2xl">
+        <DialogHeader class="p-5 border-b border-border bg-muted/30">
           <div class="flex items-center gap-2.5">
-            <History class="size-5 text-indigo-400" />
+            <History class="size-5 text-indigo-600 dark:text-indigo-400" />
             <div>
-              <DialogTitle class="text-base font-bold text-slate-100">Historical Diagnostic Snapshots</DialogTitle>
-              <DialogDescription class="text-xs text-slate-400">
+              <DialogTitle class="text-base font-bold text-foreground">Historical Diagnostic Snapshots</DialogTitle>
+              <DialogDescription class="text-xs text-muted-foreground">
                 Audit trail for node {{ activeController?.hostname || activeController?.name }}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <div class="p-5 max-h-[480px] overflow-y-auto space-y-2">
-          <div v-if="isLoadingHistory" class="p-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-            <Loader2 class="size-4 animate-spin text-indigo-400" />
+          <div v-if="isLoadingHistory" class="p-8 text-center text-muted-foreground text-xs flex items-center justify-center gap-2">
+            <Loader2 class="size-4 animate-spin text-indigo-500" />
             <span>Loading historical snapshots...</span>
           </div>
-          <div v-else-if="snapshotHistory.length === 0" class="p-8 text-center text-slate-500 text-xs">
+          <div v-else-if="snapshotHistory.length === 0" class="p-8 text-center text-muted-foreground text-xs">
             No diagnostic snapshots recorded yet for this controller.
           </div>
           <div
             v-for="s in snapshotHistory"
             :key="s.id"
-            class="p-3.5 rounded-xl bg-slate-900/50 border border-slate-800 hover:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+            class="p-3.5 rounded-xl bg-muted/30 border border-border hover:border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
           >
             <div class="space-y-1">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-slate-200 font-mono">{{ new Date(s.capturedAtUtc).toLocaleString() }}</span>
-                <Badge variant="outline" class="text-[10px] font-mono border-indigo-500/30 text-indigo-400 bg-indigo-950/20">
+                <span class="text-xs font-semibold text-foreground font-mono">{{ new Date(s.capturedAtUtc).toLocaleString() }}</span>
+                <Badge variant="outline" class="text-[10px] font-mono border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/10">
                   SHA-256: {{ s.payloadHashSha256.substring(0, 10) }}...
                 </Badge>
               </div>
-              <div class="text-[11px] text-slate-400 flex items-center gap-3">
+              <div class="text-[11px] text-muted-foreground flex items-center gap-3">
                 <span>By: {{ s.capturedByUserName || s.capturedByUserId }}</span>
                 <span>Size: {{ Math.round((s.payloadSizeBytes || 0) / 1024) }} KB</span>
               </div>
@@ -730,10 +730,10 @@ onUnmounted(() => {
               <Button
                 size="sm"
                 variant="outline"
-                class="h-7 text-xs border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                class="h-7 text-xs border-border bg-card text-foreground hover:bg-muted"
                 @click="downloadSnapshot(s)"
               >
-                <Download class="size-3 mr-1 text-emerald-400" />
+                <Download class="size-3 mr-1 text-emerald-600 dark:text-emerald-400" />
                 Export
               </Button>
             </div>

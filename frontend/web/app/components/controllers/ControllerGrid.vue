@@ -41,14 +41,14 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
 
 <template>
   <div class="space-y-4">
-    <div v-if="loading && controllers.length === 0" class="p-16 text-center bg-slate-900 border border-slate-800 rounded-xl">
-      <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-      <p class="text-xs font-medium text-slate-400">Scanning Edge IPC Telemetry...</p>
+    <div v-if="loading && controllers.length === 0" class="p-16 text-center bg-card border border-border rounded-xl">
+      <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <p class="text-xs font-medium text-muted-foreground">Scanning Edge IPC Telemetry...</p>
     </div>
 
-    <div v-else-if="controllers.length === 0" class="p-16 text-center bg-slate-900 border border-slate-800 rounded-xl text-slate-500">
+    <div v-else-if="controllers.length === 0" class="p-16 text-center bg-card border border-border rounded-xl text-muted-foreground">
       <Monitor class="w-12 h-12 mx-auto mb-3 opacity-30" />
-      <p class="text-xs font-medium text-slate-400">No industrial controllers connected</p>
+      <p class="text-xs font-medium text-muted-foreground">No industrial controllers connected</p>
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -62,77 +62,77 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
         @keydown.enter="emit('select', pc)"
         @keydown.space.prevent="emit('select', pc)"
         @contextmenu="handleCardContextMenu(pc, $event)"
-        class="bg-slate-900 border rounded-xl p-5 transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] group flex flex-col justify-between cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/50"
-        :class="selectedId === pc.id ? 'border-zinc-500 ring-1 ring-zinc-500/60 bg-slate-900/90 shadow-md' : 'border-slate-800 hover:border-zinc-500/60 hover:bg-slate-900/95'"
+        class="bg-card border rounded-xl p-5 transition-all duration-200 shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] group flex flex-col justify-between cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/50"
+        :class="selectedId === pc.id ? 'border-zinc-500 border-primary ring-1 ring-primary/60 bg-card shadow-md' : 'border-border hover:border-primary/50 hover:bg-card/95'"
       >
         <div>
           <!-- Header -->
           <div class="flex items-start justify-between mb-4">
             <div class="flex items-center gap-3">
-              <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800 group-hover:border-zinc-600 group-hover:bg-zinc-900/80 transition-colors">
-                <Monitor class="w-5 h-5 text-zinc-400 group-hover:text-zinc-200 transition-colors" />
+              <div class="p-2.5 bg-muted rounded-lg border border-border group-hover:bg-accent transition-colors">
+                <Monitor class="w-5 h-5 text-foreground group-hover:text-primary transition-colors" />
               </div>
               <div>
-                <h4 class="text-sm font-semibold text-slate-100 group-hover:text-white flex items-center gap-2">
+                <h4 class="text-sm font-semibold text-foreground group-hover:text-primary flex items-center gap-2 transition-colors">
                   {{ pc.hostname || pc.name }}
                   <span
                     class="w-2 h-2 rounded-full"
-                    :class="pc.telemetry?.isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-slate-600'"
+                    :class="pc.telemetry?.isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-muted-foreground/40'"
                   ></span>
                 </h4>
-                <p class="text-xs font-mono text-slate-400">{{ pc.macAddress || 'No MAC' }}</p>
+                <p class="text-xs font-mono text-muted-foreground">{{ pc.macAddress || 'No MAC' }}</p>
               </div>
             </div>
 
             <Badge
               variant="outline"
               class="text-xs font-medium px-2 py-0.5 rounded-md font-mono"
-              :class="pc.telemetry?.isOnline ? 'border-emerald-500/30 text-emerald-400 bg-emerald-950/20' : 'border-slate-800 text-slate-400 bg-slate-950'"
+              :class="pc.telemetry?.isOnline ? 'border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10' : 'border-border text-muted-foreground bg-muted/50'"
             >
               {{ pc.telemetry?.isOnline ? 'Online' : 'Offline' }}
             </Badge>
           </div>
 
           <!-- Telemetry Mini Gauges -->
-          <div class="grid grid-cols-3 gap-2 p-2.5 bg-slate-950/60 rounded-lg border border-slate-800/80 mb-4">
+          <div class="grid grid-cols-3 gap-2 p-2.5 bg-muted/40 rounded-lg border border-border mb-4">
             <div class="text-center">
-              <div class="text-xs font-medium text-slate-400 flex items-center justify-center gap-1">
-                <Cpu class="w-3 h-3 text-slate-500" /> CPU
+              <div class="text-xs font-medium text-muted-foreground flex items-center justify-center gap-1">
+                <Cpu class="w-3 h-3 text-muted-foreground" /> CPU
               </div>
-              <div class="text-xs font-mono font-semibold text-slate-200 mt-0.5">
+              <div class="text-xs font-mono font-semibold text-foreground mt-0.5">
                 {{ pc.telemetry?.cpuUsagePercent ?? 0 }}%
               </div>
             </div>
 
-            <div class="text-center border-x border-slate-800/80">
-              <div class="text-xs font-medium text-slate-400 flex items-center justify-center gap-1">
-                <Activity class="w-3 h-3 text-slate-500" /> RAM
+            <div class="text-center border-x border-border">
+              <div class="text-xs font-medium text-muted-foreground flex items-center justify-center gap-1">
+                <Activity class="w-3 h-3 text-muted-foreground" /> RAM
               </div>
-              <div class="text-xs font-mono font-semibold text-slate-200 mt-0.5">
+              <div class="text-xs font-mono font-semibold text-foreground mt-0.5">
                 {{ pc.telemetry?.ramUsagePercent ?? 0 }}%
               </div>
             </div>
 
             <div class="text-center">
-              <div class="text-xs font-medium text-slate-400 flex items-center justify-center gap-1">
-                <HardDrive class="w-3 h-3 text-slate-500" /> Free
+              <div class="text-xs font-medium text-muted-foreground flex items-center justify-center gap-1">
+                <HardDrive class="w-3 h-3 text-muted-foreground" /> Free
               </div>
-              <div class="text-xs font-mono font-semibold text-slate-200 mt-0.5">
+              <div class="text-xs font-mono font-semibold text-foreground mt-0.5">
                 {{ pc.freeDiskSpace?.totalFreeGB ? Math.round(pc.freeDiskSpace.totalFreeGB) + 'GB' : 'N/A' }}
               </div>
             </div>
           </div>
 
           <!-- Spatial CAD / DXF Mapping Tag -->
-          <div class="mb-4 p-2.5 bg-slate-950/50 rounded-lg border border-slate-800/80 flex items-center justify-between gap-2">
+          <div class="mb-4 p-2.5 bg-muted/30 rounded-lg border border-border flex items-center justify-between gap-2">
             <div class="flex items-center gap-2 truncate">
-              <MapPin class="size-3.5 text-zinc-400 shrink-0" />
+              <MapPin class="size-3.5 text-muted-foreground shrink-0" />
               <div class="truncate">
-                <span class="text-xs text-slate-400 block">CAD Tag</span>
-                <span v-if="pc.pinnedObjectHandle" class="text-xs font-mono font-medium text-zinc-300 truncate block">
+                <span class="text-xs text-muted-foreground block">CAD Tag</span>
+                <span v-if="pc.pinnedObjectHandle" class="text-xs font-mono font-medium text-foreground truncate block">
                   {{ pc.pinnedObjectHandle }}
                 </span>
-                <span v-else class="text-xs font-mono text-slate-500 block">
+                <span v-else class="text-xs font-mono text-muted-foreground/70 block">
                   Unpinned
                 </span>
               </div>
@@ -143,7 +143,7 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
                 v-if="pc.pinnedObjectHandle"
                 type="button"
                 @click.stop="emit('locate-dxf', pc.pinnedObjectHandle)"
-                class="px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/80 hover:border-zinc-400 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-xs hover:shadow-[0_0_10px_rgba(255,255,255,0.08)] active:scale-95 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
+                class="px-2.5 py-1 rounded-md bg-card hover:bg-zinc-700 hover:bg-accent border border-border text-xs font-medium text-foreground transition-all shadow-xs active:scale-95 cursor-pointer"
                 title="Locate on CAD Map"
               >
                 View Map
@@ -154,9 +154,9 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
                   type="button"
                   :disabled="!canManageEndpoints"
                   @click.stop="canManageEndpoints && emit('link-dxf', pc)"
-                  class="px-2.5 py-1 rounded-md bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/80 hover:border-zinc-400 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-xs hover:shadow-[0_0_10px_rgba(255,255,255,0.08)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
+                  class="px-2.5 py-1 rounded-md bg-card hover:bg-accent border border-border text-xs font-medium text-foreground transition-all shadow-xs active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1 cursor-pointer"
                 >
-                  <Lock v-if="!canManageEndpoints" class="w-3 h-3 text-amber-400" />
+                  <Lock v-if="!canManageEndpoints" class="w-3 h-3 text-amber-500" />
                   <span>{{ pc.pinnedObjectHandle ? 'Edit DXF' : '+ Link DXF' }}</span>
                 </button>
               </RbacTooltip>
@@ -165,32 +165,32 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
 
           <!-- Controlled Stations Tags -->
           <div class="space-y-1 mb-4">
-            <span class="text-xs text-slate-400 block">Controlled Stations</span>
+            <span class="text-xs text-muted-foreground block">Controlled Stations</span>
             <div v-if="pc.controlledMachines && pc.controlledMachines.length > 0" class="flex flex-wrap gap-1">
               <span
                 v-for="st in pc.controlledMachines"
                 :key="st.id"
-                class="px-2 py-0.5 bg-zinc-900 text-zinc-300 border border-zinc-700/60 rounded-md text-xs font-mono font-medium"
+                class="px-2 py-0.5 bg-muted text-foreground border border-border rounded-md text-xs font-mono font-medium"
               >
                 {{ st.customIdentifier || st.name }}
               </span>
             </div>
-            <div v-else class="text-xs text-slate-500">Standalone Edge Node</div>
+            <div v-else class="text-xs text-muted-foreground">Standalone Edge Node</div>
           </div>
         </div>
 
         <!-- Action Footer -->
-        <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+        <div class="pt-3 border-t border-border flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <RbacTooltip :disabled="!canExecuteRemote" :tooltip="RBAC_TOOLTIPS.REMOTE_EXECUTION">
               <button
                 type="button"
                 :disabled="!canExecuteRemote"
                 @click.stop="canExecuteRemote && emit('queue-command', pc)"
-                class="px-2.5 py-1.5 rounded-lg bg-zinc-950/70 hover:bg-zinc-800 border border-zinc-800/80 hover:border-zinc-500 text-xs font-medium text-slate-300 hover:text-white shadow-xs hover:shadow-[0_0_10px_rgba(255,255,255,0.08)] transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
+                class="px-2.5 py-1.5 rounded-lg bg-card hover:bg-accent border border-border text-xs font-medium text-foreground shadow-xs transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 cursor-pointer"
               >
-                <Lock v-if="!canExecuteRemote" class="w-3.5 h-3.5 text-amber-400" />
-                <Terminal v-else class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200" />
+                <Lock v-if="!canExecuteRemote" class="w-3.5 h-3.5 text-amber-500" />
+                <Terminal v-else class="w-3.5 h-3.5 text-muted-foreground" />
                 <span>Queue Command</span>
               </button>
             </RbacTooltip>
@@ -200,10 +200,10 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
                 type="button"
                 :disabled="!canExecuteRemote"
                 @click.stop="canExecuteRemote && emit('quick-view', pc)"
-                class="px-2.5 py-1.5 rounded-lg bg-zinc-950/70 hover:bg-zinc-800 border border-zinc-800/80 hover:border-zinc-500 text-xs font-medium text-slate-300 hover:text-white shadow-xs hover:shadow-[0_0_10px_rgba(255,255,255,0.08)] transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
+                class="px-2.5 py-1.5 rounded-lg bg-card hover:bg-zinc-800 hover:bg-accent border border-border text-xs font-medium text-foreground shadow-xs transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 cursor-pointer"
                 title="Remote Quick View"
               >
-                <Eye class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200" />
+                <Eye class="w-3.5 h-3.5 text-muted-foreground" />
                 <span>Remote</span>
               </button>
             </RbacTooltip>
@@ -212,7 +212,7 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
           <button
             type="button"
             @click.stop="emit('select', pc)"
-            class="px-3 py-1.5 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700/80 hover:border-zinc-400 text-xs font-semibold text-zinc-200 hover:text-white shadow-xs hover:shadow-[0_0_12px_rgba(255,255,255,0.12)] transition-all active:scale-95 flex items-center gap-1.5 group/btn focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
+            class="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 group/btn cursor-pointer"
           >
             <span>Telemetry</span>
             <ChevronRight class="w-3.5 h-3.5 transition-transform duration-150 group-hover/btn:translate-x-0.5" />

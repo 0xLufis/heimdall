@@ -58,7 +58,7 @@ const getNestedValue = (item: any, key: string) => {
 <template>
   <template v-if="shouldRender">
     <TableRow 
-      class="bg-slate-900/20 border-b border-slate-800/50 hover:bg-slate-900/40 transition-colors"
+      class="bg-muted/10 border-b border-border/50 hover:bg-muted/20 transition-colors"
       :class="{'opacity-40': !isVisible && hasVisibleChildren}"
     >
       <TableCell class="p-0 text-center">
@@ -67,21 +67,21 @@ const getNestedValue = (item: any, key: string) => {
            @click="expanded = !expanded" 
            variant="ghost" 
            size="icon" 
-           class="h-6 w-6 text-slate-600 hover:bg-slate-800"
+           class="h-6 w-6 text-muted-foreground hover:bg-muted"
          >
            <ChevronRight class="h-3 w-3 transition-transform" :class="{'rotate-90': expanded}" />
          </Button>
-         <div v-else class="w-1 h-1 rounded-full bg-slate-700 mx-auto"></div>
+         <div v-else class="w-1 h-1 rounded-full bg-muted-foreground/40 mx-auto"></div>
       </TableCell>
       
       <TableCell>
         <div class="flex items-center gap-2" :style="{ paddingLeft: `${depth * 1.5}rem` }">
-          <div class="w-1.5 h-1.5 rounded-full" :class="isVisible ? 'bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.3)]' : 'bg-slate-700'"></div>
+          <div class="w-1.5 h-1.5 rounded-full" :class="isVisible ? 'bg-indigo-500 shadow-[0_0_8px_rgba(129,140,248,0.3)]' : 'bg-muted-foreground/40'"></div>
           <div class="flex flex-col">
-            <span class="text-[10px] font-bold uppercase tracking-widest" :class="isVisible ? 'text-slate-300' : 'text-slate-600'">{{ component.name }}</span>
-            <span v-if="component.itemType" class="text-[8px] text-slate-600 font-black uppercase">{{ component.itemType }}</span>
+            <span class="text-[10px] font-bold uppercase tracking-widest" :class="isVisible ? 'text-foreground' : 'text-muted-foreground'">{{ component.name }}</span>
+            <span v-if="component.itemType" class="text-[8px] text-muted-foreground font-black uppercase">{{ component.itemType }}</span>
           </div>
-          <Badge v-for="team in component.responsibleTeams" :key="team.id" variant="outline" class="text-[7.5px] font-black uppercase tracking-wider border-slate-800 text-slate-400 bg-slate-950/60 px-3 py-1 rounded-full shadow-sm">
+          <Badge v-for="team in component.responsibleTeams" :key="team.id" variant="outline" class="text-[7.5px] font-black uppercase tracking-wider border-border text-muted-foreground bg-muted/40 px-3 py-1 rounded-full shadow-sm">
             {{ team.name }}
           </Badge>
         </div>
@@ -90,20 +90,20 @@ const getNestedValue = (item: any, key: string) => {
       <TableCell v-if="primaryKey === 'client' && defaultColumns.lastOnline"></TableCell>
 
       <TableCell v-if="defaultColumns.owner">
-        <span class="text-[9px] text-slate-600 font-mono">{{ component.organizationId || '-' }}</span>
+        <span class="text-[9px] text-muted-foreground font-mono">{{ component.organizationId || '-' }}</span>
       </TableCell>
 
       <TableCell v-if="defaultColumns.linkedAsset"></TableCell>
 
       <TableCell v-if="defaultColumns.teams">
         <div class="flex flex-wrap gap-1.5">
-          <Badge v-for="team in component.responsibleTeams" :key="team.id" variant="outline" class="text-[7.5px] font-black uppercase tracking-wider border-slate-800 text-slate-400 bg-slate-950/60 px-3 py-1 rounded-full shadow-sm">
+          <Badge v-for="team in component.responsibleTeams" :key="team.id" variant="outline" class="text-[7.5px] font-black uppercase tracking-wider border-border text-muted-foreground bg-muted/40 px-3 py-1 rounded-full shadow-sm">
             {{ team.name }}
           </Badge>
         </div>
       </TableCell>
 
-      <TableCell v-for="col in selectedDynamicColumns" :key="col" class="text-[10px] text-slate-500 font-mono">
+      <TableCell v-for="col in selectedDynamicColumns" :key="col" class="text-[10px] text-muted-foreground font-mono">
         {{ getNestedValue(component, col) || '-' }}
       </TableCell>
     </TableRow>

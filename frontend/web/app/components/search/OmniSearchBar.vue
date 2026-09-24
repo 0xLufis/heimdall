@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import type { SearchInstanceConfig, SearchResultItem, AutoTagResult } from '~/types/search'
 import { useOmniSearch } from '~/composables/useOmniSearch'
 import { Search as SearchIcon, X, Command } from 'lucide-vue-next'
+import { useGlobalSearchModal } from '~/composables/useGlobalSearchModal'
 import TagPillList from './TagPillList.vue'
 import AutoTagSuggestionDropdown from './AutoTagSuggestionDropdown.vue'
 
@@ -28,6 +29,7 @@ const router = useRouter()
 const containerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 const isInteractingWithDropdown = ref(false)
+const { focusTriggerSignal, isOpen: isGlobalModalOpen } = useGlobalSearchModal()
 
 const {
   rawInput,
@@ -50,7 +52,8 @@ const {
   removeTag,
   clearAllTags,
   executeSearch,
-  fetchSearchKeys
+  fetchSearchKeys,
+  dynamicKnownKeyValues
 } = useOmniSearch(props.config)
 
 const isFocused = ref(false)
@@ -58,11 +61,17 @@ const isMenuExplicitlyClosed = ref(false)
 
 const showDropdown = computed(() => {
   if (isMenuExplicitlyClosed.value || !isFocused.value) return false
-  return autoSuggestions.value.length > 0 || 
-    results.value.length > 0 || 
-    searchKeyGroups.value.length > 0 ||
-    valueSuggestions.value.length > 0 ||
-    matchingKeys.value.length > 0
+  return true
+})
+
+watch(focusTriggerSignal, () => {
+  if (props.config?.instanceId === 'global') {
+    isFocused.value = true
+    isMenuExplicitlyClosed.value = false
+    inputRef.value?.focus()
+    inputRef.value?.select()
+    handleInputChange(rawInput.value)
+  }
 })
 
 // Emit debounced live search queries to parent components
@@ -181,6 +190,20 @@ const handleValueSelect = (val: string) => {
   isFocused.value = true
 }
 
+const handleSelectTagValue = (key: string, value: string) => {
+  addTag({
+    id: `tag-${key}-${value}`,
+    key,
+    value,
+    removable: true
+  })
+  rawInput.value = ''
+  emit('search', effectiveQueryString.value)
+  isMenuExplicitlyClosed.value = false
+  inputRef.value?.focus()
+  isFocused.value = true
+}
+
 const handleClear = () => {
   clearAllTags()
   isMenuExplicitlyClosed.value = true
@@ -198,8 +221,15 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
 
   // 1. Ctrl+K, Cmd+K, Ctrl+P, or Cmd+P: Focus search input
   if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'p')) {
+    if (props.config?.instanceId === 'global') {
+      return
+    }
+    if (isGlobalModalOpen.value) {
+      return
+    }
     e.preventDefault()
     inputRef.value?.focus()
+    inputRef.value?.select()
     isFocused.value = true
     isMenuExplicitlyClosed.value = false
     handleInputChange(rawInput.value)
@@ -208,8 +238,12 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
 
   // 2. / (Slash) global search trigger when not inside an input
   if (e.key === '/' && !isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (isGlobalModalOpen.value) {
+      return
+    }
     e.preventDefault()
     inputRef.value?.focus()
+    inputRef.value?.select()
     isFocused.value = true
     isMenuExplicitlyClosed.value = false
     handleInputChange(rawInput.value)
@@ -220,8 +254,15 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
 function handleClickOutside(e: MouseEvent) {
   if (isInteractingWithDropdown.value) return
   const path = (e.composedPath ? e.composedPath() : []) as Node[]
+  const target = e.target as Node | null
+
+  // Guard against DOM re-paints where target is detached from body
+  if (target && !document.body.contains(target)) {
+    return
+  }
+
   const isInside = (containerRef.value && path.includes(containerRef.value)) ||
-                   (containerRef.value && e.target instanceof Node && containerRef.value.contains(e.target))
+                   (containerRef.value && target && containerRef.value.contains(target))
   if (!isInside) {
     isMenuExplicitlyClosed.value = true
     isFocused.value = false
@@ -329,6 +370,7 @@ onUnmounted(() => {
         :value-suggestions="valueSuggestions"
         :active-pending-key="activePendingKey"
         :search-key-groups="searchKeyGroups"
+        :known-key-values="dynamicKnownKeyValues"
         :is-loading="isLoading"
         :free-text="freeText"
         :instance-id="props.config?.instanceId || 'global'"
@@ -336,6 +378,7 @@ onUnmounted(() => {
         @select-result="handleResultSelect"
         @select-key="handleKeySelect"
         @select-value="handleValueSelect"
+        @select-tag-value="handleSelectTagValue"
       />
     </div>
   </div>

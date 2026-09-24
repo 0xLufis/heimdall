@@ -9,38 +9,38 @@ const props = defineProps<{
 const roleConfig = computed(() => {
   switch (props.role?.toLowerCase()) {
     case 'system_admin':
-      return { class: 'bg-rose-500/20 text-rose-300 border-rose-500/50', dot: 'bg-rose-400 animate-pulse' }
+      return { class: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40', dot: 'bg-rose-500 animate-pulse' }
     case 'plant_director':
-      return { class: 'bg-violet-950/40 text-violet-200 border-violet-500/50 shadow-violet-500/20', dot: 'bg-violet-400' }
+      return { class: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/40', dot: 'bg-violet-500' }
     case 'plant_engineering_manager':
-      return { class: 'bg-rose-950/40 text-rose-300 border-rose-600/50', dot: 'bg-rose-400' }
+      return { class: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40', dot: 'bg-rose-500' }
     case 'senior_engineering_manager':
-      return { class: 'bg-amber-950/40 text-amber-200 border-amber-600/50', dot: 'bg-amber-400' }
+      return { class: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40', dot: 'bg-amber-500' }
     case 'heimdall_admin':
-      return { class: 'bg-purple-600/20 text-purple-300 border-purple-600/50', dot: 'bg-purple-400' }
+      return { class: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/40', dot: 'bg-purple-500' }
     case 'it_admin':
     case 'it_site_admin':
-      return { class: 'bg-cyan-600/20 text-cyan-300 border-cyan-600/50', dot: 'bg-cyan-400' }
+      return { class: 'bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border-cyan-500/40', dot: 'bg-cyan-500' }
     case 'engineering_admin':
-      return { class: 'bg-amber-600/20 text-amber-300 border-amber-600/50', dot: 'bg-amber-400' }
+      return { class: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40', dot: 'bg-amber-500' }
     case 'admin':
-      return { class: 'bg-purple-600/20 text-purple-400 border-purple-700/50', dot: 'bg-purple-500' }
+      return { class: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/40', dot: 'bg-purple-500' }
     case 'operative_planner':
     case 'manager':
-      return { class: 'bg-blue-600/20 text-blue-400 border-blue-700/50', dot: 'bg-blue-500' }
+      return { class: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/40', dot: 'bg-blue-500' }
     case 'group_leader':
     case 'team_lead':
-      return { class: 'bg-teal-600/20 text-teal-400 border-teal-700/50', dot: 'bg-teal-500' }
+      return { class: 'bg-teal-500/15 text-teal-800 dark:text-teal-300 border-teal-500/40', dot: 'bg-teal-500' }
     case 'shift_leader':
-      return { class: 'bg-indigo-600/20 text-indigo-400 border-indigo-700/50', dot: 'bg-indigo-500' }
+      return { class: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/40', dot: 'bg-indigo-500' }
     case 'engineer':
     case 'controls_engineer':
     case 'lead_engineer':
-      return { class: 'bg-emerald-600/20 text-emerald-400 border-emerald-700/50', dot: 'bg-emerald-500' }
+      return { class: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/40', dot: 'bg-emerald-500' }
     case 'technician':
-      return { class: 'bg-amber-600/20 text-orange-400 border-orange-700/50', dot: 'bg-orange-500' }
+      return { class: 'bg-orange-500/15 text-orange-800 dark:text-orange-300 border-orange-500/40', dot: 'bg-orange-500' }
     default:
-      return { class: 'bg-slate-800 text-slate-400 border-slate-700', dot: 'bg-slate-500' }
+      return { class: 'bg-muted text-muted-foreground border-border', dot: 'bg-muted-foreground/60' }
   }
 })
 </script>

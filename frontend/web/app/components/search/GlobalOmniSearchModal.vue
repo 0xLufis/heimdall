@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, nextTick, watch } from 'vue'
 import { Dialog, DialogContent } from '~/components/ui/dialog'
 import OmniSearchBar from './OmniSearchBar.vue'
 import type { SearchInstanceConfig, SearchResultItem } from '~/types/search'
 import { useRouter } from 'vue-router'
 import { useGlobalSearchModal } from '~/composables/useGlobalSearchModal'
+import { X } from 'lucide-vue-next'
 
 const router = useRouter()
-const { isOpen, closeModal, toggleModal, openModal } = useGlobalSearchModal()
+const { isOpen, closeModal, triggerSearch, openModal, focusTriggerSignal } = useGlobalSearchModal()
+
+const omniBarRef = ref<any>(null)
 
 const globalConfig: SearchInstanceConfig = {
   instanceId: 'global',
@@ -19,7 +22,7 @@ const globalConfig: SearchInstanceConfig = {
 
 // Only navigate and close on explicit search submission (e.g. Enter pressed or search button clicked)
 const handleSubmit = (q: string) => {
-  closeModal()
+  closeModal(true)
   if (q && q.trim()) {
     router.push(`/dashboard/inventory?query=${encodeURIComponent(q.trim())}`)
   }
@@ -27,7 +30,7 @@ const handleSubmit = (q: string) => {
 
 // On selecting a concrete item result, close the modal (navigation is handled by OmniSearchBar)
 const handleSelectResult = (_item: SearchResultItem) => {
-  closeModal()
+  closeModal(true)
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -40,15 +43,36 @@ const handleKeydown = (e: KeyboardEvent) => {
 
   if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'p')) {
     e.preventDefault()
-    toggleModal()
+    e.stopPropagation()
+    triggerSearch()
+    return
   } else if (e.key === 'Escape' && isOpen.value) {
     e.preventDefault()
-    closeModal()
+    e.stopPropagation()
+    closeModal(true)
+    return
   } else if (e.key === '/' && !isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey && !isOpen.value) {
     e.preventDefault()
+    e.stopPropagation()
     openModal()
+    return
   }
 }
+
+// Watch modal state and trigger signal to refocus input smoothly
+watch([isOpen, focusTriggerSignal], async ([open]) => {
+  if (open) {
+    await nextTick()
+    // Give modal render a brief moment to paint
+    setTimeout(() => {
+      const el = document.querySelector('[data-slot="dialog-content"] input') as HTMLInputElement | null
+      if (el) {
+        el.focus()
+        el.select()
+      }
+    }, 50)
+  }
+})
 
 onMounted(() => {
   if (typeof window !== 'undefined') {
@@ -66,24 +90,51 @@ onUnmounted(() => {
 <template>
   <Dialog :open="isOpen" @update:open="isOpen = $event">
     <DialogContent
+      :show-close="false"
       class="max-w-2xl bg-card/95 backdrop-blur-xl border-border text-foreground p-6 rounded-2xl shadow-2xl"
       @pointer-down-outside="(e) => {
-        const target = e.target as HTMLElement | null
-        if (target && target.closest('[data-omni-dropdown]')) {
+        const rawTarget = (e as any).detail?.originalEvent?.target || (e as any).target
+        const target = rawTarget as HTMLElement | null
+        // Prevent close if target is detached (during DOM re-paint) or clicking dropdown
+        if (!target || !document.body.contains(target) || target.closest('[data-omni-dropdown]')) {
           e.preventDefault()
         }
       }"
+      @interact-outside="(e) => {
+        const rawTarget = (e as any).detail?.originalEvent?.target || (e as any).target
+        const target = rawTarget as HTMLElement | null
+        if (!target || !document.body.contains(target) || target.closest('[data-omni-dropdown]')) {
+          e.preventDefault()
+        }
+      }"
+      @focus-outside="(e) => {
+        // Prevent background telemetry / page re-paints from stealing focus and closing search
+        e.preventDefault()
+      }"
     >
       <div class="space-y-4">
+        <!-- Header -->
         <div class="flex items-center justify-between pb-2 border-b border-border/80">
           <div class="flex items-center gap-2">
             <span class="text-xs font-black uppercase tracking-[0.2em] text-primary">Heimdall FMFD</span>
-            <span class="text-[11px] text-muted-foreground font-medium">— Find My Field Data</span>
+            <span class="text-[11px] text-muted-foreground font-medium hidden sm:inline">— Find My Field Data</span>
           </div>
-          <span class="text-[10px] font-mono text-muted-foreground">Press ESC to exit</span>
+
+          <div class="flex items-center gap-3">
+            <span class="text-[10px] font-mono text-muted-foreground select-none">Press ESC to exit</span>
+            <button
+              type="button"
+              @click="closeModal(true)"
+              class="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+              title="Close search modal (ESC)"
+            >
+              <X class="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <OmniSearchBar
+          ref="omniBarRef"
           :config="globalConfig"
           :immediate="false"
           @submit="handleSubmit"

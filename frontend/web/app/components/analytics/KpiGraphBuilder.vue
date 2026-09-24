@@ -191,18 +191,18 @@ const handleRemoveWidget = (id: string) => {
 <template>
   <div class="space-y-8">
     <!-- Section 1: Interactive KPI Graph Builder Card -->
-    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+    <div class="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2.5">
-          <div class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300">
+          <div class="p-2 rounded-lg bg-muted border border-border text-foreground">
             <Sliders class="w-4 h-4" />
           </div>
           <div>
-            <h3 class="text-sm font-semibold text-slate-100">Custom KPI Widget & Chart Builder</h3>
-            <p class="text-xs text-slate-400">Parameterize KPI metrics with statistical Upper/Lower Control Limits and Mean targets.</p>
+            <h3 class="text-sm font-semibold text-foreground">Custom KPI Widget & Chart Builder</h3>
+            <p class="text-xs text-muted-foreground">Parameterize KPI metrics with statistical Upper/Lower Control Limits and Mean targets.</p>
           </div>
         </div>
-        <Badge variant="outline" class="text-xs font-mono border-slate-700 bg-slate-950 text-slate-300">
+        <Badge variant="outline" class="text-xs font-mono border-border bg-muted/30 text-foreground">
           SPC / OT Analytics
         </Badge>
       </div>
@@ -212,11 +212,11 @@ const handleRemoveWidget = (id: string) => {
         <div class="lg:col-span-7 space-y-4">
           <!-- Widget Title -->
           <div class="space-y-1.5">
-            <label class="text-xs font-medium text-slate-300">Widget Title</label>
+            <label class="text-xs font-medium text-muted-foreground">Widget Title</label>
             <input
               v-model="builderTitle"
               type="text"
-              class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-zinc-500"
+              class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               placeholder="e.g. Line 2 Screwing OEE Rate"
             />
           </div>
@@ -224,10 +224,10 @@ const handleRemoveWidget = (id: string) => {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Target Metric -->
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-slate-300">Target Metric</label>
+              <label class="text-xs font-medium text-muted-foreground">Target Metric</label>
               <select
                 v-model="selectedMetric"
-                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-zinc-500"
+                class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="oee">OEE (Overall Equipment Effectiveness)</option>
                 <option value="availability">Plant Availability %</option>
@@ -241,10 +241,10 @@ const handleRemoveWidget = (id: string) => {
 
             <!-- Target Production Line -->
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-slate-300">Production Scope</label>
+              <label class="text-xs font-medium text-muted-foreground">Production Scope</label>
               <select
                 v-model="selectedLine"
-                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-zinc-500"
+                class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="All Lines">All Production Lines (Fleet-Wide)</option>
                 <option value="Line 1 - Pre-Assembly">Line 1 - Pre-Assembly</option>
@@ -260,10 +260,10 @@ const handleRemoveWidget = (id: string) => {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Visual Type -->
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-slate-300">Chart Visualization Type</label>
+              <label class="text-xs font-medium text-muted-foreground">Chart Visualization Type</label>
               <select
                 v-model="selectedVisual"
-                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-zinc-500"
+                class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="gauge">Radial SVG Dial Gauge</option>
                 <option value="bullet">Target vs Actual Bullet Chart</option>
@@ -274,10 +274,10 @@ const handleRemoveWidget = (id: string) => {
 
             <!-- Aggregation Window -->
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-slate-300">Aggregation Interval</label>
+              <label class="text-xs font-medium text-muted-foreground">Aggregation Interval</label>
               <select
                 v-model="selectedInterval"
-                class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-zinc-500"
+                class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="shift">Per Shift (8 Hours)</option>
                 <option value="hourly">Hourly Rolling</option>
@@ -287,55 +287,55 @@ const handleRemoveWidget = (id: string) => {
           </div>
 
           <!-- Statistical Process Control Limits (Mean Goal, UCL, LCL) -->
-          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
+          <div class="p-3.5 rounded-xl bg-muted/30 border border-border space-y-3">
             <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-                <Target class="w-3.5 h-3.5 text-amber-400" />
+              <label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Target class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 <span>KPI Goals & Statistical Process Control (SPC) Limits</span>
               </label>
-              <span class="text-[10px] font-mono text-slate-400">Mean Target & Control Bands</span>
+              <span class="text-[10px] font-mono text-muted-foreground">Mean Target & Control Bands</span>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <!-- Mean Target Goal -->
               <div class="space-y-1">
                 <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-slate-300 font-medium">Target / Mean</span>
-                  <span class="font-mono text-amber-400">{{ targetMean }} {{ metricMeta.unit }}</span>
+                  <span class="text-muted-foreground font-medium">Target / Mean</span>
+                  <span class="font-mono text-amber-600 dark:text-amber-400">{{ targetMean }} {{ metricMeta.unit }}</span>
                 </div>
                 <input
                   v-model.number="targetMean"
                   type="number"
                   step="0.1"
-                  class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                  class="w-full px-2.5 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
               <!-- Upper Control Limit (UCL) -->
               <div class="space-y-1">
                 <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-slate-300 font-medium">Upper Limit (UCL)</span>
-                  <span class="font-mono text-rose-400">{{ upperControlLimit }} {{ metricMeta.unit }}</span>
+                  <span class="text-muted-foreground font-medium">Upper Limit (UCL)</span>
+                  <span class="font-mono text-rose-600 dark:text-rose-400">{{ upperControlLimit }} {{ metricMeta.unit }}</span>
                 </div>
                 <input
                   v-model.number="upperControlLimit"
                   type="number"
                   step="0.1"
-                  class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-100 font-mono focus:outline-none focus:border-rose-500"
+                  class="w-full px-2.5 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
               <!-- Lower Control Limit (LCL) -->
               <div class="space-y-1">
                 <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-slate-300 font-medium">Lower Limit (LCL)</span>
-                  <span class="font-mono text-amber-400">{{ lowerControlLimit }} {{ metricMeta.unit }}</span>
+                  <span class="text-muted-foreground font-medium">Lower Limit (LCL)</span>
+                  <span class="font-mono text-amber-600 dark:text-amber-400">{{ lowerControlLimit }} {{ metricMeta.unit }}</span>
                 </div>
                 <input
                   v-model.number="lowerControlLimit"
                   type="number"
                   step="0.1"
-                  class="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                  class="w-full px-2.5 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
@@ -345,27 +345,27 @@ const handleRemoveWidget = (id: string) => {
             <Button
               data-testid="pin-kpi-btn"
               @click="handlePinWidget"
-              class="w-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md"
+              class="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md"
             >
               <Check v-if="isSaved" class="w-4 h-4 text-emerald-300" />
-              <Pin v-else class="w-4 h-4 text-zinc-300" />
+              <Pin v-else class="w-4 h-4 text-primary-foreground/80" />
               <span>{{ isSaved ? 'Widget Pinned to Dashboard!' : 'Pin Custom KPI Widget' }}</span>
             </Button>
           </div>
         </div>
 
         <!-- Live Widget Preview Canvas (5 cols) -->
-        <div class="lg:col-span-5 p-5 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between space-y-4">
-          <div class="flex items-center justify-between text-xs text-slate-400">
-            <span class="font-mono text-[11px] uppercase tracking-wider text-zinc-300">Live Widget Preview</span>
-            <Badge variant="outline" class="text-[10px] border-slate-800 text-slate-400">{{ selectedInterval }}</Badge>
+        <div class="lg:col-span-5 p-5 rounded-xl bg-muted/20 border border-border flex flex-col justify-between space-y-4">
+          <div class="flex items-center justify-between text-xs text-muted-foreground">
+            <span class="font-mono text-[11px] uppercase tracking-wider text-foreground">Live Widget Preview</span>
+            <Badge variant="outline" class="text-[10px] border-border text-muted-foreground">{{ selectedInterval }}</Badge>
           </div>
 
           <div class="space-y-1">
-            <h4 class="text-sm font-semibold text-white">{{ builderTitle || 'Custom Metric Tile' }}</h4>
-            <div class="flex items-center justify-between text-xs text-slate-400">
+            <h4 class="text-sm font-semibold text-foreground">{{ builderTitle || 'Custom Metric Tile' }}</h4>
+            <div class="flex items-center justify-between text-xs text-muted-foreground">
               <span>{{ selectedLine }}</span>
-              <span class="font-mono text-[11px] text-amber-400">Target: {{ targetMean }} {{ metricMeta.unit }}</span>
+              <span class="font-mono text-[11px] text-amber-600 dark:text-amber-400">Target: {{ targetMean }} {{ metricMeta.unit }}</span>
             </div>
           </div>
 
@@ -375,7 +375,7 @@ const handleRemoveWidget = (id: string) => {
             <div v-if="selectedVisual === 'gauge'" class="flex flex-col items-center justify-center">
               <div class="relative flex items-center justify-center">
                 <svg class="w-24 h-24 transform -rotate-90">
-                  <circle cx="48" cy="48" r="38" stroke="#232730" stroke-width="8" fill="none" />
+                  <circle cx="48" cy="48" r="38" stroke="currentColor" class="text-muted/60" stroke-width="8" fill="none" />
                   <circle
                     cx="48"
                     cy="48"
@@ -389,24 +389,24 @@ const handleRemoveWidget = (id: string) => {
                   />
                 </svg>
                 <div class="absolute text-center">
-                  <span class="text-base font-bold font-mono text-white">{{ metricMeta.defaultVal }}</span>
-                  <span class="text-[10px] text-slate-400 block -mt-1">{{ metricMeta.unit }}</span>
+                  <span class="text-base font-bold font-mono text-foreground">{{ metricMeta.defaultVal }}</span>
+                  <span class="text-[10px] text-muted-foreground block -mt-1">{{ metricMeta.unit }}</span>
                 </div>
               </div>
-              <div class="flex items-center gap-3 text-[10px] font-mono mt-2 text-slate-400">
-                <span class="text-amber-400">LCL: {{ lowerControlLimit }}</span>
-                <span class="text-emerald-400">Mean: {{ targetMean }}</span>
-                <span class="text-rose-400">UCL: {{ upperControlLimit }}</span>
+              <div class="flex items-center gap-3 text-[10px] font-mono mt-2 text-muted-foreground">
+                <span class="text-amber-600 dark:text-amber-400">LCL: {{ lowerControlLimit }}</span>
+                <span class="text-emerald-600 dark:text-emerald-400">Mean: {{ targetMean }}</span>
+                <span class="text-rose-600 dark:text-rose-400">UCL: {{ upperControlLimit }}</span>
               </div>
             </div>
 
             <!-- 2. BULLET / PROGRESS -->
             <div v-else-if="selectedVisual === 'bullet'" class="w-full space-y-3 px-4">
               <div class="flex justify-between text-xs font-mono">
-                <span class="text-slate-300">Actual: {{ metricMeta.defaultVal }} {{ metricMeta.unit }}</span>
-                <span class="text-amber-400">Goal: {{ targetMean }} {{ metricMeta.unit }}</span>
+                <span class="text-foreground">Actual: {{ metricMeta.defaultVal }} {{ metricMeta.unit }}</span>
+                <span class="text-amber-600 dark:text-amber-400">Goal: {{ targetMean }} {{ metricMeta.unit }}</span>
               </div>
-              <div class="w-full bg-slate-900 h-4 rounded-full overflow-hidden border border-slate-800 relative">
+              <div class="w-full bg-muted/60 h-4 rounded-full overflow-hidden border border-border relative">
                 <!-- Safe control zone band -->
                 <div
                   class="absolute top-0 bottom-0 bg-emerald-500/10 border-x border-emerald-500/20"
@@ -418,7 +418,7 @@ const handleRemoveWidget = (id: string) => {
 
                 <!-- Actual bar -->
                 <div
-                  class="bg-zinc-500 h-full rounded-full transition-all opacity-80"
+                  class="bg-primary/80 h-full rounded-full transition-all"
                   :style="{ width: `${Math.min(metricMeta.defaultVal, 100)}%` }"
                 ></div>
 
@@ -443,9 +443,9 @@ const handleRemoveWidget = (id: string) => {
                   title="Upper Control Limit"
                 ></div>
               </div>
-              <div class="flex justify-between text-[10px] font-mono text-slate-500">
+              <div class="flex justify-between text-[10px] font-mono text-muted-foreground">
                 <span>LCL: {{ lowerControlLimit }}</span>
-                <span class="text-amber-400">Target: {{ targetMean }}</span>
+                <span class="text-amber-600 dark:text-amber-400">Target: {{ targetMean }}</span>
                 <span>UCL: {{ upperControlLimit }}</span>
               </div>
             </div>
@@ -479,14 +479,14 @@ const handleRemoveWidget = (id: string) => {
 
             <!-- 4. BAR -->
             <div v-else class="w-full h-full flex items-end justify-center gap-3 pb-2 px-6">
-              <div class="w-7 bg-slate-800 rounded-t h-12"></div>
-              <div class="w-7 bg-slate-800 rounded-t h-16"></div>
-              <div class="w-7 bg-zinc-600 rounded-t h-20"></div>
-              <div class="w-7 bg-zinc-500 rounded-t h-24"></div>
+              <div class="w-7 bg-muted-foreground/30 rounded-t h-12"></div>
+              <div class="w-7 bg-muted-foreground/50 rounded-t h-16"></div>
+              <div class="w-7 bg-muted-foreground/70 rounded-t h-20"></div>
+              <div class="w-7 bg-primary rounded-t h-24"></div>
             </div>
           </div>
 
-          <div class="text-[11px] text-slate-400 border-t border-slate-800/80 pt-2 flex justify-between font-mono items-center">
+          <div class="text-[11px] text-muted-foreground border-t border-border pt-2 flex justify-between font-mono items-center">
             <span>Actual: {{ metricMeta.defaultVal }} {{ metricMeta.unit }}</span>
             <Badge variant="outline" :class="currentPreviewStatus.class" class="text-[10px] font-mono border">
               {{ currentPreviewStatus.label }}
@@ -500,60 +500,60 @@ const handleRemoveWidget = (id: string) => {
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <Pin class="w-4 h-4 text-zinc-400" />
-          <h4 class="text-sm font-semibold text-slate-100">Pinned Production KPI Tiles ({{ pinnedWidgets.length }})</h4>
+          <Pin class="w-4 h-4 text-muted-foreground" />
+          <h4 class="text-sm font-semibold text-foreground">Pinned Production KPI Tiles ({{ pinnedWidgets.length }})</h4>
         </div>
-        <span class="text-xs text-slate-400 font-mono">Live Real-Time OT Refresh</span>
+        <span class="text-xs text-muted-foreground font-mono">Live Real-Time OT Refresh</span>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div
           v-for="widget in pinnedWidgets"
           :key="widget.id"
-          class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 relative group hover:border-zinc-700 transition-colors"
+          class="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-4 relative group hover:border-primary/40 transition-colors"
         >
           <!-- Delete button -->
           <button
             type="button"
             @click="handleRemoveWidget(widget.id)"
-            class="absolute top-4 right-4 p-1.5 rounded-md bg-slate-950 hover:bg-rose-950/80 text-slate-500 hover:text-rose-400 border border-slate-800 transition-colors opacity-0 group-hover:opacity-100"
+            class="absolute top-4 right-4 p-1.5 rounded-md bg-background hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 border border-border transition-colors opacity-0 group-hover:opacity-100"
             title="Unpin Widget"
           >
             <Trash2 class="w-3.5 h-3.5" />
           </button>
 
           <div class="space-y-1 pr-6">
-            <h5 class="text-sm font-semibold text-slate-100">{{ widget.title }}</h5>
-            <span class="text-xs text-slate-400 block truncate">{{ widget.targetLine }}</span>
+            <h5 class="text-sm font-semibold text-foreground">{{ widget.title }}</h5>
+            <span class="text-xs text-muted-foreground block truncate">{{ widget.targetLine }}</span>
           </div>
 
           <!-- Value & SPC Thresholds -->
           <div class="flex items-baseline justify-between font-mono">
             <div>
-              <span class="text-3xl font-bold text-white">{{ widget.currentValue }}</span>
-              <span class="text-xs font-normal text-slate-400 ml-1">{{ widget.unit }}</span>
+              <span class="text-3xl font-bold text-foreground">{{ widget.currentValue }}</span>
+              <span class="text-xs font-normal text-muted-foreground ml-1">{{ widget.unit }}</span>
             </div>
             <div class="text-right text-xs space-y-0.5">
               <div class="flex items-center gap-1.5 justify-end">
-                <span class="text-[10px] text-slate-500 uppercase">Target:</span>
-                <span class="text-amber-400 font-medium">{{ widget.targetValue }} {{ widget.unit }}</span>
+                <span class="text-[10px] text-muted-foreground uppercase">Target:</span>
+                <span class="text-amber-600 dark:text-amber-400 font-medium">{{ widget.targetValue }} {{ widget.unit }}</span>
               </div>
-              <div class="flex items-center gap-2 text-[10px] text-slate-400 justify-end">
-                <span v-if="widget.upperLimit != null" class="text-rose-400/90 font-mono">UCL: {{ widget.upperLimit }}</span>
-                <span v-if="widget.lowerLimit != null" class="text-amber-400/90 font-mono">LCL: {{ widget.lowerLimit }}</span>
+              <div class="flex items-center gap-2 text-[10px] text-muted-foreground justify-end">
+                <span v-if="widget.upperLimit != null" class="text-rose-600 dark:text-rose-400/90 font-mono">UCL: {{ widget.upperLimit }}</span>
+                <span v-if="widget.lowerLimit != null" class="text-amber-600 dark:text-amber-400/90 font-mono">LCL: {{ widget.lowerLimit }}</span>
               </div>
             </div>
           </div>
 
           <!-- Mini SPC Indicator Bar -->
-          <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 relative">
+          <div class="w-full bg-muted/60 h-2 rounded-full overflow-hidden border border-border relative">
             <div
-              class="bg-zinc-500 h-full rounded-full transition-all"
+              class="bg-primary h-full rounded-full transition-all"
               :style="{ width: `${Math.min((widget.currentValue / (widget.targetValue || 1)) * 100, 100)}%` }"
             ></div>
           </div>
 
-          <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
+          <div class="flex items-center justify-between text-[11px] text-muted-foreground font-mono pt-1">
             <span>Interval: {{ widget.interval }}</span>
             <Badge
               variant="outline"

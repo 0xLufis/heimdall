@@ -38,11 +38,11 @@ const isHidden = computed(() => {
         side="right"
       >
         <div
-          class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm text-slate-500 opacity-60 cursor-not-allowed select-none transition-colors"
+          class="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm text-muted-foreground opacity-60 cursor-not-allowed select-none transition-colors"
         >
-          <Icon :name="item.icon || ''" class="size-4 shrink-0 text-slate-500" />
+          <Icon :name="item.icon || ''" class="size-4 shrink-0 text-muted-foreground" />
           <span class="truncate">{{ item.title }}</span>
-          <Lock class="ml-auto size-3.5 text-amber-400 shrink-0" />
+          <Lock class="ml-auto size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
         </div>
       </RbacTooltip>
 

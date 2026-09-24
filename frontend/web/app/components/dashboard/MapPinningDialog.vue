@@ -12,7 +12,7 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
-import { MonitorIcon, CpuIcon, LinkIcon, ZapIcon, CheckIcon, MapPin, Trash2, Sparkles } from 'lucide-vue-next'
+import { MonitorIcon, CpuIcon, LinkIcon, ZapIcon, CheckIcon, MapPin, Trash2, Sparkles, X } from 'lucide-vue-next'
 
 const props = defineProps<{
   open: boolean
@@ -150,30 +150,40 @@ const pinnedObjects = computed(() => {
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-[540px] border-slate-800 bg-slate-900 text-slate-100 p-0 overflow-hidden rounded-[2rem] shadow-2xl">
-      <DialogHeader class="bg-indigo-950/70 p-7 border-b border-slate-800">
-        <DialogTitle class="text-2xl font-black uppercase tracking-tight text-slate-100 flex items-center gap-2.5">
-          <div class="p-2.5 bg-indigo-500/20 rounded-2xl text-indigo-400 border border-indigo-500/30">
-            <MapPin class="h-5 w-5" />
-          </div>
-          <span>Spatial CAD & DXF Pinning</span>
-        </DialogTitle>
-        <DialogDescription class="text-indigo-400 text-xs font-bold uppercase tracking-widest mt-1.5 opacity-90">
-          Link Controller PCs & Stations to AutoCAD Layout Object Handles
-        </DialogDescription>
+    <DialogContent :show-close="false" class="sm:max-w-[540px] border-border bg-card text-foreground p-0 overflow-hidden rounded-[2rem] shadow-2xl">
+      <DialogHeader class="bg-indigo-950/20 dark:bg-indigo-950/70 p-7 border-b border-border flex flex-row items-center justify-between">
+        <div>
+          <DialogTitle class="text-2xl font-black uppercase tracking-tight text-foreground flex items-center gap-2.5">
+            <div class="p-2.5 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-2xl text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
+              <MapPin class="h-5 w-5" />
+            </div>
+            <span>Spatial CAD & DXF Pinning</span>
+          </DialogTitle>
+          <DialogDescription class="text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-widest mt-1.5 opacity-90">
+            Link Controller PCs & Stations to AutoCAD Layout Object Handles
+          </DialogDescription>
+        </div>
+        <button
+          type="button"
+          @click="emit('update:open', false)"
+          class="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          title="Close modal"
+        >
+          <X class="w-5 h-5" />
+        </button>
       </DialogHeader>
 
       <div class="grid gap-6 p-7 overflow-y-auto max-h-[62vh] custom-scrollbar">
         
         <!-- Mapping Target Category -->
         <div class="space-y-3">
-          <Label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Asset Mapping Mode</Label>
-          <div class="flex p-1 bg-slate-950 rounded-2xl border border-slate-800 gap-1">
+          <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Asset Mapping Mode</Label>
+          <div class="flex p-1 bg-muted/60 rounded-2xl border border-border gap-1">
             <Button 
               type="button"
               variant="ghost"
               @click="targetType = 'client'"
-              :class="targetType === 'client' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
+              :class="targetType === 'client' ? 'bg-indigo-600 text-white shadow-lg' : 'text-muted-foreground hover:text-foreground'"
               class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto border-0"
             >
               <MonitorIcon class="h-3.5 w-3.5" />
@@ -183,7 +193,7 @@ const pinnedObjects = computed(() => {
               type="button"
               variant="ghost"
               @click="targetType = 'machine'"
-              :class="targetType === 'machine' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
+              :class="targetType === 'machine' ? 'bg-indigo-600 text-white shadow-lg' : 'text-muted-foreground hover:text-foreground'"
               class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto border-0"
             >
               <CpuIcon class="h-3.5 w-3.5" />
@@ -193,7 +203,7 @@ const pinnedObjects = computed(() => {
               type="button"
               variant="ghost"
               @click="targetType = 'lateral'"
-              :class="targetType === 'lateral' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'"
+              :class="targetType === 'lateral' ? 'bg-indigo-600 text-white shadow-lg' : 'text-muted-foreground hover:text-foreground'"
               class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all h-auto border-0"
             >
               <ZapIcon class="h-3.5 w-3.5" />
@@ -205,8 +215,8 @@ const pinnedObjects = computed(() => {
         <!-- DXF Handle Tag Input / Indicator -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <Label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">AutoCAD (DXF) Tag Handle</Label>
-            <span v-if="currentObjectName" class="text-[9px] font-mono text-indigo-400 truncate max-w-[200px]">
+            <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">AutoCAD (DXF) Tag Handle</Label>
+            <span v-if="currentObjectName" class="text-[9px] font-mono text-indigo-600 dark:text-indigo-400 truncate max-w-[200px]">
               Block: {{ currentObjectName }}
             </span>
           </div>
@@ -214,24 +224,24 @@ const pinnedObjects = computed(() => {
             <Input
               v-model="currentHandle"
               placeholder="e.g. OP10_MAIN_PLC or OP20_ROBOT_PANEL"
-              class="w-full h-12 bg-slate-950 border-slate-800 rounded-2xl font-mono font-bold text-xs text-indigo-300 pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              class="w-full h-12 bg-background border-border rounded-2xl font-mono font-bold text-xs text-foreground pl-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
-            <MapPin class="size-4 text-indigo-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <MapPin class="size-4 text-indigo-600 dark:text-indigo-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           </div>
-          <p class="text-[9px] text-slate-500 ml-1">The unique spatial entity handle identifier extracted from the DXF floor plan.</p>
+          <p class="text-[9px] text-muted-foreground ml-1">The unique spatial entity handle identifier extracted from the DXF floor plan.</p>
         </div>
 
         <!-- Machine/Client Selection -->
         <div v-if="targetType !== 'lateral'" class="space-y-6">
           <div class="space-y-2">
-            <Label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+            <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">
               Select {{ targetType === 'client' ? 'Controller PC' : 'Production Station' }} to Map
             </Label>
             <Select v-model="targetId">
-              <SelectTrigger class="w-full h-12 bg-slate-950 border-slate-800 rounded-2xl font-bold text-xs text-slate-200 focus:ring-indigo-500">
+              <SelectTrigger class="w-full h-12 bg-background border-border rounded-2xl font-bold text-xs text-foreground focus:ring-indigo-500">
                 <SelectValue placeholder="Select target node..." />
               </SelectTrigger>
-              <SelectContent class="bg-slate-950 border-slate-800 text-slate-300 max-h-60">
+              <SelectContent class="bg-card border-border text-foreground max-h-60">
                 <template v-if="targetType === 'client'">
                   <SelectItem v-for="c in clients" :key="c.id" :value="c.id" class="text-xs font-bold focus:bg-indigo-600 focus:text-white">
                     {{ c.hostname || c.name }} {{ c.ipAddress ? `(${c.ipAddress})` : '' }} {{ c.pinnedObjectHandle ? `[Pinned: ${c.pinnedObjectHandle}]` : '' }}
@@ -249,30 +259,30 @@ const pinnedObjects = computed(() => {
           <!-- Multiple Associations -->
           <div v-if="targetId" class="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
             <div class="flex items-center justify-between">
-              <Label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+              <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">
                 {{ targetType === 'client' ? 'Associate Controlled Stations (Multi-Select)' : 'Associate Controlling IPCs (Multi-Select)' }}
               </Label>
-              <span class="text-[9px] text-slate-500 font-mono">{{ associatedIds.length }} Selected</span>
+              <span class="text-[9px] text-muted-foreground font-mono">{{ associatedIds.length }} Selected</span>
             </div>
             
-            <div class="grid grid-cols-1 gap-2 max-h-44 overflow-y-auto pr-2 custom-scrollbar bg-slate-950/60 p-2 rounded-2xl border border-slate-800/80">
+            <div class="grid grid-cols-1 gap-2 max-h-44 overflow-y-auto pr-2 custom-scrollbar bg-muted/30 p-2 rounded-2xl border border-border">
               <template v-if="targetType === 'client'">
                 <div
                   v-for="m in machines"
                   :key="m.id"
                   @click="toggleAssociation(m.id)"
-                  class="flex items-center justify-between p-2.5 bg-slate-900 rounded-xl border border-slate-800/80 hover:border-indigo-500/40 transition-colors cursor-pointer group/item"
+                  class="flex items-center justify-between p-2.5 bg-card rounded-xl border border-border hover:border-indigo-500/40 transition-colors cursor-pointer group/item"
                 >
                   <div class="flex items-center gap-2.5 truncate">
                     <div
                       class="h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition-colors"
-                      :class="associatedIds.includes(m.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700 bg-slate-950 group-hover/item:border-slate-500'"
+                      :class="associatedIds.includes(m.id) ? 'bg-indigo-600 border-indigo-600' : 'border-border bg-background group-hover/item:border-muted-foreground'"
                     >
                       <CheckIcon v-if="associatedIds.includes(m.id)" class="h-3 w-3 text-white" />
                     </div>
-                    <span class="text-xs font-bold text-slate-200 truncate">{{ m.customIdentifier || m.name }}</span>
+                    <span class="text-xs font-bold text-foreground truncate">{{ m.customIdentifier || m.name }}</span>
                   </div>
-                  <span v-if="m.pinnedObjectHandle" class="text-[8px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800 shrink-0">
+                  <span v-if="m.pinnedObjectHandle" class="text-[8px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border shrink-0">
                     {{ m.pinnedObjectHandle }}
                   </span>
                 </div>
@@ -282,21 +292,21 @@ const pinnedObjects = computed(() => {
                   v-for="c in clients"
                   :key="c.id"
                   @click="toggleAssociation(c.id)"
-                  class="flex items-center justify-between p-2.5 bg-slate-900 rounded-xl border border-slate-800/80 hover:border-indigo-500/40 transition-colors cursor-pointer group/item"
+                  class="flex items-center justify-between p-2.5 bg-card rounded-xl border border-border hover:border-indigo-500/40 transition-colors cursor-pointer group/item"
                 >
                   <div class="flex items-center gap-2.5 truncate">
                     <div
                       class="h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition-colors"
-                      :class="associatedIds.includes(c.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700 bg-slate-950 group-hover/item:border-slate-500'"
+                      :class="associatedIds.includes(c.id) ? 'bg-indigo-600 border-indigo-600' : 'border-border bg-background group-hover/item:border-muted-foreground'"
                     >
                       <CheckIcon v-if="associatedIds.includes(c.id)" class="h-3 w-3 text-white" />
                     </div>
                     <div class="flex flex-col truncate">
-                      <span class="text-xs font-bold text-slate-200 truncate">{{ c.hostname || c.name }}</span>
-                      <span class="text-[8px] text-slate-500 font-mono">{{ c.macAddress || c.ipAddress }}</span>
+                      <span class="text-xs font-bold text-foreground truncate">{{ c.hostname || c.name }}</span>
+                      <span class="text-[8px] text-muted-foreground font-mono">{{ c.macAddress || c.ipAddress }}</span>
                     </div>
                   </div>
-                  <span v-if="c.pinnedObjectHandle" class="text-[8px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800 shrink-0">
+                  <span v-if="c.pinnedObjectHandle" class="text-[8px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border shrink-0">
                     {{ c.pinnedObjectHandle }}
                   </span>
                 </div>
@@ -307,17 +317,17 @@ const pinnedObjects = computed(() => {
 
         <!-- Lateral Link Mode -->
         <div v-else class="space-y-5 animate-in fade-in duration-300">
-          <div class="p-4 bg-indigo-950/30 border border-indigo-900/50 rounded-2xl text-[10px] text-indigo-300 font-bold uppercase tracking-wider leading-relaxed">
-            Define a lateral peer dependency between DXF handle <span class="font-mono text-white">{{ currentHandle || 'N/A' }}</span> and another pinned node.
+          <div class="p-4 bg-indigo-500/10 dark:bg-indigo-950/30 border border-indigo-500/20 dark:border-indigo-900/50 rounded-2xl text-[10px] text-indigo-700 dark:text-indigo-300 font-bold uppercase tracking-wider leading-relaxed">
+            Define a lateral peer dependency between DXF handle <span class="font-mono text-foreground font-semibold">{{ currentHandle || 'N/A' }}</span> and another pinned node.
           </div>
           
           <div class="space-y-2">
-            <Label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Peer Link Target</Label>
+            <Label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Peer Link Target</Label>
             <Select v-model="targetId">
-              <SelectTrigger class="w-full h-12 bg-slate-950 border-slate-800 rounded-2xl font-bold text-xs text-slate-200 focus:ring-indigo-500">
+              <SelectTrigger class="w-full h-12 bg-background border-border rounded-2xl font-bold text-xs text-foreground focus:ring-indigo-500">
                 <SelectValue placeholder="Select peer object..." />
               </SelectTrigger>
-              <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
+              <SelectContent class="bg-card border-border text-foreground">
                 <SelectItem v-for="obj in pinnedObjects.filter(o => o.handle !== currentHandle)" :key="obj.id" :value="obj.id" class="text-xs font-bold focus:bg-indigo-600 focus:text-white">
                   {{ obj.name }} ({{ obj.type }} • {{ obj.handle }})
                 </SelectItem>
@@ -327,14 +337,14 @@ const pinnedObjects = computed(() => {
         </div>
       </div>
 
-      <DialogFooter class="p-7 pt-2 flex flex-col sm:flex-row items-center gap-3 border-t border-slate-800/80 bg-slate-950/50">
+      <DialogFooter class="p-7 pt-2 flex flex-col sm:flex-row items-center gap-3 border-t border-border bg-muted/20">
         <Button 
           v-if="isCurrentlyPinned && targetType !== 'lateral'"
           type="button"
           variant="outline" 
           @click="handleUnpin"
           :disabled="isSaving"
-          class="w-full sm:w-auto rounded-xl h-11 text-[10px] font-black text-rose-400 border-rose-900/40 bg-rose-950/20 hover:bg-rose-950/50 uppercase tracking-wider flex items-center gap-1.5 px-4"
+          class="w-full sm:w-auto rounded-xl h-11 text-[10px] font-black text-rose-600 dark:text-rose-400 border-rose-500/30 dark:border-rose-900/40 bg-rose-500/10 dark:bg-rose-950/20 hover:bg-rose-500/20 dark:hover:bg-rose-950/50 uppercase tracking-wider flex items-center gap-1.5 px-4"
         >
           <Trash2 class="size-3.5" />
           <span>Unpin DXF</span>
@@ -347,7 +357,7 @@ const pinnedObjects = computed(() => {
             type="button"
             variant="ghost" 
             @click="emit('update:open', false)"
-            class="rounded-xl h-11 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-800 hover:text-slate-200 transition-all px-4"
+            class="rounded-xl h-11 text-[10px] font-black text-muted-foreground uppercase tracking-widest hover:bg-muted hover:text-foreground transition-all px-4"
           >
             Cancel
           </Button>
@@ -371,7 +381,7 @@ const pinnedObjects = computed(() => {
   width: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(100, 116, 139, 0.1);
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {

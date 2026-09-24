@@ -277,15 +277,15 @@ const onSearch = (q: string) => {
         tabindex="0"
         @click="resetClientsView"
         @keydown.enter="resetClientsView"
-        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-slate-900/60"
+        class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-muted/50"
         title="Click to reset filters and refresh controller fleet"
       >
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 group-hover:bg-indigo-500/20 transition-all">
+        <div class="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary group-hover:scale-105 group-hover:bg-primary/20 transition-all">
           <Monitor class="h-6 w-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-100 group-hover:text-white transition-colors">Industrial Controller Fleet</h1>
-          <p class="text-sm text-slate-400 mt-0.5 group-hover:text-slate-300 transition-colors">
+          <h1 class="text-2xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">Industrial Controller Fleet</h1>
+          <p class="text-sm text-muted-foreground mt-0.5 group-hover:text-foreground transition-colors">
             Edge IPC telemetry, multi-runtime diagnostics, AutoCAD DXF tag linking, and signed commands
           </p>
         </div>
@@ -293,13 +293,13 @@ const onSearch = (q: string) => {
 
       <div class="flex items-center gap-3">
         <!-- View Mode Switcher -->
-        <div class="bg-slate-900 p-1 rounded-lg border border-slate-800 shadow-sm flex gap-1">
+        <div class="bg-card p-1 rounded-lg border border-border shadow-xs flex gap-1">
           <Button
             variant="ghost"
             size="sm"
             @click="activeViewMode = 'grid'"
-            :class="activeViewMode === 'grid' ? 'bg-zinc-700 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-zinc-800/80'"
-            class="h-8 px-3 rounded-md text-xs font-medium transition-all"
+            :class="activeViewMode === 'grid' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-accent'"
+            class="h-8 px-3 rounded-md text-xs font-medium transition-all cursor-pointer"
           >
             <Grid class="w-3.5 h-3.5 mr-1.5" />
             Grid View
@@ -309,8 +309,8 @@ const onSearch = (q: string) => {
             variant="ghost"
             size="sm"
             @click="activeViewMode = 'map'"
-            :class="activeViewMode === 'map' ? 'bg-zinc-700 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-zinc-800/80'"
-            class="h-8 px-3 rounded-md text-xs font-medium transition-all"
+            :class="activeViewMode === 'map' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-accent'"
+            class="h-8 px-3 rounded-md text-xs font-medium transition-all cursor-pointer"
           >
             <Map class="w-3.5 h-3.5 mr-1.5" />
             Plant CAD Map
@@ -322,9 +322,9 @@ const onSearch = (q: string) => {
           size="sm"
           @click="handleManualSync"
           :disabled="isLoading"
-          class="h-8 bg-slate-900 border-slate-800 hover:border-zinc-600 text-slate-300 hover:text-white rounded-lg px-3.5 hover:bg-zinc-800 text-xs font-medium transition-all shadow-xs hover:shadow-sm"
+          class="h-8 bg-card border-border hover:border-border text-foreground rounded-lg px-3.5 hover:bg-accent text-xs font-medium transition-all shadow-xs cursor-pointer"
         >
-          <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5 mr-2 text-zinc-400" />
+          <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5 mr-2 text-muted-foreground" />
           <span>{{ isLoading ? 'Syncing Fleet...' : 'Sync Telemetry' }}</span>
         </Button>
       </div>
@@ -351,7 +351,7 @@ const onSearch = (q: string) => {
       <button
         type="button"
         @click="handleCloseTelemetry"
-        class="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 hover:border-zinc-500 text-xs font-medium text-slate-400 hover:text-white hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg"
+        class="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card/90 border border-border hover:border-primary/40 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-md cursor-pointer"
       >
         <X class="w-3.5 h-3.5" />
         <span>Close Telemetry</span>
@@ -377,14 +377,14 @@ const onSearch = (q: string) => {
       <div class="space-y-4 animate-in fade-in duration-200">
         
         <!-- Floor Plan CAD Switcher Toolbar -->
-        <div class="p-3.5 bg-slate-900 border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+        <div class="p-3.5 bg-card border border-border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div class="flex items-center gap-3">
-            <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <div class="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20">
               <Layers class="size-4" />
             </div>
             <div>
-              <span class="text-xs text-slate-400 block">Active Plant CAD Layout</span>
-              <h4 class="text-sm font-semibold text-slate-200">{{ currentPlan.name }}</h4>
+              <span class="text-xs text-muted-foreground block">Active Plant CAD Layout</span>
+              <h4 class="text-sm font-semibold text-foreground">{{ currentPlan.name }}</h4>
             </div>
           </div>
 
@@ -392,14 +392,14 @@ const onSearch = (q: string) => {
             <!-- Floor Plan Switcher Popover -->
             <Popover>
               <PopoverTrigger as-child>
-                <Button variant="outline" size="sm" class="bg-slate-950 border-slate-800 text-slate-200 rounded-lg h-8 px-3 text-xs font-medium flex items-center gap-2 hover:bg-slate-900">
-                  <Layers class="w-3.5 h-3.5 text-indigo-400" />
+                <Button variant="outline" size="sm" class="bg-card border-border text-foreground rounded-lg h-8 px-3 text-xs font-medium flex items-center gap-2 hover:bg-accent cursor-pointer">
+                  <Layers class="w-3.5 h-3.5 text-primary" />
                   <span>{{ currentPlan.name }}</span>
-                  <ChevronDown class="w-3 h-3 text-slate-400 ml-1" />
+                  <ChevronDown class="w-3 h-3 text-muted-foreground ml-1" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" class="w-80 p-2 bg-slate-950 border-slate-800 shadow-xl text-slate-200 max-h-96 overflow-y-auto custom-scrollbar">
-                <div class="px-3 py-1.5 text-xs font-semibold text-slate-400 border-b border-slate-800/80 mb-1">
+              <PopoverContent align="end" class="w-80 p-2 bg-popover border-border shadow-xl text-foreground max-h-96 overflow-y-auto custom-scrollbar">
+                <div class="px-3 py-1.5 text-xs font-semibold text-muted-foreground border-b border-border mb-1">
                   Select Plant CAD Drawing
                 </div>
                 <div
@@ -407,13 +407,13 @@ const onSearch = (q: string) => {
                   :key="plan.id"
                   @click="currentPlanId = plan.id"
                   class="p-2 rounded-lg cursor-pointer transition-colors flex items-center justify-between group"
-                  :class="currentPlanId === plan.id ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'hover:bg-slate-900 text-slate-400'"
+                  :class="currentPlanId === plan.id ? 'bg-primary/10 text-primary border border-primary/30' : 'hover:bg-muted/60 text-muted-foreground'"
                 >
                   <div class="flex flex-col">
-                    <span class="text-xs font-medium group-hover:text-white" :class="{ 'text-white': currentPlanId === plan.id }">{{ plan.name }}</span>
-                    <span class="text-[11px] text-slate-500 font-mono">{{ plan.badge }}</span>
+                    <span class="text-xs font-medium group-hover:text-foreground" :class="{ 'text-foreground font-semibold': currentPlanId === plan.id }">{{ plan.name }}</span>
+                    <span class="text-[11px] text-muted-foreground font-mono">{{ plan.badge }}</span>
                   </div>
-                  <CheckCircle2 v-if="currentPlanId === plan.id" class="w-3.5 h-3.5 text-indigo-400" />
+                  <CheckCircle2 v-if="currentPlanId === plan.id" class="w-3.5 h-3.5 text-primary" />
                 </div>
               </PopoverContent>
             </Popover>
@@ -422,7 +422,7 @@ const onSearch = (q: string) => {
             <Button
               size="sm"
               @click="handleMapObjectDblClick('', 'Custom CAD Coordinate')"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg h-8 px-3 text-xs font-medium flex items-center gap-1.5 shadow-sm"
+              class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg h-8 px-3 text-xs font-medium flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
               <MapPin class="size-3.5" />
               <span>Pin Controller</span>
@@ -431,7 +431,7 @@ const onSearch = (q: string) => {
         </div>
 
         <!-- Interactive Map Canvas Container -->
-        <div class="h-[620px] rounded-xl overflow-hidden border border-slate-800 shadow-sm relative bg-slate-950">
+        <div class="h-[620px] rounded-xl overflow-hidden border border-border shadow-xs relative bg-card">
           <InteractiveMapCanvas
             :dxf-url="currentPlan.url"
             :highlighted-handles="searchedHandles"
@@ -441,8 +441,8 @@ const onSearch = (q: string) => {
           />
 
           <!-- Map Usage Helper Overlay Pill -->
-          <div class="absolute bottom-4 left-4 pointer-events-none bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg shadow-md flex items-center gap-2 text-xs text-slate-300 backdrop-blur-sm">
-            <Sparkles class="size-3.5 text-indigo-400 shrink-0" />
+          <div class="absolute bottom-4 left-4 pointer-events-none bg-card/90 border border-border px-3 py-1.5 rounded-lg shadow-md flex items-center gap-2 text-xs text-foreground backdrop-blur-sm">
+            <Sparkles class="size-3.5 text-primary shrink-0" />
             <span>Click any DXF tag block to open telemetry, or double-click to link a controller.</span>
           </div>
         </div>

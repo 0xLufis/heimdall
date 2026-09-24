@@ -15,10 +15,10 @@ export const useDashboard = () => {
   }))
 
   const stats = computed(() => [
-    { title: "Total Users", value: statsData.value.totalUsers, bgColor: "bg-slate-700", trend: "Live", icon: UsersIcon },
-    { title: "Active Clients", value: statsData.value.activeClients, bgColor: "bg-zinc-700", trend: "Live", icon: MonitorIcon },
-    { title: "Pending Alerts", value: statsData.value.pendingAlerts, bgColor: "bg-slate-800", trend: "24h", icon: AlertTriangleIcon },
-    { title: "Avg. Uptime", value: statsData.value.avgUptime, bgColor: "bg-zinc-800", trend: "Live", icon: ZapIcon },
+    { title: "Total Users", value: statsData.value.totalUsers, bgColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20", trend: "Live", icon: UsersIcon },
+    { title: "Active Clients", value: statsData.value.activeClients, bgColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20", trend: "Live", icon: MonitorIcon },
+    { title: "Pending Alerts", value: statsData.value.pendingAlerts, bgColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20", trend: "24h", icon: AlertTriangleIcon },
+    { title: "Avg. Uptime", value: statsData.value.avgUptime, bgColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20", trend: "Live", icon: ZapIcon },
   ])
 
   const recentClients = useState<any[]>('dashboard_recent_clients', () => [])

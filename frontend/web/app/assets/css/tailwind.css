@@ -268,24 +268,24 @@
 
 /* Industrial Badge Styles matching muted slate/teal/sage/amber/terracotta palette */
 @utility badge-cyan {
-  @apply bg-teal-950/50 text-teal-300 border border-teal-600/30 text-xs font-medium;
+  @apply bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/30 text-xs font-medium;
 }
 @utility badge-emerald {
-  @apply bg-emerald-950/50 text-emerald-300 border border-emerald-600/30 text-xs font-medium;
+  @apply bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-medium;
 }
 @utility badge-amber {
-  @apply bg-amber-950/50 text-amber-300 border border-amber-600/30 text-xs font-medium;
+  @apply bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-xs font-medium;
 }
 @utility badge-rose {
-  @apply bg-rose-950/50 text-rose-300 border border-rose-600/30 text-xs font-medium;
+  @apply bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-xs font-medium;
 }
 @utility badge-indigo {
-  @apply bg-slate-800/80 text-slate-300 border border-slate-700/60 text-xs font-medium;
+  @apply bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-medium;
 }
 @utility badge-purple {
-  @apply bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 text-xs font-medium;
+  @apply bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-xs font-medium;
 }
 @utility badge-slate {
-  @apply bg-slate-900/80 text-slate-300 border border-slate-800 text-xs font-medium;
+  @apply bg-muted text-muted-foreground border border-border text-xs font-medium;
 }
 

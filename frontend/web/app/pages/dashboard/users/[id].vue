@@ -137,25 +137,25 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Breadcrumbs -->
-    <nav class="flex items-center gap-2 text-xs font-medium text-slate-400">
-      <NuxtLink to="/dashboard/users" class="hover:text-indigo-400 transition-colors">Users</NuxtLink>
-      <ChevronRight class="size-3 text-slate-600" />
-      <span class="text-slate-200">User Profile</span>
+    <nav class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+      <NuxtLink to="/dashboard/users" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Users</NuxtLink>
+      <ChevronRight class="size-3 text-muted-foreground/60" />
+      <span class="text-foreground">User Profile</span>
     </nav>
 
     <!-- Loading State -->
     <div v-if="loading" class="flex flex-col items-center justify-center py-24 gap-3">
       <div class="animate-spin rounded-full size-8 border-b-2 border-indigo-500"></div>
-      <p class="text-xs font-medium text-slate-400">Loading user profile...</p>
+      <p class="text-xs font-medium text-muted-foreground">Loading user profile...</p>
     </div>
 
     <!-- Error State -->
     <div v-else-if="error" class="bg-rose-500/10 border border-rose-500/20 p-6 rounded-xl text-center">
-      <div class="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center mx-auto mb-3 text-rose-400">
+      <div class="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center mx-auto mb-3 text-rose-600 dark:text-rose-400">
         <AlertTriangle class="size-5" />
       </div>
-      <h3 class="text-base font-semibold text-rose-300">Failed to Load User</h3>
-      <p class="text-xs text-rose-400/80 mt-1">{{ error }}</p>
+      <h3 class="text-base font-semibold text-rose-700 dark:text-rose-300">Failed to Load User</h3>
+      <p class="text-xs text-rose-600/80 dark:text-rose-400/80 mt-1">{{ error }}</p>
       <Button @click="fetchUserDetails" size="sm" class="mt-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-lg h-8 px-3">
         Try Again
       </Button>
@@ -165,56 +165,56 @@ onMounted(() => {
     <div v-else-if="user" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Left Column: Profile Card -->
       <div class="lg:col-span-1 space-y-6">
-        <div class="bg-slate-900 rounded-xl shadow-sm border border-slate-800 overflow-hidden">
-          <div class="h-20 bg-slate-950/80 border-b border-slate-800 flex items-center justify-end px-4">
-            <Badge v-if="user.banned" class="bg-rose-500/10 text-rose-400 border border-rose-500/30 text-xs font-medium px-2 py-0.5 rounded-md">
+        <div class="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div class="h-20 bg-muted/40 border-b border-border flex items-center justify-end px-4">
+            <Badge v-if="user.banned" class="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-medium px-2 py-0.5 rounded-md">
               Suspended
             </Badge>
-            <Badge v-else class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-2 py-0.5 rounded-md">
+            <Badge v-else class="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-medium px-2 py-0.5 rounded-md">
               Active
             </Badge>
           </div>
           <div class="px-5 pb-5">
             <div class="-mt-10 mb-3 flex justify-center">
-              <div class="size-20 rounded-xl bg-slate-900 p-1 border-2 border-slate-800 shadow-md">
-                <div class="w-full h-full rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl font-bold text-indigo-400">
+              <div class="size-20 rounded-xl bg-card p-1 border-2 border-border shadow-md">
+                <div class="w-full h-full rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                   {{ (user.name || 'U').charAt(0).toUpperCase() }}
                 </div>
               </div>
             </div>
 
             <div class="text-center">
-              <h4 class="text-lg font-bold text-slate-100">{{ user.name }}</h4>
-              <p class="text-xs text-slate-400 mt-0.5">@{{ user.username || user.email?.split('@')[0] }}</p>
+              <h4 class="text-lg font-bold text-foreground">{{ user.name }}</h4>
+              <p class="text-xs text-muted-foreground mt-0.5">@{{ user.username || user.email?.split('@')[0] }}</p>
               <div class="mt-2.5 flex justify-center">
                 <DashboardRoleBadge :role="user.role" />
               </div>
             </div>
 
-            <div class="mt-5 space-y-3 border-t border-slate-800 pt-4 text-xs">
+            <div class="mt-5 space-y-3 border-t border-border pt-4 text-xs">
               <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-medium flex items-center gap-1.5">
-                  <Mail class="size-3.5 text-slate-500" />
+                <span class="text-muted-foreground font-medium flex items-center gap-1.5">
+                  <Mail class="size-3.5 text-muted-foreground" />
                   Email
                 </span>
-                <span class="text-slate-200 font-mono text-xs">{{ user.email }}</span>
+                <span class="text-foreground font-mono text-xs">{{ user.email }}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-medium flex items-center gap-1.5">
-                  <Calendar class="size-3.5 text-slate-500" />
+                <span class="text-muted-foreground font-medium flex items-center gap-1.5">
+                  <Calendar class="size-3.5 text-muted-foreground" />
                   Joined
                 </span>
-                <span class="text-slate-300 font-medium">{{ formatDate(user.createdAt) }}</span>
+                <span class="text-foreground font-medium">{{ formatDate(user.createdAt) }}</span>
               </div>
             </div>
           </div>
 
-          <div class="bg-slate-950/60 px-5 py-3 border-t border-slate-800 flex gap-2">
+          <div class="bg-muted/40 px-5 py-3 border-t border-border flex gap-2">
             <Button
               variant="outline"
               size="sm"
               @click="handleImpersonate"
-              class="flex-1 border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-lg h-8 transition-colors"
+              class="flex-1 border-border bg-card hover:bg-muted text-foreground text-xs font-medium rounded-lg h-8 transition-colors"
             >
               <UserCheck class="size-3.5 mr-1.5" />
               Impersonate
@@ -224,7 +224,7 @@ onMounted(() => {
               variant="outline"
               size="sm"
               @click="handleBan"
-              class="flex-1 border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-medium rounded-lg h-8 transition-colors"
+              class="flex-1 border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium rounded-lg h-8 transition-colors"
             >
               <Ban class="size-3.5 mr-1.5" />
               Suspend
@@ -237,76 +237,76 @@ onMounted(() => {
       <div class="lg:col-span-2 space-y-6">
         <!-- Account Statistics -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm flex items-center justify-between">
+          <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-xs font-medium text-slate-400">Active Sessions</p>
-              <p class="text-xl font-bold text-slate-100 mt-0.5">{{ sessions.length }}</p>
+              <p class="text-xs font-medium text-muted-foreground">Active Sessions</p>
+              <p class="text-xl font-bold text-foreground mt-0.5">{{ sessions.length }}</p>
             </div>
-            <div class="p-2 rounded-lg bg-slate-800 text-slate-300">
+            <div class="p-2 rounded-lg bg-muted text-foreground">
               <Monitor class="size-4" />
             </div>
           </div>
-          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm flex items-center justify-between">
+          <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-xs font-medium text-slate-400">Last Activity</p>
-              <p class="text-xs font-medium text-slate-200 mt-1">{{ sessions.length > 0 ? formatDate(sessions[0].updatedAt) : 'Never' }}</p>
+              <p class="text-xs font-medium text-muted-foreground">Last Activity</p>
+              <p class="text-xs font-medium text-foreground mt-1">{{ sessions.length > 0 ? formatDate(sessions[0].updatedAt) : 'Never' }}</p>
             </div>
-            <div class="p-2 rounded-lg bg-slate-800 text-slate-300">
+            <div class="p-2 rounded-lg bg-muted text-foreground">
               <Activity class="size-4" />
             </div>
           </div>
-          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm flex items-center justify-between">
+          <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center justify-between">
             <div>
-              <p class="text-xs font-medium text-slate-400">Organizations</p>
-              <p class="text-xl font-bold text-slate-100 mt-0.5">0</p>
+              <p class="text-xs font-medium text-muted-foreground">Organizations</p>
+              <p class="text-xl font-bold text-foreground mt-0.5">0</p>
             </div>
-            <div class="p-2 rounded-lg bg-slate-800 text-slate-300">
+            <div class="p-2 rounded-lg bg-muted text-foreground">
               <Building2 class="size-4" />
             </div>
           </div>
         </div>
 
         <!-- Sessions List -->
-        <div class="bg-slate-900 rounded-xl shadow-sm border border-slate-800 overflow-hidden">
-          <div class="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
-            <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Active Device Sessions</h4>
+        <div class="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-border flex justify-between items-center bg-muted/40">
+            <h4 class="text-xs font-semibold text-foreground uppercase tracking-wider">Active Device Sessions</h4>
             <Button
               variant="ghost"
               size="sm"
               @click="fetchUserSessions"
-              class="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 h-7 px-2.5 rounded-md"
+              class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-muted h-7 px-2.5 rounded-md"
             >
               <RefreshCw class="size-3 mr-1" />
               Refresh
             </Button>
           </div>
-          <div class="divide-y divide-slate-800/60">
+          <div class="divide-y divide-border">
             <div
               v-for="sess in sessions"
               :key="sess.id"
-              class="px-5 py-3 flex items-center justify-between hover:bg-slate-800/40 transition-colors"
+              class="px-5 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
             >
               <div class="flex items-center gap-3">
-                <div class="size-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400">
+                <div class="size-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
                   <Smartphone v-if="sess.userAgent && (sess.userAgent.includes('iPhone') || sess.userAgent.includes('Android'))" class="size-4" />
                   <Monitor v-else class="size-4" />
                 </div>
                 <div>
-                  <div class="text-xs font-semibold text-slate-200">{{ parseUserAgent(sess.userAgent) }}</div>
-                  <div class="text-[11px] text-slate-500 font-mono mt-0.5">{{ sess.ipAddress || 'Unknown IP' }} • Last seen {{ formatDate(sess.updatedAt) }}</div>
+                  <div class="text-xs font-semibold text-foreground">{{ parseUserAgent(sess.userAgent) }}</div>
+                  <div class="text-[11px] text-muted-foreground font-mono mt-0.5">{{ sess.ipAddress || 'Unknown IP' }} • Last seen {{ formatDate(sess.updatedAt) }}</div>
                 </div>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 @click="handleRevokeSession(sess.id)"
-                class="border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium h-7 px-2.5 transition-colors"
+                class="border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg text-xs font-medium h-7 px-2.5 transition-colors"
               >
                 Revoke
               </Button>
             </div>
             <div v-if="sessions.length === 0" class="px-5 py-10 text-center">
-              <p class="text-xs text-slate-500 font-medium">No active sessions found for this user.</p>
+              <p class="text-xs text-muted-foreground font-medium">No active sessions found for this user.</p>
             </div>
           </div>
         </div>

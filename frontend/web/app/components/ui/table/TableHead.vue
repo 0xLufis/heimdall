@@ -70,7 +70,7 @@ function handleClick(event: MouseEvent) {
     :class="
       cn(
         'h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0',
-        isSortable && 'cursor-pointer select-none hover:text-slate-100 transition-colors group',
+        isSortable && 'cursor-pointer select-none hover:text-foreground transition-colors group',
         props.class,
       )
     "
@@ -88,9 +88,9 @@ function handleClick(event: MouseEvent) {
     <div v-if="isSortable" class="inline-flex items-center gap-1.5">
       <slot />
       <span class="inline-flex items-center shrink-0">
-        <ArrowUp v-if="currentDirection === 'asc'" class="size-3.5 text-purple-400 font-bold" />
-        <ArrowDown v-else-if="currentDirection === 'desc'" class="size-3.5 text-purple-400 font-bold" />
-        <ArrowUpDown v-else class="size-3 text-slate-500/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ArrowUp v-if="currentDirection === 'asc'" class="size-3.5 text-primary font-bold" />
+        <ArrowDown v-else-if="currentDirection === 'desc'" class="size-3.5 text-primary font-bold" />
+        <ArrowUpDown v-else class="size-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity" />
       </span>
     </div>
     <slot v-else />

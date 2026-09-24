@@ -137,13 +137,13 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
 
 <template>
   <Dialog :open="open" @update:open="(val: boolean) => { if (!val) emit('close') }">
-    <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-slate-100">
+    <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-foreground">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2 text-lg text-emerald-400">
+        <DialogTitle class="flex items-center gap-2 text-lg text-emerald-600 dark:text-emerald-400">
           <ShieldCheckIcon class="h-5 w-5" />
           Install Corporate Root Certificate Authority
         </DialogTitle>
-        <DialogDescription class="text-xs text-slate-400">
+        <DialogDescription class="text-xs text-muted-foreground">
           Upload an existing corporate Root CA or Intermediate Certificate Authority (PEM / CRT format) to anchor all
           factory edge device mTLS signatures.
         </DialogDescription>
@@ -152,7 +152,7 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
       <div class="space-y-4 py-3">
         <!-- Error Banner -->
         <div v-if="errorMessage"
-          class="p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+          class="p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
           <AlertCircleIcon class="h-4 w-4 shrink-0" />
           <span>{{ errorMessage }}</span>
         </div>
@@ -160,14 +160,14 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
         <!-- Profile & Meta Inputs -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="text-xs font-medium text-slate-300">Root CA Profile Name</label>
+            <label class="text-xs font-medium text-muted-foreground">Root CA Profile Name</label>
             <Input v-model="profileName" placeholder="e.g. Corporate-Master-Root-CA"
-              class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
+              class="mt-1 bg-background border-border text-foreground text-sm" />
           </div>
           <div>
-            <label class="text-xs font-medium text-slate-300">Purpose / Description</label>
+            <label class="text-xs font-medium text-muted-foreground">Purpose / Description</label>
             <Input v-model="description" placeholder="e.g. Factory Floor Mutual TLS"
-              class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
+              class="mt-1 bg-background border-border text-foreground text-sm" />
           </div>
         </div>
 
@@ -178,48 +178,48 @@ DQEBAQUAA4IBDwAwggEKAoIBAQC7VJTbwhZ8nZ6i7v4u21hU0k76pE1W3V6rM5+Y
           @click="triggerFileInput"
           @keydown.enter.prevent="triggerFileInput"
           @keydown.space.prevent="triggerFileInput"
-          class="border-2 border-dashed border-slate-700 hover:border-emerald-500/50 bg-slate-950/60 rounded-xl p-5 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+          class="border-2 border-dashed border-border hover:border-emerald-500/50 bg-muted/30 rounded-xl p-5 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <input ref="fileInputRef" type="file" accept=".crt,.pem,.cer,.cert" class="hidden"
             @change="handleFileUpload" />
-          <UploadCloudIcon class="h-8 w-8 mx-auto text-slate-400 mb-2" />
-          <p class="text-sm font-medium text-slate-200">Click or drag & drop to upload Certificate (.crt, .pem)</p>
-          <p class="text-xs text-slate-500 mt-1">Accepts standard X.509 ASCII PEM blocks with BEGIN CERTIFICATE headers
+          <UploadCloudIcon class="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+          <p class="text-sm font-medium text-foreground">Click or drag & drop to upload Certificate (.crt, .pem)</p>
+          <p class="text-xs text-muted-foreground mt-1">Accepts standard X.509 ASCII PEM blocks with BEGIN CERTIFICATE headers
           </p>
         </div>
 
         <!-- Textarea for Paste -->
         <div>
           <div class="flex items-center justify-between mb-1">
-            <label class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-              <FileCodeIcon class="h-3.5 w-3.5 text-slate-400" />
+            <label class="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <FileCodeIcon class="h-3.5 w-3.5 text-muted-foreground" />
               Raw PEM Payload
             </label>
-            <button v-if="enableDevFeatures" type="button" class="text-xs text-emerald-400 hover:underline" @click="loadSampleCert">
+            <button v-if="enableDevFeatures" type="button" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline" @click="loadSampleCert">
               Load Industrial Demo CA Template
             </button>
           </div>
           <textarea v-model="rawPem" rows="6"
             placeholder="-----BEGIN CERTIFICATE-----&#10;MIID...&#10;-----END CERTIFICATE-----"
-            class="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"></textarea>
+            class="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"></textarea>
         </div>
 
         <!-- Real-time Verification Preview -->
         <div v-if="parsedPreview"
-          class="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 flex items-center justify-between">
+          class="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <KeyIcon class="h-4 w-4 text-emerald-400 shrink-0" />
+            <KeyIcon class="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
-              <div class="text-xs font-medium text-emerald-300">Valid X.509 Certificate Detected</div>
-              <div class="text-[11px] font-mono text-emerald-400/80">{{ parsedPreview.previewFingerprint }}</div>
+              <div class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Valid X.509 Certificate Detected</div>
+              <div class="text-[11px] font-mono text-emerald-600 dark:text-emerald-400/80">{{ parsedPreview.previewFingerprint }}</div>
             </div>
           </div>
-          <Badge variant="outline" class="border-emerald-500/50 text-emerald-400 text-[10px]">Ready to Import</Badge>
+          <Badge variant="outline" class="border-emerald-500/50 text-emerald-700 dark:text-emerald-400 text-[10px]">Ready to Import</Badge>
         </div>
       </div>
 
-      <DialogFooter class="flex items-center justify-between border-t border-slate-800 pt-3">
-        <Button variant="ghost" size="sm" @click="emit('close')" class="text-slate-400 hover:text-slate-200">
+      <DialogFooter class="flex items-center justify-between border-t border-border pt-3">
+        <Button variant="ghost" size="sm" @click="emit('close')" class="text-muted-foreground hover:text-foreground">
           Dismiss
         </Button>
         <Button size="sm" class="bg-emerald-600 hover:bg-emerald-500 text-white" :disabled="importing || !rawPem.trim()"

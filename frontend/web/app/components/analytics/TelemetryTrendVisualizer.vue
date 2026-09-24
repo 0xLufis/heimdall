@@ -190,15 +190,15 @@ const meanVal = computed(() => {
 </script>
 
 <template>
-  <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+  <div class="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
     <!-- Header Controls: Machine Selector, Metric Switcher & Time Range -->
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div class="space-y-1">
         <div class="flex items-center gap-2">
-          <TrendingUp class="w-4 h-4 text-indigo-400" />
-          <h3 class="text-base font-semibold text-slate-100">Predictive Telemetry Drift & Anomaly Tracker</h3>
+          <TrendingUp class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <h3 class="text-base font-semibold text-foreground">Predictive Telemetry Drift & Anomaly Tracker</h3>
         </div>
-        <p class="text-xs text-slate-400">
+        <p class="text-xs text-muted-foreground">
           Rolling statistical analysis with Z-score outlier detection (|z| > 2.5σ warning, |z| > 3.0σ critical).
         </p>
       </div>
@@ -207,16 +207,16 @@ const meanVal = computed(() => {
       <div class="flex flex-wrap items-center gap-2">
         <select
           v-model="activeMachineId"
-          class="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs font-medium text-slate-200 focus:outline-none focus:border-indigo-500"
+          class="px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option v-for="m in machinesList" :key="m.id" :value="m.id">{{ m.name }}</option>
         </select>
 
-        <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
+        <div class="flex items-center bg-muted/40 p-1 rounded-lg border border-border text-xs font-medium">
           <button
             type="button"
             @click="activeRange = '1h'"
-            :class="activeRange === '1h' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeRange === '1h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
             class="px-2.5 py-1 rounded transition-all"
           >
             1h
@@ -224,7 +224,7 @@ const meanVal = computed(() => {
           <button
             type="button"
             @click="activeRange = '8h'"
-            :class="activeRange === '8h' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeRange === '8h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
             class="px-2.5 py-1 rounded transition-all"
           >
             8h (Shift)
@@ -232,7 +232,7 @@ const meanVal = computed(() => {
           <button
             type="button"
             @click="activeRange = '24h'"
-            :class="activeRange === '24h' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeRange === '24h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
             class="px-2.5 py-1 rounded transition-all"
           >
             24h
@@ -240,7 +240,7 @@ const meanVal = computed(() => {
           <button
             type="button"
             @click="activeRange = '7d'"
-            :class="activeRange === '7d' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+            :class="activeRange === '7d' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
             class="px-2.5 py-1 rounded transition-all"
           >
             7d
@@ -250,7 +250,7 @@ const meanVal = computed(() => {
         <button
           type="button"
           @click="fetchTrends"
-          class="p-2 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+          class="p-2 rounded-lg bg-background hover:bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors"
           title="Refresh Timeseries Data"
         >
           <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5" />
@@ -259,24 +259,24 @@ const meanVal = computed(() => {
     </div>
 
     <!-- Metric Tabs (Built-in + User Defined) -->
-    <div class="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto text-xs font-medium">
+    <div class="flex items-center gap-2 border-b border-border pb-3 overflow-x-auto text-xs font-medium">
       <button
         v-for="m in telemetryMetrics"
         :key="m.key"
         type="button"
         @click="activeMetric = m.key"
-        :class="activeMetric === m.key ? 'bg-zinc-800 text-zinc-200 border-zinc-700 shadow-sm' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'"
+        :class="activeMetric === m.key ? 'bg-muted text-foreground border-border shadow-sm font-semibold' : 'bg-background text-muted-foreground border-border hover:text-foreground hover:bg-muted/40'"
         class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
       >
         <span>{{ m.name }} ({{ m.unit }})</span>
-        <Badge v-if="m.isUserDefined" variant="outline" class="text-[9px] px-1 py-0 border-indigo-500/30 text-indigo-400">
+        <Badge v-if="m.isUserDefined" variant="outline" class="text-[9px] px-1 py-0 border-indigo-500/30 text-indigo-600 dark:text-indigo-400">
           Custom
         </Badge>
       </button>
     </div>
 
     <!-- Interactive SVG Chart Canvas -->
-    <div class="relative bg-slate-950 rounded-xl p-3 border border-slate-800 overflow-hidden">
+    <div class="relative bg-muted/20 rounded-xl p-3 border border-border overflow-hidden">
       <svg
         viewBox="0 0 800 260"
         class="w-full h-64 overflow-visible select-none"
@@ -289,7 +289,7 @@ const meanVal = computed(() => {
         </defs>
 
         <!-- Grid Lines -->
-        <g stroke="#232730" stroke-width="1">
+        <g stroke="currentColor" class="text-border" stroke-width="1">
           <line :x1="padding.left" :y1="padding.top" :x2="svgWidth - padding.right" :y2="padding.top" />
           <line :x1="padding.left" :y1="padding.top + chartHeight * 0.25" :x2="svgWidth - padding.right" :y2="padding.top + chartHeight * 0.25" />
           <line :x1="padding.left" :y1="padding.top + chartHeight * 0.5" :x2="svgWidth - padding.right" :y2="padding.top + chartHeight * 0.5" />
@@ -312,7 +312,7 @@ const meanVal = computed(() => {
         </text>
 
         <!-- Y-Axis Ticks -->
-        <g fill="#828a94" font-size="9" font-family="monospace" text-anchor="end">
+        <g fill="currentColor" class="text-muted-foreground" font-size="9" font-family="monospace" text-anchor="end">
           <text :x="padding.left - 8" :y="padding.top + 4">{{ yBounds.max }}</text>
           <text :x="padding.left - 8" :y="padding.top + chartHeight / 2 + 3">{{ Math.round((yBounds.max + yBounds.min) / 2) }}</text>
           <text :x="padding.left - 8" :y="padding.top + chartHeight">{{ yBounds.min }}</text>
@@ -366,9 +366,9 @@ const meanVal = computed(() => {
       <!-- Hover Tooltip -->
       <div
         v-if="hoveredPoint"
-        class="absolute top-4 right-4 p-3 rounded-lg bg-slate-900 border border-slate-700 text-xs shadow-xl space-y-1 backdrop-blur-md"
+        class="absolute top-4 right-4 p-3 rounded-lg bg-popover/95 border border-border text-popover-foreground text-xs shadow-xl space-y-1 backdrop-blur-md"
       >
-        <div class="flex items-center justify-between gap-3 text-slate-400 font-mono text-[10px]">
+        <div class="flex items-center justify-between gap-3 text-muted-foreground font-mono text-[10px]">
           <span>{{ new Date(hoveredPoint.timestamp).toLocaleTimeString() }}</span>
           <Badge
             v-if="hoveredPoint.isAnomaly"
@@ -378,30 +378,30 @@ const meanVal = computed(() => {
             Anomaly ({{ hoveredPoint.zScore }}σ)
           </Badge>
         </div>
-        <div class="font-mono text-base font-bold text-white">
-          {{ hoveredPoint.value }} <span class="text-xs font-normal text-slate-400">{{ trendData.unit }}</span>
+        <div class="font-mono text-base font-bold text-foreground">
+          {{ hoveredPoint.value }} <span class="text-xs font-normal text-muted-foreground">{{ trendData.unit }}</span>
         </div>
       </div>
     </div>
 
     <!-- Summary Metrics Bar & Detected Anomalies -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 text-xs font-mono">
-      <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-0.5">
-        <span class="text-slate-400 block text-[11px]">Current Value</span>
-        <span class="text-slate-100 font-bold text-sm">{{ currentVal }} {{ trendData.unit }}</span>
+      <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
+        <span class="text-muted-foreground block text-[11px]">Current Value</span>
+        <span class="text-foreground font-bold text-sm">{{ currentVal }} {{ trendData.unit }}</span>
       </div>
-      <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-0.5">
-        <span class="text-slate-400 block text-[11px]">Period Mean (μ)</span>
-        <span class="text-slate-100 font-bold text-sm">{{ meanVal }} {{ trendData.unit }}</span>
+      <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
+        <span class="text-muted-foreground block text-[11px]">Period Mean (μ)</span>
+        <span class="text-foreground font-bold text-sm">{{ meanVal }} {{ trendData.unit }}</span>
       </div>
-      <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-0.5">
-        <span class="text-slate-400 block text-[11px]">Nominal Target</span>
-        <span class="text-slate-100 font-bold text-sm">{{ trendData.nominalValue }} {{ trendData.unit }}</span>
+      <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
+        <span class="text-muted-foreground block text-[11px]">Nominal Target</span>
+        <span class="text-foreground font-bold text-sm">{{ trendData.nominalValue }} {{ trendData.unit }}</span>
       </div>
-      <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-0.5">
-        <span class="text-slate-400 block text-[11px]">Detected Outliers</span>
+      <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
+        <span class="text-muted-foreground block text-[11px]">Detected Outliers</span>
         <span
-          :class="trendData.detectedAnomalies.length > 0 ? 'text-rose-400' : 'text-emerald-400'"
+          :class="trendData.detectedAnomalies.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'"
           class="font-bold text-sm"
         >
           {{ trendData.detectedAnomalies.length }} Anomalies
@@ -412,16 +412,16 @@ const meanVal = computed(() => {
     <!-- Active Degradation Alerts List (if any detected) -->
     <div
       v-if="trendData.detectedAnomalies.length > 0"
-      class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-2 text-xs"
+      class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 text-xs"
     >
-      <div class="flex items-center gap-2 text-amber-300 font-semibold">
-        <ShieldAlert class="w-4 h-4 text-amber-400" />
+      <div class="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold">
+        <ShieldAlert class="w-4 h-4 text-amber-600 dark:text-amber-400" />
         <span>Statistical Degradation Alert Triggered</span>
       </div>
       <p
         v-for="(a, idx) in trendData.detectedAnomalies.slice(0, 2)"
         :key="idx"
-        class="text-amber-200/90 font-mono text-[11px]"
+        class="text-amber-800/90 dark:text-amber-200/90 font-mono text-[11px]"
       >
         • {{ a.description }} (Value: {{ a.value }} {{ trendData.unit }} vs Expected: {{ a.expectedValue }} {{ trendData.unit }})
       </p>

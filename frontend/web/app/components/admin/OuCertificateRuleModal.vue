@@ -137,52 +137,52 @@ async function saveRule() {
 
 <template>
   <Dialog :open="open" @update:open="(val: boolean) => { if (!val) emit('close') }">
-    <DialogContent class="max-w-lg bg-slate-900 border-slate-800 text-slate-100">
+    <DialogContent class="max-w-lg bg-card border-border text-foreground">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2 text-base text-indigo-400">
+        <DialogTitle class="flex items-center gap-2 text-base text-indigo-600 dark:text-indigo-400">
           <KeyRoundIcon class="h-5 w-5" />
           {{ ruleToEdit ? 'Edit Active Directory Certificate Enrollment Policy' : 'Configure Active Directory Certificate Enrollment Policy' }}
         </DialogTitle>
-        <DialogDescription class="text-xs text-slate-400">
+        <DialogDescription class="text-xs text-muted-foreground">
           Automatically enroll and issue mTLS client certificates whenever hosts in this Active Directory OU are
           discovered.
         </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-4 py-2">
-        <div v-if="errorMessage" class="p-2.5 rounded bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs">
+        <div v-if="errorMessage" class="p-2.5 rounded bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs">
           {{ errorMessage }}
         </div>
 
         <div>
-          <label class="text-xs font-medium text-slate-300">Active Directory OU Path (Distinguished Name)</label>
+          <label class="text-xs font-medium text-muted-foreground">Active Directory OU Path (Distinguished Name)</label>
           <Input v-model="ouPath" placeholder="e.g. OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp"
-            class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono" />
+            class="mt-1 bg-background border-border text-foreground text-xs font-mono" />
           <div class="mt-2 flex flex-wrap gap-1.5">
             <button v-for="p in sampleOus" :key="p" type="button" @click="selectSampleOu(p)"
-              class="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">
+              class="text-[10px] px-2 py-0.5 rounded bg-muted hover:bg-muted/80 border border-border/50 text-foreground transition-colors">
               {{ p.split(',')[0].replace('OU=', '') }} ({{ p.split(',')[1]?.replace('OU=', '') }})
             </button>
           </div>
         </div>
 
         <div>
-          <label class="text-xs font-medium text-slate-300">Certificate Profile Name</label>
+          <label class="text-xs font-medium text-muted-foreground">Certificate Profile Name</label>
           <Input v-model="profileName" placeholder="e.g. High-Assurance-Robotics-mTLS"
-            class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
+            class="mt-1 bg-background border-border text-foreground text-sm" />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-xs font-medium text-slate-300">Validity (Years)</label>
+            <label class="text-xs font-medium text-muted-foreground">Validity (Years)</label>
             <Input type="number" min="1" max="10" v-model.number="validityYears"
-              class="mt-1 bg-slate-950 border-slate-800 text-slate-100 text-sm" />
+              class="mt-1 bg-background border-border text-foreground text-sm" />
           </div>
 
           <div>
-            <label class="text-xs font-medium text-slate-300">Cryptographic Algorithm</label>
+            <label class="text-xs font-medium text-muted-foreground">Cryptographic Algorithm</label>
             <select v-model="keyAlgorithm"
-              class="mt-1 flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-xs text-slate-200">
+              class="mt-1 flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="RSA-2048">RSA-2048 (Standard)</option>
               <option value="RSA-4096">RSA-4096 (High-Security)</option>
               <option value="ECDSA-P256">ECDSA-P256 (NIST Curve)</option>
@@ -191,19 +191,19 @@ async function saveRule() {
           </div>
         </div>
 
-        <div class="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950/50">
+        <div class="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
           <div>
-            <div class="text-xs font-medium text-slate-200">Auto-Enroll Upon Discovery</div>
-            <div class="text-[11px] text-slate-400">Issue certificate automatically when edge host imports from this OU
+            <div class="text-xs font-medium text-foreground">Auto-Enroll Upon Discovery</div>
+            <div class="text-[11px] text-muted-foreground">Issue certificate automatically when edge host imports from this OU
             </div>
           </div>
           <input type="checkbox" v-model="autoEnroll"
-            class="h-4 w-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" />
+            class="h-4 w-4 rounded border-input bg-background text-indigo-600 focus:ring-indigo-500" />
         </div>
       </div>
 
-      <DialogFooter class="flex items-center justify-between border-t border-slate-800 pt-3">
-        <Button variant="ghost" size="sm" @click="emit('close')" class="text-slate-400">
+      <DialogFooter class="flex items-center justify-between border-t border-border pt-3">
+        <Button variant="ghost" size="sm" @click="emit('close')" class="text-muted-foreground hover:text-foreground">
           Dismiss
         </Button>
         <Button size="sm" class="bg-indigo-600 hover:bg-indigo-500 text-white"

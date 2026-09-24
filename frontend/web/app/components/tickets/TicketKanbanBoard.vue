@@ -24,14 +24,14 @@ const columns: {
   nextStatus?: TicketStatus
   nextLabel?: string
 }[] = [
-  { id: 'Open', label: 'Open', color: 'border-blue-500/30 bg-blue-500/10 text-blue-400', nextStatus: 'In_Progress', nextLabel: 'Start' },
-  { id: 'In_Progress', label: 'In Progress', color: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400', nextStatus: 'Closure_Pending', nextLabel: 'Request AOK' },
-  { id: 'Pending_Parts', label: 'Pending Parts', color: 'border-amber-500/30 bg-amber-500/10 text-amber-400', nextStatus: 'In_Progress', nextLabel: 'Resume' },
-  { id: 'Escalated', label: 'Escalated (Internal)', color: 'border-purple-500/30 bg-purple-500/10 text-purple-400', nextStatus: 'In_Progress', nextLabel: 'Take Over' },
-  { id: 'Escalated_External', label: 'Escalated (External)', color: 'border-rose-500/30 bg-rose-500/10 text-rose-400', nextStatus: 'In_Progress', nextLabel: 'Handback' },
-  { id: 'Closure_Pending', label: 'Closure Pending', color: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400', nextStatus: 'Resolved', nextLabel: 'Sign-Off' },
-  { id: 'Resolved', label: 'Resolved', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
-  { id: 'Closed_Unresolved', label: 'Closed (Unresolved)', color: 'border-slate-600 bg-slate-800/40 text-slate-400' }
+  { id: 'Open', label: 'Open', color: 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400', nextStatus: 'In_Progress', nextLabel: 'Start' },
+  { id: 'In_Progress', label: 'In Progress', color: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400', nextStatus: 'Closure_Pending', nextLabel: 'Request AOK' },
+  { id: 'Pending_Parts', label: 'Pending Parts', color: 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-400', nextStatus: 'In_Progress', nextLabel: 'Resume' },
+  { id: 'Escalated', label: 'Escalated (Internal)', color: 'border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400', nextStatus: 'In_Progress', nextLabel: 'Take Over' },
+  { id: 'Escalated_External', label: 'Escalated (External)', color: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400', nextStatus: 'In_Progress', nextLabel: 'Handback' },
+  { id: 'Closure_Pending', label: 'Closure Pending', color: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-800 dark:text-cyan-400', nextStatus: 'Resolved', nextLabel: 'Sign-Off' },
+  { id: 'Resolved', label: 'Resolved', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
+  { id: 'Closed_Unresolved', label: 'Closed (Unresolved)', color: 'border-border bg-muted text-muted-foreground' }
 ]
 
 const draggedTicketId = ref<string | null>(null)
@@ -44,13 +44,13 @@ const getTicketsByStatus = (status: TicketStatus) => {
 const getPriorityClass = (priority: string) => {
   switch (priority) {
     case 'Critical':
-      return 'bg-destructive/20 text-destructive border-destructive/30'
+      return 'bg-destructive/15 text-destructive border-destructive/30'
     case 'High':
-      return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+      return 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30'
     case 'Medium':
-      return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+      return 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border-amber-500/30'
     default:
-      return 'bg-slate-800 text-slate-400 border-slate-700'
+      return 'bg-muted text-muted-foreground border-border'
   }
 }
 
@@ -120,13 +120,13 @@ function getLatestTransition(ticket: MaintenanceTicket) {
       @dragover="onDragOver($event, col.id)"
       @dragleave="onDragLeave(col.id)"
       @drop="onDrop($event, col.id)"
-      class="w-[300px] shrink-0 bg-slate-950 border rounded-3xl p-4 flex flex-col gap-3 min-h-[520px] transition-colors duration-200"
-      :class="dragOverColumn === col.id ? 'border-indigo-500 bg-indigo-950/20 shadow-inner' : 'border-slate-800'"
+      class="w-[300px] shrink-0 bg-card border rounded-3xl p-4 flex flex-col gap-3 min-h-[520px] transition-colors duration-200"
+      :class="dragOverColumn === col.id ? 'border-primary bg-primary/5 shadow-inner' : 'border-border'"
     >
       <!-- Column Header -->
-      <div class="flex items-center justify-between pb-3 border-b border-slate-900 px-1">
+      <div class="flex items-center justify-between pb-3 border-b border-border px-1">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase tracking-wider text-slate-200 truncate">{{ col.label }}</span>
+          <span class="text-xs font-black uppercase tracking-wider text-foreground truncate">{{ col.label }}</span>
         </div>
         <span class="px-2 py-0.5 rounded-full text-[10px] font-black font-mono" :class="col.color">
           {{ getTicketsByStatus(col.id).length }}
@@ -137,7 +137,7 @@ function getLatestTransition(ticket: MaintenanceTicket) {
       <div class="space-y-3 flex-1 overflow-y-auto pr-1">
         <div
           v-if="getTicketsByStatus(col.id).length === 0"
-          class="h-32 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest text-slate-600 border border-dashed border-slate-900 rounded-2xl"
+          class="h-32 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground border border-dashed border-border rounded-2xl"
         >
           No Incidents
         </div>
@@ -149,30 +149,30 @@ function getLatestTransition(ticket: MaintenanceTicket) {
           @dragstart="onDragStart($event, ticket.id)"
           @dragend="draggedTicketId = null"
           @click="emit('selectTicket', ticket)"
-          class="p-4 bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl cursor-grab active:cursor-grabbing transition-all shadow-md group flex flex-col justify-between gap-3 select-none"
-          :class="draggedTicketId === ticket.id ? 'opacity-40 border-dashed border-indigo-500/70 scale-[0.99]' : ''"
+          class="p-4 bg-card border border-border hover:border-primary/50 rounded-2xl cursor-grab active:cursor-grabbing transition-all shadow-sm hover:shadow-md group flex flex-col justify-between gap-3 select-none"
+          :class="draggedTicketId === ticket.id ? 'opacity-40 border-dashed border-primary/70 scale-[0.99]' : ''"
         >
           <div>
             <div class="flex items-center justify-between gap-2 mb-2">
-              <span class="text-[10px] font-mono font-bold text-slate-400">{{ ticket.ticketNumber }}</span>
+              <span class="text-[10px] font-mono font-bold text-muted-foreground">{{ ticket.ticketNumber }}</span>
               <Badge class="text-[9px] uppercase font-mono px-2 py-0.5 border" :class="getPriorityClass(ticket.priority)">
                 {{ ticket.priority }}
               </Badge>
             </div>
 
-            <h5 class="text-xs font-bold text-slate-200 group-hover:text-white line-clamp-2">{{ ticket.title }}</h5>
+            <h5 class="text-xs font-bold text-foreground group-hover:text-foreground/90 line-clamp-2">{{ ticket.title }}</h5>
 
             <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider truncate">
+              <p class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider truncate">
                 {{ ticket.stationName || 'Plant Station' }}
               </p>
-              <span v-if="ticket.machineType" class="text-[9px] font-mono px-1 rounded bg-slate-800 text-slate-400 border border-slate-700">
+              <span v-if="ticket.machineType" class="text-[9px] font-mono px-1 rounded bg-muted text-muted-foreground border border-border">
                 {{ ticket.machineType }}
               </span>
             </div>
 
             <!-- SFC Workpiece Serial Badge -->
-            <div v-if="ticket.sfc" class="mt-1.5 flex items-center gap-1 text-[9px] font-mono text-cyan-400">
+            <div v-if="ticket.sfc" class="mt-1.5 flex items-center gap-1 text-[9px] font-mono text-cyan-600 dark:text-cyan-400">
               <Layers class="w-2.5 h-2.5 shrink-0" />
               <span class="truncate">{{ ticket.sfc }}</span>
             </div>
@@ -182,11 +182,11 @@ function getLatestTransition(ticket: MaintenanceTicket) {
               <span
                 v-for="tag in ticket.tags.slice(0, 3)"
                 :key="tag"
-                class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-700/60"
+                class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border"
               >
                 {{ tag }}
               </span>
-              <span v-if="ticket.tags.length > 3" class="text-[8px] text-slate-500 self-center">
+              <span v-if="ticket.tags.length > 3" class="text-[8px] text-muted-foreground self-center">
                 +{{ ticket.tags.length - 3 }}
               </span>
             </div>
@@ -194,26 +194,26 @@ function getLatestTransition(ticket: MaintenanceTicket) {
             <!-- Latest State Transition Badge -->
             <div
               v-if="getLatestTransition(ticket)"
-              class="mt-2 text-[9px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center gap-1"
+              class="mt-2 text-[9px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 flex items-center gap-1"
             >
               <span>{{ getLatestTransition(ticket)!.fromStatus }}</span>
               <ArrowRight class="w-2.5 h-2.5 shrink-0" />
-              <span class="font-bold text-indigo-200">{{ getLatestTransition(ticket)!.toStatus }}</span>
+              <span class="font-bold text-indigo-800 dark:text-indigo-200">{{ getLatestTransition(ticket)!.toStatus }}</span>
             </div>
 
             <!-- External Escalation Badge -->
             <div
               v-if="ticket.externalEscalationTarget"
-              class="mt-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20"
+              class="mt-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20"
             >
               Target: {{ ticket.externalEscalationTarget }}
             </div>
           </div>
 
           <!-- Bottom Meta & Quick Transition -->
-          <div class="pt-2 border-t border-slate-800/60 flex items-center justify-between gap-2">
-            <div class="flex items-center gap-1 text-[10px] text-slate-500 truncate">
-              <User class="w-3 h-3 text-slate-400 shrink-0" />
+          <div class="pt-2 border-t border-border flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1 text-[10px] text-muted-foreground truncate">
+              <User class="w-3 h-3 text-muted-foreground shrink-0" />
               <span class="truncate">{{ ticket.assignedTechnicianName || 'Unassigned' }}</span>
             </div>
 
@@ -221,7 +221,7 @@ function getLatestTransition(ticket: MaintenanceTicket) {
             <button
               v-if="col.nextStatus"
               @click="onQuickMove($event, ticket.id, col.nextStatus)"
-              class="px-2 py-1 bg-slate-800 hover:bg-indigo-600 text-[9px] font-black uppercase tracking-wider text-slate-300 hover:text-white rounded-lg transition-colors flex items-center gap-1 shrink-0"
+              class="px-2 py-1 bg-muted hover:bg-primary text-[9px] font-black uppercase tracking-wider text-foreground hover:text-primary-foreground rounded-lg transition-colors flex items-center gap-1 shrink-0"
               :title="`Move to ${col.nextLabel}`"
             >
               <span>{{ col.nextLabel }}</span>

@@ -143,28 +143,28 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header with Actions -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
           <Users class="size-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-100">User Directory & Access Governance</h1>
-          <p class="text-sm text-slate-400 mt-0.5">System access control, RBAC policy assignments, and directory audit</p>
+          <h1 class="text-2xl font-bold tracking-tight text-foreground">User Directory & Access Governance</h1>
+          <p class="text-sm text-muted-foreground mt-0.5">System access control, RBAC policy assignments, and directory audit</p>
         </div>
       </div>
       <div class="flex items-center gap-2.5">
-        <Button variant="outline" size="sm" @click="fetchUsers" class="gap-1.5 border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg h-8 text-xs font-medium transition-colors">
+        <Button variant="outline" size="sm" @click="fetchUsers" class="gap-1.5 border-border bg-card hover:bg-muted text-foreground rounded-lg h-8 text-xs font-medium transition-colors">
           <RefreshCcwIcon class="size-3.5" :class="{ 'animate-spin': loading }" />
           <span>Refresh</span>
         </Button>
         <NuxtLink v-if="isSystemAdmin" to="/admin/studio" target="_blank">
-          <Button variant="outline" size="sm" class="gap-1.5 border-slate-800 bg-slate-900 hover:bg-slate-800 text-indigo-400 hover:text-indigo-300 rounded-lg h-8 text-xs font-medium transition-colors">
+          <Button variant="outline" size="sm" class="gap-1.5 border-border bg-card hover:bg-muted text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 rounded-lg h-8 text-xs font-medium transition-colors">
             <FingerprintIcon class="size-3.5" />
             <span>Identity Studio</span>
           </Button>
         </NuxtLink>
-        <RbacButton capability="canManageUsers" size="sm" class="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 rounded-lg h-8 px-3.5 text-xs font-medium shadow-sm transition-colors">
+        <RbacButton capability="canManageUsers" size="sm" class="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 rounded-lg h-8 px-3.5 text-xs font-medium shadow-sm transition-colors">
           <UserPlusIcon class="size-3.5" />
           <span>Invite User</span>
         </RbacButton>
@@ -172,22 +172,22 @@ onMounted(() => {
     </div>
 
     <!-- Filters & Search -->
-    <Card class="border-slate-800 bg-slate-900 rounded-xl shadow-sm overflow-hidden">
+    <Card class="border-border bg-card rounded-xl shadow-sm overflow-hidden">
        <CardContent class="p-4 flex flex-col md:flex-row gap-3 items-center">
           <div class="relative flex-grow w-full md:w-auto group">
-              <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors z-10" />
+              <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors z-10" />
               <Input 
                 v-model="searchQuery" 
                 placeholder="Search by name, email, or identifier..." 
-                class="w-full pl-9 pr-3 h-8 bg-slate-950 border-slate-800 rounded-lg text-xs text-slate-200" 
+                class="w-full pl-9 pr-3 h-8 bg-background border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground" 
               />
           </div>
           <div class="flex items-center gap-2 w-full md:w-auto">
               <Select v-model="roleFilter">
-                <SelectTrigger class="w-full md:w-40 h-8 bg-slate-950 border-slate-800 rounded-lg font-medium text-xs text-slate-300">
+                <SelectTrigger class="w-full md:w-40 h-8 bg-background border-border rounded-lg font-medium text-xs text-foreground">
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
-                <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
+                <SelectContent class="bg-popover border-border text-popover-foreground">
                   <SelectItem value="all" class="text-xs">All Roles</SelectItem>
                   <SelectItem v-for="role in availableRoles" :key="role" :value="role" class="text-xs">
                     {{ role }}
@@ -196,10 +196,10 @@ onMounted(() => {
               </Select>
 
               <Select v-model="statusFilter">
-                <SelectTrigger class="w-full md:w-40 h-8 bg-slate-950 border-slate-800 rounded-lg font-medium text-xs text-slate-300">
+                <SelectTrigger class="w-full md:w-40 h-8 bg-background border-border rounded-lg font-medium text-xs text-foreground">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
-                <SelectContent class="bg-slate-950 border-slate-800 text-slate-300">
+                <SelectContent class="bg-popover border-border text-popover-foreground">
                   <SelectItem value="all" class="text-xs">All Statuses</SelectItem>
                   <SelectItem value="active" class="text-xs">Active</SelectItem>
                   <SelectItem value="banned" class="text-xs">Banned</SelectItem>

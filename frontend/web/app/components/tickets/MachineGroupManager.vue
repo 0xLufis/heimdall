@@ -156,16 +156,16 @@ const totalClustersCount = computed(() => {
 <template>
   <div class="space-y-4">
     <!-- Header Section (conditional if modal vs page) -->
-    <div v-if="isModal" class="pb-4 border-b border-slate-800 flex flex-row items-center justify-between">
+    <div v-if="isModal" class="pb-4 border-b border-border flex flex-row items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+        <div class="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
           <FolderTree class="h-6 w-6" />
         </div>
         <div>
-          <h3 class="text-lg font-black uppercase tracking-tight text-slate-100">
+          <h3 class="text-lg font-black uppercase tracking-tight text-foreground">
             Machine Groups & Envelope Hierarchy
           </h3>
-          <p class="text-xs text-slate-400 mt-0.5">
+          <p class="text-xs text-muted-foreground mt-0.5">
             Envelop machines in cells, lines, and plants with technology type clusters
           </p>
         </div>
@@ -173,13 +173,13 @@ const totalClustersCount = computed(() => {
       <div class="flex items-center gap-2">
         <Button
           size="sm"
-          class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold gap-1.5"
+          class="bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-1.5 cursor-pointer"
           @click="startCreate(null)"
         >
           <Plus class="h-4 w-4" />
           Add Root Group
         </Button>
-        <Button variant="ghost" size="icon" @click="emit('close')" class="text-slate-400 hover:text-white rounded-xl">
+        <Button variant="ghost" size="icon" @click="emit('close')" class="text-muted-foreground hover:text-foreground rounded-xl cursor-pointer">
           <X class="h-5 w-5" />
         </Button>
       </div>
@@ -187,43 +187,43 @@ const totalClustersCount = computed(() => {
 
     <!-- Quick Stats Bar when rendered on a Page -->
     <div v-if="!isModal" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+      <div class="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
           <FolderTree class="h-5 w-5" />
         </div>
         <div>
-          <div class="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Groups</div>
-          <div class="text-lg font-black text-white">{{ groups.length }}</div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Total Groups</div>
+          <div class="text-lg font-black text-foreground">{{ groups.length }}</div>
         </div>
       </div>
 
-      <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+      <div class="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
           <Building2 class="h-5 w-5" />
         </div>
         <div>
-          <div class="text-[10px] font-black uppercase tracking-wider text-slate-400">Root Plants</div>
-          <div class="text-lg font-black text-white">{{ rootGroups.length }}</div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Root Plants</div>
+          <div class="text-lg font-black text-foreground">{{ rootGroups.length }}</div>
         </div>
       </div>
 
-      <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+      <div class="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
           <Layers class="h-5 w-5" />
         </div>
         <div>
-          <div class="text-[10px] font-black uppercase tracking-wider text-slate-400">Sub-Lines & Cells</div>
-          <div class="text-lg font-black text-white">{{ Math.max(0, groups.length - rootGroups.length) }}</div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Sub-Lines & Cells</div>
+          <div class="text-lg font-black text-foreground">{{ Math.max(0, groups.length - rootGroups.length) }}</div>
         </div>
       </div>
 
-      <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+      <div class="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
           <Sparkles class="h-5 w-5" />
         </div>
         <div>
-          <div class="text-[10px] font-black uppercase tracking-wider text-slate-400">Cluster Tags</div>
-          <div class="text-lg font-black text-white">{{ totalClustersCount }}</div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Cluster Tags</div>
+          <div class="text-lg font-black text-foreground">{{ totalClustersCount }}</div>
         </div>
       </div>
     </div>
@@ -232,17 +232,17 @@ const totalClustersCount = computed(() => {
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2" :class="isModal ? 'max-h-[70vh] overflow-y-auto pr-1' : ''">
       <!-- Hierarchy Tree View (7 cols on page, 6 on modal) -->
       <div :class="isModal ? 'lg:col-span-6 space-y-3' : 'lg:col-span-7 space-y-3'">
-        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-          <h4 class="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
-            <Layers class="w-4 h-4 text-indigo-400" />
+        <div class="flex items-center justify-between pb-2 border-b border-border">
+          <h4 class="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Layers class="w-4 h-4 text-primary" />
             <span>Group Structure Hierarchy</span>
           </h4>
           <div class="flex items-center gap-2">
-            <span class="text-[10px] text-slate-400 font-mono">{{ groups.length }} groups configured</span>
+            <span class="text-[10px] text-muted-foreground font-mono">{{ groups.length }} groups configured</span>
             <Button
               v-if="!isModal"
               size="sm"
-              class="h-7 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold gap-1 rounded-lg"
+              class="h-7 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold gap-1 rounded-lg cursor-pointer"
               @click="startCreate(null)"
             >
               <Plus class="h-3.5 w-3.5" />
@@ -251,40 +251,40 @@ const totalClustersCount = computed(() => {
           </div>
         </div>
 
-        <div v-if="isLoading" class="p-12 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl">
+        <div v-if="isLoading" class="p-12 text-center text-muted-foreground text-xs border border-dashed border-border rounded-2xl">
           Loading machine group hierarchy...
         </div>
 
-        <div v-else-if="groups.length === 0" class="p-12 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl">
+        <div v-else-if="groups.length === 0" class="p-12 text-center text-muted-foreground text-xs border border-dashed border-border rounded-2xl">
           No groups configured yet. Click "Add Root Group" to begin defining factory envelopes.
         </div>
 
-        <div v-for="root in rootGroups" :key="root.id" class="rounded-2xl border border-slate-800/90 bg-slate-900/70 p-4 space-y-2.5 hover:border-slate-700 transition-colors">
+        <div v-for="root in rootGroups" :key="root.id" class="rounded-2xl border border-border bg-card p-4 space-y-2.5 hover:border-primary/40 transition-colors">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <div class="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50"></div>
-              <span class="font-bold text-sm text-slate-100">{{ root.name }}</span>
-              <Badge variant="outline" class="text-[9px] uppercase font-bold border-blue-500/30 text-blue-300 bg-blue-500/10">
+              <div class="w-3 h-3 rounded-full bg-blue-500 shadow-xs"></div>
+              <span class="font-bold text-sm text-foreground">{{ root.name }}</span>
+              <Badge variant="outline" class="text-[9px] uppercase font-bold border-blue-500/30 text-blue-700 dark:text-blue-300 bg-blue-500/10">
                 Plant Level
               </Badge>
             </div>
             <div class="flex items-center gap-1">
               <button
-                class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-950/30 transition"
+                class="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted transition cursor-pointer"
                 title="Add sub-group"
                 @click="startCreate(root.id)"
               >
                 <Plus class="h-3.5 w-3.5" />
               </button>
               <button
-                class="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
                 title="Edit group"
                 @click="startEdit(root)"
               >
                 <Edit3 class="h-3.5 w-3.5" />
               </button>
               <button
-                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition"
+                class="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
                 title="Delete group"
                 @click="deleteGroup(root.id)"
               >
@@ -293,39 +293,39 @@ const totalClustersCount = computed(() => {
             </div>
           </div>
 
-          <p v-if="root.description" class="text-xs text-slate-400 pl-5">{{ root.description }}</p>
+          <p v-if="root.description" class="text-xs text-muted-foreground pl-5">{{ root.description }}</p>
 
           <!-- Nested Subgroups Level 1 (Lines) -->
           <div
             v-for="sub in getChildGroups(root.id)"
             :key="sub.id"
-            class="ml-5 pl-4 border-l-2 border-indigo-500/30 py-2 space-y-2"
+            class="ml-5 pl-4 border-l-2 border-primary/30 py-2 space-y-2"
           >
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <div class="w-2.5 h-2.5 rounded-full bg-indigo-400"></div>
-                <span class="font-semibold text-xs text-slate-200">{{ sub.name }}</span>
-                <Badge v-if="sub.leadEngineerName" variant="outline" class="text-[10px] border-indigo-500/30 text-indigo-300 py-0 px-1.5 bg-indigo-500/10">
+                <div class="w-2.5 h-2.5 rounded-full bg-primary"></div>
+                <span class="font-semibold text-xs text-foreground">{{ sub.name }}</span>
+                <Badge v-if="sub.leadEngineerName" variant="outline" class="text-[10px] border-primary/30 text-primary py-0 px-1.5 bg-primary/10">
                   Lead: {{ sub.leadEngineerName }}
                 </Badge>
               </div>
               <div class="flex items-center gap-1">
                 <button
-                  class="p-1 rounded text-slate-400 hover:text-indigo-400 hover:bg-indigo-950/30 transition"
+                  class="p-1 rounded text-muted-foreground hover:text-primary hover:bg-muted transition cursor-pointer"
                   title="Add cell sub-group"
                   @click="startCreate(sub.id)"
                 >
                   <Plus class="h-3 w-3" />
                 </button>
                 <button
-                  class="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                  class="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
                   title="Edit group"
                   @click="startEdit(sub)"
                 >
                   <Edit3 class="h-3 w-3" />
                 </button>
                 <button
-                  class="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition"
+                  class="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
                   title="Delete group"
                   @click="deleteGroup(sub.id)"
                 >
@@ -339,7 +339,7 @@ const totalClustersCount = computed(() => {
               <span
                 v-for="mt in sub.machineTypes"
                 :key="mt"
-                class="text-[9px] font-mono px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700/60"
+                class="text-[9px] font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border"
               >
                 {{ mt }}
               </span>
@@ -353,19 +353,19 @@ const totalClustersCount = computed(() => {
             >
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5">
-                  <div class="w-2 h-2 rounded-full bg-purple-400"></div>
-                  <span class="font-medium text-xs text-slate-300">{{ cell.name }}</span>
+                  <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+                  <span class="font-medium text-xs text-foreground">{{ cell.name }}</span>
                 </div>
                 <div class="flex items-center gap-1">
                   <button
-                    class="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                    class="p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
                     title="Edit group"
                     @click="startEdit(cell)"
                   >
                     <Edit3 class="h-3 w-3" />
                   </button>
                   <button
-                    class="p-1 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition"
+                    class="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
                     title="Delete group"
                     @click="deleteGroup(cell.id)"
                   >
@@ -377,7 +377,7 @@ const totalClustersCount = computed(() => {
                 <span
                   v-for="cmt in cell.machineTypes"
                   :key="cmt"
-                  class="text-[8px] font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20"
+                  class="text-[8px] font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20"
                 >
                   {{ cmt }}
                 </span>
@@ -389,23 +389,23 @@ const totalClustersCount = computed(() => {
 
       <!-- Create / Edit Form Panel (5 cols on page, 6 on modal) -->
       <div :class="isModal ? 'lg:col-span-6' : 'lg:col-span-5'">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4 sticky top-6">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h4 class="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-2">
-              <Cpu class="w-4 h-4 text-indigo-400" />
+        <div class="rounded-2xl border border-border bg-card p-5 space-y-4 sticky top-6">
+          <div class="flex items-center justify-between pb-3 border-b border-border">
+            <h4 class="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-2">
+              <Cpu class="w-4 h-4 text-primary" />
               <span>{{ isCreating ? 'Create New Envelope Group' : isEditing ? 'Edit Envelope Group' : 'Group Configuration' }}</span>
             </h4>
-            <Badge v-if="isCreating || isEditing" variant="outline" class="text-[9px] uppercase font-bold border-indigo-500/40 text-indigo-300 bg-indigo-500/10">
+            <Badge v-if="isCreating || isEditing" variant="outline" class="text-[9px] uppercase font-bold border-primary/40 text-primary bg-primary/10">
               {{ isCreating ? 'New' : 'Editing' }}
             </Badge>
           </div>
 
-          <div v-if="!isCreating && !isEditing" class="p-10 text-center text-slate-500 text-xs space-y-3">
-            <FolderTree class="w-8 h-8 text-slate-700 mx-auto" />
+          <div v-if="!isCreating && !isEditing" class="p-10 text-center text-muted-foreground text-xs space-y-3">
+            <FolderTree class="w-8 h-8 text-muted-foreground/60 mx-auto" />
             <p>Select a group from the hierarchy tree to inspect or edit its properties, or start a new group.</p>
             <Button
               size="sm"
-              class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
+              class="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs cursor-pointer"
               @click="startCreate(null)"
             >
               <Plus class="h-3.5 w-3.5 mr-1" />
@@ -415,19 +415,19 @@ const totalClustersCount = computed(() => {
 
           <div v-else class="space-y-4">
             <div class="space-y-1.5">
-              <label class="text-[11px] font-bold text-slate-400 uppercase">Group Name</label>
+              <label class="text-[11px] font-bold text-muted-foreground uppercase">Group Name</label>
               <Input
                 v-model="form.name"
                 placeholder="e.g. Line 06 — Module Assembly (AUDI)"
-                class="bg-slate-900 border-slate-800 text-slate-100 text-xs rounded-xl"
+                class="bg-background border-border text-foreground text-xs rounded-xl focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
 
             <div class="space-y-1.5">
-              <label class="text-[11px] font-bold text-slate-400 uppercase">Parent Envelope Group</label>
+              <label class="text-[11px] font-bold text-muted-foreground uppercase">Parent Envelope Group</label>
               <select
                 v-model="form.parentId"
-                class="w-full h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 text-xs px-3 focus:outline-none focus:border-indigo-500"
+                class="w-full h-9 rounded-xl bg-background border border-border text-foreground text-xs px-3 focus:outline-hidden focus:border-primary"
               >
                 <option :value="null">None (Root Level Plant)</option>
                 <option v-for="g in groups.filter(item => item.id !== selectedGroupId)" :key="g.id" :value="g.id">
@@ -437,43 +437,43 @@ const totalClustersCount = computed(() => {
             </div>
 
             <div class="space-y-1.5">
-              <label class="text-[11px] font-bold text-slate-400 uppercase">Lead Engineer / Dedicated Owner</label>
+              <label class="text-[11px] font-bold text-muted-foreground uppercase">Lead Engineer / Dedicated Owner</label>
               <Input
                 v-model="form.leadEngineerName"
                 placeholder="e.g. Engineer Orwell"
-                class="bg-slate-900 border-slate-800 text-slate-100 text-xs rounded-xl"
+                class="bg-background border-border text-foreground text-xs rounded-xl focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
 
             <div class="space-y-1.5">
-              <label class="text-[11px] font-bold text-slate-400 uppercase">Description</label>
+              <label class="text-[11px] font-bold text-muted-foreground uppercase">Description</label>
               <textarea
                 v-model="form.description"
                 placeholder="Operational purpose, line capacity, or special tooling notes..."
-                class="w-full rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs p-3 min-h-[70px] focus:outline-none focus:border-indigo-500"
+                class="w-full rounded-xl bg-background border border-border text-foreground text-xs p-3 min-h-[70px] focus:outline-hidden focus:border-primary"
               ></textarea>
             </div>
 
             <!-- Machine Type Clusters A through X -->
             <div class="space-y-1.5">
-              <label class="text-[11px] font-bold text-slate-400 uppercase flex items-center justify-between">
+              <label class="text-[11px] font-bold text-muted-foreground uppercase flex items-center justify-between">
                 <span>Dedicated Machine Types (Cluster A through X)</span>
-                <span class="text-[10px] text-indigo-400 font-mono">{{ form.machineTypes.length }} selected</span>
+                <span class="text-[10px] text-primary font-mono">{{ form.machineTypes.length }} selected</span>
               </label>
-              <div class="grid grid-cols-2 gap-1.5 p-2 rounded-xl bg-slate-900 border border-slate-800 max-h-48 overflow-y-auto">
+              <div class="grid grid-cols-2 gap-1.5 p-2 rounded-xl bg-muted/30 border border-border max-h-48 overflow-y-auto">
                 <button
                   v-for="mt in STANDARD_MACHINE_TYPES"
                   :key="mt"
                   type="button"
-                  class="flex items-center gap-2 p-1.5 rounded-lg text-left transition-colors text-[11px]"
-                  :class="form.machineTypes.includes(mt) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold' : 'text-slate-400 hover:bg-slate-800/50'"
+                  class="flex items-center gap-2 p-1.5 rounded-lg text-left transition-colors text-[11px] cursor-pointer"
+                  :class="form.machineTypes.includes(mt) ? 'bg-primary/10 text-primary border border-primary/30 font-bold' : 'text-muted-foreground hover:bg-muted/80'"
                   @click="toggleMachineType(mt)"
                 >
                   <div
                     class="w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0"
-                    :class="form.machineTypes.includes(mt) ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-700'"
+                    :class="form.machineTypes.includes(mt) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 bg-background'"
                   >
-                    <Check v-if="form.machineTypes.includes(mt)" class="w-2.5 h-2.5" />
+                    <Check v-if="form.machineTypes.includes(mt)" class="w-2.5 h-2.5 text-primary-foreground" />
                   </div>
                   <span class="truncate">{{ mt }}</span>
                 </button>
@@ -481,18 +481,18 @@ const totalClustersCount = computed(() => {
             </div>
 
             <!-- Form Actions -->
-            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
               <Button
                 variant="outline"
                 size="sm"
-                class="border-slate-800 text-slate-400 hover:bg-slate-800 rounded-xl"
+                class="border-border text-muted-foreground hover:text-foreground hover:bg-accent rounded-xl cursor-pointer"
                 @click="isCreating = false; isEditing = false"
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
-                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl"
+                class="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl cursor-pointer"
                 @click="saveGroup"
               >
                 {{ isCreating ? 'Create Group' : 'Save Changes' }}

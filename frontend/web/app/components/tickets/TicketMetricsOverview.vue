@@ -45,19 +45,19 @@ const toggleFilter = (filterKey: string) => {
       @keydown.enter="toggleFilter('open')"
       @keydown.space.prevent="toggleFilter('open')"
       :class="[
-        activeFilter === 'open' ? 'ring-2 ring-indigo-500 bg-slate-800/90 shadow-md' : 'hover:border-slate-700 hover:bg-slate-900/95',
-        'bg-slate-900 border-slate-800 rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
+        activeFilter === 'open' ? 'ring-2 ring-indigo-500 bg-indigo-500/10 shadow-md border-indigo-500/40' : 'hover:border-border/80 hover:bg-muted/50',
+        'bg-card border-border rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
       ]"
       title="Click to filter by active open tickets (click again to clear)"
     >
       <CardContent class="p-4 flex items-center justify-between">
         <div>
-          <span class="text-xs font-medium text-slate-400 group-hover:text-slate-300 transition-colors">Total Open</span>
-          <div class="text-xl font-bold text-slate-100 mt-0.5">
+          <span class="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">Total Open</span>
+          <div class="text-xl font-bold text-foreground mt-0.5">
             {{ (metrics?.openCount || 0) + (metrics?.inProgressCount || 0) + (metrics?.pendingPartsCount || 0) }}
           </div>
         </div>
-        <div class="p-2 rounded-lg bg-slate-800 text-slate-300 group-hover:text-white transition-colors">
+        <div class="p-2 rounded-lg bg-muted text-muted-foreground group-hover:text-foreground transition-colors">
           <Wrench class="size-4" />
         </div>
       </CardContent>
@@ -71,19 +71,19 @@ const toggleFilter = (filterKey: string) => {
       @keydown.enter="toggleFilter('critical')"
       @keydown.space.prevent="toggleFilter('critical')"
       :class="[
-        activeFilter === 'critical' ? 'ring-2 ring-rose-500 bg-rose-950/40 shadow-md border-rose-500/50' : ((metrics?.criticalCount || 0) > 0 ? 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10' : 'hover:border-slate-700'),
-        'bg-slate-900 border-slate-800 rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
+        activeFilter === 'critical' ? 'ring-2 ring-rose-500 bg-rose-500/15 shadow-md border-rose-500/50' : ((metrics?.criticalCount || 0) > 0 ? 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10' : 'hover:border-border/80 hover:bg-muted/50'),
+        'bg-card border-border rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
       ]"
       title="Click to filter by Critical / High severity incidents (click again to clear)"
     >
       <CardContent class="p-4 flex items-center justify-between">
         <div>
-          <span class="text-xs font-medium text-rose-400">Critical</span>
-          <div class="text-xl font-bold text-rose-400 mt-0.5">
+          <span class="text-xs font-medium text-rose-700 dark:text-rose-400">Critical</span>
+          <div class="text-xl font-bold text-rose-700 dark:text-rose-400 mt-0.5">
             {{ metrics?.criticalCount || 0 }}
           </div>
         </div>
-        <div class="p-2 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500/20 transition-colors">
+        <div class="p-2 rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 group-hover:bg-rose-500/20 transition-colors">
           <AlertTriangle class="size-4" />
         </div>
       </CardContent>
@@ -97,19 +97,19 @@ const toggleFilter = (filterKey: string) => {
       @keydown.enter="toggleFilter('pending_parts')"
       @keydown.space.prevent="toggleFilter('pending_parts')"
       :class="[
-        activeFilter === 'pending_parts' ? 'ring-2 ring-amber-500 bg-amber-950/40 shadow-md border-amber-500/50' : 'hover:border-slate-700',
-        'bg-slate-900 border-slate-800 rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
+        activeFilter === 'pending_parts' ? 'ring-2 ring-amber-500 bg-amber-500/15 shadow-md border-amber-500/50' : 'hover:border-border/80 hover:bg-muted/50',
+        'bg-card border-border rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
       ]"
       title="Click to filter by Pending Parts status (click again to clear)"
     >
       <CardContent class="p-4 flex items-center justify-between">
         <div>
-          <span class="text-xs font-medium text-amber-400">Pending Parts</span>
-          <div class="text-xl font-bold text-amber-400 mt-0.5">
+          <span class="text-xs font-medium text-amber-800 dark:text-amber-400">Pending Parts</span>
+          <div class="text-xl font-bold text-amber-800 dark:text-amber-400 mt-0.5">
             {{ metrics?.pendingPartsCount || 0 }}
           </div>
         </div>
-        <div class="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
+        <div class="p-2 rounded-lg bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
           <Package class="size-4" />
         </div>
       </CardContent>
@@ -123,19 +123,19 @@ const toggleFilter = (filterKey: string) => {
       @keydown.enter="toggleFilter('overdue')"
       @keydown.space.prevent="toggleFilter('overdue')"
       :class="[
-        activeFilter === 'overdue' ? 'ring-2 ring-amber-500 bg-amber-950/40 shadow-md border-amber-500/50' : 'hover:border-slate-700',
-        'bg-slate-900 border-slate-800 rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
+        activeFilter === 'overdue' ? 'ring-2 ring-amber-500 bg-amber-500/15 shadow-md border-amber-500/50' : 'hover:border-border/80 hover:bg-muted/50',
+        'bg-card border-border rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
       ]"
       title="Click to filter by overdue / SLA breached tickets (click again to clear)"
     >
       <CardContent class="p-4 flex items-center justify-between">
         <div>
-          <span class="text-xs font-medium text-amber-500">Overdue SLA</span>
-          <div class="text-xl font-bold text-amber-500 mt-0.5">
+          <span class="text-xs font-medium text-amber-800 dark:text-amber-500">Overdue SLA</span>
+          <div class="text-xl font-bold text-amber-800 dark:text-amber-500 mt-0.5">
             {{ metrics?.overdueCount || 0 }}
           </div>
         </div>
-        <div class="p-2 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
+        <div class="p-2 rounded-lg bg-amber-500/10 text-amber-800 dark:text-amber-500 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
           <Clock class="size-4" />
         </div>
       </CardContent>
@@ -149,19 +149,19 @@ const toggleFilter = (filterKey: string) => {
       @keydown.enter="toggleFilter('resolved')"
       @keydown.space.prevent="toggleFilter('resolved')"
       :class="[
-        activeFilter === 'resolved' ? 'ring-2 ring-emerald-500 bg-emerald-950/40 shadow-md border-emerald-500/50' : 'hover:border-slate-700',
-        'bg-slate-900 border-slate-800 rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
+        activeFilter === 'resolved' ? 'ring-2 ring-emerald-500 bg-emerald-500/15 shadow-md border-emerald-500/50' : 'hover:border-border/80 hover:bg-muted/50',
+        'bg-card border-border rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
       ]"
       title="Click to view Resolved and Closed tickets (click again to clear)"
     >
       <CardContent class="p-4 flex items-center justify-between">
         <div>
-          <span class="text-xs font-medium text-emerald-400">Resolved</span>
-          <div class="text-xl font-bold text-emerald-400 mt-0.5">
+          <span class="text-xs font-medium text-emerald-700 dark:text-emerald-400">Resolved</span>
+          <div class="text-xl font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
             {{ (metrics?.resolvedCount || 0) + (metrics?.closedCount || 0) }}
           </div>
         </div>
-        <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+        <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
           <CheckCircle2 class="size-4" />
         </div>
       </CardContent>
@@ -175,19 +175,19 @@ const toggleFilter = (filterKey: string) => {
       @keydown.enter="toggleFilter('sla')"
       @keydown.space.prevent="toggleFilter('sla')"
       :class="[
-        activeFilter === 'sla' ? 'ring-2 ring-indigo-500 bg-indigo-950/40 shadow-md border-indigo-500/50' : 'hover:border-slate-700',
-        'bg-slate-900 border-slate-800 rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
+        activeFilter === 'sla' ? 'ring-2 ring-indigo-500 bg-indigo-500/15 shadow-md border-indigo-500/50' : 'hover:border-border/80 hover:bg-muted/50',
+        'bg-card border-border rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 select-none group'
       ]"
       title="Click to inspect SLA compliance (click again to clear)"
     >
       <CardContent class="p-4 flex items-center justify-between">
         <div>
-          <span class="text-xs font-medium text-indigo-400">SLA Health</span>
-          <div class="text-xl font-bold text-indigo-400 mt-0.5">
+          <span class="text-xs font-medium text-indigo-700 dark:text-indigo-400">SLA Health</span>
+          <div class="text-xl font-bold text-indigo-700 dark:text-indigo-400 mt-0.5">
             {{ metrics?.slaCompliancePercent ?? 100 }}%
           </div>
         </div>
-        <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
+        <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
           <ShieldCheck class="size-4" />
         </div>
       </CardContent>

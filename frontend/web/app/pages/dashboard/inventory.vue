@@ -304,17 +304,17 @@ onInventoryUpdate(() => {
 <template>
   <div class="space-y-6 animate-in fade-in duration-300">
     <!-- Header Area with KPI Badges & Controls -->
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-border">
       <div>
         <div class="flex items-center gap-3">
-          <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+          <div class="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
             <PackageCheck class="h-6 w-6" />
           </div>
           <div>
-            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+            <h1 class="text-2xl font-bold tracking-tight text-foreground">
               Inventory & Asset Infrastructure
             </h1>
-            <p class="text-sm text-slate-400 mt-0.5">
+            <p class="text-sm text-muted-foreground mt-0.5">
               Hardware components, software licenses, serialized parts, and bulk consumable stock
             </p>
           </div>
@@ -326,66 +326,66 @@ onInventoryUpdate(() => {
             type="button"
             @click="classification = 'all'; tracking = 'all'"
             class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
-            :class="classification === 'all' && tracking === 'all' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-sm ring-1 ring-indigo-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
+            :class="classification === 'all' && tracking === 'all' ? 'bg-primary/15 border-primary text-primary dark:text-primary-foreground shadow-xs ring-1 ring-primary/40' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-border/80'"
           >
-            <Layers class="w-3.5 h-3.5 text-indigo-400" />
+            <Layers class="w-3.5 h-3.5 text-primary" />
             <span>Total:</span>
-            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalCount || items.length }}</span>
+            <span class="font-mono font-semibold text-foreground">{{ kpis.totalGlobalCount || items.length }}</span>
           </button>
 
           <button 
             type="button"
             @click="classification = (classification === 'hardware' ? 'all' : 'hardware')"
             class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
-            :class="classification === 'hardware' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-sm ring-1 ring-emerald-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
+            :class="classification === 'hardware' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/40' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-border/80'"
           >
-            <Cpu class="w-3.5 h-3.5 text-emerald-400" />
+            <Cpu class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Hardware:</span>
-            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalHardware }}</span>
+            <span class="font-mono font-semibold text-foreground">{{ kpis.totalGlobalHardware }}</span>
           </button>
 
           <button 
             type="button"
             @click="classification = (classification === 'software' ? 'all' : 'software')"
             class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
-            :class="classification === 'software' ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm ring-1 ring-blue-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
+            :class="classification === 'software' ? 'bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300 shadow-xs ring-1 ring-blue-500/40' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-border/80'"
           >
-            <HardDrive class="w-3.5 h-3.5 text-blue-400" />
+            <HardDrive class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>Software:</span>
-            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalSoftware }}</span>
+            <span class="font-mono font-semibold text-foreground">{{ kpis.totalGlobalSoftware }}</span>
           </button>
 
           <button 
             type="button"
             @click="tracking = (tracking === 'serialized' ? 'all' : 'serialized')"
             class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
-            :class="tracking === 'serialized' ? 'bg-teal-600/20 border-teal-500 text-teal-300 shadow-sm ring-1 ring-teal-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
+            :class="tracking === 'serialized' ? 'bg-teal-500/15 border-teal-500 text-teal-700 dark:text-teal-300 shadow-xs ring-1 ring-teal-500/40' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-border/80'"
           >
-            <Wrench class="w-3.5 h-3.5 text-teal-400" />
+            <Wrench class="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
             <span>Serialized:</span>
-            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalParts }}</span>
+            <span class="font-mono font-semibold text-foreground">{{ kpis.totalGlobalParts }}</span>
           </button>
 
           <button 
             type="button"
             @click="tracking = (tracking === 'stock' ? 'all' : 'stock')"
             class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer"
-            :class="tracking === 'stock' ? 'bg-purple-600/20 border-purple-500 text-purple-300 shadow-sm ring-1 ring-purple-500/50' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'"
+            :class="tracking === 'stock' ? 'bg-purple-500/15 border-purple-500 text-purple-700 dark:text-purple-300 shadow-xs ring-1 ring-purple-500/40' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-border/80'"
           >
-            <Boxes class="w-3.5 h-3.5 text-purple-400" />
+            <Boxes class="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
             <span>Bulk Stock:</span>
-            <span class="font-mono font-semibold text-slate-200">{{ kpis.totalGlobalStock }}</span>
+            <span class="font-mono font-semibold text-foreground">{{ kpis.totalGlobalStock }}</span>
           </button>
 
-          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
-            <DollarSign class="w-3.5 h-3.5 text-amber-400" />
-            <span class="text-slate-400">Valuation:</span>
-            <span class="font-mono font-semibold text-slate-200">{{ formatCurrency(kpis.totalGlobalCost) }} HUF</span>
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-card border border-border text-xs font-medium">
+            <DollarSign class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span class="text-muted-foreground">Valuation:</span>
+            <span class="font-mono font-semibold text-foreground">{{ formatCurrency(kpis.totalGlobalCost) }} HUF</span>
           </div>
 
-          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
-            <span class="size-2 rounded-full" :class="isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500'" />
-            <span :class="isLiveConnected ? 'text-emerald-400' : 'text-emerald-500'">
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-card border border-border text-xs font-medium">
+            <span class="size-2 rounded-full" :class="isLiveConnected ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-500'" />
+            <span :class="isLiveConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-emerald-600 dark:text-emerald-400'">
               {{ isLiveConnected ? 'Live Telemetry Connected' : 'Live Sync Active' }}
             </span>
           </div>
@@ -395,14 +395,14 @@ onInventoryUpdate(() => {
       <!-- Primary View Switcher: Combinable Classification x Tracking -->
       <div class="flex flex-wrap items-center gap-2.5 shrink-0">
         <!-- Classification Facet -->
-        <div class="bg-slate-900 p-1 rounded-lg border border-slate-800 shadow-sm flex items-center gap-1">
-          <span class="text-xs text-slate-400 font-medium px-2">Class:</span>
+        <div class="bg-card p-1 rounded-lg border border-border shadow-xs flex items-center gap-1">
+          <span class="text-xs text-muted-foreground font-medium px-2">Class:</span>
           <Button 
             variant="ghost" 
             size="sm"
             @click="classification = 'all'" 
-            :class="classification === 'all' ? 'bg-indigo-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7"
+            :class="classification === 'all' ? 'bg-primary text-primary-foreground shadow-xs font-medium' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 cursor-pointer"
           >
             All
           </Button>
@@ -410,8 +410,8 @@ onInventoryUpdate(() => {
             variant="ghost" 
             size="sm"
             @click="classification = 'hardware'" 
-            :class="classification === 'hardware' ? 'bg-indigo-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5"
+            :class="classification === 'hardware' ? 'bg-primary text-primary-foreground shadow-xs font-medium' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5 cursor-pointer"
           >
             <Cpu class="w-3 h-3" />
             Hardware
@@ -420,8 +420,8 @@ onInventoryUpdate(() => {
             variant="ghost" 
             size="sm"
             @click="classification = 'software'" 
-            :class="classification === 'software' ? 'bg-indigo-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5"
+            :class="classification === 'software' ? 'bg-primary text-primary-foreground shadow-xs font-medium' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5 cursor-pointer"
           >
             <HardDrive class="w-3 h-3" />
             Software
@@ -429,14 +429,14 @@ onInventoryUpdate(() => {
         </div>
 
         <!-- Tracking Facet -->
-        <div class="bg-slate-900 p-1 rounded-lg border border-slate-800 shadow-sm flex items-center gap-1">
-          <span class="text-xs text-slate-400 font-medium px-2">Tracking:</span>
+        <div class="bg-card p-1 rounded-lg border border-border shadow-xs flex items-center gap-1">
+          <span class="text-xs text-muted-foreground font-medium px-2">Tracking:</span>
           <Button 
             variant="ghost" 
             size="sm"
             @click="tracking = 'all'" 
-            :class="tracking === 'all' ? 'bg-purple-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7"
+            :class="tracking === 'all' ? 'bg-primary text-primary-foreground shadow-xs font-medium' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 cursor-pointer"
           >
             All
           </Button>
@@ -444,8 +444,8 @@ onInventoryUpdate(() => {
             variant="ghost" 
             size="sm"
             @click="tracking = 'serialized'" 
-            :class="tracking === 'serialized' ? 'bg-purple-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5"
+            :class="tracking === 'serialized' ? 'bg-primary text-primary-foreground shadow-xs font-medium' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5 cursor-pointer"
           >
             <Wrench class="w-3 h-3" />
             Serialized
@@ -454,8 +454,8 @@ onInventoryUpdate(() => {
             variant="ghost" 
             size="sm"
             @click="tracking = 'stock'" 
-            :class="tracking === 'stock' ? 'bg-purple-600 text-white shadow-sm font-medium' : 'text-slate-400 hover:text-slate-200'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5"
+            :class="tracking === 'stock' ? 'bg-primary text-primary-foreground shadow-xs font-medium' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 flex items-center gap-1.5 cursor-pointer"
           >
             <Boxes class="w-3 h-3" />
             Bulk Stock
@@ -467,51 +467,51 @@ onInventoryUpdate(() => {
           variant="outline" 
           size="sm"
           @click="showTreeModal = true"
-          class="border-slate-800 bg-slate-900 hover:bg-slate-800 text-indigo-300 hover:text-indigo-200 rounded-lg text-xs font-medium h-8 px-3 gap-1.5 shadow-sm"
+          class="border-border bg-card hover:bg-accent text-foreground hover:text-primary rounded-lg text-xs font-medium h-8 px-3 gap-1.5 shadow-xs cursor-pointer"
         >
-          <FolderTree class="h-3.5 w-3.5 text-indigo-400" />
+          <FolderTree class="h-3.5 w-3.5 text-primary" />
           <span>Visualise Tree</span>
         </Button>
 
         <!-- Column Configuration Popover -->
         <Popover>
           <PopoverTrigger as-child>
-            <Button variant="outline" size="sm" class="border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 rounded-lg text-xs font-medium h-8 px-3">
-              <SlidersHorizontal class="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+            <Button variant="outline" size="sm" class="border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg text-xs font-medium h-8 px-3 cursor-pointer">
+              <SlidersHorizontal class="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
               Columns
             </Button>
           </PopoverTrigger>
-          <PopoverContent class="w-80 p-0 bg-slate-950 border-slate-800 shadow-xl overflow-hidden" align="end">
-            <div class="p-3 border-b border-slate-800 bg-slate-900/50">
-              <h4 class="text-xs font-semibold text-slate-200">Display Configuration</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Toggle visible data fields</p>
+          <PopoverContent class="w-80 p-0 bg-popover border-border shadow-xl overflow-hidden" align="end">
+            <div class="p-3 border-b border-border bg-muted/40">
+              <h4 class="text-xs font-semibold text-foreground">Display Configuration</h4>
+              <p class="text-xs text-muted-foreground mt-0.5">Toggle visible data fields</p>
             </div>
             <div class="p-2 max-h-[360px] overflow-y-auto">
               <div 
                 v-for="(visible, key) in columns" 
                 :key="key" 
                 @click="columns[key] = !columns[key]"
-                class="flex items-start gap-3 p-2 rounded-lg cursor-pointer hover:bg-slate-900 transition-colors border border-transparent hover:border-slate-800 mb-1"
-                :class="{'bg-indigo-500/5 border-indigo-500/10': columns[key]}"
+                class="flex items-start gap-3 p-2 rounded-lg cursor-pointer hover:bg-muted/60 transition-colors border border-transparent hover:border-border mb-1"
+                :class="{'bg-primary/10 border-primary/20': columns[key]}"
               >
                 <div class="mt-0.5">
                   <div 
                     class="size-4 rounded border flex items-center justify-center transition-colors" 
-                    :class="columns[key] ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700 bg-slate-900'"
+                    :class="columns[key] ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 bg-background'"
                   >
-                    <Check v-if="columns[key]" class="size-3 text-white" />
+                    <Check v-if="columns[key]" class="size-3 text-primary-foreground" />
                   </div>
                 </div>
                 <div class="flex flex-col">
-                  <span class="text-xs font-semibold text-slate-200 capitalize">{{ key }}</span>
-                  <span class="text-xs text-slate-400 leading-relaxed mt-0.5">
+                  <span class="text-xs font-semibold text-foreground capitalize">{{ key }}</span>
+                  <span class="text-xs text-muted-foreground leading-relaxed mt-0.5">
                     {{ getColumnDescription(key) }}
                   </span>
                 </div>
               </div>
             </div>
-            <div class="p-2.5 bg-slate-900/30 border-t border-slate-800 flex justify-end">
-              <Button variant="ghost" size="sm" @click="resetColumns" class="h-7 text-xs font-medium text-slate-400 hover:text-slate-200">
+            <div class="p-2.5 bg-muted/30 border-t border-border flex justify-end">
+              <Button variant="ghost" size="sm" @click="resetColumns" class="h-7 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer">
                 Reset Defaults
               </Button>
             </div>
@@ -522,7 +522,7 @@ onInventoryUpdate(() => {
         <Button 
           size="sm"
           @click="showAddModal = true" 
-          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3.5 h-8 shadow-sm transition-all group border-0"
+          class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-3.5 h-8 shadow-xs transition-all group border-0 cursor-pointer"
         >
           <PlusIcon class="h-3.5 w-3.5 mr-1.5 group-hover:rotate-90 transition-transform" />
           <span class="text-xs font-medium">Provision Asset</span>
@@ -551,15 +551,15 @@ onInventoryUpdate(() => {
     />
 
     <!-- Pagination Controls Bar -->
-    <div v-if="items.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-      <div class="flex items-center gap-2 text-slate-400 font-medium text-xs">
+    <div v-if="items.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 rounded-xl bg-card border border-border text-xs">
+      <div class="flex items-center gap-2 text-muted-foreground font-medium text-xs">
         <span>
           Showing 
-          <span class="font-mono text-slate-200">{{ Math.min((currentPage - 1) * effectivePageSize + 1, items.length) }}</span> 
+          <span class="font-mono text-foreground font-semibold">{{ Math.min((currentPage - 1) * effectivePageSize + 1, items.length) }}</span> 
           to 
-          <span class="font-mono text-slate-200">{{ Math.min(currentPage * effectivePageSize, items.length) }}</span> 
+          <span class="font-mono text-foreground font-semibold">{{ Math.min(currentPage * effectivePageSize, items.length) }}</span> 
           of 
-          <span class="font-mono text-slate-200">{{ items.length }}</span> 
+          <span class="font-mono text-foreground font-semibold">{{ items.length }}</span> 
           assets
         </span>
       </div>
@@ -567,16 +567,16 @@ onInventoryUpdate(() => {
       <div class="flex flex-wrap items-center gap-4">
         <!-- Page Size Selector -->
         <div class="flex items-center gap-2">
-          <span class="text-xs text-slate-400 font-medium">Per Page:</span>
-          <div class="flex p-0.5 bg-slate-950 rounded-lg border border-slate-800 gap-1">
+          <span class="text-xs text-muted-foreground font-medium">Per Page:</span>
+          <div class="flex p-0.5 bg-muted/60 rounded-lg border border-border gap-1">
             <Button 
               v-for="size in [5, 10, 50, 100, 1000]" 
               :key="size"
               variant="ghost" 
               size="sm"
               @click="pageSize = size"
-              :class="pageSize === size ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-              class="h-7 px-2 rounded-md text-xs font-medium font-mono"
+              :class="pageSize === size ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+              class="h-7 px-2 rounded-md text-xs font-medium font-mono cursor-pointer"
             >
               {{ size }}
             </Button>
@@ -584,8 +584,8 @@ onInventoryUpdate(() => {
               variant="ghost" 
               size="sm"
               @click="pageSize = 'custom'"
-              :class="pageSize === 'custom' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-              class="h-7 px-2 rounded-md text-xs font-medium"
+              :class="pageSize === 'custom' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+              class="h-7 px-2 rounded-md text-xs font-medium cursor-pointer"
             >
               Custom
             </Button>
@@ -598,7 +598,7 @@ onInventoryUpdate(() => {
               min="1"
               max="10000"
               placeholder="Count"
-              class="w-20 h-7 px-2 bg-slate-950 border border-slate-800 rounded-md text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+              class="w-20 h-7 px-2 bg-background border border-border rounded-md text-xs font-mono text-foreground focus:outline-hidden focus:border-primary"
             />
           </div>
         </div>
@@ -610,7 +610,7 @@ onInventoryUpdate(() => {
             size="sm" 
             :disabled="currentPage === 1" 
             @click="setPage(1)"
-            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-xs font-medium disabled:opacity-30 rounded-md"
+            class="h-7 px-2.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-medium disabled:opacity-30 rounded-md cursor-pointer"
           >
             First
           </Button>
@@ -619,12 +619,12 @@ onInventoryUpdate(() => {
             size="sm" 
             :disabled="currentPage === 1" 
             @click="setPage(currentPage - 1)"
-            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-xs font-medium disabled:opacity-30 rounded-md"
+            class="h-7 px-2.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-medium disabled:opacity-30 rounded-md cursor-pointer"
           >
             Prev
           </Button>
 
-          <span class="text-xs font-medium text-slate-400 px-2 font-mono">
+          <span class="text-xs font-medium text-muted-foreground px-2 font-mono">
             {{ currentPage }} / {{ totalPages }}
           </span>
 
@@ -633,7 +633,7 @@ onInventoryUpdate(() => {
             size="sm" 
             :disabled="currentPage >= totalPages" 
             @click="setPage(currentPage + 1)"
-            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-xs font-medium disabled:opacity-30 rounded-md"
+            class="h-7 px-2.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-medium disabled:opacity-30 rounded-md cursor-pointer"
           >
             Next
           </Button>
@@ -642,7 +642,7 @@ onInventoryUpdate(() => {
             size="sm" 
             :disabled="currentPage >= totalPages" 
             @click="setPage(totalPages)"
-            class="h-7 px-2.5 border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 text-xs font-medium disabled:opacity-30 rounded-md"
+            class="h-7 px-2.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-medium disabled:opacity-30 rounded-md cursor-pointer"
           >
             Last
           </Button>

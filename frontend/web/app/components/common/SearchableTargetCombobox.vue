@@ -230,13 +230,13 @@ function clear() {
     <!-- Input Bar -->
     <div class="relative flex items-center">
       <!-- Left Icon -->
-      <div class="absolute left-3 flex items-center pointer-events-none text-slate-500">
+      <div class="absolute left-3 flex items-center pointer-events-none text-muted-foreground">
         <Lock v-if="disabled" class="h-3.5 w-3.5 text-amber-500" />
-        <User v-else-if="iconType === 'user'" class="h-3.5 w-3.5 text-indigo-400" />
-        <Cpu v-else-if="iconType === 'machine'" class="h-3.5 w-3.5 text-indigo-400" />
-        <GitBranch v-else-if="iconType === 'group'" class="h-3.5 w-3.5 text-cyan-400" />
-        <Layers v-else-if="iconType === 'technology'" class="h-3.5 w-3.5 text-violet-400" />
-        <Search v-else class="h-3.5 w-3.5 text-slate-500" />
+        <User v-else-if="iconType === 'user'" class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+        <Cpu v-else-if="iconType === 'machine'" class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+        <GitBranch v-else-if="iconType === 'group'" class="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+        <Layers v-else-if="iconType === 'technology'" class="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+        <Search v-else class="h-3.5 w-3.5 text-muted-foreground" />
       </div>
 
       <!-- Free-text Editable Input -->
@@ -248,11 +248,11 @@ function clear() {
         @input="handleInput"
         @focus="handleInputFocus"
         @keydown="onKeyDown"
-        class="w-full bg-slate-950 border rounded-xl pl-9 pr-14 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-colors"
+        class="w-full bg-background border rounded-xl pl-9 pr-14 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
         :class="[
           disabled
-            ? 'border-amber-500/30 bg-amber-950/10 text-slate-300 cursor-not-allowed opacity-90'
-            : 'border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+            ? 'border-amber-500/30 bg-amber-500/10 text-muted-foreground cursor-not-allowed opacity-90'
+            : 'border-input focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
         ]"
       />
 
@@ -263,7 +263,7 @@ function clear() {
           v-if="modelValue && !disabled"
           type="button"
           @click="clear"
-          class="p-1 rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-colors"
+          class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
           tabindex="-1"
           title="Clear"
         >
@@ -275,7 +275,7 @@ function clear() {
           v-if="!disabled"
           type="button"
           @click="isOpen = !isOpen; if (isOpen) handleInputFocus()"
-          class="p-1 rounded-md text-slate-500 hover:text-slate-300 transition-colors"
+          class="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           tabindex="-1"
           title="Toggle Suggestions"
         >
@@ -285,7 +285,7 @@ function clear() {
     </div>
 
     <!-- Disabled Helper / Policy Notification -->
-    <div v-if="disabled && disabledReason" class="mt-1 flex items-center gap-1.5 text-[10px] text-amber-400">
+    <div v-if="disabled && disabledReason" class="mt-1 flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400">
       <Lock class="w-3 h-3 shrink-0" />
       <span>{{ disabledReason }}</span>
     </div>
@@ -293,21 +293,21 @@ function clear() {
     <!-- Floating Suggestions Dropdown -->
     <div
       v-if="isOpen && !disabled"
-      class="absolute z-50 left-0 right-0 mt-1.5 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
+      class="absolute z-50 left-0 right-0 mt-1.5 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
     >
       <!-- Dropdown Header -->
-      <div class="p-2 border-b border-slate-800/60 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-950/60">
+      <div class="p-2 border-b border-border flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground bg-muted/30">
         <span class="flex items-center gap-1.5">
           <span>{{ categoryLabel }}</span>
-          <span v-if="isLoading" class="text-[9px] text-indigo-400 animate-pulse">(Loading...)</span>
+          <span v-if="isLoading" class="text-[9px] text-indigo-600 dark:text-indigo-400 animate-pulse">(Loading...)</span>
         </span>
-        <span v-if="filteredOptions.length > 0" class="text-indigo-400 font-mono">
+        <span v-if="filteredOptions.length > 0" class="text-indigo-600 dark:text-indigo-400 font-mono">
           {{ filteredOptions.length }} suggested
         </span>
       </div>
 
       <!-- No options & free text prompt -->
-      <div v-if="filteredOptions.length === 0 && !showCustomOption" class="p-4 text-center text-xs text-slate-500">
+      <div v-if="filteredOptions.length === 0 && !showCustomOption" class="p-4 text-center text-xs text-muted-foreground">
         No suggestions available. Type free-text directly.
       </div>
 
@@ -320,15 +320,15 @@ function clear() {
           @mouseenter="highlightedIndex = idx"
           class="px-3 py-2 rounded-xl text-xs flex items-center justify-between cursor-pointer transition-colors"
           :class="[
-            highlightedIndex === idx ? 'bg-indigo-600/20 text-indigo-200' : 'hover:bg-slate-800/60 text-slate-300',
+            highlightedIndex === idx ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-200' : 'hover:bg-muted/60 text-foreground',
             (modelValue && (item.label.toLowerCase() === modelValue.toLowerCase() || item.id.toLowerCase() === modelValue.toLowerCase()))
-              ? 'border border-indigo-500/30 bg-indigo-950/20 font-semibold'
+              ? 'border border-indigo-500/30 bg-indigo-500/10 font-semibold'
               : ''
           ]"
         >
           <!-- Item Left: Icon & Label/Sublabel -->
           <div class="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
-            <div class="p-1.5 rounded-lg bg-slate-800 text-indigo-400 shrink-0">
+            <div class="p-1.5 rounded-lg bg-muted text-indigo-600 dark:text-indigo-400 shrink-0">
               <User v-if="item.role || iconType === 'user'" class="h-3.5 w-3.5" />
               <Cpu v-else-if="iconType === 'machine'" class="h-3.5 w-3.5" />
               <GitBranch v-else-if="iconType === 'group'" class="h-3.5 w-3.5" />
@@ -337,7 +337,7 @@ function clear() {
 
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="font-bold text-slate-100 truncate">
+                <span class="font-bold text-foreground truncate">
                   {{ item.label }}
                 </span>
 
@@ -345,7 +345,7 @@ function clear() {
                 <span
                   v-if="item.badge || item.role"
                   class="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded border"
-                  :class="item.badgeColor || 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300'"
+                  :class="item.badgeColor || 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300'"
                 >
                   {{ item.badge || item.role }}
                 </span>
@@ -353,27 +353,27 @@ function clear() {
                 <!-- Out of Office Badge -->
                 <span
                   v-if="item.isOutOfOffice"
-                  class="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded border border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  class="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
                 >
                   Out of Office
                 </span>
               </div>
 
               <!-- Sublabel / Department / Tech detail -->
-              <p v-if="item.sublabel" class="text-[10px] text-slate-400 truncate mt-0.5">
+              <p v-if="item.sublabel" class="text-[10px] text-muted-foreground truncate mt-0.5">
                 {{ item.sublabel }}
               </p>
             </div>
           </div>
 
           <!-- Item Right: ID & Checkmark -->
-          <div class="flex items-center gap-1.5 shrink-0 text-[10px] font-mono text-slate-500">
-            <span v-if="item.id && item.id !== item.label" class="text-slate-500 bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800">
+          <div class="flex items-center gap-1.5 shrink-0 text-[10px] font-mono text-muted-foreground">
+            <span v-if="item.id && item.id !== item.label" class="text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border">
               {{ item.id }}
             </span>
             <Check
               v-if="modelValue && (item.label.toLowerCase() === modelValue.toLowerCase() || item.id.toLowerCase() === modelValue.toLowerCase())"
-              class="h-3.5 w-3.5 text-indigo-400"
+              class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400"
             />
           </div>
         </li>
@@ -384,18 +384,18 @@ function clear() {
         v-if="showCustomOption"
         @click="selectCustomText"
         @mouseenter="highlightedIndex = filteredOptions.length"
-        class="border-t border-slate-800 p-2.5 bg-slate-950/80 cursor-pointer flex items-center justify-between transition-colors"
+        class="border-t border-slate-800 border-border p-2.5 bg-muted/30 cursor-pointer flex items-center justify-between transition-colors"
         :class="[
-          highlightedIndex === filteredOptions.length ? 'bg-indigo-950/40 text-indigo-200' : 'text-slate-400 hover:text-slate-200'
+          highlightedIndex === filteredOptions.length ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-200' : 'text-muted-foreground hover:text-foreground'
         ]"
       >
         <div class="flex items-center gap-2 min-w-0">
-          <PlusCircle class="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+          <PlusCircle class="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
           <span class="text-xs truncate">
-            Use custom: <strong class="text-cyan-300 font-bold">"{{ searchQuery }}"</strong>
+            Use custom: <strong class="text-cyan-600 dark:text-cyan-300 font-bold">"{{ searchQuery }}"</strong>
           </span>
         </div>
-        <span class="text-[9px] uppercase tracking-wider font-bold text-slate-500 border border-slate-800 bg-slate-900 px-2 py-0.5 rounded-md shrink-0">
+        <span class="text-[9px] uppercase tracking-wider font-bold text-muted-foreground border border-border bg-muted px-2 py-0.5 rounded-md shrink-0">
           {{ customNotice }}
         </span>
       </div>

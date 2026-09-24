@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { authClient } from '~/utils/auth-client'
-import { Plus, Users, Trash2, Building2 } from 'lucide-vue-next'
+import { Plus, Users, Trash2, Building2, X } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import RbacButton from '~/components/common/RbacButton.vue'
 import { Input } from '~/components/ui/input'
@@ -188,16 +188,16 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header Area -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300">
+        <div class="p-2.5 rounded-xl bg-muted border border-border text-foreground">
           <Building2 class="size-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+          <h1 class="text-2xl font-bold tracking-tight text-foreground">
             Plant Organizations & Multi-Tenant Boundaries
           </h1>
-          <p class="text-sm text-slate-400 mt-0.5">
+          <p class="text-sm text-muted-foreground mt-0.5">
             Multi-tenant plant isolation, site governance, and member assignment
           </p>
         </div>
@@ -207,7 +207,7 @@ onMounted(() => {
         <RbacButton
           capability="canAdministerSystem"
           @click="showCreateModal = true"
-          class="bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg px-3.5 h-8 text-xs font-medium shadow-sm transition-colors border border-zinc-600/50"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3.5 h-8 text-xs font-medium shadow-sm transition-colors border border-indigo-500/30"
         >
           <Plus class="size-3.5 mr-1.5" />
           <span>Create Organization</span>
@@ -217,19 +217,19 @@ onMounted(() => {
 
     <!-- Organizations Grid -->
     <div v-if="loading && orgs.length === 0" class="flex flex-col items-center justify-center py-24 gap-3">
-      <div class="animate-spin rounded-full size-8 border-b-2 border-zinc-400"></div>
-      <p class="text-xs font-medium text-slate-400">Loading organizations...</p>
+      <div class="animate-spin rounded-full size-8 border-b-2 border-primary"></div>
+      <p class="text-xs font-medium text-muted-foreground">Loading organizations...</p>
     </div>
 
-    <div v-else-if="orgs.length === 0" class="bg-slate-900 border border-dashed border-slate-800 rounded-xl p-16 text-center shadow-sm">
-      <div class="size-14 bg-slate-950 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-800 text-slate-600">
+    <div v-else-if="orgs.length === 0" class="bg-card border border-dashed border-border rounded-xl p-16 text-center shadow-sm">
+      <div class="size-14 bg-muted/50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-border text-muted-foreground">
         <Building2 class="size-7" />
       </div>
-      <h4 class="text-base font-bold text-slate-100">No Organizations Configured</h4>
-      <p class="text-slate-400 mt-1 max-w-sm mx-auto text-xs">Configure your first organization to establish secure operational boundaries.</p>
+      <h4 class="text-base font-bold text-foreground">No Organizations Configured</h4>
+      <p class="text-muted-foreground mt-1 max-w-sm mx-auto text-xs">Configure your first organization to establish secure operational boundaries.</p>
       <Button
         @click="showCreateModal = true"
-        class="mt-5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg px-4 h-8 font-medium text-xs shadow-sm transition-colors border border-zinc-600/50"
+        class="mt-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 h-8 font-medium text-xs shadow-sm transition-colors"
       >
         Create Organization
       </Button>
@@ -248,45 +248,55 @@ onMounted(() => {
 
     <!-- Create/Edit Org Modal -->
     <Dialog :open="showCreateModal" @update:open="(val) => !val && (showCreateModal = false)">
-      <DialogContent class="max-w-md bg-slate-900 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-xl shadow-2xl">
-        <DialogHeader class="p-6 border-b border-slate-800">
-          <DialogTitle class="text-base font-bold text-slate-100 flex items-center gap-2.5">
-            <div class="p-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300">
-              <Building2 class="size-4" />
-            </div>
-            {{ editingOrg ? 'Edit Organization' : 'Create Organization' }}
-          </DialogTitle>
-          <DialogDescription class="text-xs text-slate-400 mt-1">
-            Define operational boundaries and plant identity.
-          </DialogDescription>
+      <DialogContent :show-close="false" class="max-w-md bg-card border-border text-foreground p-0 overflow-hidden rounded-xl shadow-2xl">
+        <DialogHeader class="p-6 border-b border-border flex flex-row items-center justify-between">
+          <div>
+            <DialogTitle class="text-base font-bold text-foreground flex items-center gap-2.5">
+              <div class="p-2 bg-muted border border-border rounded-lg text-foreground">
+                <Building2 class="size-4" />
+              </div>
+              {{ editingOrg ? 'Edit Organization' : 'Create Organization' }}
+            </DialogTitle>
+            <DialogDescription class="text-xs text-muted-foreground mt-1">
+              Define operational boundaries and plant identity.
+            </DialogDescription>
+          </div>
+          <button
+            type="button"
+            @click="showCreateModal = false"
+            class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            title="Close modal"
+          >
+            <X class="size-4" />
+          </button>
         </DialogHeader>
 
         <form @submit.prevent="handleSubmitOrg" class="p-6 space-y-4">
           <div class="space-y-1.5">
-            <label class="text-xs font-medium text-slate-400">Organization Name</label>
+            <label class="text-xs font-medium text-muted-foreground">Organization Name</label>
             <Input
               v-model="newOrgName"
               required
               placeholder="e.g. Assembly Line Operations"
-              class="rounded-lg h-9 border-slate-800 bg-slate-950 text-slate-200 text-xs"
+              class="rounded-lg h-9 border-input bg-background text-foreground text-xs"
             />
           </div>
           <div class="space-y-1.5">
-            <label class="text-xs font-medium text-slate-400">System Slug (Generated)</label>
+            <label class="text-xs font-medium text-muted-foreground">System Slug (Generated)</label>
             <Input
               v-model="newOrgSlug"
               disabled
-              class="rounded-lg h-9 border-slate-800 bg-slate-950/60 text-slate-500 font-mono text-xs cursor-not-allowed"
+              class="rounded-lg h-9 border-input bg-muted/50 text-muted-foreground font-mono text-xs cursor-not-allowed"
             />
           </div>
 
-          <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <div class="flex justify-end gap-2.5 pt-3 border-t border-border">
             <Button
               type="button"
               variant="ghost"
               size="sm"
               @click="showCreateModal = false"
-              class="rounded-lg h-8 text-xs font-medium text-slate-400 hover:text-slate-200"
+              class="rounded-lg h-8 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               Cancel
             </Button>
@@ -294,7 +304,7 @@ onMounted(() => {
               type="submit"
               size="sm"
               :disabled="creating"
-              class="bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg h-8 text-xs font-medium px-4 shadow-sm transition-colors border border-zinc-600/50"
+              class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg h-8 text-xs font-medium px-4 shadow-sm transition-colors"
             >
               {{ creating ? 'Saving...' : (editingOrg ? 'Update Organization' : 'Create Organization') }}
             </Button>
@@ -305,46 +315,56 @@ onMounted(() => {
 
     <!-- Manage Members Modal -->
     <Dialog :open="showMembersModal" @update:open="(val) => !val && (showMembersModal = false)">
-      <DialogContent class="max-w-xl bg-slate-900 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-xl shadow-2xl">
-        <DialogHeader class="p-6 border-b border-slate-800">
-          <DialogTitle class="text-base font-bold text-slate-100 flex items-center gap-2.5">
-            <div class="p-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300">
-              <Users class="size-4" />
-            </div>
-            Organization Members
-          </DialogTitle>
-          <DialogDescription class="text-xs text-slate-400 mt-1">
-            Active members assigned to: {{ selectedOrg?.name }}
-          </DialogDescription>
+      <DialogContent :show-close="false" class="max-w-xl bg-card border-border text-foreground p-0 overflow-hidden rounded-xl shadow-2xl">
+        <DialogHeader class="p-6 border-b border-border flex flex-row items-center justify-between">
+          <div>
+            <DialogTitle class="text-base font-bold text-foreground flex items-center gap-2.5">
+              <div class="p-2 bg-muted border border-border rounded-lg text-foreground">
+                <Users class="size-4" />
+              </div>
+              Organization Members
+            </DialogTitle>
+            <DialogDescription class="text-xs text-muted-foreground mt-1">
+              Active members assigned to: {{ selectedOrg?.name }}
+            </DialogDescription>
+          </div>
+          <button
+            type="button"
+            @click="showMembersModal = false"
+            class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            title="Close modal"
+          >
+            <X class="size-4" />
+          </button>
         </DialogHeader>
 
         <div class="p-6 space-y-4">
           <div v-if="loadingMembers" class="flex flex-col items-center justify-center py-10 gap-2.5">
-            <div class="size-6 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin"></div>
-            <span class="text-xs font-medium text-slate-400">Retrieving roster...</span>
+            <div class="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-xs font-medium text-muted-foreground">Retrieving roster...</span>
           </div>
           <div v-else class="space-y-2.5 max-h-[260px] overflow-y-auto pr-1">
-            <div v-if="members.length === 0" class="text-center py-8 text-slate-500 text-xs font-medium">
+            <div v-if="members.length === 0" class="text-center py-8 text-muted-foreground text-xs font-medium">
               No members assigned to this organization.
             </div>
             <div
               v-for="mem in members"
               :key="mem.id"
-              class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-lg group hover:border-slate-700 transition-colors"
+              class="flex items-center justify-between p-3 bg-card border border-border rounded-lg group hover:border-border/80 hover:bg-muted/30 transition-colors"
             >
               <div class="flex items-center gap-3">
-                <div class="size-8 rounded-lg bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">
+                <div class="size-8 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-foreground">
                   {{ mem.user.name.charAt(0) }}
                 </div>
                 <div>
-                  <p class="text-xs font-semibold text-slate-200">{{ mem.user.name }}</p>
-                  <p class="text-[11px] text-slate-400 font-medium capitalize">{{ mem.role }}</p>
+                  <p class="text-xs font-semibold text-foreground">{{ mem.user.name }}</p>
+                  <p class="text-[11px] text-muted-foreground font-medium capitalize">{{ mem.role }}</p>
                 </div>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                class="size-7 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors"
+                class="size-7 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors"
                 :disabled="removingMemberId === mem.id"
                 @click="handleRemoveMember(mem)"
                 title="Remove Member"
@@ -356,18 +376,18 @@ onMounted(() => {
           </div>
 
           <!-- Invite Member Form -->
-          <div class="pt-4 border-t border-slate-800 space-y-2.5">
-            <p class="text-xs font-medium text-slate-400">Invite Member by Email</p>
+          <div class="pt-4 border-t border-border space-y-2.5">
+            <p class="text-xs font-medium text-muted-foreground">Invite Member by Email</p>
             <div class="flex gap-2">
               <Input
                 v-model="inviteEmail"
                 type="email"
                 placeholder="colleague@plant.org"
-                class="flex-1 rounded-lg h-8 border-slate-800 bg-slate-950 text-slate-200 text-xs"
+                class="flex-1 rounded-lg h-8 border-input bg-background text-foreground text-xs"
               />
               <select
                 v-model="inviteRole"
-                class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 text-xs text-slate-300 h-8 focus:outline-none focus:ring-1 focus:ring-zinc-500 font-medium"
+                class="bg-background border border-input rounded-lg px-2.5 text-xs text-foreground h-8 focus:outline-none focus:ring-1 focus:ring-ring font-medium"
               >
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
@@ -377,19 +397,19 @@ onMounted(() => {
                 size="sm"
                 @click="handleInviteMember"
                 :disabled="inviting || !inviteEmail"
-                class="h-8 px-3 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 transition-colors border border-zinc-600/50"
+                class="h-8 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
               >
                 {{ inviting ? '...' : 'Invite' }}
               </Button>
             </div>
           </div>
 
-          <div class="pt-3 border-t border-slate-800 flex justify-end">
+          <div class="pt-3 border-t border-border flex justify-end">
             <Button
               variant="outline"
               size="sm"
               @click="showMembersModal = false"
-              class="rounded-lg border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium h-8 px-3.5 transition-colors"
+              class="rounded-lg border-border bg-card hover:bg-muted text-foreground text-xs font-medium h-8 px-3.5 transition-colors"
             >
               Close
             </Button>

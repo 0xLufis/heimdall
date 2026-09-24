@@ -234,7 +234,7 @@ function clear() {
 <template>
   <div ref="rootRef" class="relative w-full">
     <div class="relative flex items-center">
-      <Search class="absolute left-3 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+      <Search class="absolute left-3 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
       
       <input
         :value="isEditing ? searchQuery : (modelValue || '')"
@@ -244,7 +244,7 @@ function clear() {
         @input="handleInput"
         @focus="isOpen = true; loadMachines()"
         @keydown="onKeyDown"
-        class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-14 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
+        class="w-full bg-background border border-input rounded-xl pl-9 pr-14 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
       />
 
       <div class="absolute right-2 flex items-center gap-1">
@@ -252,7 +252,7 @@ function clear() {
           v-if="modelValue"
           type="button"
           @click="clear"
-          class="p-1 rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-colors"
+          class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
           tabindex="-1"
         >
           <X class="h-3 w-3" />
@@ -261,7 +261,7 @@ function clear() {
         <button
           type="button"
           @click="isOpen = !isOpen; if (isOpen) loadMachines()"
-          class="p-1 rounded-md text-slate-500 hover:text-slate-300 transition-colors"
+          class="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           tabindex="-1"
         >
           <ChevronsUpDown class="h-3.5 w-3.5" />
@@ -272,22 +272,22 @@ function clear() {
     <!-- Floating Dropdown -->
     <div
       v-if="isOpen"
-      class="absolute z-50 left-0 right-0 mt-1.5 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
+      class="absolute z-50 left-0 right-0 mt-1.5 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
     >
-      <div class="p-2 border-b border-slate-800/60 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-950/40">
+      <div class="p-2 border-b border-border flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-muted-foreground bg-muted/30">
         <span>Found Machines & Stations</span>
-        <span v-if="filteredMachines.length > 0" class="text-indigo-400 font-mono">
+        <span v-if="filteredMachines.length > 0" class="text-indigo-600 dark:text-indigo-400 font-mono">
           {{ filteredMachines.length }} matches
         </span>
       </div>
 
-      <div v-if="filteredMachines.length === 0" class="p-3 text-center text-xs text-slate-400 space-y-1">
+      <div v-if="filteredMachines.length === 0" class="p-3 text-center text-xs text-muted-foreground space-y-1">
         <p>No matching registered machines.</p>
-        <p class="text-[10px] text-slate-500">Press Enter or click below to use free-text.</p>
+        <p class="text-[10px] text-muted-foreground">Press Enter or click below to use free-text.</p>
         <button
           type="button"
           @click="selectCustomText"
-          class="mt-1 px-3 py-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg text-xs font-semibold"
+          class="mt-1 px-3 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold cursor-pointer"
         >
           Use "{{ searchQuery }}"
         </button>
@@ -301,34 +301,34 @@ function clear() {
           @mouseenter="highlightedIndex = idx"
           class="px-3 py-2 rounded-xl text-xs flex items-center justify-between cursor-pointer transition-colors"
           :class="[
-            highlightedIndex === idx ? 'bg-indigo-600/20 text-indigo-200' : 'hover:bg-slate-800/60 text-slate-300',
+            highlightedIndex === idx ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-200' : 'hover:bg-muted/60 text-foreground',
             (modelValue && (machine.customIdentifier === modelValue || machine.name === modelValue)) ? 'border border-indigo-500/30 font-semibold' : ''
           ]"
         >
           <div class="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
-            <div class="p-1.5 rounded-lg bg-slate-800 text-indigo-400 shrink-0">
+            <div class="p-1.5 rounded-lg bg-muted text-indigo-600 dark:text-indigo-400 shrink-0">
               <Cpu class="h-3.5 w-3.5" />
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <span class="font-bold text-slate-100 truncate">
+                <span class="font-bold text-foreground truncate">
                   {{ machine.customIdentifier || machine.name }}
                 </span>
-                <span v-if="machine.organizationId" class="px-1.5 py-0.2 text-[9px] font-black uppercase rounded bg-slate-800 text-slate-400">
+                <span v-if="machine.organizationId" class="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-muted text-muted-foreground">
                   {{ machine.organizationId }}
                 </span>
               </div>
-              <p v-if="machine.displayName && machine.displayName !== machine.name" class="text-[10px] text-slate-400 truncate">
+              <p v-if="machine.displayName && machine.displayName !== machine.name" class="text-[10px] text-muted-foreground truncate">
                 {{ machine.displayName }}
               </p>
             </div>
           </div>
 
-          <div class="flex items-center gap-1.5 shrink-0 text-[10px] font-mono text-slate-500">
-            <span v-if="machine.controllers?.[0]?.hostname" class="text-indigo-400/80 bg-indigo-950/40 px-1.5 py-0.5 rounded">
+          <div class="flex items-center gap-1.5 shrink-0 text-[10px] font-mono text-muted-foreground">
+            <span v-if="machine.controllers?.[0]?.hostname" class="text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
               {{ machine.controllers[0].hostname }}
             </span>
-            <Check v-if="modelValue && (machine.customIdentifier === modelValue || machine.name === modelValue)" class="h-3.5 w-3.5 text-indigo-400" />
+            <Check v-if="modelValue && (machine.customIdentifier === modelValue || machine.name === modelValue)" class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
           </div>
         </li>
       </ul>

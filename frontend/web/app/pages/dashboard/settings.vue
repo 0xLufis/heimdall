@@ -279,16 +279,16 @@ onMounted(() => {
 <template>
   <div class="space-y-6 max-w-6xl mx-auto">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+        <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
           <UserIcon class="size-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+          <h1 class="text-2xl font-bold tracking-tight text-foreground">
             User Settings & Preferences
           </h1>
-          <p class="text-sm text-slate-400 mt-0.5">
+          <p class="text-sm text-muted-foreground mt-0.5">
             Manage your account profile, role capabilities, security credentials, and workspace appearance
           </p>
         </div>
@@ -296,7 +296,7 @@ onMounted(() => {
 
       <div class="flex items-center gap-2">
         <RoleBadge :role="userRole" />
-        <Badge variant="outline" class="font-mono text-xs bg-slate-900 border-slate-800 text-slate-300">
+        <Badge variant="outline" class="font-mono text-xs bg-muted border-border text-foreground">
           Org: {{ activeOrg?.name || 'Heimdall Engineering' }}
         </Badge>
       </div>
@@ -304,7 +304,7 @@ onMounted(() => {
 
     <!-- Tabs Container -->
     <Tabs v-model="activeTab" class="w-full space-y-6">
-      <TabsList class="grid grid-cols-2 md:grid-cols-5 w-full bg-slate-900 p-1 rounded-xl border border-slate-800 h-auto">
+      <TabsList class="grid grid-cols-2 md:grid-cols-5 w-full bg-muted/60 p-1 rounded-xl border border-border h-auto">
         <TabsTrigger value="profile" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
           <UserIcon class="size-4" />
           <span>Profile</span>
@@ -322,7 +322,7 @@ onMounted(() => {
           <span>Appearance</span>
         </TabsTrigger>
         <TabsTrigger v-if="isPersonaSimulationAllowed" value="personas" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors">
-          <UserCheckIcon class="size-4 text-cyan-400" />
+          <UserCheckIcon class="size-4 text-cyan-600 dark:text-cyan-400" />
           <span>Persona Sandbox</span>
         </TabsTrigger>
       </TabsList>
@@ -651,7 +651,7 @@ onMounted(() => {
                   class="p-4 rounded-xl border-2 text-left transition-all flex flex-col items-center justify-center gap-3 cursor-pointer"
                   :class="colorMode.preference === 'dark' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-card hover:bg-muted/40'"
                 >
-                  <MoonIcon class="h-8 w-8 text-indigo-400" />
+                  <MoonIcon class="h-8 w-8 text-indigo-500 dark:text-indigo-400" />
                   <div class="font-bold text-sm">Dark Mode (Default)</div>
                 </button>
 
@@ -662,7 +662,7 @@ onMounted(() => {
                   class="p-4 rounded-xl border-2 text-left transition-all flex flex-col items-center justify-center gap-3 cursor-pointer"
                   :class="colorMode.preference === 'system' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-card hover:bg-muted/40'"
                 >
-                  <MonitorIcon class="h-8 w-8 text-slate-400" />
+                  <MonitorIcon class="h-8 w-8 text-muted-foreground" />
                   <div class="font-bold text-sm">System Default</div>
                 </button>
               </div>

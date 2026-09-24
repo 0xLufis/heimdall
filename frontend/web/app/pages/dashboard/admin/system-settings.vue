@@ -495,17 +495,17 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2 text-slate-100">
-          <SlidersHorizontalIcon class="h-7 w-7 text-indigo-400" />
+        <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2 text-foreground">
+          <SlidersHorizontalIcon class="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
           Master System Governance & Settings
         </h1>
-        <p class="text-sm text-slate-400 mt-1">
+        <p class="text-sm text-muted-foreground mt-1">
           Configure multi-tenant MFA timeout policies, AD OU host discovery with VLAN separation, Project Root CA & PKI profiles.
         </p>
       </div>
 
       <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm" @click="loadAllData" :disabled="loading" class="border-slate-800 text-slate-200">
+        <Button variant="outline" size="sm" @click="loadAllData" :disabled="loading" class="border-border text-foreground hover:bg-muted/50">
           <RefreshCwIcon class="h-4 w-4 mr-2" :class="{ 'animate-spin': loading }" />
           Refresh Configuration
         </Button>
@@ -523,21 +523,21 @@ onMounted(() => {
     </div>
 
     <!-- Alert Notices -->
-    <div v-if="error" class="p-4 rounded-lg bg-rose-500/15 text-rose-300 text-sm flex items-center gap-2 border border-rose-500/30">
+    <div v-if="error" class="p-4 rounded-lg bg-rose-500/15 text-rose-700 dark:text-rose-300 text-sm flex items-center gap-2 border border-rose-500/30">
       <AlertTriangleIcon class="h-4 w-4 shrink-0" />
       <span>{{ error }}</span>
     </div>
-    <div v-if="message" class="p-4 rounded-lg bg-emerald-500/15 text-emerald-300 text-sm flex items-center gap-2 border border-emerald-500/30">
+    <div v-if="message" class="p-4 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-sm flex items-center gap-2 border border-emerald-500/30">
       <CheckCircle2Icon class="h-4 w-4 shrink-0" />
       <span>{{ message }}</span>
     </div>
 
     <!-- Main Navigation Tabs -->
-    <div class="flex border-b border-slate-800 space-x-6 text-sm font-medium overflow-x-auto pb-1">
+    <div class="flex border-b border-border space-x-6 text-sm font-medium overflow-x-auto pb-1">
       <button 
         @click="activeTab = 'auth'"
         class="pb-3 flex items-center gap-2 transition-colors relative whitespace-nowrap"
-        :class="activeTab === 'auth' ? 'text-indigo-400 font-semibold border-b-2 border-indigo-400' : 'text-slate-400 hover:text-slate-200'"
+        :class="activeTab === 'auth' ? 'text-indigo-600 dark:text-indigo-400 font-semibold border-b-2 border-indigo-600 dark:border-indigo-400' : 'text-muted-foreground hover:text-foreground'"
       >
         <KeyIcon class="h-4 w-4" />
         Authentication & MFA Governance
@@ -546,7 +546,7 @@ onMounted(() => {
       <button 
         @click="activeTab = 'vlan-ad-import'"
         class="pb-3 flex items-center gap-2 transition-colors relative whitespace-nowrap"
-        :class="activeTab === 'vlan-ad-import' ? 'text-cyan-400 font-semibold border-b-2 border-cyan-400' : 'text-slate-400 hover:text-slate-200'"
+        :class="activeTab === 'vlan-ad-import' ? 'text-cyan-600 dark:text-cyan-400 font-semibold border-b-2 border-cyan-600 dark:border-cyan-400' : 'text-muted-foreground hover:text-foreground'"
       >
         <FolderTreeIcon class="h-4 w-4" />
         Active Directory & Network Segmentation
@@ -555,7 +555,7 @@ onMounted(() => {
       <button 
         @click="activeTab = 'certificates'"
         class="pb-3 flex items-center gap-2 transition-colors relative whitespace-nowrap"
-        :class="activeTab === 'certificates' ? 'text-emerald-400 font-semibold border-b-2 border-emerald-400' : 'text-slate-400 hover:text-slate-200'"
+        :class="activeTab === 'certificates' ? 'text-emerald-600 dark:text-emerald-400 font-semibold border-b-2 border-emerald-600 dark:border-emerald-400' : 'text-muted-foreground hover:text-foreground'"
       >
         <ShieldCheckIcon class="h-4 w-4" />
         Public Key Infrastructure & Certificates
@@ -564,7 +564,7 @@ onMounted(() => {
       <button 
         @click="activeTab = 'agent-master'"
         class="pb-3 flex items-center gap-2 transition-colors relative whitespace-nowrap"
-        :class="activeTab === 'agent-master' ? 'text-purple-400 font-semibold border-b-2 border-purple-400' : 'text-slate-400 hover:text-slate-200'"
+        :class="activeTab === 'agent-master' ? 'text-purple-600 dark:text-purple-400 font-semibold border-b-2 border-purple-600 dark:border-purple-400' : 'text-muted-foreground hover:text-foreground'"
       >
         <CpuIcon class="h-4 w-4" />
         Agent Runtime & Fleet Policy
@@ -573,7 +573,7 @@ onMounted(() => {
       <button 
         @click="activeTab = 'integrations'"
         class="pb-3 flex items-center gap-2 transition-colors relative whitespace-nowrap"
-        :class="activeTab === 'integrations' ? 'text-amber-400 font-semibold border-b-2 border-amber-400' : 'text-slate-400 hover:text-slate-200'"
+        :class="activeTab === 'integrations' ? 'text-amber-600 dark:text-amber-400 font-semibold border-b-2 border-amber-600 dark:border-amber-400' : 'text-muted-foreground hover:text-foreground'"
       >
         <NetworkIcon class="h-4 w-4" />
         Industrial Automation & Webhooks
@@ -585,34 +585,34 @@ onMounted(() => {
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div v-if="activeTab === 'auth'" class="space-y-6">
       <!-- Admin Role Delegation & Pseudo-IT Admin Governance Card (SysAdmin Privileged) -->
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
           <div class="flex items-center justify-between">
             <div>
-              <CardTitle class="text-base text-slate-100 flex items-center gap-2">
-                <ShieldCheckIcon class="h-5 w-5 text-cyan-400" />
+              <CardTitle class="text-base text-foreground flex items-center gap-2">
+                <ShieldCheckIcon class="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
                 Admin Role Delegation & Inheritance Governance
               </CardTitle>
-              <CardDescription class="text-xs text-slate-400">
+              <CardDescription class="text-xs text-muted-foreground">
                 Configure dynamic administrative privileges and pseudo-role inheritance. System Administrators can delegate IT Site Admin authority to Heimdall platform administrators.
               </CardDescription>
             </div>
-            <Badge variant="outline" class="border-cyan-500/40 text-cyan-400 text-xs">
+            <Badge variant="outline" class="border-cyan-500/40 text-cyan-700 dark:text-cyan-400 text-xs">
               SysAdmin Privileged
             </Badge>
           </div>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-4">
+          <div class="p-4 rounded-xl bg-muted/40 border border-border flex items-center justify-between gap-4">
             <div>
-              <div class="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <div class="text-sm font-bold text-foreground flex items-center gap-2">
                 <span>Heimdall Admins are Pseudo IT-Admins</span>
-                <Badge variant="secondary" class="text-[9px] bg-cyan-950/60 text-cyan-300 border border-cyan-800/60">
+                <Badge variant="secondary" class="text-[9px] bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
                   {{ adminRoleDelegation.heimdallAdminIsPseudoItAdmin ? 'Active' : 'Disabled' }}
                 </Badge>
               </div>
-              <p class="text-xs text-slate-400 mt-1">
-                When enabled, users with role <code class="text-purple-300">heimdall_admin</code> automatically inherit full IT Site Admin privileges (<code class="text-cyan-300">it_site_admin</code> / <code class="text-cyan-300">it_admin</code>), allowing them to approve/revoke Active Directory & Entra ID OUs for Read/Write host ingestion and govern PKI mTLS root certificate rules.
+              <p class="text-xs text-muted-foreground mt-1">
+                When enabled, users with role <code class="text-purple-700 dark:text-purple-300">heimdall_admin</code> automatically inherit full IT Site Admin privileges (<code class="text-cyan-700 dark:text-cyan-300">it_site_admin</code> / <code class="text-cyan-700 dark:text-cyan-300">it_admin</code>), allowing them to approve/revoke Active Directory & Entra ID OUs for Read/Write host ingestion and govern PKI mTLS root certificate rules.
               </p>
             </div>
             <RbacTooltip :disabled="!isSystemAdmin" :tooltip="RBAC_TOOLTIPS.SYSTEM_ADMIN">
@@ -620,18 +620,18 @@ onMounted(() => {
                 type="checkbox"
                 :disabled="!isSystemAdmin"
                 v-model="adminRoleDelegation.heimdallAdminIsPseudoItAdmin"
-                class="h-5 w-5 rounded border-slate-700 text-cyan-600 focus:ring-cyan-500 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                class="h-5 w-5 rounded border-input bg-background text-cyan-600 focus:ring-cyan-500 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </RbacTooltip>
           </div>
 
-          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-4">
+          <div class="p-4 rounded-xl bg-muted/40 border border-border flex items-center justify-between gap-4">
             <div>
-              <div class="text-sm font-bold text-slate-200">
+              <div class="text-sm font-bold text-foreground">
                 Engineering Admin Main App User Creation
               </div>
-              <p class="text-xs text-slate-400 mt-1">
-                Allows <code class="text-amber-300">engineering_admin</code> users to manage application accounts directly in <code class="text-slate-300">/dashboard/users</code> without accessing Identity Studio.
+              <p class="text-xs text-muted-foreground mt-1">
+                Allows <code class="text-amber-700 dark:text-amber-300">engineering_admin</code> users to manage application accounts directly in <code class="text-foreground font-mono">/dashboard/users</code> without accessing Identity Studio.
               </p>
             </div>
             <RbacTooltip :disabled="!isSystemAdmin" :tooltip="RBAC_TOOLTIPS.SYSTEM_ADMIN">
@@ -639,7 +639,7 @@ onMounted(() => {
                 type="checkbox"
                 :disabled="!isSystemAdmin"
                 v-model="adminRoleDelegation.allowEngineeringAdminUserCreation"
-                class="h-5 w-5 rounded border-slate-700 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                class="h-5 w-5 rounded border-input bg-background text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </RbacTooltip>
           </div>
@@ -647,24 +647,24 @@ onMounted(() => {
       </Card>
 
       <!-- Master MFA & Inactivity Settings Card -->
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
           <div class="flex items-center justify-between">
             <div>
-              <CardTitle class="text-base text-slate-100 flex items-center gap-2">
-                <KeyIcon class="h-5 w-5 text-indigo-400" />
+              <CardTitle class="text-base text-foreground flex items-center gap-2">
+                <KeyIcon class="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 Adaptive MFA Governance & Session Lifetimes
               </CardTitle>
-              <CardDescription class="text-xs text-slate-400">
+              <CardDescription class="text-xs text-muted-foreground">
                 Force multi-factor authentication (FIDO2 / WebAuthn / TOTP) for any group or role with configurable timeout thresholds.
               </CardDescription>
             </div>
             <div class="flex items-center gap-3">
-              <span class="text-xs text-slate-300">Global MFA Enforced</span>
+              <span class="text-xs text-foreground font-medium">Global MFA Enforced</span>
               <input
                 type="checkbox"
                 v-model="mfaPolicy.enabled"
-                class="h-5 w-5 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                class="h-5 w-5 rounded border-input bg-background text-indigo-600 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -672,10 +672,10 @@ onMounted(() => {
         <CardContent class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label class="text-xs font-semibold text-slate-300 uppercase">Default Timeout Threshold</label>
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Default Timeout Threshold</label>
               <select
                 v-model="mfaPolicy.defaultThreshold"
-                class="mt-1.5 flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-slate-200"
+                class="mt-1.5 flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="always">Always (Every sign-in)</option>
                 <option value="12h">12 Hours</option>
@@ -688,34 +688,34 @@ onMounted(() => {
               </select>
             </div>
             <div>
-              <label class="text-xs font-semibold text-slate-300 uppercase">Session Inactivity TTL (Minutes)</label>
-              <Input type="number" v-model.number="authPolicy.sessionTtlMinutes" class="mt-1.5 bg-slate-950 border-slate-800 text-slate-200" />
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Session Inactivity TTL (Minutes)</label>
+              <Input type="number" v-model.number="authPolicy.sessionTtlMinutes" class="mt-1.5 bg-background border-border text-foreground" />
             </div>
             <div>
-              <label class="text-xs font-semibold text-slate-300 uppercase">Max Failed Login Lockout</label>
-              <Input type="number" v-model.number="authPolicy.maxFailedLoginAttempts" class="mt-1.5 bg-slate-950 border-slate-800 text-slate-200" />
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Max Failed Login Lockout</label>
+              <Input type="number" v-model.number="authPolicy.maxFailedLoginAttempts" class="mt-1.5 bg-background border-border text-foreground" />
             </div>
           </div>
         </CardContent>
       </Card>
 
       <!-- MFA Group & Role Threshold Enforcement Table -->
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
-          <CardTitle class="text-base text-slate-100 flex items-center justify-between">
+          <CardTitle class="text-base text-foreground flex items-center justify-between">
             <span>Enforced Group & Role Policies</span>
-            <Badge variant="outline" class="border-indigo-500/40 text-indigo-400">
+            <Badge variant="outline" class="border-indigo-500/40 text-indigo-600 dark:text-indigo-400">
               {{ mfaPolicy.rules.length }} Active Rules
             </Badge>
           </CardTitle>
-          <CardDescription class="text-xs text-slate-400">
+          <CardDescription class="text-xs text-muted-foreground">
             Rules evaluate in sequence. Roles and security groups can have independent timeouts (e.g. Always for Sys Admins, Weekly for Engineers, Monthly for Technicians).
           </CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div class="overflow-x-auto rounded-lg border border-slate-800">
+          <div class="overflow-x-auto rounded-lg border border-border">
             <table class="w-full text-left text-sm">
-              <thead class="bg-slate-950/80 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
+              <thead class="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
                 <tr>
                   <th class="px-4 py-3">Target Scope</th>
                   <th class="px-4 py-3">Role / Security Group</th>
@@ -725,22 +725,22 @@ onMounted(() => {
                   <th class="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-800 font-sans">
-                <tr v-for="rule in mfaPolicy.rules" :key="rule.id" class="hover:bg-slate-800/30">
+              <tbody class="divide-y divide-border font-sans">
+                <tr v-for="rule in mfaPolicy.rules" :key="rule.id" class="hover:bg-muted/40 transition-colors">
                   <td class="px-4 py-3">
                     <Badge
-                      :class="rule.targetType === 'role' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'"
+                      :class="rule.targetType === 'role' ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30' : 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30'"
                     >
                       {{ rule.targetType.toUpperCase() }}
                     </Badge>
                   </td>
-                  <td class="px-4 py-3 font-semibold text-slate-200">
+                  <td class="px-4 py-3 font-semibold text-foreground">
                     {{ rule.targetName }}
                   </td>
                   <td class="px-4 py-3">
                     <div class="flex items-center gap-1.5">
-                      <ClockIcon class="h-3.5 w-3.5 text-indigo-400" />
-                      <span class="font-mono text-xs text-indigo-300">
+                      <ClockIcon class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span class="font-mono text-xs text-indigo-700 dark:text-indigo-300">
                         <template v-if="rule.timeoutThreshold === 'always'">Always (Every sign-in)</template>
                         <template v-else-if="rule.timeoutThreshold === '7d'">Once a week (7 days)</template>
                         <template v-else-if="rule.timeoutThreshold === '30d'">Once a month (30 days)</template>
@@ -749,21 +749,21 @@ onMounted(() => {
                       </span>
                     </div>
                   </td>
-                  <td class="px-4 py-3 text-xs text-slate-400">
+                  <td class="px-4 py-3 text-xs text-muted-foreground">
                     {{ rule.description || 'Configured via governance policy' }}
                   </td>
                   <td class="px-4 py-3 text-center">
                     <input
                       type="checkbox"
                       v-model="rule.forceMfa"
-                      class="h-4 w-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                      class="h-4 w-4 rounded border-input bg-background text-indigo-600 focus:ring-indigo-500"
                     />
                   </td>
                   <td class="px-4 py-3 text-right">
                     <Button
                       variant="ghost"
                       size="sm"
-                      class="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 h-8 px-2"
+                      class="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-500/10 h-8 px-2"
                       @click="removeMfaRule(rule.id)"
                     >
                       <Trash2Icon class="h-4 w-4" />
@@ -775,18 +775,18 @@ onMounted(() => {
           </div>
 
           <!-- Add Group / Role Rule Section -->
-          <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
-            <h4 class="text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <PlusIcon class="h-4 w-4 text-indigo-400" />
+          <div class="p-4 rounded-xl border border-border bg-muted/30 space-y-3">
+            <h4 class="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <PlusIcon class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               Add Group or Role MFA Requirement
             </h4>
 
             <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
               <div>
-                <label class="text-[11px] font-medium text-slate-300">Target Type</label>
+                <label class="text-[11px] font-medium text-muted-foreground">Target Type</label>
                 <select
                   v-model="newRuleTargetType"
-                  class="mt-1 flex h-8 w-full rounded-md border border-slate-800 bg-slate-900 px-2.5 py-1 text-xs text-slate-200"
+                  class="mt-1 flex h-8 w-full rounded-md border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="group">Security Group</option>
                   <option value="role">System Role</option>
@@ -794,11 +794,11 @@ onMounted(() => {
               </div>
 
               <div class="md:col-span-2">
-                <label class="text-[11px] font-medium text-slate-300">Group / Role Identifier (Query or Free Text)</label>
+                <label class="text-[11px] font-medium text-muted-foreground">Group / Role Identifier (Query or Free Text)</label>
                 <Input
                   v-model="newRuleTargetName"
                   placeholder="e.g. Quality Assurance or Maintenance Leads"
-                  class="mt-1 h-8 bg-slate-900 border-slate-800 text-xs text-slate-200"
+                  class="mt-1 h-8 bg-background border-border text-xs text-foreground"
                 />
                 <!-- Suggestions -->
                 <div class="mt-1 flex flex-wrap gap-1">
@@ -807,7 +807,7 @@ onMounted(() => {
                     :key="s"
                     type="button"
                     @click="newRuleTargetName = s"
-                    class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300"
+                    class="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 border border-border/50 text-foreground transition-colors"
                   >
                     {{ s }}
                   </button>
@@ -815,10 +815,10 @@ onMounted(() => {
               </div>
 
               <div>
-                <label class="text-[11px] font-medium text-slate-300">MFA Threshold</label>
+                <label class="text-[11px] font-medium text-muted-foreground">MFA Threshold</label>
                 <select
                   v-model="newRuleThreshold"
-                  class="mt-1 flex h-8 w-full rounded-md border border-slate-800 bg-slate-900 px-2.5 py-1 text-xs text-slate-200"
+                  class="mt-1 flex h-8 w-full rounded-md border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="always">Always (Every sign-in)</option>
                   <option value="12h">12 Hours</option>
@@ -835,7 +835,7 @@ onMounted(() => {
                     min="1"
                     v-model.number="newRuleCustomDays"
                     placeholder="Days"
-                    class="h-7 bg-slate-900 border-slate-800 text-xs text-slate-200"
+                    class="h-7 bg-background border-border text-xs text-foreground"
                   />
                 </div>
               </div>
@@ -857,20 +857,20 @@ onMounted(() => {
       </Card>
 
       <!-- Interactive Live Evaluation Sandbox -->
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
           <div class="flex items-center justify-between">
             <div>
-              <CardTitle class="text-base text-slate-100 flex items-center gap-2">
-                <SparklesIcon class="h-5 w-5 text-amber-400" />
+              <CardTitle class="text-base text-foreground flex items-center gap-2">
+                <SparklesIcon class="h-5 w-5 text-amber-600 dark:text-amber-400" />
                 Live MFA Policy Evaluation Sandbox
               </CardTitle>
-              <CardDescription class="text-xs text-slate-400">
+              <CardDescription class="text-xs text-muted-foreground">
                 Simulate a user authentication session with arbitrary roles, security groups, and previous sign-in timestamps.
               </CardDescription>
             </div>
-            <Button size="sm" variant="outline" class="border-slate-700 text-slate-200" @click="runSandboxEvaluation" :disabled="sandboxEvaluating">
-              <PlayIcon class="h-3.5 w-3.5 mr-1.5 text-amber-400" />
+            <Button size="sm" variant="outline" class="border-border text-foreground hover:bg-muted/50" @click="runSandboxEvaluation" :disabled="sandboxEvaluating">
+              <PlayIcon class="h-3.5 w-3.5 mr-1.5 text-amber-600 dark:text-amber-400" />
               Run Policy Simulation
             </Button>
           </div>
@@ -878,11 +878,11 @@ onMounted(() => {
         <CardContent class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label class="text-xs font-medium text-slate-300">Simulated User Role</label>
+              <label class="text-xs font-medium text-muted-foreground">Simulated User Role</label>
               <select
                 v-model="sandboxRole"
                 @change="runSandboxEvaluation"
-                class="mt-1 flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-slate-200"
+                class="mt-1 flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="SystemAdministrator">SystemAdministrator (Configured: Always)</option>
                 <option value="Engineer">Engineer (Configured: Weekly / 7d)</option>
@@ -892,17 +892,17 @@ onMounted(() => {
             </div>
 
             <div>
-              <label class="text-xs font-medium text-slate-300">User Security Groups</label>
+              <label class="text-xs font-medium text-muted-foreground">User Security Groups</label>
               <Input
                 v-model="sandboxGroups"
                 @blur="runSandboxEvaluation"
                 placeholder="Comma separated groups..."
-                class="mt-1 bg-slate-950 border-slate-800 text-slate-200 text-sm"
+                class="mt-1 bg-background border-border text-foreground text-sm"
               />
             </div>
 
             <div>
-              <label class="text-xs font-medium text-slate-300">Last MFA Timestamp</label>
+              <label class="text-xs font-medium text-muted-foreground">Last MFA Timestamp</label>
               <div class="mt-1 flex flex-wrap gap-1.5">
                 <button
                   v-for="p in [
@@ -916,7 +916,7 @@ onMounted(() => {
                   type="button"
                   @click="sandboxPreset = p.id as any; runSandboxEvaluation()"
                   class="text-xs px-2.5 py-1 rounded-md border transition-all"
-                  :class="sandboxPreset === p.id ? 'border-amber-500 bg-amber-500/20 text-amber-300 font-semibold' : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'"
+                  :class="sandboxPreset === p.id ? 'border-amber-500 bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold' : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50'"
                 >
                   {{ p.label }}
                 </button>
@@ -925,26 +925,26 @@ onMounted(() => {
           </div>
 
           <!-- Sandbox Live Output -->
-          <div v-if="sandboxResult" class="p-4 rounded-xl border" :class="sandboxResult.mfaRequired ? 'border-rose-500/40 bg-rose-950/20' : 'border-emerald-500/40 bg-emerald-950/20'">
+          <div v-if="sandboxResult" class="p-4 rounded-xl border" :class="sandboxResult.mfaRequired ? 'border-rose-500/40 bg-rose-500/10' : 'border-emerald-500/40 bg-emerald-500/10'">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div class="flex items-center gap-3">
-                <div class="h-9 w-9 rounded-lg flex items-center justify-center font-bold" :class="sandboxResult.mfaRequired ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'">
+                <div class="h-9 w-9 rounded-lg flex items-center justify-center font-bold" :class="sandboxResult.mfaRequired ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400' : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'">
                   <span v-if="sandboxResult.mfaRequired">!</span>
                   <CheckIcon v-else class="h-5 w-5" />
                 </div>
                 <div>
-                  <div class="font-bold text-sm" :class="sandboxResult.mfaRequired ? 'text-rose-300' : 'text-emerald-300'">
+                  <div class="font-bold text-sm" :class="sandboxResult.mfaRequired ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'">
                     {{ sandboxResult.mfaRequired ? 'MFA CHALLENGE REQUIRED' : 'MFA SESSION VALID (ACTIVE)' }}
                   </div>
-                  <div class="text-xs text-slate-300 mt-0.5">{{ sandboxResult.reason }}</div>
+                  <div class="text-xs text-muted-foreground mt-0.5">{{ sandboxResult.reason }}</div>
                 </div>
               </div>
 
               <div class="flex items-center gap-2">
-                <Badge variant="outline" class="text-xs font-mono" :class="sandboxResult.mfaRequired ? 'border-rose-500/40 text-rose-300' : 'border-emerald-500/40 text-emerald-300'">
+                <Badge variant="outline" class="text-xs font-mono" :class="sandboxResult.mfaRequired ? 'border-rose-500/40 text-rose-700 dark:text-rose-300' : 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300'">
                   Threshold: {{ sandboxResult.appliedThreshold }}
                 </Badge>
-                <Badge v-if="sandboxResult.matchedRuleTarget" class="bg-slate-800 text-slate-200 text-xs">
+                <Badge v-if="sandboxResult.matchedRuleTarget" class="bg-muted text-foreground text-xs">
                   Target: {{ sandboxResult.matchedRuleTarget }}
                 </Badge>
               </div>
@@ -958,22 +958,22 @@ onMounted(() => {
     <!-- TAB 2: Active Directory & VLAN Host Discovery                     -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div v-if="activeTab === 'vlan-ad-import'" class="space-y-6">
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle class="text-base text-slate-100 flex items-center gap-2">
-                <FolderTreeIcon class="h-5 w-5 text-cyan-400" />
+              <CardTitle class="text-base text-foreground flex items-center gap-2">
+                <FolderTreeIcon class="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
                 Active Directory Organizational Units (VLAN Partitioned)
               </CardTitle>
-              <CardDescription class="text-xs text-slate-400">
+              <CardDescription class="text-xs text-muted-foreground">
                 Discover factory floor IPCs, PLCs, and edge nodes grouped by network VLAN via corporate Active Directory OUs.
               </CardDescription>
             </div>
             <RbacButton
               size="sm"
               capability="canManageActiveDirectory"
-              class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow-md shadow-cyan-950/40"
+              class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium shadow-sm"
               @click="adHostModalOpen = true"
             >
               <SparklesIcon class="h-4 w-4 mr-1.5" />
@@ -984,30 +984,30 @@ onMounted(() => {
         <CardContent class="space-y-6">
           <!-- Summary Badges -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
-              <div class="text-xs text-slate-400">Total OUs Discovered</div>
-              <div class="text-xl font-bold text-slate-100 mt-1">{{ adOus.length }}</div>
+            <div class="p-3 rounded-lg bg-muted/40 border border-border">
+              <div class="text-xs text-muted-foreground">Total OUs Discovered</div>
+              <div class="text-xl font-bold text-foreground mt-1">{{ adOus.length }}</div>
             </div>
-            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
-              <div class="text-xs text-slate-400">Isolated VLANs</div>
-              <div class="text-xl font-bold text-cyan-400 mt-1">5 VLANs</div>
+            <div class="p-3 rounded-lg bg-muted/40 border border-border">
+              <div class="text-xs text-muted-foreground">Isolated VLANs</div>
+              <div class="text-xl font-bold text-cyan-600 dark:text-cyan-400 mt-1">5 VLANs</div>
             </div>
-            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
-              <div class="text-xs text-slate-400">Candidate Edge Hosts</div>
-              <div class="text-xl font-bold text-slate-100 mt-1">
+            <div class="p-3 rounded-lg bg-muted/40 border border-border">
+              <div class="text-xs text-muted-foreground">Candidate Edge Hosts</div>
+              <div class="text-xl font-bold text-foreground mt-1">
                 {{ adOus.reduce((acc, o) => acc + (o.candidateHosts?.length || 0), 0) }}
               </div>
             </div>
-            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
-              <div class="text-xs text-slate-400">Auto-Enroll Profiles</div>
-              <div class="text-xl font-bold text-emerald-400 mt-1">{{ ouRules.length }} Active</div>
+            <div class="p-3 rounded-lg bg-muted/40 border border-border">
+              <div class="text-xs text-muted-foreground">Auto-Enroll Profiles</div>
+              <div class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{{ ouRules.length }} Active</div>
             </div>
           </div>
 
           <!-- OUs Table -->
-          <div class="overflow-x-auto rounded-lg border border-slate-800">
+          <div class="overflow-x-auto rounded-lg border border-border">
             <table class="w-full text-left text-sm">
-              <thead class="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+              <thead class="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
                 <tr>
                   <th class="px-4 py-3">OU Name & Path</th>
                   <th class="px-4 py-3">VLAN ID & Subnet</th>
@@ -1017,26 +1017,26 @@ onMounted(() => {
                   <th class="px-4 py-3 text-right">Host Count</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-800 font-sans">
-                <tr v-for="ou in adOus" :key="ou.ouPath" class="hover:bg-slate-800/30">
+              <tbody class="divide-y divide-border font-sans">
+                <tr v-for="ou in adOus" :key="ou.ouPath" class="hover:bg-muted/40 transition-colors">
                   <td class="px-4 py-3">
-                    <div class="font-semibold text-slate-200">{{ ou.name }}</div>
-                    <div class="text-[11px] font-mono text-slate-400">{{ ou.ouPath }}</div>
+                    <div class="font-semibold text-foreground">{{ ou.name }}</div>
+                    <div class="text-[11px] font-mono text-muted-foreground">{{ ou.ouPath }}</div>
                   </td>
                   <td class="px-4 py-3">
-                    <Badge class="bg-cyan-500/20 text-cyan-300 border-cyan-500/30 text-xs">
+                    <Badge class="bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30 text-xs">
                       VLAN {{ ou.vlanId }}
                     </Badge>
-                    <div class="text-[11px] font-mono text-slate-400 mt-0.5">{{ ou.subnet }}</div>
+                    <div class="text-[11px] font-mono text-muted-foreground mt-0.5">{{ ou.subnet }}</div>
                   </td>
-                  <td class="px-4 py-3 text-xs text-slate-300">{{ ou.location }}</td>
-                  <td class="px-4 py-3 text-xs text-slate-300">{{ ou.purpose }}</td>
+                  <td class="px-4 py-3 text-xs text-foreground">{{ ou.location }}</td>
+                  <td class="px-4 py-3 text-xs text-muted-foreground">{{ ou.purpose }}</td>
                   <td class="px-4 py-3">
-                    <Badge variant="outline" class="border-slate-700 text-slate-300 text-xs">
+                    <Badge variant="outline" class="border-border text-foreground text-xs">
                       {{ ou.machineType }}
                     </Badge>
                   </td>
-                  <td class="px-4 py-3 text-right font-mono font-semibold text-slate-200">
+                  <td class="px-4 py-3 text-right font-mono font-semibold text-foreground">
                     {{ ou.candidateHosts?.length || 0 }}
                   </td>
                 </tr>
@@ -1052,20 +1052,20 @@ onMounted(() => {
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div v-if="activeTab === 'certificates'" class="space-y-6">
       <!-- Project Root CA Card -->
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle class="text-base text-slate-100 flex items-center gap-2">
-                <ShieldCheckIcon class="h-5 w-5 text-emerald-400" />
+              <CardTitle class="text-base text-foreground flex items-center gap-2">
+                <ShieldCheckIcon class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 Project Root Certificate Authority (Root CA)
               </CardTitle>
-              <CardDescription class="text-xs text-slate-400">
+              <CardDescription class="text-xs text-muted-foreground">
                 The trusted anchor for mutual TLS gRPC telemetry and agent configuration sealing. You can import existing enterprise certificates or generate factory certificates.
               </CardDescription>
             </div>
             <div class="flex items-center gap-2">
-              <Button size="sm" variant="outline" class="border-slate-700 text-slate-200 text-xs" @click="downloadRootCert">
+              <Button size="sm" variant="outline" class="border-border text-foreground hover:bg-muted/50 text-xs" @click="downloadRootCert">
                 <DownloadIcon class="h-3.5 w-3.5 mr-1.5" />
                 Export Root Certificate (.crt)
               </Button>
@@ -1082,31 +1082,31 @@ onMounted(() => {
           </div>
         </CardHeader>
         <CardContent>
-          <div v-if="rootCa" class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/15 space-y-3">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+          <div v-if="rootCa" class="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 space-y-3">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-border/80 pb-3">
               <div>
-                <div class="text-sm font-bold text-emerald-300">{{ rootCa.commonName }}</div>
-                <div class="text-xs text-slate-400 mt-0.5">Issuer: {{ rootCa.issuer || rootCa.commonName }}</div>
+                <div class="text-sm font-bold text-emerald-700 dark:text-emerald-300">{{ rootCa.commonName }}</div>
+                <div class="text-xs text-muted-foreground mt-0.5">Issuer: {{ rootCa.issuer || rootCa.commonName }}</div>
               </div>
-              <Badge class="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-xs">
+              <Badge class="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-xs">
                 Active Project Root CA
               </Badge>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
               <div>
-                <span class="text-slate-400">SHA-1 Thumbprint:</span>
-                <div class="font-mono text-emerald-400 text-[11px] mt-0.5 truncate">{{ rootCa.thumbprint }}</div>
+                <span class="text-muted-foreground">SHA-1 Thumbprint:</span>
+                <div class="font-mono text-emerald-600 dark:text-emerald-400 text-[11px] mt-0.5 truncate">{{ rootCa.thumbprint }}</div>
               </div>
               <div>
-                <span class="text-slate-400">Algorithm & Serial:</span>
-                <div class="font-mono text-slate-200 text-[11px] mt-0.5">
+                <span class="text-muted-foreground">Algorithm & Serial:</span>
+                <div class="font-mono text-foreground text-[11px] mt-0.5">
                   {{ rootCa.keyAlgorithm || 'RSA-4096' }} • {{ rootCa.serialNumber || 'Primary' }}
                 </div>
               </div>
               <div>
-                <span class="text-slate-400">Validity Window:</span>
-                <div class="text-slate-200 text-[11px] mt-0.5">
+                <span class="text-muted-foreground">Validity Window:</span>
+                <div class="text-foreground text-[11px] mt-0.5">
                   Until {{ new Date(rootCa.validTo).toLocaleDateString() }}
                 </div>
               </div>
@@ -1116,15 +1116,15 @@ onMounted(() => {
       </Card>
 
       <!-- AD OU Certificate Assignment Rules Card -->
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle class="text-base text-slate-100 flex items-center gap-2">
-                <KeyIcon class="h-5 w-5 text-indigo-400" />
+              <CardTitle class="text-base text-foreground flex items-center gap-2">
+                <KeyIcon class="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 Active Directory OU Certificate Assignment Rules
               </CardTitle>
-              <CardDescription class="text-xs text-slate-400">
+              <CardDescription class="text-xs text-muted-foreground">
                 Map Active Directory OUs to specific mTLS certificate profiles. Edge nodes imported from these OUs are automatically enrolled.
               </CardDescription>
             </div>
@@ -1133,7 +1133,7 @@ onMounted(() => {
                 size="sm"
                 capability="canManageActiveDirectory"
                 variant="outline"
-                class="border-indigo-500/40 text-indigo-400 text-xs"
+                class="border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 text-xs"
                 @click="triggerOuCertificateSync"
                 :disabled="syncingCerts"
               >
@@ -1153,9 +1153,9 @@ onMounted(() => {
           </div>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div class="overflow-x-auto rounded-lg border border-slate-800">
+          <div class="overflow-x-auto rounded-lg border border-border">
             <table class="w-full text-left text-sm">
-              <thead class="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+              <thead class="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
                 <tr>
                   <th class="px-4 py-3">AD OU Distinguished Name</th>
                   <th class="px-4 py-3">Certificate Profile</th>
@@ -1165,22 +1165,22 @@ onMounted(() => {
                   <th class="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-800 font-sans">
-                <tr v-for="rule in ouRules" :key="rule.id" class="hover:bg-slate-800/30">
-                  <td class="px-4 py-3 font-mono text-xs text-slate-200">{{ rule.ouPath }}</td>
-                  <td class="px-4 py-3 font-medium text-indigo-300">{{ rule.profileName }}</td>
-                  <td class="px-4 py-3 font-mono text-xs text-slate-400">{{ rule.keyAlgorithm || 'RSA-2048' }}</td>
-                  <td class="px-4 py-3 text-xs text-slate-300">{{ rule.validityYears }} Years</td>
+              <tbody class="divide-y divide-border font-sans">
+                <tr v-for="rule in ouRules" :key="rule.id" class="hover:bg-muted/40 transition-colors">
+                  <td class="px-4 py-3 font-mono text-xs text-foreground">{{ rule.ouPath }}</td>
+                  <td class="px-4 py-3 font-medium text-indigo-700 dark:text-indigo-300">{{ rule.profileName }}</td>
+                  <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ rule.keyAlgorithm || 'RSA-2048' }}</td>
+                  <td class="px-4 py-3 text-xs text-foreground">{{ rule.validityYears }} Years</td>
                   <td class="px-4 py-3 text-center">
-                    <Badge :class="rule.autoEnroll ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-400'">
+                    <Badge :class="rule.autoEnroll ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : 'bg-muted text-muted-foreground'">
                       {{ rule.autoEnroll ? 'Enabled' : 'Disabled' }}
                     </Badge>
                   </td>
                   <td class="px-4 py-3 text-right space-x-1">
-                    <RbacButton capability="canManageActiveDirectory" variant="ghost" size="sm" class="h-8 px-2 text-indigo-400 hover:text-indigo-300" @click="openEditOuRule(rule)">
+                    <RbacButton capability="canManageActiveDirectory" variant="ghost" size="sm" class="h-8 px-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-500/10" @click="openEditOuRule(rule)">
                       Edit
                     </RbacButton>
-                    <RbacButton capability="canManageActiveDirectory" variant="ghost" size="sm" class="h-8 px-2 text-rose-400 hover:text-rose-300" @click="deleteOuRule(rule.id)">
+                    <RbacButton capability="canManageActiveDirectory" variant="ghost" size="sm" class="h-8 px-2 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-500/10" @click="deleteOuRule(rule.id)">
                       <Trash2Icon class="h-4 w-4" />
                     </RbacButton>
                   </td>
@@ -1192,27 +1192,27 @@ onMounted(() => {
       </Card>
 
       <!-- Issued Client Certificates Table -->
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
           <div class="flex items-center justify-between">
             <div>
-              <CardTitle class="text-base text-slate-100">Issued Client Certificates (mTLS Fleet)</CardTitle>
-              <CardDescription class="text-xs text-slate-400">Mutually authenticated gRPC telemetry identities currently issued across the plant.</CardDescription>
+              <CardTitle class="text-base text-foreground">Issued Client Certificates (mTLS Fleet)</CardTitle>
+              <CardDescription class="text-xs text-muted-foreground">Mutually authenticated gRPC telemetry identities currently issued across the plant.</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div class="flex gap-2 p-3 bg-slate-950 rounded-lg border border-slate-800">
-            <Input v-model="newCertCN" placeholder="Enter Common Name (e.g. CPC-010-Heimdall-Node)..." class="text-sm bg-slate-900 border-slate-800 text-slate-100" />
+          <div class="flex gap-2 p-3 bg-muted/30 rounded-lg border border-border">
+            <Input v-model="newCertCN" placeholder="Enter Common Name (e.g. CPC-010-Heimdall-Node)..." class="text-sm bg-background border-border text-foreground" />
             <RbacButton size="sm" capability="canManageActiveDirectory" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs" @click="issueCertificate" :disabled="issuingCert || !newCertCN">
               <PlusIcon class="h-4 w-4 mr-1.5" />
               Generate Client Certificate
             </RbacButton>
           </div>
 
-          <div class="overflow-x-auto rounded-lg border border-slate-800">
+          <div class="overflow-x-auto rounded-lg border border-border">
             <table class="w-full text-sm text-left">
-              <thead class="bg-slate-950 text-slate-400 text-xs uppercase border-b border-slate-800">
+              <thead class="bg-muted/50 text-muted-foreground text-xs uppercase border-b border-border">
                 <tr>
                   <th class="px-4 py-3">Common Name</th>
                   <th class="px-4 py-3">Profile / AD OU</th>
@@ -1222,17 +1222,17 @@ onMounted(() => {
                   <th class="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-800">
-                <tr v-for="c in certificates" :key="c.id" class="hover:bg-slate-800/30">
-                  <td class="px-4 py-3 font-medium text-slate-200">{{ c.commonName }}</td>
-                  <td class="px-4 py-3 text-xs text-slate-400">
+              <tbody class="divide-y divide-border">
+                <tr v-for="c in certificates" :key="c.id" class="hover:bg-muted/40 transition-colors">
+                  <td class="px-4 py-3 font-medium text-foreground">{{ c.commonName }}</td>
+                  <td class="px-4 py-3 text-xs text-muted-foreground">
                     <div>{{ c.profileName || 'Standard Client' }}</div>
-                    <div v-if="c.adOuPath" class="text-[10px] font-mono text-slate-500 truncate max-w-[200px]">{{ c.adOuPath }}</div>
+                    <div v-if="c.adOuPath" class="text-[10px] font-mono text-muted-foreground/80 truncate max-w-[200px]">{{ c.adOuPath }}</div>
                   </td>
-                  <td class="px-4 py-3 font-mono text-xs text-slate-400">{{ c.thumbprint }}</td>
-                  <td class="px-4 py-3 text-xs text-slate-400">Until {{ new Date(c.validTo).toLocaleDateString() }}</td>
+                  <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ c.thumbprint }}</td>
+                  <td class="px-4 py-3 text-xs text-muted-foreground">Until {{ new Date(c.validTo).toLocaleDateString() }}</td>
                   <td class="px-4 py-3">
-                    <Badge :class="c.status === 'Active' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-400'">
+                    <Badge :class="c.status === 'Active' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : 'bg-muted text-muted-foreground'">
                       {{ c.status }}
                     </Badge>
                   </td>
@@ -1242,7 +1242,7 @@ onMounted(() => {
                       capability="canManageActiveDirectory"
                       variant="ghost" 
                       size="sm" 
-                      class="text-rose-400 hover:text-rose-300 text-xs h-8 px-2" 
+                      class="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-500/10 text-xs h-8 px-2" 
                       @click="revokeCertificate(c.id)"
                     >
                       <BanIcon class="h-3.5 w-3.5 mr-1" />
@@ -1261,12 +1261,12 @@ onMounted(() => {
     <!-- TAB 4: Agent Fleet Master Template                                -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div v-if="activeTab === 'agent-master'" class="space-y-6">
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
           <div class="flex items-center justify-between">
             <div>
-              <CardTitle class="text-base text-slate-100">Edge Fleet Master Policy Template (V1)</CardTitle>
-              <CardDescription class="text-xs text-slate-400">
+              <CardTitle class="text-base text-foreground">Edge Fleet Master Policy Template (V1)</CardTitle>
+              <CardDescription class="text-xs text-muted-foreground">
                 Enforces cryptographically signed baseline configurations, disk spool encryption, and execution constraints across all IPCs.
               </CardDescription>
             </div>
@@ -1278,25 +1278,25 @@ onMounted(() => {
         </CardHeader>
         <CardContent class="space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="flex items-center justify-between p-4 rounded-lg border border-slate-800 bg-slate-950">
+            <div class="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/40">
               <div>
-                <div class="font-medium text-sm text-slate-200">Hardware-Bound Cryptographic Sealing</div>
-                <div class="text-xs text-slate-400 mt-0.5">Binds secrets and agent tokens to CPU/Machine-ID and TPM state</div>
+                <div class="font-medium text-sm text-foreground">Hardware-Bound Cryptographic Sealing</div>
+                <div class="text-xs text-muted-foreground mt-0.5">Binds secrets and agent tokens to CPU/Machine-ID and TPM state</div>
               </div>
-              <input type="checkbox" v-model="masterPolicy.enforceHardwareBinding" class="h-5 w-5 rounded border-slate-700 text-purple-600 focus:ring-purple-500" />
+              <input type="checkbox" v-model="masterPolicy.enforceHardwareBinding" class="h-5 w-5 rounded border-input bg-background text-purple-600 focus:ring-purple-500" />
             </div>
 
-            <div class="flex items-center justify-between p-4 rounded-lg border border-slate-800 bg-slate-950">
+            <div class="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/40">
               <div>
-                <div class="font-medium text-sm text-slate-200">Allow Remote Diagnostic & File Checks</div>
-                <div class="text-xs text-slate-400 mt-0.5">Master kill-switch for remote commands (locked to Engineering role)</div>
+                <div class="font-medium text-sm text-foreground">Allow Remote Diagnostic & File Checks</div>
+                <div class="text-xs text-muted-foreground mt-0.5">Master kill-switch for remote commands (locked to Engineering role)</div>
               </div>
-              <input type="checkbox" v-model="masterPolicy.allowRemoteExecution" class="h-5 w-5 rounded border-slate-700 text-purple-600 focus:ring-purple-500" />
+              <input type="checkbox" v-model="masterPolicy.allowRemoteExecution" class="h-5 w-5 rounded border-input bg-background text-purple-600 focus:ring-purple-500" />
             </div>
 
             <div>
-              <label class="text-xs font-semibold text-slate-300 uppercase">Offline Spool Encryption Mode</label>
-              <select v-model="masterPolicy.spoolEncryptionMode" class="mt-1.5 flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-slate-200">
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Offline Spool Encryption Mode</label>
+              <select v-model="masterPolicy.spoolEncryptionMode" class="mt-1.5 flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="AES_256_GCM">AES-256-GCM Authenticated Envelope (Recommended)</option>
                 <option value="DPAPI">Windows DPAPI Machine Scope</option>
                 <option value="Plaintext">Plaintext (Development Only)</option>
@@ -1304,8 +1304,8 @@ onMounted(() => {
             </div>
 
             <div>
-              <label class="text-xs font-semibold text-slate-300 uppercase">PII & IP Scrubber Level</label>
-              <select v-model="masterPolicy.piiScrubberStrictLevel" class="mt-1.5 flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-slate-200">
+              <label class="text-xs font-semibold text-muted-foreground uppercase">PII & IP Scrubber Level</label>
+              <select v-model="masterPolicy.piiScrubberStrictLevel" class="mt-1.5 flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="Strict">Strict (Mask Hostnames, MACs, Subnet IPs)</option>
                 <option value="Standard">Standard (Mask Credentials & Passwords)</option>
                 <option value="Disabled">Disabled</option>
@@ -1320,21 +1320,21 @@ onMounted(() => {
     <!-- TAB 5: OT Integrations                                            -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div v-if="activeTab === 'integrations'" class="space-y-6">
-      <Card class="bg-slate-900 border-slate-800">
+      <Card class="bg-card border-border">
         <CardHeader>
-          <CardTitle class="text-base text-slate-100">OPC UA & Copia Industrial Integrations</CardTitle>
-          <CardDescription class="text-xs text-slate-400">Configure northbound SCADA bridges and PLC version control webhooks.</CardDescription>
+          <CardTitle class="text-base text-foreground">OPC UA & Copia Industrial Integrations</CardTitle>
+          <CardDescription class="text-xs text-muted-foreground">Configure northbound SCADA bridges and PLC version control webhooks.</CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label class="text-xs font-semibold text-slate-300 uppercase">OPC UA Server Endpoint</label>
-              <Input v-model="integrations.opcUaEndpoint" class="mt-1.5 font-mono text-sm bg-slate-950 border-slate-800 text-slate-200" />
+              <label class="text-xs font-semibold text-muted-foreground uppercase">OPC UA Server Endpoint</label>
+              <Input v-model="integrations.opcUaEndpoint" class="mt-1.5 font-mono text-sm bg-background border-border text-foreground" />
             </div>
 
             <div>
-              <label class="text-xs font-semibold text-slate-300 uppercase">OPC UA Security Policy</label>
-              <select v-model="integrations.opcUaSecurityPolicy" class="mt-1.5 flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-slate-200">
+              <label class="text-xs font-semibold text-muted-foreground uppercase">OPC UA Security Policy</label>
+              <select v-model="integrations.opcUaSecurityPolicy" class="mt-1.5 flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="Basic256Sha256">Basic256Sha256 (Sign & Encrypt)</option>
                 <option value="Aes128_Sha256_RsaOaep">Aes128_Sha256_RsaOaep</option>
                 <option value="None">None (Unsecured Ingestion)</option>
@@ -1342,8 +1342,8 @@ onMounted(() => {
             </div>
 
             <div class="md:col-span-2">
-              <label class="text-xs font-semibold text-slate-300 uppercase">Copia Automation Webhook URL</label>
-              <Input v-model="integrations.copiaWebhookUrl" class="mt-1.5 font-mono text-sm bg-slate-950 border-slate-800 text-slate-200" />
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Copia Automation Webhook URL</label>
+              <Input v-model="integrations.copiaWebhookUrl" class="mt-1.5 font-mono text-sm bg-background border-border text-foreground" />
             </div>
           </div>
         </CardContent>

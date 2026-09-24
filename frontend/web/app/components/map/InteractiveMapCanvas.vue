@@ -136,18 +136,18 @@ watch(() => props.dxfUrl, (newUrl) => {
 </script>
 
 <template>
-  <div class="relative w-full h-full bg-slate-950 select-none overflow-hidden flex flex-col justify-center items-center">
+  <div class="relative w-full h-full bg-background select-none overflow-hidden flex flex-col justify-center items-center">
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex flex-col items-center justify-center gap-3 p-12 text-slate-500">
+    <div v-if="isLoading" class="flex flex-col items-center justify-center gap-3 p-12 text-muted-foreground">
       <Loader2 class="w-8 h-8 animate-spin text-indigo-500" />
       <span class="text-xs font-black uppercase tracking-widest">Rendering Plant Layout Topography...</span>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="flex flex-col items-center justify-center gap-3 p-12 text-rose-400">
+    <div v-else-if="error" class="flex flex-col items-center justify-center gap-3 p-12 text-rose-600 dark:text-rose-400">
       <AlertCircle class="w-8 h-8" />
       <span class="text-xs font-bold">{{ error }}</span>
-      <button @click="resetView" class="px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-300">
+      <button @click="resetView" class="px-4 py-2 bg-muted hover:bg-muted/80 border border-border rounded-xl text-xs font-bold text-foreground transition-colors">
         Retry
       </button>
     </div>
@@ -381,7 +381,7 @@ watch(() => props.dxfUrl, (newUrl) => {
       <button
         type="button"
         @click="zoom(0.85)"
-        class="p-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 rounded-xl border border-slate-800 shadow-xl transition-all"
+        class="p-2.5 bg-card/90 hover:bg-muted text-foreground rounded-xl border border-border shadow-xl transition-all"
         title="Zoom In"
       >
         <ZoomIn class="w-4 h-4" />
@@ -390,7 +390,7 @@ watch(() => props.dxfUrl, (newUrl) => {
       <button
         type="button"
         @click="zoom(1.15)"
-        class="p-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 rounded-xl border border-slate-800 shadow-xl transition-all"
+        class="p-2.5 bg-card/90 hover:bg-muted text-foreground rounded-xl border border-border shadow-xl transition-all"
         title="Zoom Out"
       >
         <ZoomOut class="w-4 h-4" />
@@ -399,7 +399,7 @@ watch(() => props.dxfUrl, (newUrl) => {
       <button
         type="button"
         @click="resetView"
-        class="p-2.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 rounded-xl border border-slate-800 shadow-xl transition-all"
+        class="p-2.5 bg-card/90 hover:bg-muted text-foreground rounded-xl border border-border shadow-xl transition-all"
         title="Reset Bounds"
       >
         <Maximize2 class="w-4 h-4" />

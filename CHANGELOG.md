@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Extended Tag & Stored Value Browser in FMFD OmniSearch**:
+  - Integrated an interactive **Browse Tags & Stored Values** tab in `AutoTagSuggestionDropdown.vue` alongside the traditional results autocomplete.
+  - Added live category filtering, stored value counts, dedicated stored values grid with live query matching, and one-click insertion of tag pills (`tag:value`) into active search bars.
+  - Added global cross-category matching of stored values directly within the omni-search input bar.
+- **Color-Mode Awareness & Dark/Light Theme System-Wide Modernization**:
+  - System-wide modernization of all frontend components (`pages/`, `components/analytics`, `components/tickets`, `components/dashboard`, `components/controllers`, `components/layout`, `components/admin`, `components/ui`) to be fully color-mode aware.
+  - Replaced hardcoded dark palette classes (`bg-zinc-900`, `bg-slate-900`, `text-zinc-100`, etc.) with adaptive Tailwind CSS semantic tokens (`bg-card`, `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-muted`) ensuring WCAG AA contrast compliance across both dark and light modes.
+- **Customizable Close Controls for Modal Dialogs & Sheets**:
+  - Added `showClose` (default: `true`) and `hideClose` (default: `false`) props to `DialogContent.vue`, `DialogScrollContent.vue`, and `SheetContent.vue` with `data-slot="dialog-close"`.
+  - Allowed custom dialogs to disable default absolute-positioned close buttons when custom header close buttons or shortcuts are present.
+
+### Fixed
+- **Modal 'X' Close Button Overlays & Duplicate Close Icons**:
+  - Eliminated awkward and duplicate 'X' button overlays across all dialog and sheet components (`GlobalOmniSearchModal`, `PreferredTechniciansModal`, `RemoteQuickViewModal`, `StationComponentTreeModal`, `AssetTabbedEditor`, `ClientDetailsModal`, `MapPinningDialog`, `ControllerCommandModal`, `MachineQrModal`, `organizations.vue`, `CommandDialog.vue`).
+  - Aligned custom header actions cleanly alongside dedicated close buttons and removed overlaps with helper hints like "Press ESC to exit".
+- **CTRL + K Hotkey Flickering, Rapid Keydown & Spamming**:
+  - Refactored `useGlobalSearchModal.ts` with a dedicated `triggerSearch()` method and a `300ms` state change debounce timeout.
+  - Prevented modal toggling/flickering on key repeats or button spamming when `CTRL + K` is pressed while already open, instead refocusing the input and selecting all query text via `focusTriggerSignal`.
+- **Page Re-paint & Reactive DOM Replacement Search Dismissals**:
+  - Guarded click-outside and pointer-down-outside handlers in `GlobalOmniSearchModal.vue` and `OmniSearchBar.vue` against detached DOM nodes (`!document.body.contains(target)`).
+  - Ensured background telemetry polling, SSE updates, and reactive component re-renders do not prematurely dismiss or break the active search popup.
 - **Independent Standalone Packaging Infrastructure**:
   - **Self-Contained Edge Agent Packaging**:
     - Packaged `App.Agent.Daemon` as a single-file, self-contained executable for `linux-x64` and `win-x64` with zero external runtime prerequisites.

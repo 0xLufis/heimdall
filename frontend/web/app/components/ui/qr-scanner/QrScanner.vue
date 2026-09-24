@@ -144,18 +144,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative rounded-2xl border border-slate-800 bg-slate-950 p-6 shadow-2xl overflow-hidden max-w-xl mx-auto">
+  <div class="relative rounded-2xl border border-border bg-card p-6 shadow-2xl overflow-hidden max-w-xl mx-auto">
     <!-- Header -->
-    <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+    <div class="flex items-center justify-between pb-4 border-b border-border">
       <div class="flex items-center gap-3">
-        <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+        <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
           <Camera class="h-5 w-5" />
         </div>
         <div>
-          <h4 class="text-sm font-black uppercase tracking-tight text-slate-100">
+          <h4 class="text-sm font-black uppercase tracking-tight text-foreground">
             {{ title || 'Equipment QR Code Scanner' }}
           </h4>
-          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
+          <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-0.5">
             Scan barcode or QR code on Industrial Machine / Controller
           </p>
         </div>
@@ -166,7 +166,7 @@ onUnmounted(() => {
           variant="ghost"
           size="icon"
           @click="toggleCamera"
-          class="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg"
+          class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg cursor-pointer"
           title="Switch Camera"
         >
           <RefreshCw class="h-4 w-4" />
@@ -175,7 +175,7 @@ onUnmounted(() => {
           variant="ghost"
           size="icon"
           @click="handleClose"
-          class="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg"
+          class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg cursor-pointer"
           title="Close Scanner"
         >
           <X class="h-4 w-4" />
@@ -184,7 +184,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Video Viewfinder Area -->
-    <div class="relative mt-4 bg-slate-900 rounded-xl overflow-hidden aspect-video border border-slate-800 flex items-center justify-center">
+    <div class="relative mt-4 bg-muted/30 rounded-xl overflow-hidden aspect-video border border-border flex items-center justify-center">
       <video
         ref="videoElement"
         class="w-full h-full object-cover"
@@ -207,22 +207,22 @@ onUnmounted(() => {
       </div>
 
       <!-- Scanned Confirmation Overlay -->
-      <div v-if="lastScannedCode" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10 animate-in fade-in">
-        <CheckCircle2 class="h-12 w-12 text-emerald-400 mb-2 animate-bounce" />
-        <span class="text-xs font-black text-slate-300 uppercase tracking-widest">QR Code Detected</span>
-        <code class="mt-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-indigo-300 font-mono text-sm max-w-full truncate">
+      <div v-if="lastScannedCode" class="absolute inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10 animate-in fade-in">
+        <CheckCircle2 class="h-12 w-12 text-emerald-600 dark:text-emerald-400 mb-2 animate-bounce" />
+        <span class="text-xs font-black text-foreground uppercase tracking-widest">QR Code Detected</span>
+        <code class="mt-2 px-3 py-1.5 rounded-lg bg-muted border border-border text-indigo-600 dark:text-indigo-300 font-mono text-sm max-w-full truncate">
           {{ lastScannedCode }}
         </code>
       </div>
 
       <!-- Error State -->
-      <div v-if="errorMessage" class="absolute inset-0 bg-slate-950/95 p-6 flex flex-col items-center justify-center text-center z-10">
+      <div v-if="errorMessage" class="absolute inset-0 bg-background/95 p-6 flex flex-col items-center justify-center text-center z-10">
         <AlertCircle class="h-10 w-10 text-amber-500 mb-2" />
-        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Camera Unavailable</span>
-        <p class="text-[11px] text-slate-400 max-w-xs leading-relaxed mb-4">
+        <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Camera Unavailable</span>
+        <p class="text-[11px] text-muted-foreground max-w-xs leading-relaxed mb-4">
           {{ errorMessage }}
         </p>
-        <Button size="sm" @click="startScanner" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black uppercase">
+        <Button size="sm" @click="startScanner" class="bg-muted hover:bg-muted/80 text-foreground text-xs font-black uppercase cursor-pointer">
           Retry Camera
         </Button>
       </div>
@@ -234,13 +234,13 @@ onUnmounted(() => {
         <div class="flex items-center gap-2">
           <Badge
             variant="outline"
-            :class="isScanning ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-slate-800 text-slate-500 bg-slate-900'"
+            :class="isScanning ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : 'border-border text-muted-foreground bg-muted'"
             class="text-[9px] font-black uppercase tracking-widest"
           >
-            <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="isScanning ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'"></span>
+            <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="isScanning ? 'bg-emerald-500 dark:bg-emerald-400 animate-ping' : 'bg-muted-foreground'"></span>
             {{ isScanning ? 'Scanner Active' : 'Scanner Idle' }}
           </Badge>
-          <span class="text-[10px] text-slate-500 font-mono">
+          <span class="text-[10px] text-muted-foreground font-mono">
             {{ facingMode === 'environment' ? 'Rear Camera' : 'Front Camera' }}
           </span>
         </div>
@@ -249,28 +249,28 @@ onUnmounted(() => {
           v-if="!isScanning && !errorMessage"
           size="sm"
           @click="startScanner"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl h-8"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl h-8 cursor-pointer"
         >
           Start Camera
         </Button>
       </div>
 
       <!-- Manual Input Fallback -->
-      <div class="pt-3 border-t border-slate-900">
-        <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+      <div class="pt-3 border-t border-border">
+        <label class="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">
           Manual Equipment ID Entry
         </label>
         <div class="flex gap-2">
           <Input
             v-model="manualInput"
             placeholder="e.g. STATION-OP10-01 or ctrl-101"
-            class="bg-slate-900 border-slate-800 rounded-xl text-xs"
+            class="bg-background border-input text-foreground rounded-xl text-xs"
             @keyup.enter="submitManualInput"
           />
           <Button
             @click="submitManualInput"
             :disabled="!manualInput.trim()"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider px-4"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider px-4 cursor-pointer"
           >
             Use ID
           </Button>

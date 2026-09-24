@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '~/components/ui/button'
 import RbacButton from '~/components/common/RbacButton.vue'
 import { Input } from '~/components/ui/input'
-import { Terminal, Key, ShieldCheck, Loader2 } from 'lucide-vue-next'
+import { Terminal, Key, ShieldCheck, Loader2, X } from 'lucide-vue-next'
 
 const props = defineProps<{
   controller: IndustrialController | null
@@ -59,30 +59,38 @@ const handleQueueCommand = async () => {
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent v-if="controller" class="max-w-lg bg-slate-950 border-slate-800 text-slate-100 p-0 overflow-hidden rounded-3xl shadow-2xl">
-      <DialogHeader class="bg-indigo-950/40 p-8 border-b border-slate-800">
+    <DialogContent v-if="controller" :show-close="false" class="max-w-lg bg-card border-border text-card-foreground p-0 overflow-hidden rounded-3xl shadow-2xl">
+      <DialogHeader class="bg-muted/40 p-8 border-b border-border flex flex-row items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl border border-indigo-500/30">
+          <div class="p-3 bg-primary/10 text-primary rounded-2xl border border-primary/20">
             <Terminal class="w-6 h-6" />
           </div>
           <div>
-            <DialogTitle class="text-xl font-black uppercase text-white">Queue Edge Command</DialogTitle>
-            <DialogDescription class="text-xs text-indigo-300/70 font-bold uppercase tracking-wider mt-0.5">
+            <DialogTitle class="text-xl font-black uppercase text-foreground">Queue Edge Command</DialogTitle>
+            <DialogDescription class="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-0.5">
               Target Node: {{ controller.hostname || controller.name }}
             </DialogDescription>
           </div>
         </div>
+        <button
+          type="button"
+          @click="emit('update:open', false)"
+          class="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+          title="Close modal"
+        >
+          <X class="w-5 h-5" />
+        </button>
       </DialogHeader>
 
       <form @submit.prevent="handleQueueCommand" class="p-8 space-y-6">
         <div class="space-y-2">
-          <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Command Type</label>
+          <label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Command Type</label>
           <div class="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant="outline"
               @click="commandType = 'UPDATE_CONFIG'"
-              :class="commandType === 'UPDATE_CONFIG' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 border-slate-800 text-slate-400'"
+              :class="commandType === 'UPDATE_CONFIG' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:text-foreground'"
               class="rounded-xl h-11 text-xs font-bold uppercase tracking-wider"
             >
               Update Config
@@ -91,7 +99,7 @@ const handleQueueCommand = async () => {
               type="button"
               variant="outline"
               @click="commandType = 'FILE_CHECK'"
-              :class="commandType === 'FILE_CHECK' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 border-slate-800 text-slate-400'"
+              :class="commandType === 'FILE_CHECK' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:text-foreground'"
               class="rounded-xl h-11 text-xs font-bold uppercase tracking-wider"
             >
               File Check
@@ -100,60 +108,60 @@ const handleQueueCommand = async () => {
         </div>
 
         <div v-if="commandType === 'UPDATE_CONFIG'" class="space-y-2">
-          <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Telemetry Sampling Rate (Seconds)</label>
+          <label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Telemetry Sampling Rate (Seconds)</label>
           <Input
             v-model.number="samplingInterval"
             type="number"
             min="5"
             max="300"
-            class="h-12 bg-slate-900 border-slate-800 rounded-xl text-slate-200 font-mono font-bold"
+            class="h-12 bg-background border-border rounded-xl text-foreground font-mono font-bold"
           />
         </div>
 
         <div v-else class="space-y-2">
-          <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Target Path on IPC</label>
+          <label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Target Path on IPC</label>
           <Input
             v-model="filePath"
             type="text"
-            class="h-12 bg-slate-900 border-slate-800 rounded-xl text-slate-200 font-mono text-xs"
+            class="h-12 bg-background border-border rounded-xl text-foreground font-mono text-xs"
           />
         </div>
 
         <!-- TISAX Cryptographic Signature -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-              <Key class="w-3 h-3 text-indigo-400" />
+            <label class="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+              <Key class="w-3 h-3 text-primary" />
               ECDSA Signature (TISAX ISA 2.1)
             </label>
-            <span class="text-[9px] text-emerald-400 font-mono flex items-center gap-1">
+            <span class="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1">
               <ShieldCheck class="w-3 h-3" /> Auto-Signed
             </span>
           </div>
           <Input
             v-model="signature"
             placeholder="Optional manual ECDSA hex/base64 signature"
-            class="h-12 bg-slate-900 border-slate-800 rounded-xl text-slate-400 font-mono text-xs"
+            class="h-12 bg-background border-border rounded-xl text-foreground font-mono text-xs"
           />
         </div>
 
-        <div v-if="successMessage" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold text-center">
+        <div v-if="successMessage" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold text-center">
           {{ successMessage }}
         </div>
 
-        <div v-if="errorMessage" class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold text-center">
+        <div v-if="errorMessage" class="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold text-center">
           {{ errorMessage }}
         </div>
 
-        <div class="flex justify-end gap-3 pt-4 border-t border-slate-900">
-          <Button type="button" variant="ghost" @click="emit('update:open', false)" class="text-slate-400 hover:text-white text-xs font-bold uppercase">
+        <div class="flex justify-end gap-3 pt-4 border-t border-border">
+          <Button type="button" variant="ghost" @click="emit('update:open', false)" class="text-muted-foreground hover:text-foreground text-xs font-bold uppercase">
             Cancel
           </Button>
           <RbacButton
             type="submit"
             capability="canExecuteRemote"
             :disabled="isSubmitting"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider px-6 h-11"
+            class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-bold uppercase tracking-wider px-6 h-11"
           >
             <Loader2 v-if="isSubmitting" class="w-4 h-4 mr-2 animate-spin" />
             <span>{{ isSubmitting ? 'Signing...' : 'Queue Command' }}</span>
