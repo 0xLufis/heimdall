@@ -34,6 +34,7 @@ export interface TicketAttachment {
 export type TicketStatus =
   | 'Open'
   | 'In_Progress'
+  | 'Pending'
   | 'Pending_Parts'
   | 'Escalated'
   | 'Escalated_External'
@@ -74,6 +75,8 @@ export interface MaintenanceTicket {
   sfc?: string
   telemetrySnapshot?: TelemetrySnapshot
   externalEscalationTarget?: string
+  pendingReason?: string
+  pendingAuthority?: string
   reportedByUserId: string
   reportedByUserName: string
   assignedTechnicianId?: string

@@ -36,7 +36,7 @@ export const useMaintenance = () => {
     const total = list.length
     const open = list.filter(t => t.status === 'Open').length
     const inProgress = list.filter(t => t.status === 'In_Progress').length
-    const pendingParts = list.filter(t => t.status === 'Pending_Parts').length
+    const pendingParts = list.filter(t => t.status === 'Pending_Parts' || t.status === 'Pending').length
     const escalated = list.filter(t => t.status === 'Escalated').length
     const escalatedExternal = list.filter(t => t.status === 'Escalated_External').length
     const closurePending = list.filter(t => t.status === 'Closure_Pending').length
@@ -166,23 +166,34 @@ export const useMaintenance = () => {
   }
 
   // Optimistic UI status transition
-  const updateStatus = async (id: string, status: TicketStatus, technicianName?: string) => {
+  const updateStatus = async (
+    id: string,
+    status: TicketStatus,
+    technicianName?: string,
+    extra?: Record<string, any>
+  ) => {
     const target = tickets.value.find(t => t.id === id)
     const prevStatus = target?.status
+    const prevReason = target?.pendingReason
+    const prevAuthority = target?.pendingAuthority
 
     // 1. Optimistically update local state for zero-latency feedback
     if (target) {
       target.status = status
+      if (extra?.pendingReason !== undefined) target.pendingReason = extra.pendingReason
+      if (extra?.pendingAuthority !== undefined) target.pendingAuthority = extra.pendingAuthority
       target.updatedAt = new Date().toISOString()
       if (selectedTicket.value?.id === id) {
         selectedTicket.value.status = status
+        if (extra?.pendingReason !== undefined) selectedTicket.value.pendingReason = extra.pendingReason
+        if (extra?.pendingAuthority !== undefined) selectedTicket.value.pendingAuthority = extra.pendingAuthority
       }
       recalculateMetrics()
     }
 
     try {
       // 2. Submit to backend / BFF
-      const updated = await service.updateTicketStatus(id, status, technicianName)
+      const updated = await (service as any).updateTicketStatus(id, status, technicianName, extra)
       if (target && updated) {
         Object.assign(target, updated)
       }
@@ -191,13 +202,25 @@ export const useMaintenance = () => {
       // 3. Rollback on failure
       if (target && prevStatus) {
         target.status = prevStatus
+        target.pendingReason = prevReason
+        target.pendingAuthority = prevAuthority
         if (selectedTicket.value?.id === id) {
           selectedTicket.value.status = prevStatus
+          selectedTicket.value.pendingReason = prevReason
+          selectedTicket.value.pendingAuthority = prevAuthority
         }
         recalculateMetrics()
       }
       throw err
     }
+  }
+
+  const updateTicketPending = async (
+    ticketId: string,
+    pendingReason: string,
+    pendingAuthority?: string
+  ) => {
+    return await updateStatus(ticketId, 'Pending', undefined, { pendingReason, pendingAuthority })
   }
 
   const addComment = async (ticketId: string, authorName: string, content: string): Promise<TicketComment> => {
@@ -258,6 +281,7 @@ export const useMaintenance = () => {
     fetchTickets,
     createTicket,
     updateStatus,
+    updateTicketPending,
     addComment,
     handleLiveEvent,
     recalculateMetrics

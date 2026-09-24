@@ -237,16 +237,18 @@ export class OfflineQueueMaintenanceProvider implements IMaintenanceService {
     throw new Error('Ticket not found in offline storage')
   }
 
-  public async updateTicketStatus(id: string, status: TicketStatus, technicianName?: string): Promise<MaintenanceTicket> {
+  public async updateTicketStatus(id: string, status: TicketStatus, technicianName?: string, extra?: Record<string, any>): Promise<MaintenanceTicket> {
     if (this.isOnline) {
-      return await this.innerProvider.updateTicketStatus(id, status, technicianName)
+      return await this.innerProvider.updateTicketStatus(id, status, technicianName, extra)
     }
 
     const db = await this.getDB()
-    await db.add(STORE_QUEUE, { action: 'STATUS_UPDATE', payload: { id, status } })
+    await db.add(STORE_QUEUE, { action: 'STATUS_UPDATE', payload: { id, status, ...extra } })
     const existing = await db.get(STORE_TICKETS, id)
     if (existing) {
       existing.status = status
+      if (extra?.pendingReason !== undefined) existing.pendingReason = extra.pendingReason
+      if (extra?.pendingAuthority !== undefined) existing.pendingAuthority = extra.pendingAuthority
       existing.updatedAt = new Date().toISOString()
       await db.put(STORE_TICKETS, existing)
     }
@@ -258,7 +260,7 @@ export class OfflineQueueMaintenanceProvider implements IMaintenanceService {
       timestamp: new Date().toISOString()
     })
 
-    return existing || ({ id, status } as any)
+    return existing || ({ id, status, ...extra } as any)
   }
 
   public async addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment> {

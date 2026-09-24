@@ -215,8 +215,8 @@ export class RestFallbackMaintenanceProvider implements IMaintenanceService {
     return (await this.getTicketById(id))!
   }
 
-  public async updateTicketStatus(id: string, status: TicketStatus, technicianName?: string): Promise<MaintenanceTicket> {
-    const body: any = { status }
+  public async updateTicketStatus(id: string, status: TicketStatus, technicianName?: string, extra?: Record<string, any>): Promise<MaintenanceTicket> {
+    const body: any = { status, ...extra }
     if (technicianName) body.assignedTechnicianName = technicianName
 
     try {
@@ -230,7 +230,7 @@ export class RestFallbackMaintenanceProvider implements IMaintenanceService {
         body: JSON.stringify(status)
       }).catch(() => {})
     }
-    return (await this.getTicketById(id)) || ({ id, status, assignedTechnicianName: technicianName } as any)
+    return (await this.getTicketById(id)) || ({ id, status, assignedTechnicianName: technicianName, ...extra } as any)
   }
 
   public async addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment> {

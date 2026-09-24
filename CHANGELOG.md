@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Samsung Andon Industrial Color Coding & 6-Stage Incident Workflow**:
+  - Aligned the incident management lifecycle (`/dashboard/tickets`) across table (`TicketList.vue`), cards (`TicketKanbanBoard.vue`), drawer (`TicketDetailDrawer.vue`), and status workflows with Samsung Smart Factory Andon industrial standards:
+    - **Red (`정지 / Line Stop / Alarm`)**: `Escalated` & critical line-stop alerts (`#DC2626` / `#EF4444`).
+    - **Yellow/Amber (`경고 / Caution / Delay`)**: `Pending` incidents awaiting parts, approval, lab, SAP, or closure (`#F59E0B` / `#D97706`).
+    - **Blue (`진행 / Active / Working`)**: `In_Progress` maintenance operations using Samsung Cobalt Blue (`#1428A0` / `#2563EB`).
+    - **Cyan (`호출 / Call / Incoming`)**: `Open` incidents awaiting triage/dispatch (`#0EA5E9` / `#38BDF8`).
+    - **Green (`정상 / Normal / Clear`)**: `Resolved` incidents with normal equipment clearance (`#10B981` / `#059669`).
+    - **Slate (`종료 / Bypassed / Unresolved`)**: `Unresolved` and closed tickets (`#64748B` / `#475569`).
+  - **Comprehensive Pending Reason & Authority Sub-Type System**:
+    - Replaced rigid column structures with the 6 canonical stages: `Open`, `In Progress`, `Pending`, `Escalated`, `Resolved`, and `Unresolved`.
+    - Added the ability to categorize `Pending` tickets into 6 granular sub-reasons: `Parts (Spare Parts)`, `Approval (Engineering/QA)`, `Lab (Testing/Analysis)`, `SAP/Traceability (ERP/MES)`, `External (OEM/Vendor)`, and `Closure (Higher Authority Sign-off)`.
+    - Added sign-off role selection for Closure authorizations: `Controls Engineer`, `Group Leader`, `Maintenance Manager`, and `Plant Director`.
+    - Implemented live pending sub-type filter ribbons with real-time incident counters in both Kanban columns and Table view.
+    - Updated `TicketDetailDrawer.vue` with interactive 6-stage status selection, sub-reason picker, closure sign-off actions, and backward-compatible mapping for legacy granular statuses.
+    - Enhanced `useMaintenance` and maintenance providers (`HeimdallSignalRMaintenanceProvider`, `RestFallbackMaintenanceProvider`, `OfflineQueueMaintenanceProvider`) to optimistically apply and persist pending reasons and authority roles.
 - **Extended Tag & Stored Value Browser in FMFD OmniSearch**:
   - Integrated an interactive **Browse Tags & Stored Values** tab in `AutoTagSuggestionDropdown.vue` alongside the traditional results autocomplete.
   - Added live category filtering, stored value counts, dedicated stored values grid with live query matching, and one-click insertion of tag pills (`tag:value`) into active search bars.

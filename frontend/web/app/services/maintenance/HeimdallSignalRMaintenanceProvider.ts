@@ -315,8 +315,8 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
     return { id, ...updates } as any
   }
 
-  public async updateTicketStatus(id: string, status: TicketStatus, technicianName?: string): Promise<MaintenanceTicket> {
-    const body: any = { status }
+  public async updateTicketStatus(id: string, status: TicketStatus, technicianName?: string, extra?: Record<string, any>): Promise<MaintenanceTicket> {
+    const body: any = { status, ...extra }
     if (technicianName) body.assignedTechnicianName = technicianName
 
     try {
@@ -339,7 +339,7 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
     })
 
     const updated = await this.getTicketById(id)
-    return updated || ({ id, status, assignedTechnicianName: technicianName } as any)
+    return updated || ({ id, status, assignedTechnicianName: technicianName, ...extra } as any)
   }
 
   public async addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment> {

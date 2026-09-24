@@ -38,7 +38,8 @@ const {
   isLoading,
   pendingOfflineCount,
   fetchTickets,
-  updateStatus
+  updateStatus,
+  updateTicketPending
 } = useMaintenance()
 
 // ── View Modes ─────────────────────────────────────────────────────────────
@@ -168,13 +169,13 @@ const displayedTickets = computed(() => {
   if (activeMetricFilter.value) {
     switch (activeMetricFilter.value) {
       case 'open':
-        list = list.filter(t => t.status === 'Open' || t.status === 'In_Progress' || t.status === 'Pending_Parts')
+        list = list.filter(t => t.status === 'Open' || t.status === 'In_Progress' || t.status === 'Pending' || t.status === 'Pending_Parts')
         break
       case 'critical':
         list = list.filter(t => (t.severity || '').toLowerCase() === 'critical' || (t.severity || '').toLowerCase() === 'high' || (t.title || '').toLowerCase().includes('critical'))
         break
       case 'pending_parts':
-        list = list.filter(t => t.status === 'Pending_Parts')
+        list = list.filter(t => t.status === 'Pending_Parts' || t.status === 'Pending')
         break
       case 'overdue':
         list = list.filter(t => (t as any).isOverdue || (t.tags && t.tags.includes('Overdue')))
@@ -231,6 +232,15 @@ function onQrScanned(code: string) {
 
 function onMoveStatus(ticketId: string, status: TicketStatus) {
   updateStatus(ticketId, status)
+}
+
+function onUpdateTicketPending(payload: {
+  ticketId: string
+  status: TicketStatus
+  pendingReason: string
+  pendingAuthority?: string
+}) {
+  updateTicketPending(payload.ticketId, payload.pendingReason, payload.pendingAuthority)
 }
 </script>
 
@@ -426,6 +436,7 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
         :tickets="displayedTickets"
         @selectTicket="onSelectTicket"
         @moveStatus="onMoveStatus"
+        @updateTicketPending="onUpdateTicketPending"
       />
     </template>
 

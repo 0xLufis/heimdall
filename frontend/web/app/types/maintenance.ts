@@ -1,6 +1,7 @@
 export type TicketStatus =
   | 'Open'
   | 'In_Progress'
+  | 'Pending'
   | 'Pending_Parts'
   | 'Escalated'
   | 'Escalated_External'
@@ -168,6 +169,8 @@ export interface MaintenanceTicket {
   telemetrySnapshot?: TelemetrySnapshot
   aokSignOff?: AokSignOff
   externalEscalationTarget?: string
+  pendingReason?: string
+  pendingAuthority?: string
   closeReason?: string
   durationMinutes?: number
   reportedByUserId?: string
@@ -266,7 +269,7 @@ export interface IMaintenanceService {
   getTicketById(id: string): Promise<MaintenanceTicket | null>
   createTicket(ticket: CreateTicketInput): Promise<MaintenanceTicket>
   updateTicket(id: string, updates: Partial<MaintenanceTicket>): Promise<MaintenanceTicket>
-  updateTicketStatus(id: string, status: TicketStatus, technicianName?: string): Promise<MaintenanceTicket>
+  updateTicketStatus(id: string, status: TicketStatus, technicianName?: string, extra?: Record<string, any>): Promise<MaintenanceTicket>
   addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment>
   uploadAttachment?(ticketId: string, file: File): Promise<TicketAttachment>
   getMetrics(): Promise<TicketMetrics>

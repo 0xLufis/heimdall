@@ -11,6 +11,12 @@ import {
   AlertCircle,
   Play,
   Package,
+  FileCheck,
+  FlaskConical,
+  Database,
+  Globe,
+  Lock,
+  Layers,
   Archive,
   ArrowRightLeft,
   Tag,
@@ -28,6 +34,18 @@ import MachineSearchCombobox from '~/components/tickets/MachineSearchCombobox.vu
 import ImageAttachmentUploader from '~/components/tickets/ImageAttachmentUploader.vue'
 import { authClient } from '~/utils/auth-client'
 import type { MaintenanceTicket, TicketAttachment, TicketStatus } from '~/types/maintenance'
+import {
+  ANDON_STYLES,
+  getAndonColorForStatus,
+  getAndonPriorityStyle,
+  getCanonicalColumn,
+  getTicketPendingReason,
+  PENDING_REASONS,
+  CLOSURE_AUTHORITIES,
+  type AndonColorType,
+  type PendingReason,
+  type ClosureAuthorityRole
+} from '~/utils/andonColors'
 
 // ─── Props / Emits ───────────────────────────────────────────────────────────
 
@@ -54,22 +72,31 @@ const isSubmittingComment = ref(false)
 const localTicket = ref<MaintenanceTicket | null>(null)
 const isEditingEquipment = ref(false)
 
-const STATUSES: { value: TicketStatus; label: string; color: string }[] = [
-  { value: 'Open',               label: 'Open',               color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30' },
-  { value: 'In_Progress',        label: 'In Progress',        color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/30' },
-  { value: 'Pending_Parts',      label: 'Pending Parts',      color: 'bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-500/30' },
-  { value: 'Escalated',          label: 'Escalated',          color: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30' },
-  { value: 'Escalated_External', label: 'Escalated External', color: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30' },
-  { value: 'Closure_Pending',    label: 'Closure Pending',    color: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30' },
-  { value: 'Resolved',           label: 'Resolved',           color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' },
-  { value: 'Closed_Unresolved',  label: 'Closed Unresolved',  color: 'bg-muted text-muted-foreground border-border' },
+const STATUSES: { value: TicketStatus; label: string; color: string; dotClass: string }[] = [
+  { value: 'Open',              label: 'Open',        color: 'bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border-cyan-500/30',     dotClass: 'bg-cyan-400' },
+  { value: 'In_Progress',       label: 'In Progress', color: 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/30',     dotClass: 'bg-blue-600' },
+  { value: 'Pending',           label: 'Pending',     color: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30', dotClass: 'bg-amber-500' },
+  { value: 'Escalated',         label: 'Escalated',   color: 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-500/30',     dotClass: 'bg-rose-500 animate-pulse' },
+  { value: 'Resolved',          label: 'Resolved',    color: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30', dotClass: 'bg-emerald-500' },
+  { value: 'Closed_Unresolved', label: 'Unresolved',  color: 'bg-muted text-muted-foreground border-border',                           dotClass: 'bg-slate-400' },
 ]
 
 const EXTERNAL_TARGETS = ['SAP Engineers', 'IT Department', 'Production Operations', 'OEM Vendor'] as const
 
 const selectedStatus = ref<TicketStatus>('Open')
 const selectedExternalTarget = ref<string>('')
+const selectedPendingReason = ref<PendingReason>('Parts')
+const selectedPendingAuthority = ref<ClosureAuthorityRole>('Group_Leader')
 const isChangingStatus = ref(false)
+
+const pendingIconMap: Record<string, any> = {
+  Package,
+  FileCheck,
+  FlaskConical,
+  Database,
+  Globe,
+  Lock
+}
 
 // Tags
 const newTagInput = ref('')
@@ -94,8 +121,10 @@ watch(() => props.ticket, (newVal) => {
   localTicket.value = newVal ? JSON.parse(JSON.stringify(newVal)) : null
   isEditingEquipment.value = false
   if (newVal) {
-    selectedStatus.value = newVal.status as TicketStatus
+    selectedStatus.value = (getCanonicalColumn(newVal.status) as TicketStatus) || (newVal.status as TicketStatus)
     selectedExternalTarget.value = newVal.externalEscalationTarget || ''
+    selectedPendingReason.value = getTicketPendingReason(newVal)
+    selectedPendingAuthority.value = (newVal.pendingAuthority as ClosureAuthorityRole) || 'Group_Leader'
   }
   ticketAttachmentsDraft.value = []
   commentAttachments.value = []
@@ -123,11 +152,30 @@ const oooWarning = computed(() => {
 })
 
 /** Closure pending = needs AOK banner */
-const showAokBanner = computed(() => selectedStatus.value === 'Closure_Pending')
+const showAokBanner = computed(() => {
+  return selectedStatus.value === 'Closure_Pending' || (getCanonicalColumn(selectedStatus.value) === 'Pending' && selectedPendingReason.value === 'Closure')
+})
+
+const isStatusOrPendingChanged = computed(() => {
+  if (!localTicket.value) return false
+  if (selectedStatus.value !== localTicket.value.status) return true
+  if (getCanonicalColumn(selectedStatus.value) === 'Pending') {
+    if (selectedPendingReason.value !== getTicketPendingReason(localTicket.value)) return true
+    if (selectedPendingReason.value === 'Closure' && selectedPendingAuthority.value !== localTicket.value.pendingAuthority) return true
+  }
+  return false
+})
 
 const statusBadgeColor = computed(() => {
-  const s = STATUSES.find(s => s.value === (localTicket.value?.status ?? 'Open'))
-  return s?.color ?? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/30'
+  const status = localTicket.value?.status ?? 'Open'
+  const andon = getAndonColorForStatus(status)
+  return ANDON_STYLES[andon].badgeClass
+})
+
+const pendingReasonConfig = computed(() => {
+  if (!localTicket.value) return PENDING_REASONS[0]
+  const reason = getTicketPendingReason(localTicket.value)
+  return PENDING_REASONS.find(r => r.id === reason) || PENDING_REASONS[0]
 })
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -171,7 +219,7 @@ async function applyStatusChange() {
   if (!localTicket.value) return
   const oldStatus = localTicket.value.status
   const newStatus = selectedStatus.value
-  if (oldStatus === newStatus) return
+  if (!isStatusOrPendingChanged.value) return
 
   isChangingStatus.value = true
   try {
@@ -181,7 +229,15 @@ async function applyStatusChange() {
     if (newStatus === 'In_Progress' && (!localTicket.value.assignedTechnicianName || localTicket.value.assignedTechnicianName === 'Unassigned')) {
       payload.assignedTechnicianName = techName
     }
-    if (newStatus === 'Escalated_External') {
+    if (getCanonicalColumn(newStatus) === 'Pending') {
+      payload.pendingReason = selectedPendingReason.value
+      if (selectedPendingReason.value === 'Closure') {
+        payload.pendingAuthority = selectedPendingAuthority.value
+      } else {
+        payload.pendingAuthority = null
+      }
+    }
+    if (newStatus === 'Escalated_External' || (newStatus === 'Escalated' && selectedExternalTarget.value)) {
       payload.externalEscalationTarget = selectedExternalTarget.value || 'SAP Engineers'
     }
 
@@ -194,19 +250,21 @@ async function applyStatusChange() {
       localTicket.value = res.ticket
       emit('updated', res.ticket)
 
-      // Post a state-transition comment
-      await $fetch(`/api/tickets/${localTicket.value.id}/comments`, {
-        method: 'POST',
-        body: {
-          authorName: techName,
-          content: '',
-          transition: {
-            fromStatus: oldStatus,
-            toStatus: newStatus,
-            actor: techName
+      // Post a state-transition comment if status changed
+      if (oldStatus !== newStatus) {
+        await $fetch(`/api/tickets/${localTicket.value.id}/comments`, {
+          method: 'POST',
+          body: {
+            authorName: techName,
+            content: '',
+            transition: {
+              fromStatus: oldStatus,
+              toStatus: newStatus,
+              actor: techName
+            }
           }
-        }
-      })
+        })
+      }
       // Refresh ticket to pick up new comment
       const fresh = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`)
       if (fresh?.ticket) {
@@ -389,69 +447,152 @@ function handleClose() {
 
         <!-- ── Status & Priority Banner ─────────────────────────────── -->
         <div class="p-4 bg-muted/30 rounded-2xl border border-border space-y-3">
-          <div class="flex items-center justify-between">
-            <Badge
-              variant="outline"
-              :class="['text-xs font-black uppercase tracking-widest px-3 py-1 border', statusBadgeColor]"
-            >
-              {{ localTicket.status.replace(/_/g, ' ') }}
-            </Badge>
-            <Badge variant="outline" class="text-xs font-black uppercase tracking-widest px-3 py-1 bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30">
-              Priority: {{ localTicket.priority }}
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <Badge
+                variant="outline"
+                :class="['text-xs font-black uppercase tracking-widest px-3 py-1 border flex items-center gap-1.5', statusBadgeColor]"
+              >
+                <span class="size-2 rounded-full" :class="ANDON_STYLES[getAndonColorForStatus(localTicket.status)].dotClass" />
+                <span>{{ getCanonicalColumn(localTicket.status).replace(/_/g, ' ') }}</span>
+              </Badge>
+              <!-- Pending sub-type badge if Pending -->
+              <Badge
+                v-if="getCanonicalColumn(localTicket.status) === 'Pending'"
+                variant="outline"
+                class="text-xs font-semibold px-2 py-0.5 bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 flex items-center gap-1"
+              >
+                <component :is="pendingIconMap[pendingReasonConfig.iconName]" class="size-3" />
+                <span>{{ getTicketPendingReason(localTicket) }}</span>
+                <span v-if="localTicket.pendingAuthority" class="text-[10px] opacity-80">
+                  • {{ localTicket.pendingAuthority.replace(/_/g, ' ') }}
+                </span>
+              </Badge>
+            </div>
+            <Badge variant="outline" :class="getAndonPriorityStyle(localTicket.priority).badgeClass" class="text-xs font-black uppercase tracking-widest px-3 py-1 flex items-center gap-1.5">
+              <span class="size-1.5 rounded-full" :class="getAndonPriorityStyle(localTicket.priority).dotClass" />
+              <span>Priority: {{ getAndonPriorityStyle(localTicket.priority).label }}</span>
             </Badge>
           </div>
 
           <!-- Status Selector -->
-          <div class="pt-2 border-t border-border space-y-2">
-            <p class="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Change Status</p>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div class="pt-2 border-t border-border space-y-3">
+            <div class="flex items-center justify-between">
+              <p class="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Stage (Samsung Andon 6-Stage)</p>
+              <span class="text-[10px] font-mono text-muted-foreground">{{ ANDON_STYLES[getAndonColorForStatus(selectedStatus)].koreanLabel }}</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
               <button
                 v-for="s in STATUSES"
                 :key="s.value"
                 type="button"
                 @click="selectedStatus = s.value"
                 :class="[
-                  'px-2 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wide text-center transition-all',
-                  selectedStatus === s.value ? ['ring-2 ring-indigo-500 scale-105', s.color] : ['opacity-60 hover:opacity-90', s.color]
+                  'px-2.5 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide text-left transition-all flex items-center gap-2',
+                  selectedStatus === s.value ? ['ring-2 ring-primary scale-[1.02] shadow-sm', s.color] : ['opacity-60 hover:opacity-90', s.color]
                 ]"
               >
-                {{ s.label }}
+                <span class="size-2 rounded-full shrink-0" :class="s.dotClass" />
+                <span class="truncate">{{ s.label }}</span>
               </button>
             </div>
 
-            <!-- External Target if Escalated_External -->
-            <div v-if="selectedStatus === 'Escalated_External'" class="flex items-center gap-2">
-              <ExternalLink class="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <!-- Interactive Pending Reason & Authority Selector (When Pending is selected) -->
+            <div v-if="getCanonicalColumn(selectedStatus) === 'Pending'" class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2.5 animate-in fade-in duration-200">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-black uppercase tracking-widest text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                  <Layers class="size-3 text-amber-600" />
+                  Select Pending Sub-Type:
+                </span>
+                <span class="text-[10px] text-amber-700 dark:text-amber-400 font-medium">Samsung Andon Caution</span>
+              </div>
+
+              <!-- 6 Pending Reasons Grid -->
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                <button
+                  v-for="r in PENDING_REASONS"
+                  :key="r.id"
+                  type="button"
+                  @click="selectedPendingReason = r.id"
+                  :class="[
+                    'p-2 rounded-lg border text-left transition-all flex flex-col gap-0.5',
+                    selectedPendingReason === r.id
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-950 dark:text-amber-100 ring-2 ring-amber-500/50 shadow-xs'
+                      : 'bg-background/80 border-border text-foreground hover:bg-muted/80 opacity-80'
+                  ]"
+                >
+                  <div class="flex items-center gap-1.5 font-bold text-xs">
+                    <component :is="pendingIconMap[r.iconName]" class="size-3.5 text-amber-600 shrink-0" />
+                    <span>{{ r.shortLabel }}</span>
+                  </div>
+                  <p class="text-[10px] text-muted-foreground line-clamp-1 leading-tight">
+                    {{ r.description }}
+                  </p>
+                </button>
+              </div>
+
+              <!-- Closure Authority Selector if reason is Closure -->
+              <div v-if="selectedPendingReason === 'Closure'" class="p-2.5 bg-background/80 border border-purple-500/30 rounded-lg space-y-1.5 animate-in fade-in duration-200">
+                <div class="flex items-center gap-1 text-[11px] font-bold text-purple-800 dark:text-purple-300">
+                  <Lock class="size-3 text-purple-600" />
+                  <span>Required Sign-off Authority:</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                  <button
+                    v-for="auth in CLOSURE_AUTHORITIES"
+                    :key="auth.id"
+                    type="button"
+                    @click="selectedPendingAuthority = auth.id"
+                    :class="[
+                      'px-2 py-1 rounded-md text-[11px] font-medium border text-center transition-all',
+                      selectedPendingAuthority === auth.id
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                        : 'bg-muted/60 border-border text-muted-foreground hover:text-foreground'
+                    ]"
+                  >
+                    {{ auth.label }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- External Target if Escalated -->
+            <div v-if="selectedStatus === 'Escalated'" class="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-1.5 animate-in fade-in duration-200">
+              <div class="flex items-center gap-1.5 text-xs text-rose-700 dark:text-rose-300 font-bold">
+                <ExternalLink class="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>External Escalation Target (Optional):</span>
+              </div>
               <select
                 v-model="selectedExternalTarget"
-                class="flex-1 bg-background border border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-rose-400"
+                class="w-full bg-background border border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-rose-400"
               >
+                <option value="">Internal Escalation (No external dispatch)</option>
                 <option v-for="t in EXTERNAL_TARGETS" :key="t" :value="t">{{ t }}</option>
               </select>
             </div>
 
-            <!-- AOK Banner if Closure_Pending -->
+            <!-- AOK Banner if Closure_Pending or Pending Closure -->
             <div v-if="showAokBanner" class="flex items-center justify-between gap-3 p-3 rounded-xl border border-purple-500/30 bg-purple-500/10">
               <div class="flex items-center gap-2 text-purple-700 dark:text-purple-300 text-xs">
                 <ShieldAlert class="h-4 w-4 shrink-0" />
-                <span class="font-bold">⚠️ Needs Outside AOK Sign-off</span>
+                <span class="font-bold">⚠️ Higher Authority Closure Verification</span>
               </div>
               <Button
                 size="sm"
                 @click="grantAokAndResolve"
                 class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider h-7 shrink-0"
               >
-                Grant AOK &amp; Resolve
+                Sign Off &amp; Resolve
               </Button>
             </div>
 
             <Button
-              v-if="selectedStatus !== localTicket.status"
+              v-if="isStatusOrPendingChanged"
               @click="applyStatusChange"
               :disabled="isChangingStatus"
-              class="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase tracking-wider h-8"
+              class="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase tracking-wider h-8 shadow-sm"
             >
-              <span v-if="!isChangingStatus">Apply Status Change</span>
+              <span v-if="!isChangingStatus">Apply Status &amp; Sub-Type</span>
               <span v-else>Updating…</span>
             </Button>
           </div>
@@ -471,15 +612,15 @@ function handleClose() {
             <Button
               v-if="localTicket.status === 'In_Progress'"
               size="sm"
-              @click="updateStatus('Pending_Parts')"
+              @click="updateStatus('Pending')"
               class="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8"
             >
               <Package class="h-3.5 w-3.5 mr-1" />
-              Pending Parts
+              Pending
             </Button>
 
             <Button
-              v-if="localTicket.status === 'In_Progress' || localTicket.status === 'Pending_Parts'"
+              v-if="localTicket.status === 'In_Progress' || getCanonicalColumn(localTicket.status) === 'Pending'"
               size="sm"
               @click="updateStatus('Resolved')"
               class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8"
