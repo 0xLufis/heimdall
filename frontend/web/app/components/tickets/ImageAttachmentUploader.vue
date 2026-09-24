@@ -222,9 +222,17 @@ const thumbnailCount = computed(() => props.modelValue.length)
 
     <!-- Lightbox Dialog -->
     <Dialog v-model:open="lightboxOpen">
-      <DialogContent class="max-w-4xl bg-card border-border p-2">
-        <DialogHeader class="px-4 pt-4">
+      <DialogContent :show-close="false" class="max-w-4xl bg-card border-border p-2">
+        <DialogHeader class="px-4 pt-4 flex flex-row items-center justify-between">
           <DialogTitle class="text-sm font-mono text-foreground truncate">{{ lightboxName }}</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer shrink-0"
+            @click="lightboxOpen = false"
+          >
+            <X class="w-4 h-4" />
+          </Button>
         </DialogHeader>
         <div class="flex items-center justify-center p-4 max-h-[80vh] overflow-auto">
           <img

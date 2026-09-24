@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Modal 'X' Close Button Overlays & Duplicate Close Icons**:
-  - Eliminated awkward and duplicate 'X' button overlays across all dialog and sheet components (`GlobalOmniSearchModal`, `PreferredTechniciansModal`, `RemoteQuickViewModal`, `StationComponentTreeModal`, `AssetTabbedEditor`, `ClientDetailsModal`, `MapPinningDialog`, `ControllerCommandModal`, `MachineQrModal`, `organizations.vue`, `CommandDialog.vue`).
+  - Eliminated awkward and duplicate 'X' button overlays across all dialog and sheet components (`GlobalOmniSearchModal`, `PreferredTechniciansModal`, `RemoteQuickViewModal`, `StationComponentTreeModal`, `StationDetailModal`, `MachineGroupManagerModal`, `AssetTabbedEditor`, `ClientDetailsModal`, `MapPinningDialog`, `ControllerCommandModal`, `MachineQrModal`, `organizations.vue`, `CommandDialog.vue`, `TicketResolvedLog.vue`, `TicketDetailDrawer.vue`, `ImageAttachmentUploader.vue`, and telemetry `stream.vue`).
+  - Added default right clearance padding (`pr-8 sm:pr-8` / `pr-10`) to `DialogHeader.vue` and `SheetHeader.vue` so that long title and description texts never visually collide with or run under the top-right close button.
   - Aligned custom header actions cleanly alongside dedicated close buttons and removed overlaps with helper hints like "Press ESC to exit".
 - **CTRL + K Hotkey Flickering, Rapid Keydown & Spamming**:
   - Refactored `useGlobalSearchModal.ts` with a dedicated `triggerSearch()` method and a `300ms` state change debounce timeout.

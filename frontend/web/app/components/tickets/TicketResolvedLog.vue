@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import {
   ArrowUpDown, ChevronUp, ChevronDown, CheckCircle2, XCircle,
-  Clock, User, Tag, ZoomIn, ArrowRight, Activity, Database, Image
+  Clock, User, Tag, ZoomIn, ArrowRight, Activity, Database, Image, X
 } from 'lucide-vue-next'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -297,6 +297,7 @@ function sortIcon(key: SortKey) {
     <Dialog v-model:open="drawerOpen">
       <DialogContent
         v-if="selectedTicket"
+        :show-close="false"
         class="max-w-3xl bg-card border-border text-foreground max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader class="border-b border-border pb-4">
@@ -318,6 +319,14 @@ function sortIcon(key: SortKey) {
                 {{ selectedTicket.description }}
               </p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0 rounded-lg cursor-pointer"
+              @click="drawerOpen = false"
+            >
+              <X class="w-4 h-4" />
+            </Button>
           </div>
           <!-- Meta row -->
           <div class="flex flex-wrap gap-4 mt-3 text-[10px] text-muted-foreground">
@@ -506,9 +515,17 @@ function sortIcon(key: SortKey) {
 
     <!-- Lightbox -->
     <Dialog v-model:open="lightboxOpen">
-      <DialogContent class="max-w-4xl bg-card border-border p-2">
-        <DialogHeader class="px-4 pt-4">
+      <DialogContent :show-close="false" class="max-w-4xl bg-card border-border p-2">
+        <DialogHeader class="px-4 pt-4 flex flex-row items-center justify-between">
           <DialogTitle class="text-sm font-mono text-foreground truncate">{{ lightboxName }}</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer shrink-0"
+            @click="lightboxOpen = false"
+          >
+            <X class="w-4 h-4" />
+          </Button>
         </DialogHeader>
         <div class="flex items-center justify-center p-4 max-h-[80vh] overflow-auto">
           <img :src="lightboxSrc" :alt="lightboxName" class="max-w-full max-h-full object-contain rounded-xl" />

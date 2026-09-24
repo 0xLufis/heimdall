@@ -17,7 +17,7 @@ const emit = defineEmits<{
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent v-if="station" class="max-w-3xl bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl shadow-xl">
+    <DialogContent v-if="station" :show-close="false" class="max-w-3xl bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl shadow-xl">
       <DialogHeader class="bg-muted/40 p-6 sm:p-8 border-b border-border">
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-4">
@@ -34,6 +34,14 @@ const emit = defineEmits<{
               </DialogDescription>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+            @click="emit('update:open', false)"
+          >
+            <X class="w-4 h-4" />
+          </Button>
         </div>
       </DialogHeader>
 

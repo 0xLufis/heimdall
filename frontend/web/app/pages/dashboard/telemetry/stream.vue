@@ -660,7 +660,7 @@ onUnmounted(() => {
 
     <!-- Diagnostic Snapshot Payload Dialog -->
     <Dialog v-if="enableDebugFeatures" :open="isPayloadModalOpen" @update:open="isPayloadModalOpen = $event">
-      <DialogContent class="max-w-2xl bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl shadow-2xl">
+      <DialogContent :show-close="false" class="max-w-2xl bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl shadow-2xl">
         <DialogHeader class="p-5 border-b border-border bg-muted/30 flex flex-row items-center justify-between">
           <div class="flex items-center gap-2.5">
             <FileText class="size-5 text-indigo-600 dark:text-indigo-400" />
@@ -671,15 +671,25 @@ onUnmounted(() => {
               </DialogDescription>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            class="border-border bg-card text-foreground hover:bg-muted h-8 text-xs"
-            @click="downloadSnapshot(latestSnapshot)"
-          >
-            <Download class="size-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
-            Download
-          </Button>
+          <div class="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              class="border-border bg-card text-foreground hover:bg-muted h-8 text-xs cursor-pointer"
+              @click="downloadSnapshot(latestSnapshot)"
+            >
+              <Download class="size-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
+              Download
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+              @click="isPayloadModalOpen = false"
+            >
+              <X class="size-4" />
+            </Button>
+          </div>
         </DialogHeader>
         <div class="p-5 max-h-[500px] overflow-y-auto">
           <pre class="text-xs font-mono bg-background p-4 rounded-xl border border-border text-foreground overflow-x-auto whitespace-pre-wrap">{{ latestSnapshot?.snapshotPayloadJson || JSON.stringify(latestSnapshot, null, 2) }}</pre>
@@ -689,8 +699,8 @@ onUnmounted(() => {
 
     <!-- Diagnostic Snapshot History Dialog -->
     <Dialog v-if="enableDebugFeatures" :open="isHistoryModalOpen" @update:open="isHistoryModalOpen = $event">
-      <DialogContent class="max-w-3xl bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl shadow-2xl">
-        <DialogHeader class="p-5 border-b border-border bg-muted/30">
+      <DialogContent :show-close="false" class="max-w-3xl bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl shadow-2xl">
+        <DialogHeader class="p-5 border-b border-border bg-muted/30 flex flex-row items-center justify-between">
           <div class="flex items-center gap-2.5">
             <History class="size-5 text-indigo-600 dark:text-indigo-400" />
             <div>
@@ -700,6 +710,14 @@ onUnmounted(() => {
               </DialogDescription>
             </div>
           </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+            @click="isHistoryModalOpen = false"
+          >
+            <X class="size-4" />
+          </Button>
         </DialogHeader>
         <div class="p-5 max-h-[480px] overflow-y-auto space-y-2">
           <div v-if="isLoadingHistory" class="p-8 text-center text-muted-foreground text-xs flex items-center justify-center gap-2">
