@@ -30,6 +30,68 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 
 ---
 
+## Screenshots & Demo Gallery
+
+> Screenshots captured from a live development instance running against the canonical 100-machine enterprise plant dataset, 60 synthetic users, and 8 automated production lines.
+
+<table>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/01_sign_in.png"><img src="docs/media/01_sign_in.png" alt="Sign-In Screen" width="100%"/></a>
+<br/><sub><b>🔐 Sign-In — Entra ID SSO, GitHub & Google OAuth, Credential</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/02_dashboard.png"><img src="docs/media/02_dashboard.png" alt="Main Dashboard" width="100%"/></a>
+<br/><sub><b>📊 Main Dashboard — KPI Overview, Edge Controllers, Audit Feed</b></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/03_machines_list.png"><img src="docs/media/03_machines_list.png" alt="Machine Registry" width="100%"/></a>
+<br/><sub><b>🏭 Production Machinery — 100 Stations, 8 Automated Lines, Live Topology</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/04_tickets_kanban.png"><img src="docs/media/04_tickets_kanban.png" alt="Maintenance Kanban" width="100%"/></a>
+<br/><sub><b>🔧 Maintenance & Incident Management — Kanban, SLA, Technician Delegation</b></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/05_security_groups.png"><img src="docs/media/05_security_groups.png" alt="Security Groups" width="100%"/></a>
+<br/><sub><b>🛡️ Security Groups — AD/Entra ID Group → RBAC Role → Org Mapping</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/06_organizations.png"><img src="docs/media/06_organizations.png" alt="Organizations" width="100%"/></a>
+<br/><sub><b>🏢 Tenant Organizations — 16 Multi-tenant Floors & Engineering Guilds</b></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/07_clients.png"><img src="docs/media/07_clients.png" alt="Edge IPC Client Registry" width="100%"/></a>
+<br/><sub><b>🖥️ Edge IPC Client Registry — 56 Controllers, TwinCAT, MES, mTLS</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/08_inventory.png"><img src="docs/media/08_inventory.png" alt="Spare Parts Inventory" width="100%"/></a>
+<br/><sub><b>📦 Spare Parts Inventory — 550 Serialized Parts, Bulk Consumables</b></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/09_settings.png"><img src="docs/media/09_settings.png" alt="Settings & MFA" width="100%"/></a>
+<br/><sub><b>⚙️ Account Settings — MFA Policy, PKI, Role-Based Access Thresholds</b></sub>
+</td>
+<td align="center" width="50%">
+<!-- Placeholder for future video demo -->
+<br/><br/>
+<b>🎬 Video Walkthrough</b><br/>
+<sub>Coming soon — full platform walkthrough including live telemetry ingestion, CAD floor plan navigation, QR action scanning, and real-time Kanban SignalR updates.</sub>
+<br/><br/>
+</td>
+</tr>
+</table>
+
+---
+
 ## Repository Structure
 
 ```
