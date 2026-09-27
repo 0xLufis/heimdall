@@ -1,5 +1,6 @@
 using App.Backend.Api.Hubs;
 using App.Backend.Api.Services;
+using App.Contracts.Security;
 using App.Infrastructure.Repositories;
 using App.Shared.Data;
 using App.Shared.Entities;
@@ -60,6 +61,41 @@ public class MaintenanceTicketController : ControllerBase
     [Authorize(Policy = "MaintenanceOperations")]
     public async Task<ActionResult<MaintenanceTicket>> CreateTicket(MaintenanceTicket ticket)
     {
+        if (_dbContextFactory != null)
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            if (!string.IsNullOrWhiteSpace(ticket.CreatedBy))
+            {
+                var userExists = await db.AuthUsers.AnyAsync(u => u.Id == ticket.CreatedBy || u.Name == ticket.CreatedBy || u.Email == ticket.CreatedBy);
+                if (!userExists)
+                {
+                    db.AuthUsers.Add(new AuthUser
+                    {
+                        Id = ticket.CreatedBy.StartsWith("usr-") ? ticket.CreatedBy : $"usr-{Guid.NewGuid():N}"[..12],
+                        Name = ticket.CreatedBy,
+                        Email = ticket.CreatedBy.Contains('@') ? ticket.CreatedBy : $"{ticket.CreatedBy.ToLowerInvariant().Replace(" ", ".")}@factory.corp",
+                        Role = HeimdallRoles.Operator
+                    });
+                    await db.SaveChangesAsync();
+                }
+            }
+            if (!string.IsNullOrWhiteSpace(ticket.AssignedTo))
+            {
+                var techExists = await db.AuthUsers.AnyAsync(u => u.Id == ticket.AssignedTo || u.Name == ticket.AssignedTo || u.Email == ticket.AssignedTo);
+                if (!techExists)
+                {
+                    db.AuthUsers.Add(new AuthUser
+                    {
+                        Id = ticket.AssignedTo.StartsWith("usr-") ? ticket.AssignedTo : $"usr-{Guid.NewGuid():N}"[..12],
+                        Name = ticket.AssignedTo,
+                        Email = ticket.AssignedTo.Contains('@') ? ticket.AssignedTo : $"{ticket.AssignedTo.ToLowerInvariant().Replace(" ", ".")}@factory.corp",
+                        Role = HeimdallRoles.Technician
+                    });
+                    await db.SaveChangesAsync();
+                }
+            }
+        }
+
         var created = await _repository.CreateAsync(ticket);
         await _cache.RemoveAsync("tickets:all:all");
         await _cache.RemoveAsync("dashboard:metrics");

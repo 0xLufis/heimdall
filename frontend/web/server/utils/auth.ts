@@ -2,9 +2,34 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, username, organization, multiSession } from "better-auth/plugins";
 import { adminAc, userAc } from "better-auth/plugins/admin/access";
+import { eq } from "drizzle-orm";
 import { useDb } from "./db"; // your drizzle instance
 import * as hbSchema from "../database/drizzle/schema";
 import { createDrizzleEventsProvider } from "./studioEventsProvider";
+import { getPlantUsers } from "./datasetLoader";
+import { syncUserSecurityGroupsToOrganizations } from "./securityGroupOrgSync";
+
+export function getAzureSsoConfig() {
+   const clientId = process.env.AZURE_AD_CLIENT_ID 
+      || process.env.MICROSOFT_ENTRA_ID_CLIENT_ID 
+      || process.env.AZURE_CLIENT_ID;
+   const clientSecret = process.env.AZURE_AD_CLIENT_SECRET 
+      || process.env.MICROSOFT_ENTRA_ID_CLIENT_SECRET 
+      || process.env.AZURE_CLIENT_SECRET;
+   const tenantId = process.env.AZURE_AD_TENANT_ID 
+      || process.env.MICROSOFT_ENTRA_ID_TENANT_ID 
+      || process.env.AZURE_TENANT_ID 
+      || "72f988bf-86f1-41af-91ab-2d7cd011db47"; // canonical enterprise plant tenant
+
+   const isConfigured = !!(clientId && clientSecret);
+
+   return {
+      clientId,
+      clientSecret,
+      tenantId,
+      isConfigured
+   };
+}
 
 const socialProvidersConfig: Record<string, any> = {};
 
@@ -20,12 +45,14 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET
    };
 }
-if (process.env.MICROSOFT_ENTRA_ID_CLIENT_ID && process.env.MICROSOFT_ENTRA_ID_CLIENT_SECRET) {
+
+const azureConfig = getAzureSsoConfig();
+if (azureConfig.isConfigured) {
    socialProvidersConfig.microsoft = {
-      clientId: process.env.MICROSOFT_ENTRA_ID_CLIENT_ID,
-      clientSecret: process.env.MICROSOFT_ENTRA_ID_CLIENT_SECRET,
-      tenantId: process.env.MICROSOFT_ENTRA_ID_TENANT_ID,
-      scope: ["openid", "profile", "email", "User.Read", "Directory.Read.All"]
+      clientId: azureConfig.clientId!,
+      clientSecret: azureConfig.clientSecret!,
+      tenantId: azureConfig.tenantId,
+      scope: ["openid", "profile", "email", "User.Read", "offline_access"]
    };
 }
 
@@ -84,6 +111,22 @@ export const auth = betterAuth({
          create: {
             after: async (user) => {
                try {
+                  const db = useDb();
+                  const plantUsers = getPlantUsers();
+                  const matchedDirUser = plantUsers.find(u => u.email.toLowerCase() === (user.email || '').toLowerCase());
+                  const assignedRole = (user as any).role || matchedDirUser?.primaryRole || 'engineer';
+
+                  if (!(user as any).role) {
+                     await db.update(hbSchema.user)
+                        .set({ role: assignedRole })
+                        .where(eq(hbSchema.user.id, user.id))
+                        .catch(() => {});
+                  }
+
+                  if (matchedDirUser?.securityGroupIds?.length) {
+                     await syncUserSecurityGroupsToOrganizations(user.id, matchedDirUser.securityGroupIds).catch(() => {});
+                  }
+
                   const provider = createDrizzleEventsProvider();
                   await provider.ingest({
                      id: crypto.randomUUID(),
@@ -91,10 +134,10 @@ export const auth = betterAuth({
                      timestamp: new Date(),
                      status: "success",
                      userId: user.id,
-                     metadata: { email: user.email, name: user.name },
+                     metadata: { email: user.email, name: user.name, role: assignedRole, ssoProvider: "microsoft-entra-id" },
                      source: "app",
                      display: {
-                        message: `Identity enrolled: ${user.email}`,
+                        message: `Identity enrolled: ${user.email} (${assignedRole})`,
                         severity: "success"
                      }
                   });

@@ -60,6 +60,38 @@ public class TechnicianController : ControllerBase
     [Authorize(Policy = "MaintenanceOperations")]
     public async Task<ActionResult<TechnicianRule>> CreateRule([FromBody] TechnicianRule rule, CancellationToken cancellationToken)
     {
+        await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(rule.TechnicianId))
+        {
+            var userExists = await db.AuthUsers.AnyAsync(u => u.Id == rule.TechnicianId, cancellationToken);
+            if (!userExists)
+            {
+                db.AuthUsers.Add(new AuthUser
+                {
+                    Id = rule.TechnicianId,
+                    Name = !string.IsNullOrWhiteSpace(rule.TechnicianName) ? rule.TechnicianName : rule.TechnicianId,
+                    Email = !string.IsNullOrWhiteSpace(rule.TechnicianEmail) ? rule.TechnicianEmail : $"{rule.TechnicianId.ToLowerInvariant()}@factory.corp",
+                    Role = rule.AssignedByRole ?? HeimdallRoles.Technician
+                });
+                await db.SaveChangesAsync(cancellationToken);
+            }
+        }
+        if (!string.IsNullOrWhiteSpace(rule.BackupTechnicianId))
+        {
+            var backupExists = await db.AuthUsers.AnyAsync(u => u.Id == rule.BackupTechnicianId, cancellationToken);
+            if (!backupExists)
+            {
+                db.AuthUsers.Add(new AuthUser
+                {
+                    Id = rule.BackupTechnicianId,
+                    Name = !string.IsNullOrWhiteSpace(rule.BackupTechnicianName) ? rule.BackupTechnicianName : rule.BackupTechnicianId,
+                    Email = $"{rule.BackupTechnicianId.ToLowerInvariant()}@factory.corp",
+                    Role = HeimdallRoles.Technician
+                });
+                await db.SaveChangesAsync(cancellationToken);
+            }
+        }
+
         var created = await _repository.CreateRuleAsync(rule, cancellationToken);
         return CreatedAtAction(nameof(GetRuleById), new { id = created.Id }, created);
     }
@@ -161,17 +193,31 @@ public class TechnicianController : ControllerBase
             };
         }).ToList();
 
-        // If no users in DB (e.g. fresh environment), provide default candidate fleet
+        // If no users in DB (e.g. fresh environment), provision default candidate fleet as Better-Auth users
         if (candidates.Count == 0)
         {
-            candidates = new List<TechnicianCandidateDto>
+            var defaultTechs = new List<AuthUser>
             {
-                new() { Id = "tech-01", Name = "Kovács István", Email = "i.kovacs@heimdall.local", Role = HeimdallRoles.Technician, Department = "Mechanical Maintenance", Specialization = "Hydraulics & Pneumatics", IsOutOfOffice = false },
-                new() { Id = "tech-02", Name = "Nagy Péter", Email = "p.nagy@heimdall.local", Role = HeimdallRoles.Technician, Department = "Electrical Engineering", Specialization = "High Voltage & Drives", IsOutOfOffice = false },
-                new() { Id = "tech-03", Name = "Szabó Tamás", Email = "t.szabo@heimdall.local", Role = HeimdallRoles.ControlsEngineer, Department = "Controls Engineering", Specialization = "Beckhoff TwinCAT & PLC", IsOutOfOffice = false },
-                new() { Id = "tech-04", Name = "Varga Zoltán", Email = "z.varga@heimdall.local", Role = HeimdallRoles.Engineer, Department = "Robotics Automation", Specialization = "KUKA & Fanuc Kinematics", IsOutOfOffice = false },
-                new() { Id = "tech-05", Name = "Tóth Bence", Email = "b.toth@heimdall.local", Role = HeimdallRoles.LeadEngineer, Department = "Plant Maintenance", Specialization = "Asset Integrity", IsOutOfOffice = false }
+                new() { Id = "tech-01", Name = "Kovács István", Email = "i.kovacs@heimdall.local", Role = HeimdallRoles.Technician },
+                new() { Id = "tech-02", Name = "Nagy Péter", Email = "p.nagy@heimdall.local", Role = HeimdallRoles.Technician },
+                new() { Id = "tech-03", Name = "Szabó Tamás", Email = "t.szabo@heimdall.local", Role = HeimdallRoles.ControlsEngineer },
+                new() { Id = "tech-04", Name = "Varga Zoltán", Email = "z.varga@heimdall.local", Role = HeimdallRoles.Engineer },
+                new() { Id = "tech-05", Name = "Tóth Bence", Email = "b.toth@heimdall.local", Role = HeimdallRoles.LeadEngineer }
             };
+            db.AuthUsers.AddRange(defaultTechs);
+            await db.SaveChangesAsync(cancellationToken);
+
+            candidates = defaultTechs.Select(u => new TechnicianCandidateDto
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Email = u.Email,
+                Role = u.Role ?? HeimdallRoles.Technician,
+                Department = "Plant Maintenance",
+                Specialization = "Robotics & Controls",
+                IsOutOfOffice = false,
+                AssignedRulesCount = 0
+            }).ToList();
         }
 
         if (!string.IsNullOrWhiteSpace(role))

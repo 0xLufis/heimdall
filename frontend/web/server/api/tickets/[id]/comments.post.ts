@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { addCommentToTicket, findTicketById } from '../../../utils/ticketsStore'
 import { featureFlags } from '../../../utils/featureFlags'
+import { ensureBetterAuthProfile } from '../../../utils/authProfiles'
 
 export default defineEventHandler(async (event) => {
   const id = event.context.params?.id
@@ -20,8 +21,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const sessionUser = (event.context as any)?.auth?.user
-  const authorUserId = body.authorUserId || sessionUser?.id || (featureFlags.enableDevFeatures ? 'usr-tech-01' : 'anonymous')
-  const authorName = body.authorName || sessionUser?.name || (featureFlags.enableDevFeatures ? 'Technician User' : 'Anonymous User')
+  const authorUserId = body.authorUserId || sessionUser?.id || (featureFlags.enableDevFeatures ? 'usr-tech-01' : 'usr-admin-primary')
+  const authorName = body.authorName || sessionUser?.name || (featureFlags.enableDevFeatures ? 'Technician User' : 'System Administrator')
+
+  // Guarantee comment author has a Better-Auth user profile
+  await ensureBetterAuthProfile(authorUserId, { name: authorName, role: 'technician' })
 
   const newComment = {
     id: `c-${Date.now()}`,

@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { user, account } from '../database/drizzle/schema'
 import { auth } from '../utils/auth'
 import { featureFlags } from '../utils/featureFlags'
+import { ensureAllBetterAuthProfiles } from '../utils/authProfiles'
 
 export default defineNitroPlugin(async () => {
   if (!featureFlags.enableDevFeatures) {
@@ -54,6 +55,10 @@ export default defineNitroPlugin(async () => {
           .where(eq(user.id, adminId))
       }
     }
+
+    // Guarantee no user can exist without a Better-Auth user profile
+    const count = await ensureAllBetterAuthProfiles()
+    console.log(`[ensureBetterAuthProfiles] Verified and synchronized ${count} Better-Auth user profiles.`)
   } catch (err: any) {
     const msg = err?.message || String(err)
     console.warn(`[ensureAdminUser] Database offline at boot (${msg}). Admin auto-verification deferred.`)

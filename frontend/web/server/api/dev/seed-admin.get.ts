@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm"
 import { user, organization, member, account } from "../../database/drizzle/schema"
 import { auth } from "../../utils/auth"
 import { assertDevFeaturesEnabled } from "../../utils/featureFlags"
+import { ensureAllBetterAuthProfiles } from "../../utils/authProfiles"
 
 export default defineEventHandler(async (event) => {
    assertDevFeaturesEnabled();
@@ -130,6 +131,8 @@ export default defineEventHandler(async (event) => {
             }
          }
       }
+
+      await ensureAllBetterAuthProfiles();
 
       return {
          message: "Enterprise Seed complete.",

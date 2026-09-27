@@ -160,7 +160,7 @@ class MockAdHttpHandler(BaseHTTPRequestHandler):
         qs = parse_qs(parsed.query)
 
         if parsed.path.endswith("/v1.0/me/memberOf"):
-            user_id = qs.get("userId", ["usr-sally-01"])[0]
+            user_id = qs.get("userId", ["usr-synth-01"])[0]
             groups = self.service.get_user_groups(user_id)
             self._send_json(200, {
                 "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",

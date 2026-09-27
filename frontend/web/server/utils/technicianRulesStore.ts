@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { getPlantTechnicianRules } from './datasetLoader'
 import { featureFlags } from './featureFlags'
+import { ensureBetterAuthProfile } from './authProfiles'
 
 export type ScopeType = 'technology' | 'group' | 'machine'
 export type UserRoleType = 'technician' | 'engineer' | 'shift_leader' | 'group_leader' | 'manager' | 'admin'
@@ -465,6 +466,22 @@ export function createRule(data: {
   }
 
   rules.push(newRule)
+
+  // Guarantee technician and backup have Better-Auth profiles
+  if (newRule.technicianId) {
+    ensureBetterAuthProfile(newRule.technicianId, {
+      name: newRule.technicianName,
+      email: newRule.technicianEmail,
+      role: 'technician'
+    }).catch(() => {})
+  }
+  if (newRule.backupTechnicianId) {
+    ensureBetterAuthProfile(newRule.backupTechnicianId, {
+      name: newRule.backupTechnicianName,
+      role: 'technician'
+    }).catch(() => {})
+  }
+
   return newRule
 }
 
@@ -489,6 +506,21 @@ export function createAbsence(data: Omit<ShiftAbsenceEntry, 'id' | 'active'>): S
     ...data,
     active: true
   }
+
+  // Guarantee technician and backup have Better-Auth profiles
+  if (newAbsence.technicianId) {
+    ensureBetterAuthProfile(newAbsence.technicianId, {
+      name: newAbsence.technicianName,
+      role: 'technician'
+    }).catch(() => {})
+  }
+  if (newAbsence.backupTechnicianId) {
+    ensureBetterAuthProfile(newAbsence.backupTechnicianId, {
+      name: newAbsence.backupTechnicianName,
+      role: 'technician'
+    }).catch(() => {})
+  }
+
   absences.unshift(newAbsence)
   return newAbsence
 }

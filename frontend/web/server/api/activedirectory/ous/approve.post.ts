@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
 
   const allowedAccessLevels = ['read_only', 'read_write', 'admin'] as const
   const accessLevel = allowedAccessLevels.includes(body.accessLevel) ? body.accessLevel : 'read_write'
-  const approvedBy = (event.context as any)?.auth?.user?.name || (event.context as any)?.auth?.user?.email || body.approvedBy || 'it_admin'
+  const approvedBy = (event.context as any)?.auth?.user?.id || (event.context as any)?.auth?.user?.name || (event.context as any)?.auth?.user?.email || body.approvedBy || 'usr-itsiteadmin-1'
   const notes = body.notes
 
   const record = setOuGovernance(body.ouPath, accessLevel, approvedBy, notes)

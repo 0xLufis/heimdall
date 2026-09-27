@@ -1,5 +1,6 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { addTicketToStore, MaintenanceTicket } from '../../utils/ticketsStore'
+import { ensureBetterAuthProfile } from '../../utils/authProfiles'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -31,8 +32,19 @@ export default defineEventHandler(async (event) => {
   const ticketNumber = body.ticketNumber || `TKT-${dateStr}-${randomSuffix}`
 
   const sessionUser = (event.context as any)?.auth?.user
-  const reportedByUserId = body.reportedByUserId || sessionUser?.id || 'usr-current'
-  const reportedByUserName = body.reportedByUserName || sessionUser?.name || 'Operator User'
+  const reportedByUserId = body.reportedByUserId || sessionUser?.id || 'usr-admin-primary'
+  const reportedByUserName = body.reportedByUserName || sessionUser?.name || 'System Administrator'
+
+  // Guarantee that ticket reporter has a Better-Auth user profile
+  await ensureBetterAuthProfile(reportedByUserId, { name: reportedByUserName, role: 'operator' })
+
+  // Guarantee assigned technician has a Better-Auth user profile if assigned
+  if (body.assignedTechnicianId) {
+    await ensureBetterAuthProfile(body.assignedTechnicianId, {
+      name: body.assignedTechnicianName,
+      role: 'technician'
+    })
+  }
 
   const newTicket: MaintenanceTicket = {
     id: `tkt-${Date.now()}-${randomSuffix}`,

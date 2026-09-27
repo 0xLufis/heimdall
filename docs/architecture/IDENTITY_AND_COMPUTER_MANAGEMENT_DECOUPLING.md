@@ -100,3 +100,4 @@ When client PCs are not joined to an Active Directory domain (e.g. Windows 10 Io
 1. **Active Directory Degraded Mode**: When AD LDAP search fails, the UI surfaces a non-blocking warning badge while falling back to cached local users and registered edge hosts.
 2. **Directory Provider Selection**: Configure identity provider in `appsettings.json` via `Identity:Provider` (`"Database"`, `"ActiveDirectory"`, `"OpenLDAP"`, `"EntraID"`).
 3. **Host Onboarding Without AD**: Allow operators to register client PCs directly via the Web UI (`/dashboard/clients` -> "Register Manual IPC") or via mobile camera QR scanning on machine tags.
+4. **Universal Better-Auth Profile Enforcement**: For comprehensive architectural specifications on how every user identity across legacy OU mappings, ticketing, and automation is guaranteed to have a valid Better-Auth user profile without AD dependency, see [Better-Auth Profile Unification](BETTER_AUTH_PROFILE_UNIFICATION.md).

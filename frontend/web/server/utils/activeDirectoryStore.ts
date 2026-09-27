@@ -68,6 +68,7 @@ export interface AdHostImportRequest {
 }
 
 import { getPlantActiveDirectoryOUs, getPlantClientPcs } from './datasetLoader'
+import { ensureBetterAuthProfile } from './authProfiles'
 
 function buildActiveDirectoryOus(): AdOrganizationalUnit[] {
   try {
@@ -112,7 +113,7 @@ export function getOuGovernances(): AdOuGovernance[] {
 export function setOuGovernance(
   ouPath: string,
   accessLevel: 'read_write' | 'read_only' | 'unapproved',
-  approvedBy: string = 'it_admin',
+  approvedBy: string = 'usr-itsiteadmin-1',
   notes?: string
 ): AdOuGovernance {
   const isApproved = accessLevel !== 'unapproved'
@@ -125,6 +126,8 @@ export function setOuGovernance(
     notes
   }
   ouGovernanceMap.set(ouPath.toLowerCase(), record)
+  // Guarantee approver has a registered Better-Auth user profile
+  ensureBetterAuthProfile(approvedBy, { role: 'it_admin' }).catch(() => {})
   return record
 }
 

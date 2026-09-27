@@ -299,6 +299,7 @@ export default defineNitroPlugin(() => {
         telemetrySnapshot: buildTelemetry(template.telemetryKeys),
         reportedByUserId:   'usr-autonomous-agent',
         reportedByUserName: 'Autonomous Fleet Telemetry (Dev)',
+        assignedTechnicianId: assignedTech ? 'usr-tech-01' : undefined,
         assignedTechnicianName: assignedTech,
         createdAt:   now.toISOString(),
         updatedAt:   now.toISOString(),

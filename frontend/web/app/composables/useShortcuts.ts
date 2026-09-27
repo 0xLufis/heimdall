@@ -4,7 +4,7 @@ import { createSharedComposable, useActiveElement } from '@vueuse/core'
 export function _useShortcuts() {
   const macOS = computed(() => Boolean(import.meta.client && typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.match(/Macintosh;/)))
 
-  const metaSymbol = ref(import.meta.client ? (macOS.value ? '⌘' : 'Ctrl') : ' ')
+  const metaSymbol = ref('Ctrl')
 
   const activeElement = useActiveElement()
   const usingInput = computed(() => {

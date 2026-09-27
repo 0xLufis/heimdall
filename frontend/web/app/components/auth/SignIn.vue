@@ -6,7 +6,36 @@ const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const isLoading = ref(false)
+const isSsoLoading = ref(false)
 const error = ref('')
+
+interface SsoStatus {
+  enabled: boolean
+  provider: string
+  providerName: string
+  tenantId: string
+  isConfigured: boolean
+  allowMockSimulation: boolean
+}
+
+const ssoStatus = ref<SsoStatus | null>(null)
+
+onMounted(async () => {
+  try {
+    const res = await $fetch<SsoStatus>('/api/auth/sso/status')
+    ssoStatus.value = res
+  } catch (e) {
+    // Fallback if status endpoint is offline
+    ssoStatus.value = {
+      enabled: true,
+      provider: 'microsoft',
+      providerName: 'Microsoft Entra ID (Azure SSO)',
+      tenantId: '72f988bf-86f1-41af-91ab-2d7cd011db47',
+      isConfigured: false,
+      allowMockSimulation: true
+    }
+  }
+})
 
 async function onSubmit(event: Event) {
   event.preventDefault()
@@ -48,7 +77,48 @@ async function onSubmit(event: Event) {
   }
 }
 
-async function handleSocialSignIn(provider: 'github' | 'google' | 'microsoft') {
+async function handleAzureSso() {
+  isSsoLoading.value = true
+  error.value = ''
+
+  try {
+    if (ssoStatus.value?.isConfigured) {
+      // Live Azure AD credentials configured - trigger Better-Auth OAuth flow
+      await authClient.signIn.social({
+        provider: 'microsoft',
+        callbackURL: '/dashboard'
+      })
+    } else if (ssoStatus.value?.allowMockSimulation) {
+      // Sandbox / dev environment - use simulated Entra ID claims
+      const res = await $fetch<any>('/api/auth/sso/simulate', {
+        method: 'POST',
+        body: {
+          email: email.value.trim() || undefined
+        }
+      })
+
+      if (res?.success) {
+        const authSession = useState<{ authenticated: boolean; user?: any } | null>('auth_user_session', () => null)
+        authSession.value = { authenticated: true, user: res.user }
+        await navigateTo('/dashboard')
+      } else {
+        error.value = 'Microsoft Entra ID authentication failed'
+      }
+    } else {
+      await authClient.signIn.social({
+        provider: 'microsoft',
+        callbackURL: '/dashboard'
+      })
+    }
+  } catch (e: any) {
+    console.error('[SignIn] Microsoft SSO error:', e)
+    error.value = e?.message || 'Failed to authenticate via Microsoft Entra ID'
+  } finally {
+    isSsoLoading.value = false
+  }
+}
+
+async function handleSocialSignIn(provider: 'github' | 'google') {
   try {
     await authClient.signIn.social({
       provider,
@@ -61,20 +131,79 @@ async function handleSocialSignIn(provider: 'github' | 'google' | 'microsoft') {
 </script>
 
 <template>
-  <form class="grid gap-6" @submit.prevent="onSubmit">
-    <div class="grid grid-cols-3 gap-3">
-      <Button @click="handleSocialSignIn('github')" variant="outline" type="button" class="w-full">
-        <Icon name="i-lucide-github" class="size-4" />
-      </Button>
-      <Button @click="handleSocialSignIn('google')" variant="outline" type="button" class="w-full">
-        <Icon name="i-lucide-chrome" class="size-4" />
-      </Button>
-      <Button @click="handleSocialSignIn('microsoft')" variant="outline" type="button" class="w-full">
-        <Icon name="i-lucide-laptop" class="size-4" />
-      </Button>
+  <form class="grid gap-5" @submit.prevent="onSubmit">
+    <!-- Primary Enterprise SSO Option: Microsoft Entra ID -->
+    <div class="space-y-2">
+      <button
+        id="btn-azure-sso"
+        type="button"
+        @click="handleAzureSso"
+        :disabled="isSsoLoading || isLoading"
+        class="w-full relative group flex items-center justify-between px-4 py-3 rounded-xl border border-border/80 bg-background/95 hover:bg-muted/60 hover:border-primary/50 text-foreground transition-all duration-200 shadow-sm disabled:opacity-60 disabled:pointer-events-none cursor-pointer"
+      >
+        <div class="flex items-center gap-3">
+          <!-- Microsoft 4-Color Corporate Logo -->
+          <svg class="size-5 shrink-0" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+            <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+            <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+            <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+          </svg>
+          <div class="text-left">
+            <div class="text-xs font-bold tracking-tight">Sign in with Microsoft Entra ID</div>
+            <div class="text-[10px] text-muted-foreground font-mono">
+              {{ ssoStatus?.isConfigured ? 'Enterprise Azure Cloud SSO' : 'Plant Directory SSO (Sandbox)' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <Loader2 v-if="isSsoLoading" class="size-4 animate-spin text-primary" />
+          <span 
+            v-else 
+            class="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-400"
+          >
+            SSO
+          </span>
+        </div>
+      </button>
+
+      <!-- Secondary Developer & Social Providers -->
+      <div class="grid grid-cols-2 gap-2">
+        <Button 
+          @click="handleSocialSignIn('github')" 
+          variant="outline" 
+          type="button" 
+          size="sm" 
+          class="w-full text-xs font-medium gap-2 h-9"
+        >
+          <Icon name="i-lucide-github" class="size-3.5" />
+          <span>GitHub</span>
+        </Button>
+        <Button 
+          @click="handleSocialSignIn('google')" 
+          variant="outline" 
+          type="button" 
+          size="sm" 
+          class="w-full text-xs font-medium gap-2 h-9"
+        >
+          <Icon name="i-lucide-chrome" class="size-3.5" />
+          <span>Google</span>
+        </Button>
+      </div>
     </div>
     
-    <Separator label="Or continue with" />
+    <!-- Visual Divider -->
+    <div class="relative my-1">
+      <div class="absolute inset-0 flex items-center">
+        <span class="w-full border-t border-border/70" />
+      </div>
+      <div class="relative flex justify-center text-xs uppercase">
+        <span class="bg-card px-2.5 text-muted-foreground font-mono text-[10px] tracking-widest font-semibold">
+          Or with operator token
+        </span>
+      </div>
+    </div>
     
     <div class="grid gap-2">
       <Label for="email" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">

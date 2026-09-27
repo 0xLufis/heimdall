@@ -123,6 +123,66 @@ FAKE_USERS = [
     ("usr-synth-60", "Watchdog Walter", "watchdog.walter.ai@fake-factory.internal", "system_admin", "Master Watchdog & Superuser", "Platform Operations", ["org-platform", "org-audi-proj", "org-controls", "org-maintenance"])
 ]
 
+# Master catalogue of all system, persona, technician candidate, and ticketing users
+# Ensures that NO user can exist without a registered Better-Auth user profile
+ADDITIONAL_SYSTEM_USERS = [
+    # Demo Personas (from useAuthSession.ts)
+    ("usr-sysadmin-1", "Root System Administrator", "sysadmin@heimdall.dev", "system_admin", ["org-platform"]),
+    ("usr-director-1", "Dr. Henrik Weber (Plant Director)", "henrik.weber@factory.corp", "plant_director", ["org-platform", "org-audi-proj"]),
+    ("usr-plant-eng-1", "Gábor Varga (Plant Engineering Manager)", "gabor.varga@factory.corp", "plant_engineering_manager", ["org-platform", "org-controls"]),
+    ("usr-senior-eng-1", "Elena Rostova (Senior Engineering Manager)", "elena.rostova@factory.corp", "senior_engineering_manager", ["org-platform", "org-line-06"]),
+    ("usr-heimdall-admin-1", "Heimdall Administrator", "admin.platform@heimdall.dev", "heimdall_admin", ["org-platform"]),
+    ("usr-itadmin-1", "IT Infrastructure Administrator", "it.admin@heimdall.dev", "it_admin", ["org-platform"]),
+    ("usr-itsiteadmin-1", "Marcus Vance (IT Site Administrator)", "marcus.vance@factory.corp", "it_site_admin", ["org-platform"]),
+    ("usr-engadmin-1", "Engineering Administrator", "eng.admin@heimdall.dev", "engineering_admin", ["org-platform"]),
+    ("usr-manager-andras", "András Molnár (Plant Manager)", "andras.manager@heimdall.dev", "manager", ["org-platform"]),
+    ("usr-op-planner-1", "András Molnár (Operative Planner)", "andras.planner@factory.corp", "operative_planner", ["org-platform"]),
+    ("usr-gl-assy-1", "Sally Vance (Group Leader – Fastening & Assembly)", "sally.vance@factory.corp", "group_leader", ["org-assembly"]),
+    ("usr-ferenc", "Shift Leader Ferenc", "ferenc.leader@heimdall.dev", "shift_leader", ["org-platform"]),
+    ("usr-eng-robotics-1", "Alex Novak (Robotics & SMT Controls Engineer)", "alex.novak@factory.corp", "engineer", ["org-robotics"]),
+    ("usr-tech-welding-1", "István Kovács (Laser Welding & Mechanical Tech)", "istvan.kovacs@factory.corp", "technician", ["org-assembly"]),
+
+    # Candidates & Dedication Users (from technicianRulesStore.ts)
+    ("usr-sally", "Engineer Sally", "sally.milling@heimdall.dev", "engineer", ["org-controls"]),
+    ("usr-orwell", "Engineer Orwell", "orwell.audi@heimdall.dev", "group_leader", ["org-audi-proj"]),
+    ("usr-katalin", "Katalin Nagy", "katalin.aoi@heimdall.dev", "group_leader", ["org-vision"]),
+    ("usr-kovacs", "István Kovács", "istvan.kovacs@heimdall.dev", "technician", ["org-maintenance"]),
+    ("usr-varga", "Gábor Varga", "gabor.varga@heimdall.dev", "technician", ["org-maintenance"]),
+    ("usr-nemeth", "Zoltán Németh", "zoltan.nemeth@heimdall.dev", "technician", ["org-maintenance"]),
+    ("usr-horvath", "Bence Horváth", "bence.horvath@heimdall.dev", "technician", ["org-maintenance"]),
+    ("usr-pap", "Orsolya Pap", "orsolya.pap@heimdall.dev", "engineer", ["org-maintenance"]),
+
+    # Ticketing Users (from initialTickets.ts)
+    ("usr-op-01", "István Kovács (Operator)", "istvan.kovacs.op@factory.corp", "operator", ["org-line-01"]),
+    ("usr-tech-01", "Gábor Varga (Lead Tech)", "gabor.varga.lead@factory.corp", "technician", ["org-maintenance"]),
+    ("usr-op-02", "Zoltán Horváth", "zoltan.horvath.op@factory.corp", "operator", ["org-line-02"]),
+    ("usr-tech-02", "Zoltán Németh", "zoltan.nemeth.tech@factory.corp", "technician", ["org-maintenance"]),
+    ("usr-op-03", "Péter Nagy", "peter.nagy.op@factory.corp", "operator", ["org-line-03"]),
+    ("usr-admin", "System Administrator", "admin@heimdall.local", "system_admin", ["org-platform"]),
+    ("usr-op-04", "Tamás Szabó", "tamas.szabo.op@factory.corp", "operator", ["org-line-04"]),
+    ("usr-tech-03", "Bence Horváth", "bence.horvath.tech@factory.corp", "technician", ["org-maintenance"]),
+    ("usr-tech-04", "Orsolya Pap", "orsolya.pap.tech@factory.corp", "technician", ["org-maintenance"]),
+    ("usr-op-05", "László Kiss", "laszlo.kiss.op@factory.corp", "operator", ["org-line-05"]),
+    ("usr-op-06", "Balázs Farkas", "balazs.farkas.op@factory.corp", "operator", ["org-line-06"]),
+
+    # Legacy Backend Technician Candidates
+    ("tech-01", "Kovács István", "i.kovacs@heimdall.local", "technician", ["org-maintenance"]),
+    ("tech-02", "Nagy Péter", "p.nagy@heimdall.local", "technician", ["org-maintenance"]),
+    ("tech-03", "Szabó Tamás", "t.szabo@heimdall.local", "controls_engineer", ["org-controls"]),
+    ("tech-04", "Varga Zoltán", "z.varga@heimdall.local", "engineer", ["org-robotics"]),
+    ("tech-05", "Tóth Bence", "b.toth@heimdall.local", "lead_engineer", ["org-maintenance"]),
+    ("tech-alice", "Alice Engineer", "alice.engineer@heimdall.local", "technician", ["org-controls"]),
+    ("tech-sally", "Engineer Sally", "sally.tech@heimdall.dev", "engineer", ["org-controls"]),
+    ("tech-orwell", "Engineer Orwell", "orwell.tech@heimdall.dev", "group_leader", ["org-audi-proj"]),
+    ("tech-kovacs", "István Kovács", "kovacs.tech@heimdall.dev", "technician", ["org-maintenance"]),
+
+    # Automation Bots & Dev
+    ("usr-automation-bot", "Outside IT Automation Bot", "it-automation@heimdall.local", "system_admin", ["org-platform"]),
+    ("outside-it-automation-bot", "Outside IT Automation Bot", "it-automation-service@heimdall.local", "system_admin", ["org-platform"]),
+    ("usr-autonomous-agent", "Autonomous Fleet Telemetry (Dev)", "telemetry-agent@heimdall.local", "technician", ["org-platform"]),
+    ("dev-admin-id", "Dev Administrator", "admin-dev@heimdall.local", "system_admin", ["org-platform"]),
+]
+
 # LINE METADATA CONFIGURATION (8 LINES, 100 STATIONS TOTAL)
 LINE_CONFIGS = [
     {
@@ -716,6 +776,18 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE, pc_station_links=None)
         for org_id in uorgs:
             mem_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{uid}:{org_id}"))
             mem_role = "owner" if urole == "plant_director" else "admin" if urole in ("plant_engineering_manager", "lead_engineer", "shift_leader") else "member"
+            sql.append(f"INSERT INTO auth.member (id, organization_id, user_id, role, created_at) VALUES ('{mem_id}', '{org_id}', '{uid}', '{mem_role}', NOW()) ON CONFLICT (id) DO NOTHING;")
+
+    sql.append("\n-- Seed Additional System, Persona, Technician, and Ticketing Users into auth.user and auth.member")
+    for uid, uname, uemail, urole, uorgs in ADDITIONAL_SYSTEM_USERS:
+        u_name_esc = uname.replace("'", "''")
+        u_user_name = uid.lower().replace('-', '_')
+        sql.append(f"INSERT INTO auth.user (id, name, email, email_verified, role, username, created_at, updated_at) "
+                   f"VALUES ('{uid}', '{u_name_esc}', '{uemail}', true, '{urole}', '{u_user_name}', NOW(), NOW()) "
+                   f"ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, role = EXCLUDED.role, username = EXCLUDED.username;")
+        for org_id in uorgs:
+            mem_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{uid}:{org_id}"))
+            mem_role = "owner" if urole in ("system_admin", "heimdall_admin", "plant_director") else "admin" if urole in ("plant_engineering_manager", "senior_engineering_manager", "it_admin", "engineering_admin", "lead_engineer", "shift_leader", "manager") else "member"
             sql.append(f"INSERT INTO auth.member (id, organization_id, user_id, role, created_at) VALUES ('{mem_id}', '{org_id}', '{uid}', '{mem_role}', NOW()) ON CONFLICT (id) DO NOTHING;")
 
     # Seed Manufacturers, Suppliers, Responsible Teams

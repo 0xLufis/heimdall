@@ -4,7 +4,7 @@ import {
   Clock, UserCheck, GitBranch, X, Plus, Trash2, Check,
   ChevronDown, ChevronUp, AlertTriangle, RefreshCw, Shield,
   Users, Edit2, CheckSquare, Square, Lock, Sparkles, User, Layers, Cpu,
-  Search, CheckCircle2, Calendar, PhoneCall, ArrowRight
+  Search, CheckCircle2, Calendar as CalendarIcon, PhoneCall, ArrowRight
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -12,6 +12,9 @@ import { Input } from '~/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '~/components/ui/select'
+import { Calendar as CalendarWidget } from '~/components/ui/calendar'
+import DatePicker from '~/components/base/DatePicker.vue'
+import { today, getLocalTimeZone, type DateValue } from '@internationalized/date'
 import SearchableTargetCombobox, { type TargetItem } from '~/components/common/SearchableTargetCombobox.vue'
 import RbacTooltip from '~/components/common/RbacTooltip.vue'
 import { useAuthSession, DEMO_PERSONAS, type DemoPersona } from '~/composables/useAuthSession'
@@ -223,6 +226,40 @@ const absentCount = computed(() => {
 
 const oooCount = computed(() => {
   return allTechnicians.value.filter(n => technicianStatus(n) === 'Teams OOO').length
+})
+
+function formatDisplayDate(dateStr?: string): string {
+  if (!dateStr) return '—'
+  try {
+    const parts = dateStr.split('-')
+    if (parts.length === 3) {
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+  } catch {}
+  return dateStr
+}
+
+const attendanceViewMode = ref<'table' | 'calendar'>('table')
+const selectedCalendarDate = ref<DateValue>(today(getLocalTimeZone()))
+
+const selectedDateString = computed(() => {
+  return selectedCalendarDate.value ? selectedCalendarDate.value.toString() : ''
+})
+
+const techniciansOnSelectedDate = computed(() => {
+  const dateStr = selectedDateString.value
+  return allTechnicians.value.map(tech => {
+    const abs = absences.value.find(a => a.technicianName === tech)
+    const isAbsent = abs && (!abs.endDate || abs.endDate >= dateStr)
+    const isOoo = !!oooToggles[tech]
+    const status: 'Available' | 'Absent' | 'Teams OOO' = isAbsent ? 'Absent' : (isOoo ? 'Teams OOO' : 'Available')
+    return {
+      name: tech,
+      status,
+      absence: abs
+    }
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -478,8 +515,10 @@ interface MachineGroupItem {
   name: string
   description?: string
   parentGroupId?: string
+  parentId?: string | null
   machineTypes: string[]
   leadEngineer?: string
+  leadEngineerName?: string
 }
 
 const groups = ref<MachineGroupItem[]>([])
@@ -489,21 +528,43 @@ const showCreateGroup = ref(false)
 const groupSubmitting = ref(false)
 const groupError = ref<string | null>(null)
 
-const editForm = reactive<{ machineTypes: string[]; leadEngineer: string }>(
-  { machineTypes: [], leadEngineer: '' }
-)
+const editForm = reactive<{
+  name: string
+  description: string
+  parentGroupId: string
+  machineTypes: string[]
+  leadEngineer: string
+}>({
+  name: '',
+  description: '',
+  parentGroupId: '',
+  machineTypes: [],
+  leadEngineer: ''
+})
 
 const createForm = reactive<{
   name: string; description: string; parentGroupId: string; machineTypes: string[]
 }>({ name: '', description: '', parentGroupId: '', machineTypes: [] })
 
 function openEditGroup(group: MachineGroupItem) {
+  if (editingGroupId.value === group.id) {
+    closeEditGroup()
+    return
+  }
+  showCreateGroup.value = false
   editingGroupId.value = group.id
+  editForm.name = group.name || ''
+  editForm.description = group.description || ''
+  editForm.parentGroupId = group.parentGroupId || group.parentId || ''
   editForm.machineTypes = [...(group.machineTypes ?? [])]
-  editForm.leadEngineer = group.leadEngineer ?? ''
+  editForm.leadEngineer = group.leadEngineer || group.leadEngineerName || ''
   groupError.value = null
 }
-function closeEditGroup() { editingGroupId.value = null }
+
+function closeEditGroup() {
+  editingGroupId.value = null
+  groupError.value = null
+}
 
 function toggleEditMachineType(mt: string) {
   const idx = editForm.machineTypes.indexOf(mt)
@@ -516,22 +577,54 @@ function toggleCreateMachineType(mt: string) {
 }
 
 async function saveGroupCluster(groupId: string) {
+  if (!editForm.name.trim()) {
+    groupError.value = 'Cluster name is required.'
+    return
+  }
   groupSubmitting.value = true
   groupError.value = null
   try {
     await $fetch(`/api/machine-groups/${groupId}`, {
       method: 'PATCH',
-      body: { machineTypes: editForm.machineTypes, leadEngineer: editForm.leadEngineer || undefined },
+      body: {
+        name: editForm.name.trim(),
+        description: editForm.description || undefined,
+        parentId: editForm.parentGroupId || null,
+        parentGroupId: editForm.parentGroupId || undefined,
+        machineTypes: editForm.machineTypes,
+        leadEngineer: editForm.leadEngineer || undefined,
+        leadEngineerName: editForm.leadEngineer || undefined
+      },
     })
     closeEditGroup()
     await loadGroups()
   } catch (err: any) {
     groupError.value = err?.data?.message || 'Failed to save cluster.'
-  } finally { groupSubmitting.value = false }
+  } finally {
+    groupSubmitting.value = false
+  }
+}
+
+async function deleteGroupCluster(groupId: string) {
+  if (!confirm('Are you sure you want to delete this machine group cluster?')) return
+  groupSubmitting.value = true
+  groupError.value = null
+  try {
+    await $fetch(`/api/machine-groups/${groupId}`, {
+      method: 'DELETE',
+    })
+    closeEditGroup()
+    await loadGroups()
+  } catch (err: any) {
+    groupError.value = err?.data?.message || 'Failed to delete cluster.'
+  } finally {
+    groupSubmitting.value = false
+  }
 }
 
 function openCreateGroup() {
   Object.assign(createForm, { name: '', description: '', parentGroupId: '', machineTypes: [] })
+  editingGroupId.value = null
   groupError.value = null
   showCreateGroup.value = true
 }
@@ -739,6 +832,26 @@ const scopeColor: Record<string, string> = {
             </div>
 
             <div class="flex items-center gap-2">
+              <div class="flex items-center p-0.5 bg-muted/60 rounded-xl border border-border">
+                <button
+                  type="button"
+                  @click="attendanceViewMode = 'table'"
+                  class="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                  :class="attendanceViewMode === 'table' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                >
+                  Table
+                </button>
+                <button
+                  type="button"
+                  @click="attendanceViewMode = 'calendar'"
+                  class="px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+                  :class="attendanceViewMode === 'calendar' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                >
+                  <CalendarIcon class="w-3.5 h-3.5" />
+                  Calendar
+                </button>
+              </div>
+
               <Button variant="ghost" size="sm" @click="loadAttendanceData" :disabled="attendanceLoading"
                 class="h-8 text-muted-foreground hover:text-foreground text-xs font-bold rounded-xl border border-border bg-background">
                 <RefreshCw class="h-3.5 w-3.5 mr-1.5" :class="attendanceLoading && 'animate-spin'" />
@@ -747,8 +860,88 @@ const scopeColor: Record<string, string> = {
             </div>
           </div>
 
-          <!-- Technicians Grid / Table -->
-          <div class="rounded-2xl border border-border overflow-hidden bg-card">
+          <!-- Calendar View -->
+          <div v-if="attendanceViewMode === 'calendar'" class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div class="lg:col-span-5 p-4 rounded-2xl bg-card border border-border flex flex-col items-center justify-center">
+              <div class="w-full flex items-center justify-between pb-3 mb-2 border-b border-border">
+                <span class="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-2">
+                  <CalendarIcon class="w-4 h-4 text-violet-500" />
+                  <span>Shift Attendance Calendar</span>
+                </span>
+                <Badge variant="outline" class="text-[9px] font-mono border-violet-500/30 text-violet-600 dark:text-violet-400 bg-violet-500/10">
+                  {{ selectedDateString }}
+                </Badge>
+              </div>
+              <CalendarWidget
+                v-model="selectedCalendarDate"
+                class="rounded-xl border border-border/70 bg-background/50 shadow-xs"
+              />
+            </div>
+
+            <div class="lg:col-span-7 p-5 rounded-2xl bg-card border border-border flex flex-col justify-between space-y-4">
+              <div>
+                <div class="flex items-center justify-between pb-3 border-b border-border">
+                  <div>
+                    <h4 class="text-sm font-bold text-foreground">
+                      Roster for {{ formatDisplayDate(selectedDateString) }}
+                    </h4>
+                    <p class="text-xs text-muted-foreground">Status and coverage on the selected date</p>
+                  </div>
+                  <Badge variant="outline" class="text-[10px] font-bold border-border">
+                    {{ techniciansOnSelectedDate.filter(t => t.status === 'Available').length }} Available
+                  </Badge>
+                </div>
+
+                <div class="divide-y divide-border/60 max-h-[300px] overflow-y-auto mt-2">
+                  <div
+                    v-for="tech in techniciansOnSelectedDate"
+                    :key="tech.name"
+                    class="py-2.5 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div class="flex items-center gap-2">
+                      <div class="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center font-bold text-[9px]">
+                        {{ tech.name.split(' ').map(n => n[0]).join('').slice(0, 2) }}
+                      </div>
+                      <span class="font-bold text-foreground">{{ tech.name }}</span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <Badge variant="outline" class="text-[9px] font-bold" :class="statusColor[tech.status]">
+                        {{ tech.status }}
+                      </Badge>
+
+                      <Button
+                        v-if="tech.status !== 'Absent'"
+                        size="sm"
+                        variant="ghost"
+                        class="h-6 text-[10px] px-2 text-muted-foreground hover:text-foreground"
+                        @click="openAbsenceForm(tech.name)"
+                      >
+                        Mark Absent
+                      </Button>
+                      <Button
+                        v-else-if="tech.absence"
+                        size="sm"
+                        variant="ghost"
+                        class="h-6 text-[10px] px-2 text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-bold"
+                        @click="resolveAbsence(tech.absence)"
+                      >
+                        Return
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 bg-muted/30 rounded-xl border border-border text-[11px] text-muted-foreground flex items-center justify-between">
+                <span>Absences on this date: <strong class="text-rose-600 dark:text-rose-400 font-bold">{{ techniciansOnSelectedDate.filter(t => t.status === 'Absent').length }}</strong></span>
+                <span>Teams OOO: <strong class="text-amber-600 dark:text-amber-400 font-bold">{{ techniciansOnSelectedDate.filter(t => t.status === 'Teams OOO').length }}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Technicians Grid / Table (Table View) -->
+          <div v-if="attendanceViewMode === 'table'" class="rounded-2xl border border-border overflow-hidden bg-card">
             <table class="w-full text-left text-xs">
               <thead class="bg-muted/40 border-b border-border text-muted-foreground uppercase text-[10px] font-black tracking-wider">
                 <tr>
@@ -775,7 +968,7 @@ const scopeColor: Record<string, string> = {
                   </td>
                   <td class="py-3 px-4 text-muted-foreground">
                     <span v-if="absences.find(a => a.technicianName === tech)">
-                      {{ absences.find(a => a.technicianName === tech)?.reason }} (until {{ absences.find(a => a.technicianName === tech)?.endDate }})
+                      {{ absences.find(a => a.technicianName === tech)?.reason }} (until {{ formatDisplayDate(absences.find(a => a.technicianName === tech)?.endDate) }})
                     </span>
                     <span v-else class="text-muted-foreground font-mono text-[11px]">—</span>
                   </td>
@@ -833,6 +1026,11 @@ const scopeColor: Record<string, string> = {
               </Button>
             </div>
 
+            <div v-if="absenceError" class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2">
+              <AlertTriangle class="w-4 h-4 shrink-0" />
+              <span>{{ absenceError }}</span>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Reason</label>
@@ -846,20 +1044,20 @@ const scopeColor: Record<string, string> = {
               </div>
 
               <div>
-                <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">End Date</label>
-                <Input
+                <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Return Date</label>
+                <DatePicker
                   v-model="absenceForm.endDate"
-                  type="date"
-                  class="h-8 bg-background border-border text-foreground text-xs rounded-lg"
+                  placeholder="Select return date"
                 />
               </div>
 
               <div>
                 <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Designated Backup</label>
-                <Input
+                <SearchableTargetCombobox
                   v-model="absenceForm.backupTechnician"
-                  placeholder="e.g. Engineer Orwell"
-                  class="h-8 bg-background border-border text-foreground text-xs rounded-lg"
+                  placeholder="Search backup technician or enter name..."
+                  category-label="Backup Support"
+                  :query-fn="queryBackupTechnicians"
                 />
               </div>
             </div>
@@ -1076,21 +1274,151 @@ const scopeColor: Record<string, string> = {
 
           <!-- Groups Grid -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div v-for="group in groups" :key="group.id" class="p-4 rounded-2xl bg-card border border-border space-y-3">
+            <div
+              v-for="group in groups"
+              :key="group.id"
+              class="p-4 rounded-2xl bg-card border transition-all space-y-3"
+              :class="editingGroupId === group.id ? 'border-cyan-500/60 ring-1 ring-cyan-500/30 shadow-md' : 'border-border'"
+            >
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
-                  <GitBranch class="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                  <span class="font-bold text-sm text-foreground">{{ group.name }}</span>
+                  <GitBranch class="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                  <div>
+                    <span class="font-bold text-sm text-foreground">{{ group.name }}</span>
+                    <span v-if="group.parentGroupId || group.parentId" class="block text-[10px] text-muted-foreground">
+                      Parent: {{ groups.find(g => g.id === (group.parentGroupId || group.parentId))?.name || (group.parentGroupId || group.parentId) }}
+                    </span>
+                  </div>
                 </div>
-                <Button size="sm" variant="outline" class="h-7 text-xs border-border text-foreground hover:bg-muted" @click="openEditGroup(group)">
-                  Edit
+                <Button
+                  size="sm"
+                  variant="outline"
+                  class="h-7 text-xs border-border text-foreground hover:bg-muted"
+                  :class="editingGroupId === group.id ? 'bg-muted border-cyan-500/40 text-cyan-700 dark:text-cyan-300 font-bold' : ''"
+                  @click="openEditGroup(group)"
+                >
+                  <Edit2 v-if="editingGroupId !== group.id" class="w-3 h-3 mr-1" />
+                  {{ editingGroupId === group.id ? 'Cancel' : 'Edit' }}
                 </Button>
               </div>
 
-              <div class="flex flex-wrap gap-1.5">
-                <span v-for="mt in group.machineTypes" :key="mt" class="text-[9px] font-mono px-2 py-0.5 rounded bg-muted border border-border text-muted-foreground">
-                  {{ mt }}
-                </span>
+              <!-- View mode details -->
+              <template v-if="editingGroupId !== group.id">
+                <p v-if="group.description" class="text-xs text-muted-foreground">
+                  {{ group.description }}
+                </p>
+
+                <div v-if="group.leadEngineer || group.leadEngineerName" class="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <User class="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                  <span>Lead: <span class="font-bold text-foreground">{{ group.leadEngineer || group.leadEngineerName }}</span></span>
+                </div>
+
+                <div class="flex flex-wrap gap-1.5 pt-1">
+                  <span
+                    v-for="mt in group.machineTypes"
+                    :key="mt"
+                    class="text-[9px] font-mono px-2 py-0.5 rounded bg-muted border border-border text-muted-foreground"
+                  >
+                    {{ mt }}
+                  </span>
+                  <span v-if="!group.machineTypes?.length" class="text-[10px] text-muted-foreground italic">
+                    No machine types assigned
+                  </span>
+                </div>
+              </template>
+
+              <!-- Edit mode inline form -->
+              <div v-else class="border-t border-border/80 pt-3 space-y-3">
+                <div v-if="groupError" class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2">
+                  <AlertTriangle class="w-4 h-4 shrink-0" />
+                  <span>{{ groupError }}</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Cluster Name</label>
+                    <Input
+                      v-model="editForm.name"
+                      placeholder="e.g. SMT Line 01"
+                      class="h-8 bg-background border-border text-foreground text-xs rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Parent Cluster</label>
+                    <select
+                      v-model="editForm.parentGroupId"
+                      class="w-full h-8 rounded-xl bg-background border border-border text-foreground text-xs px-2.5"
+                    >
+                      <option value="">None (Top-Level Plant)</option>
+                      <option
+                        v-for="g in groups.filter(item => item.id !== group.id)"
+                        :key="g.id"
+                        :value="g.id"
+                      >
+                        {{ g.name }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Lead Engineer</label>
+                  <SearchableTargetCombobox
+                    v-model="editForm.leadEngineer"
+                    placeholder="Search candidate engineer or enter name..."
+                    category-label="Lead Engineers"
+                    :query-fn="queryBackupTechnicians"
+                  />
+                </div>
+
+                <div>
+                  <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1.5">Machine Types</label>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    <button
+                      v-for="mt in MACHINE_TYPES"
+                      :key="mt"
+                      type="button"
+                      @click="toggleEditMachineType(mt)"
+                      class="p-1.5 rounded-lg text-left text-xs border transition-colors flex items-center gap-1.5"
+                      :class="editForm.machineTypes.includes(mt) ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/40 font-bold' : 'bg-background text-muted-foreground border-border hover:text-foreground'"
+                    >
+                      <Check v-if="editForm.machineTypes.includes(mt)" class="w-3.5 h-3.5 shrink-0" />
+                      <span class="truncate">{{ mt }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    class="h-7 text-xs text-rose-600 hover:text-rose-500 hover:bg-rose-500/10 px-2"
+                    :disabled="groupSubmitting"
+                    @click="deleteGroupCluster(group.id)"
+                  >
+                    <Trash2 class="w-3.5 h-3.5 mr-1" />
+                    Delete
+                  </Button>
+                  <div class="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      class="h-7 text-xs text-muted-foreground hover:text-foreground"
+                      @click="closeEditGroup"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      class="h-7 text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold"
+                      :disabled="groupSubmitting"
+                      @click="saveGroupCluster(group.id)"
+                    >
+                      <span v-if="groupSubmitting">Saving...</span>
+                      <span v-else>Save Changes</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

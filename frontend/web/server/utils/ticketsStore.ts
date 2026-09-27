@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { initialTickets } from './initialTickets'
 import { featureFlags } from './featureFlags'
+import { ensureBetterAuthProfile } from './authProfiles'
 
 export interface StateTransitionMeta {
   fromStatus: string
@@ -124,6 +125,19 @@ export function getTicketsStore(): MaintenanceTicket[] {
 export const getTickets = getTicketsStore
 
 export function addTicketToStore(ticket: MaintenanceTicket): MaintenanceTicket {
+  // Guarantee reporter and assigned technician have Better-Auth user profiles
+  if (ticket.reportedByUserId) {
+    ensureBetterAuthProfile(ticket.reportedByUserId, {
+      name: ticket.reportedByUserName,
+      role: 'operator'
+    }).catch(() => {})
+  }
+  if (ticket.assignedTechnicianId) {
+    ensureBetterAuthProfile(ticket.assignedTechnicianId, {
+      name: ticket.assignedTechnicianName,
+      role: 'technician'
+    }).catch(() => {})
+  }
   ticketsStore.unshift(ticket)
   return ticket
 }
@@ -206,6 +220,12 @@ export function addCommentToTicket(
 ): TicketComment | undefined {
   const ticket = findTicketById(ticketId)
   if (!ticket) return undefined
+  if (comment.authorUserId) {
+    ensureBetterAuthProfile(comment.authorUserId, {
+      name: comment.authorName,
+      role: 'technician'
+    }).catch(() => {})
+  }
   ticket.comments.push(comment)
   ticket.updatedAt = new Date().toISOString()
   return comment

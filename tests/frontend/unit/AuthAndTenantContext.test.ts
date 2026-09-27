@@ -37,4 +37,23 @@ describe('Auth & Multi-Tenant Context Tests', () => {
     expect(headers.Authorization).toBe('Bearer better-auth-session-xyz')
     expect(headers['X-Organization-Id']).toBe('org-vw-assembly-line-1')
   })
+
+  it('guarantees SSR hydration consistency for keyboard shortcut symbols', async () => {
+    const { useShortcuts } = await import('~/composables/useShortcuts')
+    const { metaSymbol } = useShortcuts()
+    // Must be 'Ctrl' initially on both server and client to avoid hydration mismatch
+    expect(metaSymbol.value).toBe('Ctrl')
+  })
+
+  it('synchronizes simulated persona through universal cookie for SSR hydration match', async () => {
+    const { useAuthSession, DEMO_PERSONAS } = await import('~/composables/useAuthSession')
+    const { setSimulatedPersona, simulatedPersona, clearSimulatedPersona } = useAuthSession()
+
+    setSimulatedPersona(DEMO_PERSONAS[0])
+    expect(simulatedPersona.value?.role).toBe('system_admin')
+    expect(simulatedPersona.value?.name).toBe('Root System Administrator')
+
+    clearSimulatedPersona()
+    expect(simulatedPersona.value).toBeNull()
+  })
 })

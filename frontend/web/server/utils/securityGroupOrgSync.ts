@@ -3,6 +3,7 @@ import { eq, inArray } from 'drizzle-orm'
 import { useDb } from './db'
 import * as hbSchema from '../database/drizzle/schema'
 import { getPlantSecurityGroups, getPlantOrganizations } from './datasetLoader'
+import { ensureBetterAuthProfile } from './authProfiles'
 
 export interface OrgSyncResult {
   userId: string
@@ -133,7 +134,10 @@ export async function syncUserSecurityGroupsToOrganizations(
         isNew = true
       }
 
-      // 2. Ensure user membership exists with correct role
+      // 2. Ensure user has a valid Better-Auth user profile in auth.user
+      await ensureBetterAuthProfile(userId, { role: targetOrg.role })
+
+      // 3. Ensure user membership exists with correct role
       const existingMembers = await db
         .select()
         .from(hbSchema.member)

@@ -115,4 +115,82 @@ describe('Frontend Reorganization: Delegations and Machine Groups', () => {
     expect(wrapper.text()).toContain('Group Structure Hierarchy')
     expect(wrapper.text()).toContain('Add Root Group')
   })
+
+  it('allows editing a machine group cluster in DelegationsManager clusters tab', async () => {
+    const patchMock = vi.fn(() => Promise.resolve({ id: 'grp-1', name: 'Battery Plant 01 Updated' }))
+    vi.stubGlobal('$fetch', vi.fn((url: string, opts?: any) => {
+      if (url === '/api/machine-groups' && (!opts || opts.method === 'GET')) return Promise.resolve(mockGroups)
+      if (url.startsWith('/api/machine-groups/') && opts?.method === 'PATCH') return patchMock()
+      if (url === '/api/technicians/rules') return Promise.resolve(mockRules)
+      if (url === '/api/technicians/absences') return Promise.resolve([])
+      if (url === '/api/integrations/teams/ooo') return Promise.resolve([])
+      if (url === '/api/technicians/candidates') return Promise.resolve([])
+      return Promise.resolve([])
+    }))
+
+    const wrapper = mount(DelegationsManager, {
+      props: { isModal: false },
+      global: {
+        stubs: {
+          NuxtLink: { template: '<a><slot /></a>' },
+          SearchableTargetCombobox: { template: '<div></div>' }
+        }
+      }
+    })
+
+    await new Promise(r => setTimeout(r, 20))
+
+    // Switch to clusters tab
+    const clusterTabBtn = wrapper.findAll('button').find(b => b.text().includes('Machine Group Clusters'))
+    expect(clusterTabBtn).toBeDefined()
+    await clusterTabBtn!.trigger('click')
+
+    // Expect groups to be rendered
+    expect(wrapper.text()).toContain('Battery Plant 01')
+
+    // Find the Edit button for the first group
+    const editBtn = wrapper.findAll('button').find(b => b.text().trim() === 'Edit')
+    expect(editBtn).toBeDefined()
+
+    // Click Edit
+    await editBtn!.trigger('click')
+
+    // The edit form should now be visible
+    expect(wrapper.text()).toContain('Cluster Name')
+    expect(wrapper.text()).toContain('Save Changes')
+    expect(wrapper.text()).toContain('Parent Cluster')
+
+    // Cancel editing
+    const cancelBtn = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')
+    expect(cancelBtn).toBeDefined()
+    await cancelBtn!.trigger('click')
+
+    // Edit form should be closed
+    expect(wrapper.text()).not.toContain('Save Changes')
+  })
+
+  it('supports calendar view in Shift Attendance tab', async () => {
+    const wrapper = mount(DelegationsManager, {
+      props: { isModal: false },
+      global: {
+        stubs: {
+          NuxtLink: { template: '<a><slot /></a>' },
+          SearchableTargetCombobox: { template: '<div></div>' },
+          CalendarWidget: { template: '<div data-testid="calendar-widget">Calendar Widget Mock</div>' }
+        }
+      }
+    })
+
+    await new Promise(r => setTimeout(r, 20))
+
+    // Switch to Calendar view
+    const calendarToggleBtn = wrapper.findAll('button').find(b => b.text().includes('Calendar'))
+    expect(calendarToggleBtn).toBeDefined()
+    await calendarToggleBtn!.trigger('click')
+
+    // Calendar view is rendered
+    expect(wrapper.text()).toContain('Shift Attendance Calendar')
+    expect(wrapper.text()).toContain('Roster for')
+  })
 })
+

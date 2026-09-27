@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, getCurrentInstance } from 'vue'
 import { authClient } from '~/utils/auth-client'
 import { useFeatureFlags } from '~/composables/useFeatureFlags'
 
@@ -158,17 +158,23 @@ export const useAuthSession = () => {
   const testCookie = typeof useCookie !== 'undefined'
     ? useCookie('heimdall_test_session')
     : ref<string | null>(null)
+
+  const personaCookie = typeof useCookie !== 'undefined'
+    ? useCookie<DemoPersona | null>('heimdall_simulated_persona', {
+        default: () => null,
+        sameSite: 'lax',
+        path: '/'
+      })
+    : ref<DemoPersona | null>(null)
+
   const defaultTestUser = DEMO_PERSONAS[0]
 
   const getStoredPersona = (): DemoPersona | null => {
     if (!enableDevFeatures.value && !enableDebugFeatures.value) {
       return null
     }
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        const raw = localStorage.getItem('heimdall_simulated_persona')
-        if (raw) return JSON.parse(raw)
-      } catch {}
+    if (personaCookie.value) {
+      return personaCookie.value
     }
     return null
   }
@@ -178,23 +184,41 @@ export const useAuthSession = () => {
     ? useState<DemoPersona | null>('auth_simulated_persona', () => getStoredPersona())
     : fallbackSimulatedPersona
 
-  // Re-hydrate on client mount if needed
-  if (typeof window !== 'undefined') {
-    const stored = getStoredPersona()
-    if (stored && !simulatedPersona.value) {
-      simulatedPersona.value = stored
-    }
+  // Re-hydrate from legacy localStorage only in onMounted (after hydration completes)
+  // so that we NEVER cause SSR hydration mismatches
+  if (typeof window !== 'undefined' && getCurrentInstance()) {
+    onMounted(() => {
+      if (!simulatedPersona.value && isPersonaSimulationAllowed.value && window.localStorage) {
+        try {
+          const raw = localStorage.getItem('heimdall_simulated_persona')
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (parsed) {
+              setSimulatedPersona(parsed)
+            }
+          }
+        } catch {}
+      }
+    })
   }
+
+  const authUserState = typeof useState !== 'undefined'
+    ? useState<{ authenticated: boolean; user?: any } | null>('auth_user_session', () => null)
+    : ref(null)
 
   const session = computed(() => {
     if (simulatedPersona.value) {
       return { user: simulatedPersona.value }
+    }
+    if (authUserState.value?.user) {
+      return { user: authUserState.value.user }
     }
     return sessionQuery.data?.value || (testCookie.value === 'true' ? { user: defaultTestUser } : null)
   })
 
   const user = computed(() => {
     if (simulatedPersona.value) return simulatedPersona.value
+    if (authUserState.value?.user) return authUserState.value.user
     return session.value?.user || (testCookie.value === 'true' ? defaultTestUser : null)
   })
 
@@ -267,6 +291,9 @@ export const useAuthSession = () => {
       return
     }
     simulatedPersona.value = persona
+    if (personaCookie) {
+      personaCookie.value = persona
+    }
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         if (persona) {
@@ -297,6 +324,9 @@ export const useAuthSession = () => {
 
   const signOut = async () => {
     testCookie.value = null
+    if (personaCookie) {
+      personaCookie.value = null
+    }
     setSimulatedPersona(null)
     if (typeof window !== 'undefined' && window.localStorage) {
       try {

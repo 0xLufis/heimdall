@@ -54,7 +54,12 @@ defineShortcuts({
         <kbd
           class="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-border/80 bg-background/80 px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-xs"
         >
-          <span>{{ metaSymbol }}</span>K
+          <ClientOnly>
+            <span>{{ metaSymbol }}</span>
+            <template #fallback>
+              <span>Ctrl</span>
+            </template>
+          </ClientOnly>K
         </kbd>
       </div>
     </button>
