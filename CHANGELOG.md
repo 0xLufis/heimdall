@@ -8,6 +8,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Unified Command Runner (`justfile`)**:
+  - Implemented root `justfile` replacing shell script sprawl with clean, declarative `just` recipes:
+    - Development lifecycle: `just dev`, `just tui`, `just status`, `just watch`, `just logs [service]`, `just clean`.
+    - Granular service control: `just start-service <target>`, `just stop-service <target>`, `just restart-service <target>`.
+    - Windows 10 LTSC Edge Agent container management: `just windows-*` (`start`, `stop`, `restart`, `status`, `logs`, `build`, `test`).
+    - Database lifecycle & seeding: `just db-up`, `just db-down`, `just db-seed`, `just db-staging-seed`.
+    - Staging stack management: `just staging-up`, `just staging-down`, `just staging-restart`, `just staging-status`, `just test-staging`.
+    - Production stack management: `just prod-up`, `just prod-down`, `just prod-build`, `just prod-restart`, `just prod-status`, `just prod-logs`.
+    - Automated test runner: `just test [subsystem]` (`backend`, `frontend`, `windows`, `seed`, `smoke`, `staging`, `all`).
+- **Staging Environment (Isolated Database, Identical Seed Data, No Dev Features, Only Debug)**:
+  - Configured staging mode with strict security guards:
+    - Disabled all development bypasses, simulated AD OUs, Swagger OpenAPI endpoints, and dev login bypass: `ASPNETCORE_ENVIRONMENT=Staging`, `NODE_ENV=production`, `HEIMDALL_ENABLE_DEV=false`, `NUXT_PUBLIC_ENABLE_DEV_FEATURES=false`, `ENABLE_DEV_HTTP_SEED=false`.
+    - Enabled diagnostic telemetry and state inspection only: `HEIMDALL_ENABLE_DEBUG=true`, `HEIMDALL_DEBUG=true`, `NUXT_PUBLIC_ENABLE_DEBUG_FEATURES=true`.
+  - Configured dedicated staging database `heimdall_staging_db` seeded with the exact enterprise plant dataset (100 machines, 16 organizations, 56 client IPCs, 550 serialized spare parts, 23 bulk consumables, 107 Better-Auth users) via `seed_data/incremental_seed.sql`.
+  - Created turnkey staging container definition `docker-compose.staging.yml`.
+  - Authored automated staging verification test suite `tools/test_staging.py` (`just test-staging`) verifying 100% test pass rate across database referential integrity, dev gating 403 Forbidden enforcement, backend xUnit, and frontend Vitest suites.
+- **Environment Configuration Templates**:
+  - Created `.env.example`: Complete, documented template covering all configuration options, security entropy requirements, database connection strings, and telemetry ports.
+  - Created `.env.dev`: Local development configuration with development defaults and dev feature flags enabled.
+  - Created `.env.staging`: Staging environment configuration with `HEIMDALL_ENABLE_DEV=false`, `HEIMDALL_ENABLE_DEBUG=true`, and non-default cryptographic keys.
+- **Production & Staging Operations Documentation**:
+  - Authored comprehensive guide `docs/guide/PRODUCTION_AND_STAGING_GUIDE.md` detailing:
+    - Step-by-step production deployment and management using `just`.
+    - Linux Filesystem Hierarchy Standard (FHS) directory layout (`/opt/heimdall`, `/etc/heimdall`, `/var/lib/heimdall`, `/var/log/heimdall`).
+    - Service user security, sandboxing, file permissions (`chmod 600` for secret files), and systemd service units.
+    - Exhaustive configuration reference covering all environment variables, cryptographic keys (`HEIMDALL_ENCRYPTION_KEY`, `BETTER_AUTH_SECRET`, `JWT_SIGNING_KEY`, `HEIMDALL_AGENT_KEY`), database connection strings, and Nginx reverse proxy recommendations.
+  - Updated `README.md` to feature `just` command runner instructions and environment template links.
+
+### Fixed
+- **Run TUI Crashes and Detachments on Hotkey Actions (`r` / `R`)**:
+  - Fixed issue where pressing `r` (restart highlighted service) or `R` (restart all services) caused the interactive TUI dashboard (`tools/tui.py`) to crash or immediately detach.
+  - Eliminated unconditional `pkill -f "tools/tui.py"` in `run_dev.sh stop_services all` that sent `SIGTERM` to the active TUI process.
+  - Fixed unmapped service targets (such as `postgres`, `redis`, `grpc`, `windows_ads`) in `stop_services` falling into the `all|*` case.
+  - Refactored `tools/tui.py` to invoke `just` recipes (`just restart-service <target>`, `just restart`, `just stop-service <target>`, `just start-service <target>`, `just windows-*`, `just test`), fully decoupling it from shell script side effects.
+  - Wrapped modal drawing and resize handlers with safe `curses.error` bounds checking to eliminate unhandled rendering exceptions.
+  - Added automated action suite `tests/test_tui_actions.py` systematically validating all key bindings (`r`, `R`, `s`, `w`, `t`, `p`, `l`, `c`, `?`, `q`, terminal resize) with 0 crashes and 0 detaches.
 - **Samsung Andon Industrial Color Coding & 6-Stage Incident Workflow**:
   - Aligned the incident management lifecycle (`/dashboard/tickets`) across table (`TicketList.vue`), cards (`TicketKanbanBoard.vue`), drawer (`TicketDetailDrawer.vue`), and status workflows with Samsung Smart Factory Andon industrial standards:
     - **Red (`정지 / Line Stop / Alarm`)**: `Escalated` & critical line-stop alerts (`#DC2626` / `#EF4444`).

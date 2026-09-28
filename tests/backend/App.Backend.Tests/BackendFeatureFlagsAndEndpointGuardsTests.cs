@@ -320,4 +320,39 @@ public class BackendFeatureFlagsAndEndpointGuardsTests
         Assert.NotNull(seedRes);
         Assert.Equal(StatusCodes.Status200OK, seedRes.StatusCode);
     }
+
+    [Fact]
+    public async Task StagingEnvironment_BlocksDevFeatures_AllowsDebugFeatures()
+    {
+        var repo = new FakeControllerRepository();
+        var pcId = Guid.NewGuid();
+        var snapshot = await repo.CreateDiagnosticSnapshotAsync(pcId, "user1", "User 1", null);
+
+        // Staging environment feature flags: NO dev features, ONLY debug
+        var stagingFlags = new BackendFeatureFlags { EnableDevFeatures = false, EnableDebugFeatures = true };
+        var diagController = new DiagnosticSnapshotController(repo, NullLogger<DiagnosticSnapshotController>.Instance, stagingFlags);
+
+        // 1. GetRawDump (debug feature) is ALLOWED in staging
+        var dumpRes = await diagController.GetRawDump(snapshot.Id) as OkObjectResult;
+        Assert.NotNull(dumpRes);
+        Assert.Equal(StatusCodes.Status200OK, dumpRes.StatusCode);
+
+        // 2. DevSeedSnapshot (dev feature) is FORBIDDEN in staging
+        var seedRes = await diagController.DevSeedSnapshot(pcId) as ObjectResult;
+        Assert.NotNull(seedRes);
+        Assert.Equal(StatusCodes.Status403Forbidden, seedRes.StatusCode);
+
+        // 3. AuthController dev endpoints are FORBIDDEN in staging
+        var authController = new AuthController(stagingFlags);
+        var loginRes = authController.DevLogin(new DevLoginRequest { Username = "dev@corp.local" }) as ObjectResult;
+        Assert.NotNull(loginRes);
+        Assert.Equal(StatusCodes.Status403Forbidden, loginRes.StatusCode);
+
+        // 4. SystemSettingsController dev endpoints are FORBIDDEN in staging
+        var factory = CreateInMemoryFactory();
+        var settingsController = new SystemSettingsController(factory, NullLogger<SystemSettingsController>.Instance, null, stagingFlags);
+        var resetRes = await settingsController.DevResetDefaults() as ObjectResult;
+        Assert.NotNull(resetRes);
+        Assert.Equal(StatusCodes.Status403Forbidden, resetRes.StatusCode);
+    }
 }

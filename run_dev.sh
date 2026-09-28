@@ -324,10 +324,13 @@ stop_services() {
             free_port 5055
             echo "Fleet Simulator stopped."
             ;;
-        windows|windows-agent|winagent)
+        grpc)
+            stop_services backend
+            ;;
+        windows|windows-agent|winagent|windows_agent|windows_vnc|windows_ads|windows_opc|windows_opcua)
             windows_stop
             ;;
-        db|database)
+        db|database|postgres|redis)
             if [ -d "infra/database" ]; then
                 (cd infra/database && docker compose down 2>/dev/null || true)
             fi
@@ -364,7 +367,6 @@ stop_services() {
             pkill -f "node.*nuxt" 2>/dev/null || true
             pkill -f "fleet_simulator.py" 2>/dev/null || true
             pkill -f "dev_manager.py" 2>/dev/null || true
-            pkill -f "tools/tui.py" 2>/dev/null || true
 
             # Free ports
             free_port 5099

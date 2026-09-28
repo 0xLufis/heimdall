@@ -254,34 +254,69 @@ venv/bin/python tools/cad/generate_plant_dxf.py
 
 ---
 
-### 4. Running the Development Suite
+### 4. Command Orchestration with `just`
 
-You can start and manage all services concurrently using `run_dev.sh`:
+Heimdall provides a modern, fast [just](https://github.com/casey/just) command runner for development, staging, testing, and production orchestration:
 
 ```bash
-# Start all Heimdall services and launch the interactive full-screen TUI (default)
+# Display all available recipes
+just --list
+
+# Start development stack and launch the interactive full-screen TUI (default)
+just dev
+
+# Launch TUI dashboard directly (interfaced directly via just commands)
+just tui
+
+# Restart or stop individual services without detaching/killing the TUI
+just restart-service backend
+just stop-service frontend
+
+# Check service health and port matrix
+just status
+
+# Run test suites (all, backend, frontend, windows, seed, smoke, staging)
+just test
+just test-staging
+
+# Boot Staging Environment (mirrors production security, NO dev features, ONLY debug)
+just staging-up
+just staging-status
+just staging-down
+
+# Boot Production Stack
+just prod-up
+just prod-status
+just prod-down
+```
+
+> [!TIP]
+> For in-depth production deployment procedures, Linux filesystem installation hierarchy (`/opt/heimdall`, `/etc/heimdall`, `/var/lib/heimdall`), and environment configuration references, consult the **[Production & Staging Guide](docs/guide/PRODUCTION_AND_STAGING_GUIDE.md)**.
+
+---
+
+### 4.1 Environment Configuration Files
+
+Heimdall includes pre-configured environment templates at the repository root:
+- **[`.env.example`](.env.example)**: Comprehensive configuration template documenting every variable across the stack.
+- **[`.env.dev`](.env.dev)**: Local development defaults (`HEIMDALL_ENABLE_DEV=true`, `HEIMDALL_ENABLE_DEBUG=true`).
+- **[`.env.staging`](.env.staging)**: Staging configuration (`HEIMDALL_ENABLE_DEV=false`, `HEIMDALL_ENABLE_DEBUG=true`, `heimdall_staging_db`).
+
+---
+
+### 4.2 Legacy Shell Script (`run_dev.sh`)
+
+You can also manage services using the legacy shell wrapper:
+
+```bash
+# Start all Heimdall services and launch TUI
 ./run_dev.sh
 
-# Start services in background daemon mode (without TUI)
+# Start services in background daemon mode
 ./run_dev.sh start --daemon
-
-# Start with Windows 10 LTSC KVM Docker container (VNC, TwinCAT ADS, OPC UA, WinRM)
-./run_dev.sh start --windows
 
 # Inspect Windows Edge Agent node status & ports
 ./run_dev.sh windows status
-
-# Launch the interactive TUI directly anytime
-./run_dev.sh tui
-
-# Stream logs for a specific service (backend, frontend, agent, simulator, windows, db)
-./run_dev.sh logs backend
-
-# Restart a specific service with hot-reload
-./run_dev.sh restart frontend
-
-# Check service health and port matrix
-./run_dev.sh status
 
 # Stop all Heimdall services
 ./run_dev.sh stop

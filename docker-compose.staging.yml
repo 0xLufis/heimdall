@@ -1,0 +1,146 @@
+services:
+  # 1. Staging Relational Database (PostgreSQL 18)
+  postgres:
+    image: postgres:18
+    container_name: heimdall_staging_postgres
+    hostname: postgres
+    ports:
+      - "${STAGING_PG_PORT:-5432}:5432"
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      POSTGRES_DB: ${POSTGRES_DB:-heimdall_staging_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password}
+      TZ: Europe/Budapest
+      PGTZ: Europe/Budapest
+    volumes:
+      - heimdall_staging_pgdata:/var/lib/postgresql/data
+      - ./infra/database/certs:/var/lib/postgresql/certs:ro
+      - ./infra/database/init:/docker-entrypoint-initdb.d:ro
+    command: >
+      postgres
+      -c ssl=on
+      -c ssl_cert_file=/var/lib/postgresql/certs/server.crt
+      -c ssl_key_file=/var/lib/postgresql/certs/server.key
+      -c max_connections=300
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U ${POSTGRES_USER:-postgres} || exit 1"]
+      interval: 4s
+      timeout: 3s
+      retries: 5
+    networks:
+      - heimdall_staging_net
+    restart: unless-stopped
+
+  # 2. Staging Cache & Spool Buffer (Redis 7.4)
+  redis:
+    image: redis:7.4-alpine
+    container_name: heimdall_staging_redis
+    hostname: redis
+    ports:
+      - "${STAGING_REDIS_PORT:-6379}:6379"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-heimdall_redis_dev_secret}"]
+    volumes:
+      - heimdall_staging_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-heimdall_redis_dev_secret}", "ping"]
+      interval: 4s
+      timeout: 3s
+      retries: 5
+    networks:
+      - heimdall_staging_net
+    restart: unless-stopped
+
+  # 3. Heimdall Backend REST & gRPC API (.NET 10 - Staging Mode: No Dev, Only Debug)
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: heimdall_staging_backend
+    hostname: backend
+    ports:
+      - "${BACKEND_HTTP_PORT:-5099}:5099"
+      - "${BACKEND_ALT_PORT:-5001}:5001"
+      - "${MQTT_PORT:-1883}:1883"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Staging
+      - ASPNETCORE_URLS=http://+:5099;http://+:5001
+      - HEIMDALL_ENABLE_DEV=false
+      - HEIMDALL_ENABLE_DEBUG=true
+      - HEIMDALL_DEBUG=true
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-heimdall_staging_db};Username=ef_admin;Password=migrate
+      - REDIS_CONNECTION_STRING=redis:6379,password=${REDIS_PASSWORD:-heimdall_redis_dev_secret}
+      - HEIMDALL_ENCRYPTION_KEY=${HEIMDALL_ENCRYPTION_KEY:-Heimdall_AES256_GCM_Staging_Key_2026_Secure32B!}
+      - JWT_SIGNING_KEY=${JWT_SIGNING_KEY:-heimdall_staging_jwt_secret_key_minimum_64_bytes_for_hmac_sha256_security_token!}
+      - MQTT_EMBEDDED_BROKER=true
+      - MQTT_EMBEDDED_PORT=1883
+      - HEIMDALL_AGENT_KEY=${HEIMDALL_AGENT_KEY:-heimdall-staging-agent-auth-key-secure}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - heimdall_staging_net
+    restart: unless-stopped
+
+  # 4. Nuxt 4 Web Frontend & Nitro BFF (Staging Production Build: No Dev Features, Only Debug)
+  frontend:
+    build:
+      context: ./frontend/web
+      dockerfile: Dockerfile
+    container_name: heimdall_staging_frontend
+    hostname: frontend
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - HEIMDALL_ENABLE_DEV=false
+      - HEIMDALL_ENABLE_DEBUG=true
+      - NUXT_PUBLIC_ENABLE_DEV_FEATURES=false
+      - NUXT_PUBLIC_ENABLE_DEBUG_FEATURES=true
+      - ENABLE_DEV_HTTP_SEED=false
+      - BACKEND_API_URL=http://backend:5099
+      - SIGNALR_HUB_URL=http://backend:5099/hubs/maintenance
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-heimdall_redis_dev_secret}@redis:6379
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-heimdall_staging_auth_secret_minimum_32_characters_long!}
+      - DATABASE_URL=postgresql://dotnet_backend:your_backend_pw@postgres:5432/${POSTGRES_DB:-heimdall_staging_db}
+    depends_on:
+      - backend
+      - postgres
+      - redis
+    networks:
+      - heimdall_staging_net
+    restart: unless-stopped
+
+  # 5. Co-Located Industrial Edge Agent (Profile: agent)
+  agent:
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    container_name: heimdall_staging_agent
+    hostname: EDGE-AGENT-STAGING
+    profiles:
+      - agent
+    environment:
+      - DOTNET_ENVIRONMENT=Staging
+      - HEIMDALL_ENABLE_DEV=false
+      - HEIMDALL_ENABLE_DEBUG=true
+      - MQTT_BROKER_HOST=backend
+      - MQTT_BROKER_PORT=1883
+      - HEIMDALL_AGENT_KEY=${HEIMDALL_AGENT_KEY:-heimdall-staging-agent-auth-key-secure}
+    depends_on:
+      - backend
+    networks:
+      - heimdall_staging_net
+    restart: unless-stopped
+
+volumes:
+  heimdall_staging_pgdata:
+  heimdall_staging_redisdata:
+
+networks:
+  heimdall_staging_net:
+    driver: bridge

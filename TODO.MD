@@ -258,7 +258,7 @@ The following subagents are defined for specialized execution of upcoming roadma
   - Added `package` subcommand to `run_dev.sh` with target routing (`agent`, `backend`, `frontend`, `all`).
   - Added autocompletions for `run_dev.sh package` in both Bash and Zsh completions.
 
-
-
-
-
+## Fix Search redirects, and machine view\
+## Name the binaries properly, take a look at signing the binaries
+## Add ticket template UI
+## Check Copia api out, see how specifically twincat can be used either by hooking local repos and or rate limited twincat login / download events

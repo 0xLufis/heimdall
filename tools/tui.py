@@ -21,6 +21,9 @@ import subprocess
 import threading
 from collections import deque
 import signal
+import shutil
+
+JUST_BIN = shutil.which("just") or "/usr/bin/just"
 
 try:
     import curses
@@ -307,38 +310,64 @@ def log_tail_worker():
 
 
 def execute_action(cmd_args):
-    """Executes a command asynchronously without blocking the UI."""
+    """Executes a command asynchronously without blocking the UI or killing the TUI."""
     def _run():
         try:
             res = subprocess.run(cmd_args, cwd=ROOT_DIR, capture_output=True, text=True)
-            STATE.set_banner(f"Action '{' '.join(cmd_args)}' finished (code {res.returncode})")
+            if res.returncode == 0:
+                STATE.set_banner(f"✓ Action '{' '.join(cmd_args)}' completed successfully.")
+            else:
+                err_lines = [l.strip() for l in (res.stderr or res.stdout or "").splitlines() if l.strip()]
+                err_msg = err_lines[-1] if err_lines else f"exit code {res.returncode}"
+                STATE.set_banner(f"Action '{' '.join(cmd_args)}' finished ({err_msg})")
         except Exception as e:
             STATE.set_banner(f"Action error: {e}")
     t = threading.Thread(target=_run, daemon=True)
     t.start()
 
 
+def map_service_target(sid):
+    """Maps internal TUI service IDs to Justfile command targets."""
+    if sid in ("postgres", "db", "database"):
+        return "postgres"
+    if sid == "redis":
+        return "redis"
+    if sid in ("backend", "grpc"):
+        return "backend"
+    if sid == "frontend":
+        return "frontend"
+    if sid in ("windows_agent", "windows_vnc", "windows_ads", "windows_opc", "windows"):
+        return "windows"
+    if sid == "agent":
+        return "agent"
+    if sid == "simulator":
+        return "simulator"
+    return sid
+
+
 def toggle_service(svc):
     sid = svc["id"]
-    if svc.get("is_windows"):
+    target = map_service_target(sid)
+    if target == "windows":
         toggle_windows_agent()
         return
 
     if svc["online"]:
         STATE.set_banner(f"Stopping {svc['name']}...")
-        execute_action(["./run_dev.sh", "stop", sid])
+        execute_action([JUST_BIN, "stop-service", target])
     else:
         STATE.set_banner(f"Starting {svc['name']}...")
-        execute_action(["./run_dev.sh", "restart", sid])
+        execute_action([JUST_BIN, "start-service", target])
 
 
 def restart_service(svc):
     sid = svc["id"]
-    if svc.get("is_windows"):
+    target = map_service_target(sid)
+    if target == "windows":
         restart_windows_agent()
         return
     STATE.set_banner(f"Restarting {svc['name']}...")
-    execute_action(["./run_dev.sh", "restart", sid])
+    execute_action([JUST_BIN, "restart-service", target])
 
 
 def toggle_windows_agent():
@@ -346,27 +375,20 @@ def toggle_windows_agent():
     win_online = any(s["online"] for s in STATE.services if s.get("is_windows"))
     if win_online:
         STATE.set_banner("Stopping Windows Agent container...")
-        execute_action(["./run_dev.sh", "windows", "stop"])
+        execute_action([JUST_BIN, "windows-stop"])
     else:
         STATE.set_banner("Starting Windows Agent container (win-x64)...")
-        execute_action(["./run_dev.sh", "windows", "start"])
+        execute_action([JUST_BIN, "windows-start"])
 
 
 def restart_windows_agent():
     STATE.set_banner("Restarting Windows Agent container...")
-    execute_action(["./run_dev.sh", "windows", "restart"])
+    execute_action([JUST_BIN, "windows-restart"])
 
 
 def run_tests_async():
     STATE.set_banner("Launching verification test suite in background...")
-    def _run():
-        python_bin = sys.executable
-        res = subprocess.run([python_bin, "tools/dev_manager.py", "test"], cwd=ROOT_DIR, capture_output=True, text=True)
-        if res.returncode == 0:
-            STATE.set_banner("Verification tests passed! (100% OK)")
-        else:
-            STATE.set_banner("Verification tests encountered failures. Check logs.")
-    threading.Thread(target=_run, daemon=True).start()
+    execute_action([JUST_BIN, "test"])
 
 
 def curses_tui(stdscr):
@@ -582,16 +604,28 @@ def draw_quit_modal(stdscr, max_y, max_x):
     start_x = max(1, (max_x - box_w) // 2)
 
     for i in range(box_h):
-        stdscr.addstr(start_y + i, start_x, " " * box_w, curses.A_REVERSE)
+        try:
+            stdscr.addstr(start_y + i, start_x, " " * box_w, curses.A_REVERSE)
+        except curses.error:
+            pass
 
     title = "─── HEIMDALL DEV TERMINATION PROMPT ───"
-    stdscr.addstr(start_y + 1, start_x + (box_w - len(title)) // 2, title, curses.A_REVERSE | curses.A_BOLD)
+    try:
+        stdscr.addstr(start_y + 1, start_x + max(0, (box_w - len(title)) // 2), title[:box_w], curses.A_REVERSE | curses.A_BOLD)
+    except curses.error:
+        pass
     
     msg1 = "Choose how to exit the development session:"
-    stdscr.addstr(start_y + 3, start_x + 3, msg1, curses.A_REVERSE)
+    try:
+        stdscr.addstr(start_y + 3, start_x + 3, msg1[:box_w - 4], curses.A_REVERSE)
+    except curses.error:
+        pass
 
     opts = "  [q] Stop All & Quit   |   [b] Detach (Keep Running)   |   [c] Cancel"
-    stdscr.addstr(start_y + 5, start_x + (box_w - len(opts)) // 2, opts, curses.A_REVERSE | curses.A_BOLD)
+    try:
+        stdscr.addstr(start_y + 5, start_x + max(0, (box_w - len(opts)) // 2), opts[:box_w], curses.A_REVERSE | curses.A_BOLD)
+    except curses.error:
+        pass
 
 
 def draw_help_modal(stdscr, max_y, max_x):
@@ -601,10 +635,16 @@ def draw_help_modal(stdscr, max_y, max_x):
     start_x = max(1, (max_x - box_w) // 2)
 
     for i in range(box_h):
-        stdscr.addstr(start_y + i, start_x, " " * box_w, curses.A_REVERSE)
+        try:
+            stdscr.addstr(start_y + i, start_x, " " * box_w, curses.A_REVERSE)
+        except curses.error:
+            pass
 
     title = "─── HEIMDALL WORKSPACE KEYBOARD SHORTCUTS ───"
-    stdscr.addstr(start_y + 1, start_x + (box_w - len(title)) // 2, title, curses.A_REVERSE | curses.A_BOLD)
+    try:
+        stdscr.addstr(start_y + 1, start_x + max(0, (box_w - len(title)) // 2), title[:box_w], curses.A_REVERSE | curses.A_BOLD)
+    except curses.error:
+        pass
 
     shortcuts = [
         ("Tab / Up / Down / 1-9", "Navigate and select industrial service"),
@@ -623,15 +663,21 @@ def draw_help_modal(stdscr, max_y, max_x):
 
     for idx, (k, desc) in enumerate(shortcuts):
         line = f"  {k:<22} : {desc}"
-        stdscr.addstr(start_y + 3 + idx, start_x + 2, line[:box_w - 4], curses.A_REVERSE)
+        try:
+            stdscr.addstr(start_y + 3 + idx, start_x + 2, line[:box_w - 4], curses.A_REVERSE)
+        except curses.error:
+            pass
 
 
 def handle_key(key):
+    if key == curses.KEY_RESIZE:
+        return
+
     if STATE.show_quit_dialog:
         if key in (ord('q'), ord('Q')):
             STATE.running = False
-            # Stop all services
-            subprocess.run(["./run_dev.sh", "stop"], cwd=ROOT_DIR)
+            # Stop all services via just
+            subprocess.run([JUST_BIN, "stop"], cwd=ROOT_DIR)
         elif key in (ord('b'), ord('B'), ord('d'), ord('D')):
             # Detach - leave services running
             STATE.running = False
@@ -663,7 +709,7 @@ def handle_key(key):
         restart_service(svc)
     elif key in (ord('R'),):
         STATE.set_banner("Restarting all development services...")
-        execute_action(["./run_dev.sh", "restart"])
+        execute_action([JUST_BIN, "restart"])
     elif key in (ord('w'), ord('W')):
         toggle_windows_agent()
     elif key in (ord('l'), ord('L')):
@@ -755,10 +801,10 @@ def main():
     print("\n\033[1;32m✓ Detached from Heimdall TUI.\033[0m")
     print("Services remain running in background daemons and Docker containers.")
     print("Commands:")
-    print("  • Reattach TUI:   ./run_dev.sh tui")
-    print("  • Check health:   ./run_dev.sh status")
-    print("  • Stop services:  ./run_dev.sh stop")
-    print("  • Stream logs:    ./run_dev.sh logs <service>")
+    print("  • Reattach TUI:   just tui")
+    print("  • Check health:   just status")
+    print("  • Stop services:  just stop")
+    print("  • Stream logs:    just logs <service>")
 
 
 if __name__ == "__main__":

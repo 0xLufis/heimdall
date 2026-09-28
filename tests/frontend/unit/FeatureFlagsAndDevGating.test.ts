@@ -198,5 +198,18 @@ describe('Frontend & Nitro Feature Flags Suite', () => {
       clearSimulatedPersona()
       expect(simulatedPersona.value).toBeNull()
     })
+
+    it('in staging mode (DEV=false, DEBUG=true), blocks dev bypass while allowing debug inspection', () => {
+      process.env.NODE_ENV = 'production'
+      process.env.HEIMDALL_ENABLE_DEV = 'false'
+      process.env.HEIMDALL_ENABLE_DEBUG = 'true'
+
+      const flags = getFeatureFlags()
+      expect(flags.enableDevFeatures).toBe(false)
+      expect(flags.enableDebugFeatures).toBe(true)
+
+      expect(() => assertDevFeaturesEnabled()).toThrowError(/Forbidden: Development features are disabled/)
+      expect(() => assertDebugFeaturesEnabled()).not.toThrow()
+    })
   })
 })
