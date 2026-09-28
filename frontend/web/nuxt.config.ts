@@ -61,10 +61,12 @@ export default defineNuxtConfig({
     databaseUrl: process.env.DATABASE_URL,
     enableDevFeatures: process.env.HEIMDALL_ENABLE_DEV === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
     enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true',
+    enableSimulation: process.env.HEIMDALL_ENABLE_SIMULATION === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false'),
     public: {
       signalrHubUrl: process.env.SIGNALR_HUB_URL || '',
       enableDevFeatures: process.env.HEIMDALL_ENABLE_DEV === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
-      enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true'
+      enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true',
+      enableSimulation: process.env.HEIMDALL_ENABLE_SIMULATION === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false')
     }
   },
   nitro: {

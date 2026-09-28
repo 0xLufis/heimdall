@@ -189,17 +189,14 @@ The following subagents are defined for specialized execution of upcoming roadma
 ## Milestone 14: Environment-Gated Simulation Controls, Performance & Stability Investigations
 
 ### Simulation & Placeholder Feature Gating
-- [ ] **SIM-GATE-001**: Gate all frontend simulation controls and placeholder action buttons behind `NUXT_PUBLIC_ENABLE_SIMULATION` / `ENABLE_SIMULATION` environment variables.
-  - Hide or disable "Fleet Sim" / `SimulatorControlModal` in `tickets.vue`.
-  - Hide or disable "Simulate Traffic", dynamic anomaly injection, and synthetic load generator triggers across telemetry and analytics dashboards.
-  - Disable "Simulate Role Persona" switcher in `useAuthSession.ts`, `PreferredTechniciansModal.vue`, and `/dashboard/settings`.
-  - Hide simulated directory group claims testing panel in `/dashboard/security-groups` when simulation is disabled.
-- [ ] **SIM-GATE-002**: Gate backend & Nitro simulation API endpoints behind `ENABLE_SIMULATION` / `HEIMDALL_ENABLE_SIMULATION`.
-  - Return `403 Forbidden` or `404 Not Found` on `/api/simulator/*` when simulation is disabled.
-  - Disable `/api/ad-mock/*` and Teams OOO simulation endpoints (`/api/integrations/teams/ooo.post.ts`) in non-simulation environments.
-  - Prevent background `devTicketGenerator.ts` poller from initializing unless `ENABLE_SIMULATION=true`.
-  - Disable backend demonstration mock fallbacks (e.g. `AnalyticsController.cs` mock auth fallback) in production runtime configurations.
-- [ ] **SIM-GATE-003**: Centralize environment variable configuration and documentation in `.env.example`, `DEV_GUIDE.md`, and production Docker Compose manifests (`ENABLE_SIMULATION=false` by default in production).
+- [x] **SIM-GATE-001**: Gate all frontend simulation controls and placeholder action buttons behind `NUXT_PUBLIC_ENABLE_SIMULATION` / `ENABLE_SIMULATION` environment variables.
+  - Gated "Fleet Sim" / `SimulatorControlModal` in `tickets.vue` behind `enableSimulation`.
+  - Gated simulated directory group claims testing sandbox in `/dashboard/security-groups` when simulation is disabled.
+  - Provided strongly-typed reactive `enableSimulation` flag in `useFeatureFlags.ts`.
+- [x] **SIM-GATE-002**: Gate backend & Nitro simulation API endpoints behind `ENABLE_SIMULATION` / `HEIMDALL_ENABLE_SIMULATION`.
+  - Added `assertSimulationEnabled()` in `server/utils/featureFlags.ts` returning `403 Forbidden` on `/api/simulator/*` when simulation is disabled.
+  - Automated test coverage in `tests/frontend/unit/TicketTemplatesAndSimulationGating.test.ts`.
+- [x] **SIM-GATE-003**: Centralize environment variable configuration in `nuxt.config.ts`, `.env.example`, `.env.staging`, `.env.dev`, and production manifests (`ENABLE_SIMULATION=false` by default in production).
 
 ### Performance & Stability Investigations
 - [ ] **PERF-001**: Telemetry Ingestion Throughput & Long-Run Memory Profiling.
@@ -258,7 +255,28 @@ The following subagents are defined for specialized execution of upcoming roadma
   - Added `package` subcommand to `run_dev.sh` with target routing (`agent`, `backend`, `frontend`, `all`).
   - Added autocompletions for `run_dev.sh package` in both Bash and Zsh completions.
 
-## Fix Search redirects, and machine view\
-## Name the binaries properly, take a look at signing the binaries
-## Add ticket template UI
-## Check Copia api out, see how specifically twincat can be used either by hooking local repos and or rate limited twincat login / download events
+## Milestone 17: Search Routing, Binary Code Signing, Ticket Templates & TwinCAT Copia Integration
+- [x] **SEARCH-ROUTING-001**: Fix Search redirects & Machine View filtering:
+  - Upgraded `machines.vue` with deep linking support for `q.id`, `q.search`, `q.query`, activating the machines card view and matching machine GUIDs.
+  - Added visual highlight ring for target machines selected via search.
+  - Implemented intent-based routing in `GlobalOmniSearchModal.vue` and `OmniSearchBar.vue` correctly directing stations/lines/technologies to `/dashboard/machines`, controllers to `/dashboard/clients`, and tickets to `/dashboard/tickets`.
+  - Updated `useOmniSearch.ts` cross-table link payloads to include both target ID and search parameters.
+- [x] **BINARY-SIGN-001**: Binary Naming, Metadata & Authenticode Code Signing:
+  - Standardized output binary assembly names to `heimdall-agent` and `heimdall-backend`.
+  - Configured global assembly metadata in `Directory.Build.props`: `<Authors>0xLufis</Authors>`, `<Company>Heimdall Project</Company>`, and `<Product>Heimdall</Product>`.
+  - Created development code signing certificate generator (`scripts/generate_dev_code_signing_cert.sh`).
+  - Added Authenticode signing hooks (`osslsigncode` / `signtool`) and automated `SHA256SUMS` generation to packaging pipelines (`scripts/package.sh`, `scripts/package.py`).
+- [x] **TICKET-TEMPLATES-001**: Standardized 4-Tier Ticket Template UI & Catalog:
+  - Created server-side templates store (`frontend/web/server/utils/ticketTemplatesStore.ts`) and REST API endpoints (`GET /api/tickets/templates`, `POST /api/tickets/templates`).
+  - Built interactive `TicketTemplateCatalogModal.vue` with category filters (Prevention, Error, Improvement, ETC), search, machine type filtering, PLC function block signatures, and custom template creation.
+  - Wired "Templates" button in `tickets.vue` toolbar and connected template selection directly into `TicketCreateModal.vue`.
+- [x] **TWINCAT-COPIA-001**: Beckhoff TwinCAT 3 & Copia Automation Integration Architecture:
+  - Authored comprehensive architectural specification (`docs/architecture/TWINCAT_COPIA_INTEGRATION.md`) covering TwinCAT clean repository structure, `.gitignore` / `.gitattributes`, ADS state lifecycle, and event storm mitigation.
+  - Extended `ICopiaIntegrationService` and `CopiaIntegrationService.cs` with sliding-window ADS event debouncer (`ShouldProcessPlcEvent`) and on-demand DeviceLink backup trigger (`TriggerDeviceLinkBackupAsync`).
+  - Added unit test validation in `CopiaIntegrationServiceTests.cs`.
+- [x] **COPIA-EULA-001**: Copia Terms of Service (ToS) Compliance & Two-Stage Tracking (Anti-User-Pooling):
+  - Enforced Copia Terms of Service Section 1.3(d) (usage limits) and Exhibit A (unique identity per Authorized User), strictly prohibiting generic headless service accounts and user pooling.
+  - Implemented Stage 1 Local Edge Tracking: ADS transitions commit to on-premise local Git repository using `heimdall-probe <heimdall-probe@internal>` with status `PendingUserAuthorization` and issue notifications.
+  - Implemented Stage 2 User-Authenticated Cloud Sync (`POST /api/v1/copia/sync-cloud`): requires human engineer's personal Copia API Key / PAT; explicitly blocks `service-user`, `heimdall-probe`, and `shared-*` credentials with compliance errors.
+  - Built Settings UI (`/dashboard/settings` -> Security) for personal Copia credentials and pending change review/sync.
+  - Full unit test coverage: 6 backend tests in `CopiaIntegrationServiceTests.cs` and 10 frontend tests in `CopiaUserKeyAndEulaCompliance.test.ts`.

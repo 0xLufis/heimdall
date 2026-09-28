@@ -39,7 +39,7 @@ public class TelemetryIngestionService : ITelemetryIngestionService
     }
 
     private readonly ILogger<TelemetryIngestionService> _logger;
-    private readonly IClientPcRepository _repository;
+    private readonly IControllerRepository _repository;
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly IHostEnvironment _environment;
     private readonly IConfiguration _configuration;
@@ -48,7 +48,7 @@ public class TelemetryIngestionService : ITelemetryIngestionService
 
     public TelemetryIngestionService(
         ILogger<TelemetryIngestionService> logger,
-        IClientPcRepository repository,
+        IControllerRepository repository,
         IDbContextFactory<AppDbContext> dbContextFactory,
         IHostEnvironment environment,
         IConfiguration configuration,

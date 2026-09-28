@@ -7,7 +7,7 @@ import type {
   SearchResultItem, 
   SearchGroup,
   KeyLookupSuggestion,
-  OmniSearchOptions,
+  HeimdallSearchOptions,
   RankedIndexingTableRef
 } from '~/types/search'
 import { autoTagEngine } from '~/utils/search/AutoTagEngine'
@@ -31,13 +31,13 @@ import {
 } from '~/utils/search/searchDiagnostics'
 
 /**
- * FMFD - Find My Fucking Data (User-facing: "Find My Field Data")
+ * Heimdall Search composable - tag-aware fuzzy search across all Heimdall entities
  * Universal high-throughput multi-tier fuzzy indexing engine for industrial assets,
  * client PCs, telemetry, and enterprise field inventory.
  */
 const DEFAULT_CONFIG: SearchInstanceConfig = {
   instanceId: 'dashboard',
-  placeholder: 'FMFD: Search stations, controllers, inventory, specs... (Cmd+K)',
+  placeholder: 'Search stations, controllers, inventory, specs... (Cmd+K)',
   defaultEndpoints: ['/api/proxy/inventory/search'],
   allowedTagKeys: ['line', 'tech', 'status', 'mfr', 'manufacturer', 'serial', 'location', 'category', 'station', 'type', 'isstock', 'ip', 'mac', 'spec', 'cost', 'role', 'quality', 'unit'],
   minCharsForSuggestions: 2,
@@ -47,10 +47,10 @@ const DEFAULT_CONFIG: SearchInstanceConfig = {
   enableDiagnostics: true
 }
 
-export const useOmniSearch = (
-  optionsOrConfig: OmniSearchOptions | Partial<SearchInstanceConfig> = {}
+export const useHeimdallSearch = (
+  optionsOrConfig: HeimdallSearchOptions | Partial<SearchInstanceConfig> = {}
 ) => {
-  // Normalize options whether caller passed OmniSearchOptions or SearchInstanceConfig
+  // Normalize options whether caller passed HeimdallSearchOptions or SearchInstanceConfig
   const isParameterized = 'dataSource' in optionsOrConfig || 'data' in optionsOrConfig || 'indexingTables' in optionsOrConfig || 'template' in optionsOrConfig
   const topConfig = optionsOrConfig.config || {}
   
@@ -70,16 +70,16 @@ export const useOmniSearch = (
   }
 
   // Active Template
-  const templateInput = (optionsOrConfig as OmniSearchOptions).template || config.instanceId
+  const templateInput = (optionsOrConfig as HeimdallSearchOptions).template || config.instanceId
   const activeTemplate = computed<SearchTemplateDef>(() => resolveSearchTemplate(templateInput))
 
   // Ingested Data and Data Source
-  const rawDataSource = (optionsOrConfig as OmniSearchOptions).dataSource
-  const rawDataRef = (optionsOrConfig as OmniSearchOptions).data
+  const rawDataSource = (optionsOrConfig as HeimdallSearchOptions).dataSource
+  const rawDataRef = (optionsOrConfig as HeimdallSearchOptions).data
 
   // Indexing Tables
   const indexingTablesRef = ref<RankedIndexingTable[]>(
-    ((optionsOrConfig as OmniSearchOptions).indexingTables as RankedIndexingTable[]) || []
+    ((optionsOrConfig as HeimdallSearchOptions).indexingTables as RankedIndexingTable[]) || []
   )
 
   // Dynamically generated known KVs harvested from ranked tables & baseline seed
@@ -369,7 +369,7 @@ export const useOmniSearch = (
                 typeLabel: 'Station',
                 sourceTable: 'machines',
                 isCrossTable: true,
-                link: '/dashboard/machines'
+                link: `/dashboard/machines?id=${encodeURIComponent(m.id)}&search=${encodeURIComponent(m.name)}`
               }))
             }
           } catch {}
@@ -415,7 +415,7 @@ export const useOmniSearch = (
                   subtitle: `Line: ${m.groupId || 'General'}`,
                   sourceTable: 'machines',
                   isCrossTable: true,
-                  link: `/dashboard/machines?id=${m.id}`
+                  link: `/dashboard/machines?id=${encodeURIComponent(m.id)}&search=${encodeURIComponent(m.name)}`
                 }))
               }
             } catch {}
@@ -669,6 +669,4 @@ export const useOmniSearch = (
 }
 
 /**
- * FMFD alias for composable ingestion
  */
-export const useFmfd = useOmniSearch

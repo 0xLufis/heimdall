@@ -86,15 +86,26 @@ public enum InterconnectProtocol
 }
 
 /// <summary>
-/// Operational status of a maintenance ticket.
+/// Operational status of a maintenance ticket. Strictly 5 canonical states.
 /// </summary>
 public enum TicketStatus
 {
     Open = 1,
     InProgress = 2,
-    PendingParts = 3,
+    Pending = 3,
     Resolved = 4,
     Closed = 5
+}
+
+/// <summary>
+/// Sub-status reason describing why a maintenance ticket is in Pending status.
+/// </summary>
+public enum PendingReason
+{
+    None = 0,
+    Parts = 1,
+    ExternalOk = 2,
+    Action = 3
 }
 
 /// <summary>

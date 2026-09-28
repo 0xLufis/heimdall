@@ -4,14 +4,34 @@ import {
   addTicketToStore,
   findTicketById,
   updateTicketInStore,
-  addCommentToTicket
+  addCommentToTicket,
+  type MaintenanceTicket
 } from '~~/server/utils/ticketsStore'
 
 describe('Nitro BFF Handlers & Ticket Store Logic', () => {
-  it('initializes ticket store with default industrial maintenance tickets', () => {
-    const store = getTicketsStore()
-    expect(store.length).toBeGreaterThan(0)
+  const sampleTicket: MaintenanceTicket = {
+    id: 'tkt-001',
+    ticketNumber: 'TKT-2026-0001',
+    stationId: 'STATION-OP10-01',
+    stationName: 'OP10 Machining Cell',
+    title: 'Spindle Bearing Overheating',
+    description: 'Bearing temp exceeding 75C',
+    status: 'Open',
+    priority: 'Critical',
+    reportedByUserId: 'usr-op-01',
+    reportedByUserName: 'Test Operator',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    slaDueAt: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
+    comments: [],
+    attachments: []
+  }
 
+  it('initializes ticket store and manages industrial maintenance tickets', () => {
+    const store = getTicketsStore()
+    expect(Array.isArray(store)).toBe(true)
+
+    addTicketToStore({ ...sampleTicket })
     const op10Ticket = findTicketById('tkt-001')
     expect(op10Ticket).toBeDefined()
     expect(op10Ticket?.stationId).toBe('STATION-OP10-01')
@@ -43,6 +63,12 @@ describe('Nitro BFF Handlers & Ticket Store Logic', () => {
   })
 
   it('updates ticket status and records resolvedAt timestamp', () => {
+    addTicketToStore({
+      ...sampleTicket,
+      id: 'tkt-003',
+      ticketNumber: 'TKT-2026-0003',
+      status: 'InProgress'
+    })
     const updated = updateTicketInStore('tkt-003', { status: 'Resolved' })
     expect(updated).toBeDefined()
     expect(updated?.status).toBe('Resolved')

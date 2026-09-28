@@ -47,6 +47,9 @@ public class FakeMaintenanceTicketRepository : IMaintenanceTicketRepository
     public Task<MaintenanceTicket> CreateAsync(MaintenanceTicket ticket) { Tickets.Add(ticket); return Task.FromResult(ticket); }
     public Task<MaintenanceTicket?> UpdateAsync(MaintenanceTicket ticket) => Task.FromResult<MaintenanceTicket?>(ticket);
     public Task<MaintenanceTicket?> UpdateStatusAsync(Guid id, string status) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> EscalateAsync(Guid id, string reason, string escalatedBy) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> DeescalateAsync(Guid id, string resolvedBy, string? resolutionNotes = null) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> SetPendingAsync(Guid id, App.Contracts.Enums.PendingReason reason, string? details) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<bool> DeleteAsync(Guid id) => Task.FromResult(true);
     public Task<int> GetPendingAlertsCountAsync(TimeSpan timeSpan) => Task.FromResult(Tickets.Count(t => t.Status == "Open"));
     public Task<List<AgentEvent>> GetRecentAgentEventsAsync(int count) => Task.FromResult(new List<AgentEvent>());
@@ -194,10 +197,5 @@ public class PredictiveMaintenanceAndAnalyticsTests
         var okTrends = Assert.IsType<OkObjectResult>(trendsResult.Result);
         var trendsDto = Assert.IsType<MachineTrendSeriesDto>(okTrends.Value);
         Assert.Equal("m-op10", trendsDto.MachineId);
-
-        var pbiResult = controller.GetPowerBiConfig();
-        var okPbi = Assert.IsType<OkObjectResult>(pbiResult.Result);
-        var pbiDto = Assert.IsType<PowerBiConfigDto>(okPbi.Value);
-        Assert.NotEmpty(pbiDto.EmbedUrl);
     }
 }

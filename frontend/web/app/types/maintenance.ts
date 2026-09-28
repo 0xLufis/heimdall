@@ -1,21 +1,15 @@
-export type TicketStatus =
-  | 'Open'
-  | 'In_Progress'
-  | 'Pending'
-  | 'Pending_Parts'
-  | 'Escalated'
-  | 'Escalated_External'
-  | 'Closure_Pending'
-  | 'Resolved'
-  | 'Closed_Unresolved'
-  | 'Closed'
-  | 'Draft'
-  | 'Waiting_On_Feedback'
-  | 'Pending_Validation'
-  | 'Archived'
-  | 'Cancelled'
+/**
+ * Canonical ticket status — exactly 5 values, matching the backend enum.
+ */
+export type TicketStatus = 'Open' | 'InProgress' | 'Pending' | 'Resolved' | 'Closed'
 
 export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical'
+
+/**
+ * Describes why a ticket is in the Pending state.
+ * Maps to the backend PendingReason enum.
+ */
+export type PendingReason = 'None' | 'Parts' | 'ExternalOk' | 'Action'
 
 export interface StateTransitionMeta {
   fromStatus: TicketStatus
@@ -65,14 +59,6 @@ export interface CameraInspectionData {
   confidence?: number
 }
 
-export interface AokSignOff {
-  required: boolean
-  granted: boolean
-  grantedBy?: string
-  grantedAt?: string
-  comments?: string
-}
-
 export interface ErrorTemplate {
   id: string
   category: 'Prevention' | 'Error' | 'Improvement' | 'ETC'
@@ -81,7 +67,6 @@ export interface ErrorTemplate {
   shortDescription: string
   detailedDescription: string
   targetKanbanState: TicketStatus
-  externalEscalationTarget?: string
   defaultTags: string[]
   sampleFbState?: FunctionBlockState
   sampleTelemetryKeys?: string[]
@@ -146,6 +131,15 @@ export interface TeamsPresenceInfo {
   returnDate?: string
 }
 
+export interface EscalationInfo {
+  isEscalated: boolean
+  escalationReason?: string | null
+  escalatedAt?: string | null
+  escalatedBy?: string | null
+  escalationClosedAt?: string | null
+  escalationClosedBy?: string | null
+}
+
 export interface MaintenanceTicket {
   id: string
   ticketNumber: string
@@ -167,12 +161,17 @@ export interface MaintenanceTicket {
   sfc?: string
   cameraInspection?: CameraInspectionData
   telemetrySnapshot?: TelemetrySnapshot
-  aokSignOff?: AokSignOff
-  externalEscalationTarget?: string
-  pendingReason?: string
-  pendingAuthority?: string
-  closeReason?: string
-  durationMinutes?: number
+  // Pending details
+  pendingReason?: PendingReason | null
+  pendingDetails?: string | null
+  // Escalation (orthogonal to status)
+  isEscalated?: boolean
+  escalationReason?: string | null
+  escalatedAt?: string | null
+  escalatedBy?: string | null
+  escalationClosedAt?: string | null
+  escalationClosedBy?: string | null
+  // Assignment & tracking
   reportedByUserId?: string
   reportedByUserName?: string
   assignedTechnicianId?: string
@@ -184,7 +183,6 @@ export interface MaintenanceTicket {
   comments: TicketComment[]
   attachments: TicketAttachment[]
   metadata?: Record<string, any>
-  isOfflinePending?: boolean
 }
 
 export interface CreateTicketInput {
@@ -225,19 +223,16 @@ export interface TicketFilter {
 
 export interface TicketMetrics {
   totalTickets: number
+  filteredCount?: number
   openCount: number
-  criticalCount: number
-  pendingPartsCount: number
-  escalatedCount: number
-  escalatedExternalCount: number
-  closurePendingCount: number
+  inProgressCount: number
+  pendingCount: number
   resolvedCount: number
-  closedUnresolvedCount: number
+  closedCount: number
+  escalatedCount: number
+  criticalCount: number
   overdueCount: number
   slaCompliancePercent: number
-  // legacy aliases
-  openTickets?: number
-  criticalTickets?: number
 }
 
 export interface MaintenanceEvent {
@@ -270,6 +265,9 @@ export interface IMaintenanceService {
   createTicket(ticket: CreateTicketInput): Promise<MaintenanceTicket>
   updateTicket(id: string, updates: Partial<MaintenanceTicket>): Promise<MaintenanceTicket>
   updateTicketStatus(id: string, status: TicketStatus, technicianName?: string, extra?: Record<string, any>): Promise<MaintenanceTicket>
+  setPending(id: string, reason: PendingReason, details?: string): Promise<MaintenanceTicket>
+  escalate(id: string, reason: string, escalatedBy: string): Promise<MaintenanceTicket>
+  resolveEscalation(id: string, resolvedBy: string): Promise<MaintenanceTicket>
   addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment>
   uploadAttachment?(ticketId: string, file: File): Promise<TicketAttachment>
   getMetrics(): Promise<TicketMetrics>

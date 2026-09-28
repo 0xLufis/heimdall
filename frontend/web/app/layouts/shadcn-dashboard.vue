@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAuthSession } from '~/composables/useAuthSession'
-import GlobalOmniSearchModal from '~/components/search/GlobalOmniSearchModal.vue'
+import GlobalHeimdallSearchModal from '~/components/search/GlobalHeimdallSearchModal.vue'
 
 const { user } = useAuthSession()
 </script>
@@ -15,7 +15,7 @@ const { user } = useAuthSession()
           <slot />
         </div>
       </div>
-      <GlobalOmniSearchModal />
+      <GlobalHeimdallSearchModal />
     </SidebarInset>
   </SidebarProvider>
 </template>

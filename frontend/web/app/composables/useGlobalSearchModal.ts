@@ -12,7 +12,7 @@ function getModalState<T>(key: string, init: () => T): Ref<T> {
 
 /**
  * Global search modal controller.
- * Enables opening and managing the OmniSearch modal from any component
+ * Enables opening and managing the HeimdallSearch modal from any component
  * with state change triggers, debounce timeouts, and resistance against
  * page re-paints and rapid key-repeat flickering.
  */

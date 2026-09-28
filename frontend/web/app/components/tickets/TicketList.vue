@@ -1,40 +1,26 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { 
-  AlertOctagon, 
   Clock, 
-  User, 
   Cpu, 
   ChevronRight, 
   Search, 
   Filter, 
   ArrowUpDown, 
-  CheckCircle2, 
-  AlertCircle,
-  Package,
-  FileCheck,
-  FlaskConical,
-  Database,
-  Globe,
-  Lock,
-  Layers
+  AlertTriangle,
+  Package
 } from 'lucide-vue-next'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '~/components/ui/table'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-import type { MaintenanceTicket } from '~/server/utils/ticketsStore'
+import type { MaintenanceTicket, TicketStatus, PendingReason } from '~/types/maintenance'
 import {
   ANDON_STYLES,
   getAndonColorForStatus,
   getAndonPriorityStyle,
-  getCanonicalColumn,
-  getTicketPendingReason,
-  PENDING_REASONS,
-  CLOSURE_AUTHORITIES,
-  type AndonColorType,
-  type PendingReason,
-  type ClosureAuthorityRole
+  PENDING_REASON_CONFIGS,
+  type AndonColorType
 } from '~/utils/andonColors'
 
 const props = defineProps<{
@@ -54,34 +40,29 @@ const searchQuery = ref<string>('')
 const sortByField = ref<string>('created_at')
 const pendingSubFilter = ref<'All' | PendingReason>('All')
 
-const pendingIconMap: Record<string, any> = {
-  Package,
-  FileCheck,
-  FlaskConical,
-  Database,
-  Globe,
-  Lock
-}
+// Table sorting state: null = natural order, 'asc' = ascending, 'desc' = descending
+type SortDirection = 'asc' | 'desc' | null
+const activeSortColumn = ref<string | null>(null)
+const activeSortDirection = ref<SortDirection>(null)
 
 const statusTabs: { id: string; label: string; andonType?: AndonColorType }[] = [
   { id: 'all', label: 'All' },
   { id: 'Open', label: 'Open', andonType: 'cyan' },
-  { id: 'In_Progress', label: 'In Progress', andonType: 'blue' },
+  { id: 'InProgress', label: 'In Progress', andonType: 'blue' },
   { id: 'Pending', label: 'Pending', andonType: 'yellow' },
-  { id: 'Escalated', label: 'Escalated', andonType: 'red' },
   { id: 'Resolved', label: 'Resolved', andonType: 'green' },
-  { id: 'Closed_Unresolved', label: 'Unresolved', andonType: 'slate' }
+  { id: 'Closed', label: 'Closed', andonType: 'slate' }
 ]
 
 const getTabCount = (tabId: string) => {
   if (tabId === 'all') return props.tickets.length
-  return props.tickets.filter(t => getCanonicalColumn(t.status) === tabId || t.status === tabId).length
+  return props.tickets.filter(t => t.status === tabId).length
 }
 
 const getPendingCount = (reason: 'All' | PendingReason) => {
-  const pendingTickets = props.tickets.filter(t => getCanonicalColumn(t.status) === 'Pending')
+  const pendingTickets = props.tickets.filter(t => t.status === 'Pending')
   if (reason === 'All') return pendingTickets.length
-  return pendingTickets.filter(t => getTicketPendingReason(t) === reason).length
+  return pendingTickets.filter(t => (t.pendingReason || 'None') === reason).length
 }
 
 const getPriorityBadge = (priority: string) => {
@@ -89,19 +70,17 @@ const getPriorityBadge = (priority: string) => {
   return {
     class: andon.badgeClass,
     dotClass: andon.dotClass,
-    label: andon.label
+    label: andon.label.toUpperCase()
   }
 }
 
 const getStatusBadge = (status: string) => {
-  const col = getCanonicalColumn(status)
   const andonType = getAndonColorForStatus(status)
   const config = ANDON_STYLES[andonType]
   return {
     class: config.badgeClass,
     dotClass: config.dotClass,
-    koreanLabel: config.koreanLabel,
-    label: col === 'Closed_Unresolved' ? 'Unresolved' : col.replace(/_/g, ' ')
+    label: config.label
   }
 }
 
@@ -110,21 +89,9 @@ const getRowAndonBorderClass = (status: string) => {
   return ANDON_STYLES[andonType].tableBorderClass
 }
 
-const getPendingReasonDetails = (tkt: MaintenanceTicket) => {
-  const reason = getTicketPendingReason(tkt)
-  const config = PENDING_REASONS.find(r => r.id === reason) || PENDING_REASONS[0]
-  const authorityLabel = tkt.pendingAuthority 
-    ? CLOSURE_AUTHORITIES.find(a => a.id === tkt.pendingAuthority)?.label || tkt.pendingAuthority
-    : undefined
-  return {
-    reason,
-    config,
-    authority: authorityLabel
-  }
-}
-
-const formatSlaDue = (slaDueAt: string, status: string) => {
+const formatSlaDue = (slaDueAt?: string, status?: string) => {
   if (status === 'Closed' || status === 'Resolved') return { text: 'Completed', overdue: false }
+  if (!slaDueAt) return { text: 'No SLA', overdue: false }
   const due = new Date(slaDueAt)
   const now = new Date()
   const diffMs = due.getTime() - now.getTime()
@@ -140,240 +107,177 @@ const formatSlaDue = (slaDueAt: string, status: string) => {
   }
 }
 
-type SortColumn = 'ticket' | 'priority' | 'status' | 'tech' | 'sla'
-const activeSortColumn = ref<SortColumn | null>(null)
-const activeSortDirection = ref<'asc' | 'desc' | null>(null)
-
-const priorityWeights: Record<string, number> = {
+const priorityWeight: Record<string, number> = {
   Critical: 4,
   High: 3,
   Medium: 2,
   Low: 1
 }
 
-const statusWeights: Record<string, number> = {
-  Open: 1,
-  In_Progress: 2,
-  Pending: 3,
-  Pending_Parts: 3,
-  Closure_Pending: 3,
-  Pending_Validation: 3,
-  Waiting_On_Feedback: 3,
-  Escalated: 4,
-  Escalated_External: 4,
-  Resolved: 5,
-  Closed: 5,
-  Closed_Unresolved: 6,
-  Cancelled: 6,
-  Archived: 6
-}
-
-const handleSort = (column: SortColumn, direction: 'asc' | 'desc' | null) => {
-  if (direction === null) {
-    activeSortColumn.value = null
-    activeSortDirection.value = null
-  } else {
-    activeSortColumn.value = column
-    activeSortDirection.value = direction
-  }
+const handleSort = (column: string, direction: SortDirection) => {
+  activeSortColumn.value = direction ? column : null
+  activeSortDirection.value = direction
 }
 
 const processedTickets = computed(() => {
   let list = [...props.tickets]
 
-  // 1. Status Filter Tab (matches canonical column or literal status)
   if (activeStatusTab.value !== 'all') {
-    list = list.filter(t => getCanonicalColumn(t.status) === activeStatusTab.value || t.status === activeStatusTab.value)
-    
-    // Sub-filter for Pending reasons
+    list = list.filter(t => t.status === activeStatusTab.value)
     if (activeStatusTab.value === 'Pending' && pendingSubFilter.value !== 'All') {
-      list = list.filter(t => getTicketPendingReason(t) === pendingSubFilter.value)
+      list = list.filter(t => (t.pendingReason || 'None') === pendingSubFilter.value)
     }
   }
 
-  // 2. Priority Filter Select
   if (activePriorityFilter.value !== 'all') {
     list = list.filter(t => t.priority === activePriorityFilter.value)
   }
 
-  // 3. Search Query Filter
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim()
-    list = list.filter(t =>
-      t.ticketNumber?.toLowerCase().includes(q) ||
-      t.stationName?.toLowerCase().includes(q) ||
-      t.title?.toLowerCase().includes(q) ||
-      t.description?.toLowerCase().includes(q) ||
-      t.assignedTechnicianName?.toLowerCase().includes(q) ||
-      (t.pendingReason && t.pendingReason.toLowerCase().includes(q))
+    list = list.filter(t => 
+      t.ticketNumber.toLowerCase().includes(q) ||
+      t.title.toLowerCase().includes(q) ||
+      (t.stationName && t.stationName.toLowerCase().includes(q)) ||
+      (t.assignedTechnicianName && t.assignedTechnicianName.toLowerCase().includes(q)) ||
+      (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
     )
   }
 
-  // 4. 3-State Sorting (Asc -> Desc -> Restore)
-  if (!activeSortColumn.value || !activeSortDirection.value) {
-    return list
+  if (activeSortColumn.value && activeSortDirection.value) {
+    const col = activeSortColumn.value
+    const dir = activeSortDirection.value === 'asc' ? 1 : -1
+
+    list.sort((a, b) => {
+      let valA: any = ''
+      let valB: any = ''
+
+      if (col === 'title') {
+        valA = a.title || ''
+        valB = b.title || ''
+        return dir * valA.localeCompare(valB)
+      } else if (col === 'priority') {
+        valA = priorityWeight[a.priority] || 0
+        valB = priorityWeight[b.priority] || 0
+        return dir * (valA - valB)
+      } else if (col === 'status') {
+        valA = a.status || ''
+        valB = b.status || ''
+        return dir * valA.localeCompare(valB)
+      } else if (col === 'sla') {
+        valA = a.slaDueAt ? new Date(a.slaDueAt).getTime() : 0
+        valB = b.slaDueAt ? new Date(b.slaDueAt).getTime() : 0
+        return dir * (valA - valB)
+      }
+      return 0
+    })
   }
 
-  const col = activeSortColumn.value
-  const dir = activeSortDirection.value
-
-  return list.sort((a, b) => {
-    let cmp = 0
-    switch (col) {
-      case 'ticket': {
-        const aVal = `${a.ticketNumber || ''} ${a.stationName || ''} ${a.title || ''}`.toLowerCase()
-        const bVal = `${b.ticketNumber || ''} ${b.stationName || ''} ${b.title || ''}`.toLowerCase()
-        cmp = aVal.localeCompare(bVal)
-        break
-      }
-      case 'priority': {
-        const aVal = priorityWeights[a.priority] ?? 0
-        const bVal = priorityWeights[b.priority] ?? 0
-        cmp = aVal - bVal
-        break
-      }
-      case 'status': {
-        const aVal = statusWeights[a.status] ?? 0
-        const bVal = statusWeights[b.status] ?? 0
-        cmp = aVal - bVal
-        break
-      }
-      case 'tech': {
-        const aVal = (a.assignedTechnicianName || '').toLowerCase()
-        const bVal = (b.assignedTechnicianName || '').toLowerCase()
-        if (!aVal && bVal) cmp = 1
-        else if (aVal && !bVal) cmp = -1
-        else cmp = aVal.localeCompare(bVal)
-        break
-      }
-      case 'sla': {
-        const aVal = a.slaDueAt ? new Date(a.slaDueAt).getTime() : Infinity
-        const bVal = b.slaDueAt ? new Date(b.slaDueAt).getTime() : Infinity
-        cmp = aVal - bVal
-        break
-      }
-    }
-    return dir === 'desc' ? -cmp : cmp
-  })
+  return list
 })
-
-function handleFilter() {
-  emit('filterChange', {
-    status: activeStatusTab.value,
-    priority: activePriorityFilter.value,
-    query: searchQuery.value,
-    sortBy: sortByField.value
-  })
-}
 </script>
 
 <template>
   <div class="space-y-4">
-    <!-- Toolbar & Filters -->
-    <div class="flex flex-col gap-3">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div class="flex items-center gap-2 flex-1 max-w-sm">
-          <div class="relative flex-1">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input 
-              v-model="searchQuery"
-              placeholder="Search tickets, stations, technicians, pending reasons..."
-              class="pl-9 pr-3 bg-background border-border rounded-lg text-xs h-8 text-foreground placeholder:text-muted-foreground"
-              @input="handleFilter"
-            />
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-          <!-- 6 Canonical Samsung Andon Status Tabs -->
-          <div class="flex p-0.5 bg-muted rounded-lg border border-border gap-0.5">
-            <Button
-              v-for="st in statusTabs"
-              :key="st.id"
-              variant="ghost"
-              size="sm"
-              @click="activeStatusTab = st.id; handleFilter()"
-              :class="activeStatusTab === st.id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-              class="rounded-md text-xs font-medium px-2.5 h-7 transition-colors flex items-center gap-1.5"
-            >
-              <span
-                v-if="st.andonType"
-                class="size-1.5 rounded-full shrink-0"
-                :class="ANDON_STYLES[st.andonType].dotClass"
-              />
-              <span>{{ st.label }}</span>
-              <span class="text-[10px] opacity-75 font-mono">({{ getTabCount(st.id) }})</span>
-            </Button>
-          </div>
-
-          <!-- Priority Select -->
-          <select
-            v-model="activePriorityFilter"
-            @change="handleFilter"
-            class="bg-background border border-border text-foreground text-xs font-medium rounded-lg px-2.5 h-8 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+    <!-- Filter Bar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card border border-border p-4 rounded-2xl shadow-xs">
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+        <button
+          v-for="tab in statusTabs"
+          :key="tab.id"
+          type="button"
+          @click="activeStatusTab = tab.id"
+          :class="[
+            'px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer',
+            activeStatusTab === tab.id
+              ? 'bg-primary text-primary-foreground shadow-xs'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          ]"
+        >
+          <span
+            v-if="tab.andonType"
+            class="size-2 rounded-full shrink-0"
+            :class="ANDON_STYLES[tab.andonType].dotClass"
+          />
+          <span>{{ tab.label }}</span>
+          <span 
+            class="text-[10px] px-1.5 py-0.2 rounded-full font-mono"
+            :class="activeStatusTab === tab.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'"
           >
-            <option value="all">All Priorities</option>
-            <option value="Critical">Critical</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
-        </div>
+            {{ getTabCount(tab.id) }}
+          </span>
+        </button>
       </div>
 
-      <!-- Pending Sub-Filter Ribbon (Visible when 'Pending' tab is active) -->
-      <div 
-        v-if="activeStatusTab === 'Pending'"
-        class="flex items-center gap-1.5 p-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg overflow-x-auto animate-in fade-in duration-200"
-      >
-        <span class="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider px-2 flex items-center gap-1">
-          <Layers class="size-3 text-amber-600 dark:text-amber-400" />
-          Pending Sub-Type:
-        </span>
-        <button
-          type="button"
-          @click="pendingSubFilter = 'All'"
-          :class="[
-            'px-2 py-0.5 rounded text-xs font-medium transition-all flex items-center gap-1',
-            pendingSubFilter === 'All'
-              ? 'bg-amber-500 text-white font-semibold shadow-xs'
-              : 'text-amber-900/70 dark:text-amber-200/70 hover:bg-amber-500/20 hover:text-amber-950 dark:hover:text-amber-100'
-          ]"
+      <div class="flex items-center gap-2.5">
+        <div class="relative w-full md:w-64">
+          <Search class="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+          <Input 
+            v-model="searchQuery" 
+            placeholder="Search tickets, stations, tags..." 
+            class="pl-9 h-9 text-xs bg-muted/30 border-border rounded-xl"
+          />
+        </div>
+
+        <select
+          v-model="activePriorityFilter"
+          class="h-9 px-3 text-xs bg-muted/30 border border-border rounded-xl text-foreground focus:outline-hidden"
         >
-          <span>All</span>
-          <span class="text-[10px] font-mono">({{ getPendingCount('All') }})</span>
-        </button>
-        <button
-          v-for="reason in PENDING_REASONS"
-          :key="reason.id"
-          type="button"
-          @click="pendingSubFilter = reason.id"
-          :class="[
-            'px-2 py-0.5 rounded text-xs font-medium transition-all flex items-center gap-1',
-            pendingSubFilter === reason.id
-              ? 'bg-amber-500 text-white font-semibold shadow-xs'
-              : 'text-amber-900/70 dark:text-amber-200/70 hover:bg-amber-500/20 hover:text-amber-950 dark:hover:text-amber-100'
-          ]"
-        >
-          <component :is="pendingIconMap[reason.iconName]" class="size-3" />
-          <span>{{ reason.shortLabel }}</span>
-          <span class="text-[10px] font-mono">({{ getPendingCount(reason.id) }})</span>
-        </button>
+          <option value="all">All Priorities</option>
+          <option value="Critical">Critical</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
       </div>
     </div>
 
+    <!-- Pending Reason Sub-Filter (when Pending is selected) -->
+    <div 
+      v-if="activeStatusTab === 'Pending'" 
+      class="flex flex-wrap items-center gap-1.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs"
+    >
+      <span class="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 mr-2 flex items-center gap-1">
+        <Filter class="size-3 text-amber-600" />
+        Filter Pending Reason:
+      </span>
+      <button
+        type="button"
+        @click="pendingSubFilter = 'All'"
+        class="px-2 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+        :class="pendingSubFilter === 'All'
+          ? 'bg-amber-500 text-amber-950 font-bold shadow-xs'
+          : 'bg-background/80 text-foreground hover:bg-muted'"
+      >
+        All ({{ getPendingCount('All') }})
+      </button>
+      <button
+        v-for="(cfg, rKey) in PENDING_REASON_CONFIGS"
+        :key="rKey"
+        type="button"
+        @click="pendingSubFilter = rKey"
+        class="px-2 py-1 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+        :class="pendingSubFilter === rKey
+          ? 'bg-amber-500 text-amber-950 font-bold shadow-xs'
+          : 'bg-background/80 text-foreground hover:bg-muted'"
+      >
+        <span>{{ cfg.label }}</span>
+        <span class="text-[10px] opacity-75 font-mono">({{ getPendingCount(rKey) }})</span>
+      </button>
+    </div>
+
     <!-- Tickets Table -->
-    <div class="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+    <div class="border border-border rounded-2xl overflow-hidden bg-card shadow-xs">
       <Table>
-        <TableHeader class="bg-muted/50 border-b border-border">
-          <TableRow class="border-b border-border hover:bg-transparent">
+        <TableHeader class="bg-muted/40 border-b border-border">
+          <TableRow>
             <TableHead
               sortable
-              :sort-direction="activeSortColumn === 'ticket' ? activeSortDirection : null"
-              @sort="handleSort('ticket', $event)"
+              :sort-direction="activeSortColumn === 'title' ? activeSortDirection : null"
+              @sort="handleSort('title', $event)"
               class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4"
             >
-              Ticket / Station
+              Ticket &amp; Station
             </TableHead>
             <TableHead
               sortable
@@ -389,14 +293,9 @@ function handleFilter() {
               @sort="handleSort('status', $event)"
               class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4"
             >
-              Status
+              Status &amp; Reason
             </TableHead>
-            <TableHead
-              sortable
-              :sort-direction="activeSortColumn === 'tech' ? activeSortDirection : null"
-              @sort="handleSort('tech', $event)"
-              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4"
-            >
+            <TableHead class="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3 px-4">
               Assigned Tech
             </TableHead>
             <TableHead
@@ -437,7 +336,16 @@ function handleFilter() {
                   <div>
                     <div class="flex items-center gap-2">
                       <span class="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400">{{ tkt.ticketNumber }}</span>
-                      <span class="text-[11px] text-muted-foreground font-medium">[{{ tkt.stationName }}]</span>
+                      <span v-if="tkt.stationName" class="text-[11px] text-muted-foreground font-medium">[{{ tkt.stationName }}]</span>
+                      <!-- Escalation Badge -->
+                      <Badge
+                        v-if="tkt.isEscalated"
+                        variant="outline"
+                        class="text-[9px] bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 uppercase font-black px-1.5 py-0 flex items-center gap-1 animate-pulse"
+                      >
+                        <AlertTriangle class="size-2.5" />
+                        Escalated
+                      </Badge>
                     </div>
                     <h5 class="text-sm font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mt-0.5">
                       {{ tkt.title }}
@@ -470,15 +378,12 @@ function handleFilter() {
 
                   <!-- Pending reason chip if Pending -->
                   <div 
-                    v-if="getCanonicalColumn(tkt.status) === 'Pending'"
+                    v-if="tkt.status === 'Pending'"
                     class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded border"
-                    :class="getPendingReasonDetails(tkt).config.badgeColor"
+                    :class="PENDING_REASON_CONFIGS[tkt.pendingReason || 'None']?.badgeClass"
                   >
-                    <component :is="pendingIconMap[getPendingReasonDetails(tkt).config.iconName]" class="size-3 shrink-0" />
-                    <span>{{ getPendingReasonDetails(tkt).reason }}</span>
-                    <span v-if="getPendingReasonDetails(tkt).authority" class="text-[10px] opacity-80 font-normal">
-                      • {{ getPendingReasonDetails(tkt).authority }}
-                    </span>
+                    <Package class="size-3 shrink-0" />
+                    <span>{{ PENDING_REASON_CONFIGS[tkt.pendingReason || 'None']?.label || 'None' }}</span>
                   </div>
                 </div>
               </TableCell>

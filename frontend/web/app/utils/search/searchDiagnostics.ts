@@ -1,5 +1,5 @@
 /**
- * GDPR-Compliant Diagnostics & Telemetry Collector for FMFD ("Find My Fucking Data" / User-Facing: "Find My Field Data")
+ * GDPR-Compliant Diagnostics & Telemetry Collector for Heimdall Search
  * 
  * Strict Privacy & GDPR Compliance Guarantees:
  * 1. ZERO raw PII: Email addresses, IP addresses, credentials, JWTs, and phone numbers are scrubbed.

@@ -4,6 +4,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>heimdall-backend</AssemblyName>
+    <PackageId>Heimdall.Backend.Api</PackageId>
+    <Product>Heimdall Backend API</Product>
+    <Company>Heimdall Project</Company>
+    <Authors>0xLufis</Authors>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Description>Heimdall Central OT Backend API Server</Description>
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
 

@@ -22,9 +22,7 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 - **Client Offloading:** Server-side aggregation, filtering, and caching via Nuxt Nitro BFF (Backend-for-Frontend) routes.
 - **Enterprise Dataset & Simulated AD:** Canonical plant fixtures (`fixtures/enterprise_plant_dataset.json`), mock directory REST endpoints (`/api/ad-mock/v1.0/*`), and RFC 4511 LDAP search engine.
 - **Better-Auth & Directory Security Group Org Governance:** Dynamic tenant organization mapping and auto-provisioning driven by directory claims, with an interactive claims evaluation sandbox.
-- **Mock CMI / WMI Engine & Simulated PC Containers:** WMI / CIM hardware query runner (`wmic`, `Get-CimInstance`) and dedicated Docker containers running simulated Windows edge PCs with local diagnostics and telemetry streams.
-- **Industrial Maintenance & Zero-Dependency Action QR:** 8-column Kanban lifecycle, error template catalog, SFC serialization, technician delegation hierarchy, and pure SVG Galois Field GF(256) matrix QR generator.
-- **MFA Policy & PKI Certificate Governance:** Role-based MFA timeout threshold enforcement, AD OU VLAN host discovery, and automated X.509 certificate assignment.
+- **Industrial Maintenance & Zero-Dependency Action QR:** Canonical 5-state Kanban lifecycle (`Open`, `InProgress`, `Pending`, `Resolved`, `Closed`), orthogonal escalation, typed `PendingReason` flags, error template catalog, SFC serialization, technician delegation hierarchy, and pure SVG Galois Field GF(256) matrix QR generator.
 - **OT Integrations:** Git-based PLC version control integration blueprint and native OPC UA Server API (`opc.tcp://`).
 - **Security & Compliance:** TISAX (VDA ISA 6.0 / High Protection) compliance framework, multi-tenant isolation, cryptographic command signing, and mTLS support.
 
@@ -122,11 +120,10 @@ heimdall/
 │   ├── dev_manager.py       # Unified development service orchestrator & monitor
 │   └── generate_sequence_diagrams.py # Code-to-Mermaid sequence diagram generator
 ├── tests/                   # Unified Verification Suites
-│   ├── backend/             # xUnit integration & unit tests (208 tests)
-│   ├── frontend/unit/       # Vitest unit tests (39 suites, 298 tests)
+│   ├── backend/             # xUnit integration & unit tests (215 tests)
+│   ├── frontend/unit/       # Vitest unit tests (43 suites, 348 tests)
 │   └── e2e/                 # Playwright browser automation tests
-├── run_dev.sh               # Local development environment launcher script
-└── run_simulators.sh        # Multi-client fleet simulator orchestrator
+└── justfile                 # Modern command runner for dev, staging, testing, and production
 ```
 
 ---
@@ -302,54 +299,17 @@ Heimdall includes pre-configured environment templates at the repository root:
 - **[`.env.dev`](.env.dev)**: Local development defaults (`HEIMDALL_ENABLE_DEV=true`, `HEIMDALL_ENABLE_DEBUG=true`).
 - **[`.env.staging`](.env.staging)**: Staging configuration (`HEIMDALL_ENABLE_DEV=false`, `HEIMDALL_ENABLE_DEBUG=true`, `heimdall_staging_db`).
 
----
-
-### 4.2 Legacy Shell Script (`run_dev.sh`)
-
-You can also manage services using the legacy shell wrapper:
-
-```bash
-# Start all Heimdall services and launch TUI
-./run_dev.sh
-
-# Start services in background daemon mode
-./run_dev.sh start --daemon
-
-# Inspect Windows Edge Agent node status & ports
-./run_dev.sh windows status
-
-# Stop all Heimdall services
-./run_dev.sh stop
-```
-
----
-
-### 5. Shell Auto-Completion Setup
-
-Heimdall includes comprehensive tab-completion for `run_dev.sh`, `run_simulators.sh`, `tools/dev_manager.py`, `seed_data/seed_pipeline.py`, and `simulators/fleet/fleet_simulator.py`.
-
-```bash
-# 1-Click Installation (Auto-detects Bash/Zsh and adds to ~/.bashrc or ~/.zshrc)
-./run_dev.sh install-completions
-
-# Or activate immediately in your current session:
-source <(./run_dev.sh completion bash)   # for Bash
-source <(./run_dev.sh completion zsh)    # for Zsh
-```
-
----
-
 ## Running Verification Tests
 
 ```bash
-# 0. Run Unified Verification Suite (all seed, backend, frontend, and smoke tests)
-./run_dev.sh test all
+# 0. Run Unified Verification Suite (seed validation, backend, frontend)
+just test
 
-# 1. Run .NET backend unit & integration tests (xUnit, 208 tests)
-dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
+# 1. Run .NET backend unit & integration tests (xUnit, 215 tests)
+dotnet test Heimdall.sln
 
-# 2. Run Nuxt frontend unit test suites (Vitest, 39 suites, 298 tests)
-bun --cwd frontend/web run test:unit
+# 2. Run Nuxt frontend unit test suites (Vitest, 43 suites, 348 tests)
+cd frontend/web && bun run test
 
 # 3. Run Python fleet simulator & mock CMI runner tests (9 tests)
 ./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"

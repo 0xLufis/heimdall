@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SearchableTargetCombobox from '../../../frontend/web/app/components/common/SearchableTargetCombobox.vue'
 import MachineSearchCombobox from '../../../frontend/web/app/components/tickets/MachineSearchCombobox.vue'
-import OmniSearchBar from '../../../frontend/web/app/components/search/OmniSearchBar.vue'
+import HeimdallSearchBar from '../../../frontend/web/app/components/search/HeimdallSearchBar.vue'
 
 describe('Search Functions - Lookup Behavior & Premature Save Prevention', () => {
   describe('SearchableTargetCombobox', () => {
@@ -93,9 +93,9 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
     })
   })
 
-  describe('OmniSearchBar', () => {
+  describe('HeimdallSearchBar', () => {
     it('does not emit search event on a single character query without tags', async () => {
-      const wrapper = mount(OmniSearchBar, {
+      const wrapper = mount(HeimdallSearchBar, {
         props: {
           config: {
             minCharsForSuggestions: 2,
@@ -123,7 +123,7 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
     })
 
     it('executes search and closes the search menu on Enter when there is no pill to complete', async () => {
-      const wrapper = mount(OmniSearchBar, {
+      const wrapper = mount(HeimdallSearchBar, {
         props: {
           config: {
             minCharsForSuggestions: 2,
@@ -150,7 +150,7 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
     })
 
     it('completes the pill on Enter when auto-suggestions exist', async () => {
-      const wrapper = mount(OmniSearchBar, {
+      const wrapper = mount(HeimdallSearchBar, {
         props: {
           config: {
             minCharsForSuggestions: 2,
@@ -175,7 +175,7 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
     })
 
     it('closes the search menu on Escape', async () => {
-      const wrapper = mount(OmniSearchBar, {
+      const wrapper = mount(HeimdallSearchBar, {
         props: {
           config: {
             minCharsForSuggestions: 2,
@@ -199,7 +199,7 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
     })
 
     it('opens the suggestion dropdown on Ctrl+Space', async () => {
-      const wrapper = mount(OmniSearchBar, {
+      const wrapper = mount(HeimdallSearchBar, {
         props: {
           config: {
             minCharsForSuggestions: 2,
@@ -225,7 +225,7 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
     })
 
     it('re-opens the suggestion dropdown on ArrowDown when closed', async () => {
-      const wrapper = mount(OmniSearchBar, {
+      const wrapper = mount(HeimdallSearchBar, {
         props: {
           config: {
             minCharsForSuggestions: 2,
@@ -248,7 +248,7 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
     })
 
     it('completes top key suggestion on Tab when suggestions are visible', async () => {
-      const wrapper = mount(OmniSearchBar, {
+      const wrapper = mount(HeimdallSearchBar, {
         props: {
           config: {
             minCharsForSuggestions: 2,
@@ -271,7 +271,7 @@ describe('Search Functions - Lookup Behavior & Premature Save Prevention', () =>
     })
 
     it('focuses search input when global / or Ctrl+P is pressed', async () => {
-      const wrapper = mount(OmniSearchBar, {
+      const wrapper = mount(HeimdallSearchBar, {
         attachTo: document.body,
         props: {
           config: {

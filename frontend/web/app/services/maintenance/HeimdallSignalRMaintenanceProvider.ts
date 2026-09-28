@@ -390,8 +390,8 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
 
     const tickets = await this.getTickets()
     const open = tickets.filter(t => t.status === 'Open').length
-    const inProgress = tickets.filter(t => t.status === 'In_Progress').length
-    const pendingParts = tickets.filter(t => t.status === 'Pending_Parts').length
+    const inProgress = tickets.filter(t => t.status === 'InProgress').length
+    const pendingParts = tickets.filter(t => t.status === 'Pending').length
     const resolved = tickets.filter(t => t.status === 'Resolved').length
     const closed = tickets.filter(t => t.status === 'Closed').length
     const critical = tickets.filter(t => t.priority === 'Critical' && t.status !== 'Resolved' && t.status !== 'Closed').length
@@ -405,7 +405,7 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
       totalTickets: tickets.length,
       openCount: open,
       inProgressCount: inProgress,
-      pendingPartsCount: pendingParts,
+      pendingCount: pendingParts,
       resolvedCount: resolved,
       closedCount: closed,
       criticalCount: critical,

@@ -1,5 +1,13 @@
 import { defineEventHandler, getQuery } from 'h3'
-import { getTicketsStore } from '../../utils/ticketsStore'
+
+const BACKEND_BASE = process.env.BACKEND_API_URL || 'http://localhost:5001'
+
+const PRIORITY_WEIGHT: Record<string, number> = {
+  Critical: 4,
+  High: 3,
+  Medium: 2,
+  Low: 1
+}
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -11,50 +19,38 @@ export default defineEventHandler(async (event) => {
   const sortBy = (query.sortBy as string || 'created_at').trim()
   const sortOrder = (query.sortOrder as string || 'desc').trim()
 
-  let allTickets: any[] = []
+  const rawList = await $fetch<any[]>(`${BACKEND_BASE}/api/v1/MaintenanceTicket`, {
+    headers: event.headers as any
+  })
 
-  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
-  try {
-    const rawList = await $fetch<any[]>(`${backendBase}/api/v1/MaintenanceTicket`, {
-      headers: event.headers as any
-    })
-    if (rawList && rawList.length > 0) {
-      allTickets = rawList.map((t: any) => ({
-        id: t.id || t.Id,
-        ticketNumber: t.ticketNumber || `TKT-${(t.id || '').substring(0, 8)}`,
-        stationId: t.machineId || t.stationId,
-        stationName: t.machine?.name || t.machine?.customIdentifier || t.stationName || 'Production Station',
-        controllerId: t.clientPcId || t.controllerId,
-        controllerName: t.clientPc?.hostname || t.controllerName,
-        title: t.title || t.Title || '',
-        description: t.description || t.Description || '',
-        status: t.status || t.Status || 'Open',
-        priority: t.priority || t.Priority || 'Medium',
-        reportedByUserName: t.createdBy || 'Operator',
-        assignedTechnicianName: t.assignedTo || 'Unassigned',
-        createdAt: t.createdAt || t.CreatedAt || new Date().toISOString(),
-        updatedAt: t.updatedAt || t.UpdatedAt || new Date().toISOString(),
-        slaDueAt: t.slaDueAt || new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
-        comments: t.comments || [],
-        attachments: t.attachments || []
-      }))
-    } else {
-      allTickets = getTicketsStore()
-    }
-  } catch {
-    allTickets = getTicketsStore()
-  }
+  const allTickets = (rawList ?? []).map((t: any) => ({
+    id: t.id || t.Id,
+    ticketNumber: t.ticketNumber || `TKT-${(t.id || '').substring(0, 8)}`,
+    stationId: t.machineId || t.stationId,
+    stationName: t.machine?.name || t.machine?.customIdentifier || t.stationName || '',
+    controllerId: t.clientPcId || t.controllerId,
+    controllerName: t.clientPc?.hostname || t.controllerName,
+    title: t.title || t.Title || '',
+    description: t.description || t.Description || '',
+    status: t.status || t.Status || 'Open',
+    priority: t.priority || t.Priority || 'Medium',
+    pendingReason: t.pendingReason ?? null,
+    pendingDetails: t.pendingDetails ?? null,
+    isEscalated: t.isEscalated ?? false,
+    escalationReason: t.escalationReason ?? null,
+    reportedByUserName: t.createdBy || '',
+    assignedTechnicianName: t.assignedTo || '',
+    createdAt: t.createdAt || t.CreatedAt,
+    updatedAt: t.updatedAt || t.UpdatedAt,
+    slaDueAt: t.slaDueAt ?? null,
+    comments: t.comments ?? [],
+    attachments: t.attachments ?? []
+  }))
 
-  // Calculate aggregated metrics
   const now = new Date()
-  const openCount = allTickets.filter(t => t.status === 'Open').length
-  const inProgressCount = allTickets.filter(t => t.status === 'In_Progress').length
-  const pendingPartsCount = allTickets.filter(t => t.status === 'Pending_Parts').length
-  const resolvedCount = allTickets.filter(t => t.status === 'Resolved').length
-  const closedCount = allTickets.filter(t => t.status === 'Closed').length
-  const criticalCount = allTickets.filter(t => t.priority === 'Critical' && t.status !== 'Closed' && t.status !== 'Resolved').length
-  const overdueCount = allTickets.filter(t => t.slaDueAt && new Date(t.slaDueAt) < now && t.status !== 'Closed' && t.status !== 'Resolved').length
-
+  const overdueCount = allTickets.filter(
+    t => t.slaDueAt && new Date(t.slaDueAt) < now && t.status !== 'Closed' && t.status !== 'Resolved'
+  ).length
   const slaCompliancePercent = allTickets.length > 0
     ? Math.round(((allTickets.length - overdueCount) / allTickets.length) * 100)
     : 100
@@ -64,22 +60,20 @@ export default defineEventHandler(async (event) => {
   if (statusFilter !== 'all') {
     filtered = filtered.filter(t => t.status === statusFilter)
   }
-
   if (priorityFilter !== 'all') {
     filtered = filtered.filter(t => t.priority === priorityFilter)
   }
-
   if (stationFilter) {
     filtered = filtered.filter(t =>
       (t.stationId || '').toLowerCase().includes(stationFilter.toLowerCase()) ||
       (t.stationName || '').toLowerCase().includes(stationFilter.toLowerCase())
     )
   }
-
   if (technicianFilter) {
-    filtered = filtered.filter(t => t.assignedTechnicianId === technicianFilter || t.assignedTechnicianName === technicianFilter)
+    filtered = filtered.filter(t =>
+      t.assignedTechnicianId === technicianFilter || t.assignedTechnicianName === technicianFilter
+    )
   }
-
   if (searchQuery) {
     filtered = filtered.filter(t =>
       (t.ticketNumber || '').toLowerCase().includes(searchQuery) ||
@@ -90,20 +84,13 @@ export default defineEventHandler(async (event) => {
     )
   }
 
-  const priorityWeight: Record<string, number> = {
-    Critical: 4,
-    High: 3,
-    Medium: 2,
-    Low: 1
-  }
-
   filtered.sort((a, b) => {
     let valA: any = a.createdAt
     let valB: any = b.createdAt
 
     if (sortBy === 'priority') {
-      valA = priorityWeight[a.priority] || 0
-      valB = priorityWeight[b.priority] || 0
+      valA = PRIORITY_WEIGHT[a.priority] || 0
+      valB = PRIORITY_WEIGHT[b.priority] || 0
     } else if (sortBy === 'sla_due_at') {
       valA = new Date(a.slaDueAt || 0).getTime()
       valB = new Date(b.slaDueAt || 0).getTime()
@@ -128,12 +115,15 @@ export default defineEventHandler(async (event) => {
     metrics: {
       totalTickets: allTickets.length,
       filteredCount: filtered.length,
-      openCount,
-      inProgressCount,
-      pendingPartsCount,
-      resolvedCount,
-      closedCount,
-      criticalCount,
+      openCount: allTickets.filter(t => t.status === 'Open').length,
+      inProgressCount: allTickets.filter(t => t.status === 'InProgress').length,
+      pendingCount: allTickets.filter(t => t.status === 'Pending').length,
+      resolvedCount: allTickets.filter(t => t.status === 'Resolved').length,
+      closedCount: allTickets.filter(t => t.status === 'Closed').length,
+      escalatedCount: allTickets.filter(t => t.isEscalated).length,
+      criticalCount: allTickets.filter(
+        t => t.priority === 'Critical' && t.status !== 'Closed' && t.status !== 'Resolved'
+      ).length,
       overdueCount,
       slaCompliancePercent
     }

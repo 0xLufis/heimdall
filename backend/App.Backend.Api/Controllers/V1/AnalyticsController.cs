@@ -69,29 +69,4 @@ public class AnalyticsController : ControllerBase
         var kpis = _predictiveService.GetLineKpis();
         return Ok(kpis);
     }
-
-    /// <summary>
-    /// Gets Power BI Embedded integration metadata and tenant authorization status.
-    /// </summary>
-    [HttpGet("powerbi/config")]
-    public ActionResult<PowerBiConfigDto> GetPowerBiConfig()
-    {
-        string? tenantId = _configuration["PowerBi:TenantId"];
-        string? clientId = _configuration["PowerBi:ClientId"];
-        string? workspaceId = _configuration["PowerBi:WorkspaceId"] ?? "a840e39b-7e61-4191-bb21-98782f93bc01";
-        string? reportId = _configuration["PowerBi:ReportId"] ?? "71c0490e-b812-4cf4-916b-70678d781bcf";
-        string? datasetId = _configuration["PowerBi:DatasetId"] ?? "54b98df0-1011-477b-8911-39870198ad23";
-
-        bool isConfigured = !string.IsNullOrEmpty(tenantId) && !string.IsNullOrEmpty(clientId);
-
-        return Ok(new PowerBiConfigDto
-        {
-            EmbedUrl = $"https://app.powerbi.com/reportEmbed?reportId={reportId}&groupId={workspaceId}",
-            ReportId = reportId,
-            DatasetId = datasetId,
-            WorkspaceId = workspaceId,
-            IsConfigured = isConfigured,
-            AuthStatus = isConfigured ? "Authenticated (Service Principal)" : "Demonstration Mock (Local Development)"
-        });
-    }
 }

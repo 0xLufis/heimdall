@@ -211,26 +211,26 @@ public class AppDbContext : DbContext
                 .Property(e => e.OuTags)
                 .HasConversion(jsonConverter);
 
-            // Converters for ClientPc POCOs
+            // Converters for ClientPc POCOs with safe deserialization
             modelBuilder.Entity<ClientPc>().Property(e => e.FreeDiskSpace)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<DiskSpaceInfo>(v, (System.Text.Json.JsonSerializerOptions?)null));
+                    v => SafeDeserializeJson<DiskSpaceInfo>(v));
 
             modelBuilder.Entity<ClientPc>().Property(e => e.MonitoringConfig)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<ResourceMonitoringConfig>(v, (System.Text.Json.JsonSerializerOptions?)null));
+                    v => SafeDeserializeJson<ResourceMonitoringConfig>(v));
 
             modelBuilder.Entity<ClientPc>().Property(e => e.ResourceAverages)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<ResourceAverages>(v, (System.Text.Json.JsonSerializerOptions?)null));
+                    v => SafeDeserializeJson<ResourceAverages>(v));
 
             modelBuilder.Entity<ClientPc>().Property(e => e.AlertingLimits)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<AlertingLimits>(v, (System.Text.Json.JsonSerializerOptions?)null));
+                    v => SafeDeserializeJson<AlertingLimits>(v));
 
             modelBuilder.Entity<StationController>()
                 .Property(e => e.Metadata)
@@ -482,6 +482,8 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => e.AssignedTo);
             entity.HasIndex(e => e.OrganizationId);
+            entity.HasIndex(e => e.IsEscalated);
+            entity.Property(e => e.PendingReason).HasConversion<string>();
 
             entity.HasOne(e => e.Equipment)
                   .WithMany()
@@ -629,5 +631,18 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<AuditLog>()
             .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
+    }
+
+    private static T? SafeDeserializeJson<T>(string? json) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<T>(json, (System.Text.Json.JsonSerializerOptions?)null);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

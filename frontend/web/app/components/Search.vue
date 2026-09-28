@@ -6,7 +6,7 @@ import { defineShortcuts } from '~/composables/defineShortcuts'
 /**
  * Confluence-style Quick Search Launcher.
  * Renders an accessible, sleek quick-search input button in the sidebar header
- * that triggers the full OmniSearch modal upon click or keyboard shortcut.
+ * that triggers the full HeimdallSearch modal upon click or keyboard shortcut.
  */
 const props = withDefaults(
   defineProps<{

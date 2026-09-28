@@ -74,7 +74,7 @@ export class ExternalEnterpriseMaintenanceAdapter implements IMaintenanceService
       totalTickets: 0,
       openCount: 0,
       inProgressCount: 0,
-      pendingPartsCount: 0,
+      pendingCount: 0,
       resolvedCount: 0,
       closedCount: 0,
       criticalCount: 0,

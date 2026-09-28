@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { ref } from 'vue'
-import { useOmniSearch } from '../../../frontend/web/app/composables/useOmniSearch'
+import { useHeimdallSearch } from '../../../frontend/web/app/composables/useHeimdallSearch'
 import { 
   resolveSearchTemplate, 
   machineTemplate, 
@@ -17,7 +17,7 @@ import {
 import { calculateFuzzyScore, isFuzzyMatch, rankByFuzzyScore } from '../../../frontend/web/app/utils/search/fuzzy'
 import { SearchDiagnosticsService } from '../../../frontend/web/app/utils/search/searchDiagnostics'
 
-describe('Parameterized useOmniSearch & GDPR Diagnostics Suite', () => {
+describe('Parameterized useHeimdallSearch & GDPR Diagnostics Suite', () => {
   describe('Named Templates & Protobuf Schema Normalization', () => {
     it('normalizes machine station objects into uniform SearchResultItem', () => {
       const rawMachine = {
@@ -170,7 +170,7 @@ describe('Parameterized useOmniSearch & GDPR Diagnostics Suite', () => {
     })
   })
 
-  describe('Parameterized Ingestion via useOmniSearch Composable', () => {
+  describe('Parameterized Ingestion via useHeimdallSearch Composable', () => {
     it('executes in-memory search over JSON data with template normalization', async () => {
       const dataset = [
         { id: 'm-1', name: 'Robotic Welder 1', machineType: 'Robot', groupId: 'Weld-Line', status: 'online' },
@@ -178,7 +178,7 @@ describe('Parameterized useOmniSearch & GDPR Diagnostics Suite', () => {
         { id: 'm-3', name: 'Laser Marker', machineType: 'Laser', groupId: 'Marking-Line', status: 'offline' }
       ]
 
-      const { results, executeSearch, rawInput } = useOmniSearch({
+      const { results, executeSearch, rawInput } = useHeimdallSearch({
         template: 'machine',
         data: dataset,
         config: { debounceMs: 10 }
@@ -200,7 +200,7 @@ describe('Parameterized useOmniSearch & GDPR Diagnostics Suite', () => {
         { id: 'i-3', name: 'Screw M6', itemType: 'stock', isStockItem: true, equipmentStatus: 'InStorage' }
       ]
 
-      const { results, addTag, rawInput, executeSearch } = useOmniSearch({
+      const { results, addTag, rawInput, executeSearch } = useHeimdallSearch({
         template: 'inventory',
         data: dataset
       })
@@ -221,7 +221,7 @@ describe('Parameterized useOmniSearch & GDPR Diagnostics Suite', () => {
         ]
       }
 
-      const { results, executeSearch } = useOmniSearch({
+      const { results, executeSearch } = useHeimdallSearch({
         dataSource: { type: 'custom', handler: customHandler },
         template: 'inventory'
       })
@@ -261,7 +261,7 @@ describe('Parameterized useOmniSearch & GDPR Diagnostics Suite', () => {
         valueSuggestions,
         handleInputChange,
         activePendingKey
-      } = useOmniSearch({
+      } = useHeimdallSearch({
         template: 'inventory',
         config: { fuzzy: { enabled: true, threshold: 0.7 } }
       })

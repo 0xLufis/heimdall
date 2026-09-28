@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FleetAnalyticsSummary from '../../../frontend/web/app/components/analytics/FleetAnalyticsSummary.vue'
 import KpiGraphBuilder from '../../../frontend/web/app/components/analytics/KpiGraphBuilder.vue'
-import PowerBiTileEmbed from '../../../frontend/web/app/components/analytics/PowerBiTileEmbed.vue'
 import { navMenu } from '../../../frontend/web/app/constants/menus'
 
 const mockSummary = {
@@ -115,17 +114,6 @@ describe('Predictive Maintenance, Analytics & KPI Builder Test Suite', () => {
       await pinButton.trigger('click')
 
       expect(wrapper.text()).toContain('Custom Line 5 OEE')
-    })
-  })
-
-  describe('PowerBiTileEmbed Component', () => {
-    it('displays Power BI workspace configuration and external export links', () => {
-      const wrapper = mount(PowerBiTileEmbed)
-
-      expect(wrapper.text()).toContain('Microsoft Power BI Embedded Workspace')
-      expect(wrapper.text()).toContain('Grafana Infinity Plugin')
-      expect(wrapper.text()).toContain('Excel PowerQuery Live Feed')
-      expect(wrapper.text()).toContain('Machines OData Catalog')
     })
   })
 

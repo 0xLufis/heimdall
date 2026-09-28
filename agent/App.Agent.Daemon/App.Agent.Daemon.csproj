@@ -4,6 +4,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>heimdall-agent</AssemblyName>
+    <PackageId>Heimdall.Agent.Daemon</PackageId>
+    <Product>Heimdall Edge Daemon</Product>
+    <Company>Heimdall Project</Company>
+    <Authors>0xLufis</Authors>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Description>Heimdall Industrial Edge Telemetry &amp; Protocol Daemon</Description>
     <UserSecretsId>dotnet-App.Agent.Daemon-b6d14ba2-0a68-4282-b8ca-a994dc3c6ad1</UserSecretsId>
     <UseAppHost Condition="'$(RuntimeIdentifier)' == ''">false</UseAppHost>
     <CetCompat>false</CetCompat>

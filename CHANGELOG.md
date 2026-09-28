@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Canonical 5-State Industrial Ticketing & Orthogonal Escalation**:
+  - Overhauled maintenance ticketing across frontend and backend to strictly 5 canonical statuses: `Open`, `InProgress`, `Pending`, `Resolved`, and `Closed`.
+  - Decoupled escalation from status: tickets now feature orthogonal escalation flags (`isEscalated`, `escalationReason`, `escalatedAt`, `escalatedBy`, `escalationClosedAt`, `escalationClosedBy`), enabling escalation and de-escalation in any status.
+  - Replaced legacy pending states with strongly typed `PendingReason` enum (`None`, `Parts`, `ExternalOk`, `Action`), matching backend and frontend contracts.
+  - Updated `TicketKanbanBoard.vue`, `TicketList.vue`, `TicketDetailDrawer.vue`, `TicketMetricsOverview.vue`, `TicketResolvedLog.vue`, and `useMaintenance.ts` to support canonical workflow, inline pending reason selection, and independent escalation controls.
+  - Aligned status colors to IEC 60073 industrial standards and removed obsolete Korean labels.
+- **Global Search Rebranding (`heimdallSearch`)**:
+  - Renamed `useOmniSearch` to `useHeimdallSearch`.
+  - Renamed search components to `HeimdallSearchBar.vue` and `GlobalHeimdallSearchModal.vue`.
+  - Updated all dashboard views and test suites to use the unified `HeimdallSearchBar`.
+- **Settings Page Modularization**:
+  - Refactored monolithic 1,849-line `settings.vue` into modular tab components under `frontend/web/app/components/settings/`:
+    - `SettingsProfileTab.vue`: Profile identity, avatar, password management.
+    - `SettingsRolesTab.vue`: Role assignment and capability badges.
+    - `SettingsSecurityTab.vue`: SSO, TOTP MFA configuration, Copia personal access token and compliance.
+    - `SettingsAppearanceTab.vue`: System color mode selection.
+    - `SettingsPersonasTab.vue`: Development persona switcher.
+  - Reduced main `settings.vue` controller to 88 lines.
+
+### Removed
+- **Legacy Code & Repository Hygiene**:
+  - Removed deprecated root shell scripts (`run_dev.sh`, `run_simulators.sh`), migrating workflows to `justfile`.
+  - Moved misplaced root architectural specs and roadmaps into `docs/architecture/` and `docs/guide/`.
+  - Deleted unused backend repositories (`IClientPcRepository.cs`, `ClientPcRepository.cs`).
+  - Purged fake and mock UI embeds: deleted `PowerBiTileEmbed.vue`, `GrafanaMassTelemetryEmbed.vue`, and mock server route `powerbi.get.ts`.
+  - Deleted static seed mock tickets (`initialTickets.ts`), transitioning BFF to clean dynamic state.
+
+### Added
+- **Centralized Cache Key Factory & Backend Reliability**:
+  - Implemented `CacheKeyFactory` in `App.Infrastructure.Caching` to centralize Redis/Memory cache key generation, eliminating hardcoded strings and resolving cache invalidation race conditions on ticket updates.
+  - Added unit test suite `CacheKeyFactoryTests.cs` (215/215 backend tests passing).
+- **Windows Edge Container Telemetry Fallbacks**:
+  - Added non-WMI platform telemetry fallbacks (`/proc/meminfo`, `hostname`, `df -B1`) in `App.Agent.Daemon` to enable Windows containers to report CPU, memory, and disk health metrics to the central dashboard.
+
 ### Added
 - **Unified Command Runner (`justfile`)**:
   - Implemented root `justfile` replacing shell script sprawl with clean, declarative `just` recipes:

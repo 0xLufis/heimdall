@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
+import { useFeatureFlags } from '~/composables/useFeatureFlags'
 import { 
   ShieldCheckIcon, 
   PlusIcon, 
@@ -61,6 +62,7 @@ export interface SafeAutomationApiKey {
   description?: string
 }
 
+const { enableSimulation } = useFeatureFlags()
 const mappings = ref<SecurityGroupMapping[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -1407,7 +1409,7 @@ $response | ConvertTo-Json -Depth 4</template></code></pre>
     </Card>
 
     <!-- Interactive Claims Evaluation Sandbox -->
-    <Card class="border-border/80">
+    <Card v-if="enableSimulation" class="border-border/80">
 
       <CardHeader>
         <CardTitle class="text-base flex items-center gap-2">

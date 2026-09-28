@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { initialTickets } from './initialTickets'
 import { featureFlags } from './featureFlags'
 import { ensureBetterAuthProfile } from './authProfiles'
 
@@ -32,18 +31,7 @@ export interface TicketAttachment {
   url?: string
 }
 
-export type TicketStatus =
-  | 'Open'
-  | 'In_Progress'
-  | 'Pending'
-  | 'Pending_Parts'
-  | 'Escalated'
-  | 'Escalated_External'
-  | 'Closure_Pending'
-  | 'Resolved'
-  | 'Closed_Unresolved'
-  | 'Closed'
-  | 'Draft'
+export type TicketStatus = 'Open' | 'InProgress' | 'Pending' | 'Resolved' | 'Closed'
 
 export interface FunctionBlockState {
   blockName: string
@@ -93,7 +81,8 @@ export interface MaintenanceTicket {
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
-let ticketsStore: MaintenanceTicket[] = featureFlags.enableDevFeatures ? [...initialTickets] : []
+let ticketsStore: MaintenanceTicket[] = []
+
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 

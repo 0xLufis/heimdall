@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   Plus, Camera, RefreshCw, WifiOff, LayoutList, Columns,
   Activity, QrCode, Users, FolderTree, History, CheckCircle2, Wrench,
-  Filter, X
+  Filter, X, FileText
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -15,12 +15,14 @@ import TicketResolvedLog from '~/components/tickets/TicketResolvedLog.vue'
 import TagFilterBar from '~/components/tickets/TagFilterBar.vue'
 import TicketCreateModal from '~/components/tickets/TicketCreateModal.vue'
 import TicketDetailDrawer from '~/components/tickets/TicketDetailDrawer.vue'
+import TicketTemplateCatalogModal from '~/components/tickets/TicketTemplateCatalogModal.vue'
 import SimulatorControlModal from '~/components/dashboard/SimulatorControlModal.vue'
 import MachineQrModal from '~/components/tickets/MachineQrModal.vue'
 import PreferredTechniciansModal from '~/components/tickets/PreferredTechniciansModal.vue'
 import MachineGroupManagerModal from '~/components/tickets/MachineGroupManagerModal.vue'
 const QrScanner = defineAsyncComponent(() => import('~/components/ui/qr-scanner/QrScanner.vue'))
 import { useMaintenance } from '~/composables/useMaintenance'
+import { useFeatureFlags } from '~/composables/useFeatureFlags'
 import { parseQrUri } from '~/utils/qrActionGenerator'
 import type { MaintenanceTicket, TicketStatus } from '~/types/maintenance'
 
@@ -39,11 +41,16 @@ const {
   pendingOfflineCount,
   fetchTickets,
   updateStatus,
-  updateTicketPending
+  setPending,
+  escalateTicket,
+  resolveEscalation
 } = useMaintenance()
 
 // ── View Modes ─────────────────────────────────────────────────────────────
 const activeViewMode = ref<'list' | 'kanban' | 'resolved'>('list')
+
+// ── Feature Flags ──────────────────────────────────────────────────────────
+const { enableSimulation } = useFeatureFlags()
 
 // ── Modals & Drawers ───────────────────────────────────────────────────────
 const showCreateModal = ref(false)
@@ -53,23 +60,26 @@ const showSimulatorModal = ref(false)
 const showQrGeneratorModal = ref(false)
 const showDelegationModal = ref(false)
 const showGroupManagerModal = ref(false)
+const showTemplateCatalogModal = ref(false)
 
 // ── Prefills for Ticket Creation ───────────────────────────────────────────
 const prefilledStationId = ref('')
 const prefilledMachineType = ref('')
 const prefilledGroupId = ref('')
+const prefilledTemplateId = ref('')
 
 // ── Tag Filtering ──────────────────────────────────────────────────────────
 const selectedTags = ref<string[]>([])
 
 // ── Metric Filter from Hero Cards ──────────────────────────────────────────
-const activeMetricFilter = ref<'open' | 'critical' | 'pending_parts' | 'overdue' | 'resolved' | 'sla' | null>(null)
+const activeMetricFilter = ref<'open' | 'critical' | 'pending' | 'escalated' | 'overdue' | 'resolved' | 'sla' | null>(null)
 
 const activeMetricFilterLabel = computed(() => {
   switch (activeMetricFilter.value) {
     case 'open': return 'Active Open Incidents'
     case 'critical': return 'Critical & High Alerts'
-    case 'pending_parts': return 'Pending Parts'
+    case 'pending': return 'Pending Incidents'
+    case 'escalated': return 'Escalated Incidents'
     case 'overdue': return 'Overdue SLA'
     case 'resolved': return 'Resolved & Closed'
     case 'sla': return 'SLA Health Incidents'
@@ -169,22 +179,25 @@ const displayedTickets = computed(() => {
   if (activeMetricFilter.value) {
     switch (activeMetricFilter.value) {
       case 'open':
-        list = list.filter(t => t.status === 'Open' || t.status === 'In_Progress' || t.status === 'Pending' || t.status === 'Pending_Parts')
+        list = list.filter(t => t.status === 'Open' || t.status === 'InProgress' || t.status === 'Pending')
         break
       case 'critical':
-        list = list.filter(t => (t.severity || '').toLowerCase() === 'critical' || (t.severity || '').toLowerCase() === 'high' || (t.title || '').toLowerCase().includes('critical'))
+        list = list.filter(t => (t.priority || '').toLowerCase() === 'critical' || (t.priority || '').toLowerCase() === 'high')
         break
-      case 'pending_parts':
-        list = list.filter(t => t.status === 'Pending_Parts' || t.status === 'Pending')
+      case 'pending':
+        list = list.filter(t => t.status === 'Pending')
+        break
+      case 'escalated':
+        list = list.filter(t => t.isEscalated)
         break
       case 'overdue':
-        list = list.filter(t => (t as any).isOverdue || (t.tags && t.tags.includes('Overdue')))
+        list = list.filter(t => t.slaDueAt && new Date(t.slaDueAt).getTime() < Date.now() && t.status !== 'Resolved' && t.status !== 'Closed')
         break
       case 'resolved':
         list = list.filter(t => t.status === 'Resolved' || t.status === 'Closed')
         break
       case 'sla':
-        list = list.filter(t => (t as any).slaDueAt || (t as any).isOverdue)
+        list = list.filter(t => t.slaDueAt && new Date(t.slaDueAt).getTime() < Date.now())
         break
     }
   }
@@ -199,7 +212,19 @@ function onSelectTicket(tkt: MaintenanceTicket) {
 }
 
 function onTicketCreated() {
+  prefilledTemplateId.value = ''
   fetchTickets()
+}
+
+function onTemplateSelected(tmpl: any) {
+  prefilledTemplateId.value = tmpl.id || tmpl.errorCode
+  showTemplateCatalogModal.value = false
+  showCreateModal.value = true
+}
+
+function openCreateModal() {
+  prefilledTemplateId.value = ''
+  showCreateModal.value = true
 }
 
 function onQrScanned(code: string) {
@@ -234,13 +259,16 @@ function onMoveStatus(ticketId: string, status: TicketStatus) {
   updateStatus(ticketId, status)
 }
 
-function onUpdateTicketPending(payload: {
-  ticketId: string
-  status: TicketStatus
-  pendingReason: string
-  pendingAuthority?: string
-}) {
-  updateTicketPending(payload.ticketId, payload.pendingReason, payload.pendingAuthority)
+function onSetPending(payload: { ticketId: string; reason: any; details?: string }) {
+  setPending(payload.ticketId, payload.reason, payload.details)
+}
+
+function onEscalateTicket(ticketId: string, reason: string) {
+  escalateTicket(ticketId, reason)
+}
+
+function onResolveEscalation(ticketId: string) {
+  resolveEscalation(ticketId)
 }
 </script>
 
@@ -351,6 +379,7 @@ function onUpdateTicketPending(payload: {
         </Button>
 
         <Button
+          v-if="enableSimulation"
           variant="outline"
           size="sm"
           @click="showSimulatorModal = true"
@@ -358,6 +387,17 @@ function onUpdateTicketPending(payload: {
         >
           <Activity class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>Fleet Sim</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          @click="showTemplateCatalogModal = true"
+          class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+          title="Browse standardized 4-tier failure profiles and telemetry signatures"
+        >
+          <FileText class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+          <span>Templates</span>
         </Button>
 
         <Button
@@ -372,7 +412,7 @@ function onUpdateTicketPending(payload: {
 
         <Button
           size="sm"
-          @click="showCreateModal = true"
+          @click="openCreateModal"
           class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-3.5 h-8 text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
         >
           <Plus class="h-3.5 w-3.5" />
@@ -436,7 +476,9 @@ function onUpdateTicketPending(payload: {
         :tickets="displayedTickets"
         @selectTicket="onSelectTicket"
         @moveStatus="onMoveStatus"
-        @updateTicketPending="onUpdateTicketPending"
+        @setPending="onSetPending"
+        @escalateTicket="onEscalateTicket"
+        @resolveEscalation="onResolveEscalation"
       />
     </template>
 
@@ -452,8 +494,16 @@ function onUpdateTicketPending(payload: {
       :prefilled-station="prefilledStationId"
       :prefilled-machine-type="prefilledMachineType"
       :prefilled-group-id="prefilledGroupId"
+      :prefilled-template-id="prefilledTemplateId"
       @update:open="showCreateModal = $event"
       @created="onTicketCreated"
+    />
+
+    <!-- Ticket Template Catalog Modal -->
+    <TicketTemplateCatalogModal
+      :open="showTemplateCatalogModal"
+      @close="showTemplateCatalogModal = false"
+      @select="onTemplateSelected"
     />
 
     <!-- Ticket Detail & Live Comment Drawer with 8 Statuses & Lightbox -->

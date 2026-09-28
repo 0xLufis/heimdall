@@ -21,7 +21,7 @@ import { Button } from '~/components/ui/button'
 import RbacButton from '~/components/common/RbacButton.vue'
 import { Badge } from '~/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '~/components/ui/card'
-import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
+import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
 import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
 import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
 import { useAuthSession } from '~/composables/useAuthSession'
@@ -70,8 +70,13 @@ const handleMachineContextMenu = (m: any, e: MouseEvent) => {
 watch(() => route.query, (q) => {
   if (q.id) {
     searchQuery.value = q.id as string
+    activeView.value = 'machines'
   } else if (q.search) {
     searchQuery.value = q.search as string
+    activeView.value = 'machines'
+  } else if (q.query) {
+    searchQuery.value = q.query as string
+    activeView.value = 'machines'
   }
   if (q.tree) {
     openTreeForStation(q.tree as string)
@@ -112,7 +117,7 @@ const openTreeForStation = (stationId: string) => {
 
 const machinesSearchConfig: SearchInstanceConfig = {
   instanceId: 'machines',
-  placeholder: 'FMFD machines: Type station ID, line:Line-1, tech:Assembly, or status:online...',
+  placeholder: 'Search: Type station ID, line:Line-1, tech:Assembly, or status:online...',
   enableAutoTagging: true,
   allowedTagKeys: ['station', 'line', 'tech', 'status', 'mfr']
 }
@@ -277,14 +282,19 @@ const filteredMachines = computed(() => {
       if (tagKey === 'tech' && !m.machineType?.toLowerCase().includes(tagVal)) return false
     }
 
+    if (route.query.id && m.id && m.id.toLowerCase() === (route.query.id as string).toLowerCase()) {
+      return true
+    }
+
     if (cleanText) {
+      const idMatch = m.id && (m.id.toLowerCase() === cleanText || m.id.toLowerCase().includes(cleanText))
       const nameMatch = (m.name || '').toLowerCase().includes(cleanText)
       const dispMatch = (m.displayName || '').toLowerCase().includes(cleanText)
       const identMatch = (m.customIdentifier || '').toLowerCase().includes(cleanText)
       const typeMatch = (m.machineType || '').toLowerCase().includes(cleanText)
       const lineMatch = (m.groupId || '').toLowerCase().includes(cleanText)
       const ctrlMatch = (m.controllers || []).some((c: any) => (c.hostname || '').toLowerCase().includes(cleanText) || (c.ipAddress || '').toLowerCase().includes(cleanText))
-      return nameMatch || dispMatch || identMatch || typeMatch || lineMatch || ctrlMatch
+      return idMatch || nameMatch || dispMatch || identMatch || typeMatch || lineMatch || ctrlMatch
     }
 
     return true
@@ -449,9 +459,9 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Unified FMFD (Find My Field Data) Bar across all 3 views -->
+    <!-- Unified HeimdallSearch Bar across all 3 views -->
     <div class="max-w-5xl mx-auto w-full">
-      <OmniSearchBar
+      <HeimdallSearchBar
         :config="machinesSearchConfig"
         :immediate="true"
         @search="onSearch"
@@ -469,7 +479,8 @@ onMounted(() => {
           v-for="mach in filteredMachines"
           :key="mach.id"
           @contextmenu="handleMachineContextMenu(mach, $event)"
-          class="bg-card border-border hover:border-primary/40 transition-all rounded-xl shadow-xs overflow-hidden group flex flex-col justify-between"
+          class="bg-card transition-all rounded-xl shadow-xs overflow-hidden group flex flex-col justify-between"
+          :class="route.query.id && (mach.id === route.query.id || mach.id.toLowerCase() === (route.query.id as string).toLowerCase()) ? 'border-primary ring-2 ring-primary/40 shadow-md' : 'border-border hover:border-primary/40'"
         >
           <CardHeader class="p-4 sm:p-5 border-b border-border bg-muted/20">
             <div class="flex items-start justify-between gap-3">

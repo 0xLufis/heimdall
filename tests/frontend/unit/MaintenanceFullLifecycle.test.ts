@@ -33,7 +33,8 @@ import {
 import {
   updateTicketStatus,
   addAttachmentToTicket,
-  findTicketById
+  findTicketById,
+  addTicketToStore
 } from '../../../frontend/web/server/utils/ticketsStore'
 
 describe('Maintenance Full Incident Lifecycle Suite', () => {
@@ -52,19 +53,17 @@ describe('Maintenance Full Incident Lifecycle Suite', () => {
       expect(eMot?.category).toBe('Error')
       expect(eMot?.errorGroup).toBe('Motion & Drive')
       expect(eMot?.errorCode).toBe('E-MOT-01')
-      expect(eMot?.sampleFbState?.blockName).toBe('FB_AxisControl')
-      expect(eMot?.targetKanbanState).toBe('In_Progress')
+      expect(eMot?.targetKanbanState).toBe('InProgress')
       expect(eMot?.defaultTags).toContain('#Motion')
 
       const eSafe = getTemplateById('E-SAFE-01')
-      expect(eSafe?.targetKanbanState).toBe('Escalated')
+      expect(eSafe?.targetKanbanState).toBe('Open')
 
       const eNet = getTemplateById('E-NET-01')
-      expect(eNet?.targetKanbanState).toBe('Escalated_External')
-      expect(eNet?.externalEscalationTarget).toBe('SAP Engineers')
+      expect(eNet?.targetKanbanState).toBe('Open')
 
       const pCal = getTemplateById('P-CAL-01')
-      expect(pCal?.targetKanbanState).toBe('Closure_Pending')
+      expect(pCal?.targetKanbanState).toBe('Pending')
     })
 
     it('filters templates by category and error group', () => {
@@ -232,14 +231,33 @@ describe('Maintenance Full Incident Lifecycle Suite', () => {
     })
   })
 
-  describe('8-Stage Kanban Lifecycle & Transition Comments', () => {
+  describe('Canonical 5-State Ticket Lifecycle & Transition Comments', () => {
     it('denotes state transitions in comments when status updates', () => {
-      const updated = updateTicketStatus('tkt-001', 'Closure_Pending', 'Technician Ferenc')
-      expect(updated?.status).toBe('Closure_Pending')
+      if (!findTicketById('tkt-001')) {
+        addTicketToStore({
+          id: 'tkt-001',
+          ticketNumber: 'TKT-2026-0001',
+          stationId: 'STATION-OP10-01',
+          stationName: 'OP10 Machining Cell',
+          title: 'Spindle Bearing Overheating',
+          description: 'Bearing temp exceeding 75C',
+          status: 'Open',
+          priority: 'Critical',
+          reportedByUserId: 'usr-op-01',
+          reportedByUserName: 'Test Operator',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          slaDueAt: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
+          comments: [],
+          attachments: []
+        })
+      }
+      const updated = updateTicketStatus('tkt-001', 'Pending', 'Technician Ferenc')
+      expect(updated?.status).toBe('Pending')
 
       const latestComment = updated?.comments[updated.comments.length - 1]
       expect(latestComment?.transition).toBeDefined()
-      expect(latestComment?.transition?.toStatus).toBe('Closure_Pending')
+      expect(latestComment?.transition?.toStatus).toBe('Pending')
     })
 
     it('supports attaching images to tickets and specific comments', () => {

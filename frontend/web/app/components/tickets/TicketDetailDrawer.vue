@@ -11,11 +11,6 @@ import {
   AlertCircle,
   Play,
   Package,
-  FileCheck,
-  FlaskConical,
-  Database,
-  Globe,
-  Lock,
   Layers,
   Archive,
   ArrowRightLeft,
@@ -24,7 +19,7 @@ import {
   ZoomIn,
   AlertTriangle,
   ShieldAlert,
-  ExternalLink
+  RotateCcw
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -33,26 +28,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/u
 import MachineSearchCombobox from '~/components/tickets/MachineSearchCombobox.vue'
 import ImageAttachmentUploader from '~/components/tickets/ImageAttachmentUploader.vue'
 import { authClient } from '~/utils/auth-client'
-import type { MaintenanceTicket, TicketAttachment, TicketStatus } from '~/types/maintenance'
+import type { MaintenanceTicket, TicketAttachment, TicketStatus, PendingReason } from '~/types/maintenance'
 import {
   ANDON_STYLES,
   getAndonColorForStatus,
   getAndonPriorityStyle,
-  getCanonicalColumn,
-  getTicketPendingReason,
-  PENDING_REASONS,
-  CLOSURE_AUTHORITIES,
-  type AndonColorType,
-  type PendingReason,
-  type ClosureAuthorityRole
+  PENDING_REASON_CONFIGS
 } from '~/utils/andonColors'
-
-// ─── Props / Emits ───────────────────────────────────────────────────────────
 
 const props = defineProps<{
   ticket: MaintenanceTicket | null
   open: boolean
-  /** Optional list of active absence records to check for OOO warnings */
   absences?: Array<{
     technicianName: string
     backupTechnicianName?: string
@@ -66,47 +52,36 @@ const emit = defineEmits<{
 }>()
 
 // ─── Local State ─────────────────────────────────────────────────────────────
-
 const commentText = ref('')
 const isSubmittingComment = ref(false)
 const localTicket = ref<MaintenanceTicket | null>(null)
 const isEditingEquipment = ref(false)
 
 const STATUSES: { value: TicketStatus; label: string; color: string; dotClass: string }[] = [
-  { value: 'Open',              label: 'Open',        color: 'bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border-cyan-500/30',     dotClass: 'bg-cyan-400' },
-  { value: 'In_Progress',       label: 'In Progress', color: 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/30',     dotClass: 'bg-blue-600' },
-  { value: 'Pending',           label: 'Pending',     color: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30', dotClass: 'bg-amber-500' },
-  { value: 'Escalated',         label: 'Escalated',   color: 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-500/30',     dotClass: 'bg-rose-500 animate-pulse' },
-  { value: 'Resolved',          label: 'Resolved',    color: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30', dotClass: 'bg-emerald-500' },
-  { value: 'Closed_Unresolved', label: 'Unresolved',  color: 'bg-muted text-muted-foreground border-border',                           dotClass: 'bg-slate-400' },
+  { value: 'Open',       label: 'Open',        color: 'bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border-cyan-500/30',     dotClass: 'bg-cyan-400' },
+  { value: 'InProgress', label: 'In Progress', color: 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/30',     dotClass: 'bg-blue-600' },
+  { value: 'Pending',    label: 'Pending',     color: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30', dotClass: 'bg-amber-500' },
+  { value: 'Resolved',   label: 'Resolved',    color: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30', dotClass: 'bg-emerald-500' },
+  { value: 'Closed',     label: 'Closed',      color: 'bg-muted text-muted-foreground border-border',                           dotClass: 'bg-slate-400' },
 ]
 
-const EXTERNAL_TARGETS = ['SAP Engineers', 'IT Department', 'Production Operations', 'OEM Vendor'] as const
-
 const selectedStatus = ref<TicketStatus>('Open')
-const selectedExternalTarget = ref<string>('')
 const selectedPendingReason = ref<PendingReason>('Parts')
-const selectedPendingAuthority = ref<ClosureAuthorityRole>('Group_Leader')
+const selectedPendingDetails = ref<string>('')
 const isChangingStatus = ref(false)
 
-const pendingIconMap: Record<string, any> = {
-  Package,
-  FileCheck,
-  FlaskConical,
-  Database,
-  Globe,
-  Lock
-}
+// Escalation UI state
+const isEscalatingOpen = ref(false)
+const escalationReasonInput = ref('')
+const isSubmittingEscalation = ref(false)
 
 // Tags
 const newTagInput = ref('')
 const isUpdatingTags = ref(false)
 
-// Ticket-level image attachments
+// Attachments
 const ticketAttachmentsDraft = ref<TicketAttachment[]>([])
 const isUploadingTicketAttachments = ref(false)
-
-// Comment attachments
 const commentAttachments = ref<TicketAttachment[]>([])
 const showCommentAttachmentPanel = ref(false)
 
@@ -116,15 +91,15 @@ const lightboxSrc = ref('')
 const lightboxName = ref('')
 
 // ─── Watchers ────────────────────────────────────────────────────────────────
-
 watch(() => props.ticket, (newVal) => {
   localTicket.value = newVal ? JSON.parse(JSON.stringify(newVal)) : null
   isEditingEquipment.value = false
+  isEscalatingOpen.value = false
+  escalationReasonInput.value = ''
   if (newVal) {
-    selectedStatus.value = (getCanonicalColumn(newVal.status) as TicketStatus) || (newVal.status as TicketStatus)
-    selectedExternalTarget.value = newVal.externalEscalationTarget || ''
-    selectedPendingReason.value = getTicketPendingReason(newVal)
-    selectedPendingAuthority.value = (newVal.pendingAuthority as ClosureAuthorityRole) || 'Group_Leader'
+    selectedStatus.value = newVal.status || 'Open'
+    selectedPendingReason.value = newVal.pendingReason || 'Parts'
+    selectedPendingDetails.value = newVal.pendingDetails || ''
   }
   ticketAttachmentsDraft.value = []
   commentAttachments.value = []
@@ -132,18 +107,15 @@ watch(() => props.ticket, (newVal) => {
 }, { immediate: true, deep: true })
 
 // ─── Computed ────────────────────────────────────────────────────────────────
-
 const currentUser = computed(() => {
   const session = (authClient as any).useSession?.()
   return session?.data?.value?.user?.name || 'On-Duty Tech'
 })
 
-/** Ticket-level attachments (no commentId) */
 const ticketLevelAttachments = computed<TicketAttachment[]>(() => {
   return (localTicket.value?.attachments ?? []).filter(a => !a.commentId)
 })
 
-/** OOO warning */
 const oooWarning = computed(() => {
   if (!localTicket.value?.assignedTechnicianName || !props.absences) return null
   const techName = localTicket.value.assignedTechnicianName
@@ -151,17 +123,12 @@ const oooWarning = computed(() => {
   return match ? match : null
 })
 
-/** Closure pending = needs AOK banner */
-const showAokBanner = computed(() => {
-  return selectedStatus.value === 'Closure_Pending' || (getCanonicalColumn(selectedStatus.value) === 'Pending' && selectedPendingReason.value === 'Closure')
-})
-
 const isStatusOrPendingChanged = computed(() => {
   if (!localTicket.value) return false
   if (selectedStatus.value !== localTicket.value.status) return true
-  if (getCanonicalColumn(selectedStatus.value) === 'Pending') {
-    if (selectedPendingReason.value !== getTicketPendingReason(localTicket.value)) return true
-    if (selectedPendingReason.value === 'Closure' && selectedPendingAuthority.value !== localTicket.value.pendingAuthority) return true
+  if (selectedStatus.value === 'Pending') {
+    if (selectedPendingReason.value !== (localTicket.value.pendingReason || 'None')) return true
+    if (selectedPendingDetails.value !== (localTicket.value.pendingDetails || '')) return true
   }
   return false
 })
@@ -172,14 +139,7 @@ const statusBadgeColor = computed(() => {
   return ANDON_STYLES[andon].badgeClass
 })
 
-const pendingReasonConfig = computed(() => {
-  if (!localTicket.value) return PENDING_REASONS[0]
-  const reason = getTicketPendingReason(localTicket.value)
-  return PENDING_REASONS.find(r => r.id === reason) || PENDING_REASONS[0]
-})
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function statusColor(status: string) {
   return STATUSES.find(s => s.value === status)?.color ?? 'bg-muted text-muted-foreground border-border'
 }
@@ -191,7 +151,6 @@ function openLightbox(att: TicketAttachment) {
 }
 
 // ─── Equipment ───────────────────────────────────────────────────────────────
-
 async function updateEquipment(machine: any) {
   if (!localTicket.value) return
   const stationId = machine.customIdentifier || machine.name || machine.id
@@ -213,32 +172,26 @@ async function updateEquipment(machine: any) {
   }
 }
 
-// ─── Status Change ───────────────────────────────────────────────────────────
-
+// ─── Status & Pending Change ─────────────────────────────────────────────────
 async function applyStatusChange() {
   if (!localTicket.value) return
   const oldStatus = localTicket.value.status
   const newStatus = selectedStatus.value
-  if (!isStatusOrPendingChanged.value) return
 
   isChangingStatus.value = true
   try {
     const techName = currentUser.value
     const payload: Record<string, any> = { status: newStatus }
 
-    if (newStatus === 'In_Progress' && (!localTicket.value.assignedTechnicianName || localTicket.value.assignedTechnicianName === 'Unassigned')) {
+    if (newStatus === 'InProgress' && (!localTicket.value.assignedTechnicianName || localTicket.value.assignedTechnicianName === 'Unassigned')) {
       payload.assignedTechnicianName = techName
     }
-    if (getCanonicalColumn(newStatus) === 'Pending') {
+    if (newStatus === 'Pending') {
       payload.pendingReason = selectedPendingReason.value
-      if (selectedPendingReason.value === 'Closure') {
-        payload.pendingAuthority = selectedPendingAuthority.value
-      } else {
-        payload.pendingAuthority = null
-      }
-    }
-    if (newStatus === 'Escalated_External' || (newStatus === 'Escalated' && selectedExternalTarget.value)) {
-      payload.externalEscalationTarget = selectedExternalTarget.value || 'SAP Engineers'
+      payload.pendingDetails = selectedPendingDetails.value
+    } else {
+      payload.pendingReason = 'None'
+      payload.pendingDetails = null
     }
 
     const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`, {
@@ -250,7 +203,6 @@ async function applyStatusChange() {
       localTicket.value = res.ticket
       emit('updated', res.ticket)
 
-      // Post a state-transition comment if status changed
       if (oldStatus !== newStatus) {
         await $fetch(`/api/tickets/${localTicket.value.id}/comments`, {
           method: 'POST',
@@ -265,7 +217,6 @@ async function applyStatusChange() {
           }
         })
       }
-      // Refresh ticket to pick up new comment
       const fresh = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`)
       if (fresh?.ticket) {
         localTicket.value = fresh.ticket
@@ -279,20 +230,65 @@ async function applyStatusChange() {
   }
 }
 
-/** Quick workflow shortcut buttons */
 async function updateStatus(newStatus: TicketStatus) {
   selectedStatus.value = newStatus
   await applyStatusChange()
 }
 
-/** AOK grant + resolve */
-async function grantAokAndResolve() {
-  selectedStatus.value = 'Resolved'
-  await applyStatusChange()
+// ─── Orthogonal Escalation ──────────────────────────────────────────────────
+async function confirmEscalate() {
+  if (!localTicket.value || !escalationReasonInput.value.trim()) return
+  isSubmittingEscalation.value = true
+  try {
+    const techName = currentUser.value
+    const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`, {
+      method: 'PATCH',
+      body: {
+        isEscalated: true,
+        escalationReason: escalationReasonInput.value.trim(),
+        escalatedBy: techName,
+        escalatedAt: new Date().toISOString()
+      }
+    })
+    if (res?.success) {
+      localTicket.value = res.ticket
+      emit('updated', res.ticket)
+      isEscalatingOpen.value = false
+      escalationReasonInput.value = ''
+    }
+  } catch (err) {
+    console.error('Error escalating ticket:', err)
+  } finally {
+    isSubmittingEscalation.value = false
+  }
+}
+
+async function resolveEscalation() {
+  if (!localTicket.value) return
+  isSubmittingEscalation.value = true
+  try {
+    const techName = currentUser.value
+    const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`, {
+      method: 'PATCH',
+      body: {
+        isEscalated: false,
+        escalationReason: null,
+        escalationClosedBy: techName,
+        escalationClosedAt: new Date().toISOString()
+      }
+    })
+    if (res?.success) {
+      localTicket.value = res.ticket
+      emit('updated', res.ticket)
+    }
+  } catch (err) {
+    console.error('Error resolving escalation:', err)
+  } finally {
+    isSubmittingEscalation.value = false
+  }
 }
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────
-
 async function addTag() {
   const raw = newTagInput.value.trim()
   if (!raw || !localTicket.value) return
@@ -321,9 +317,10 @@ async function addTag() {
   }
 }
 
-async function removeTag(tag: string) {
+async function removeTag(tagToRemove: string) {
   if (!localTicket.value) return
-  const newTags = (localTicket.value.tags ?? []).filter(t => t !== tag)
+  const newTags = (localTicket.value.tags ?? []).filter(t => t !== tagToRemove)
+  isUpdatingTags.value = true
   try {
     const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`, {
       method: 'PATCH',
@@ -335,11 +332,12 @@ async function removeTag(tag: string) {
     }
   } catch (err) {
     console.error('Error removing tag:', err)
+  } finally {
+    isUpdatingTags.value = false
   }
 }
 
-// ─── Ticket-level Attachment Upload ──────────────────────────────────────────
-
+// ─── Attachments ─────────────────────────────────────────────────────────────
 async function uploadTicketAttachments() {
   if (!localTicket.value || ticketAttachmentsDraft.value.length === 0) return
   isUploadingTicketAttachments.value = true
@@ -348,7 +346,6 @@ async function uploadTicketAttachments() {
       await $fetch(`/api/tickets/${localTicket.value.id}/attachments`, {
         method: 'POST',
         body: {
-          id: att.id,
           fileName: att.fileName,
           contentType: att.contentType,
           fileSize: att.fileSize,
@@ -356,599 +353,531 @@ async function uploadTicketAttachments() {
         }
       })
     }
-    // Refresh
-    const fresh = await $fetch<{ ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`)
+    const fresh = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`)
     if (fresh?.ticket) {
       localTicket.value = fresh.ticket
       emit('updated', fresh.ticket)
     }
     ticketAttachmentsDraft.value = []
   } catch (err) {
-    console.error('Error uploading ticket attachments:', err)
+    console.error('Error uploading attachments:', err)
   } finally {
     isUploadingTicketAttachments.value = false
   }
 }
 
 // ─── Comments ────────────────────────────────────────────────────────────────
-
 async function addComment() {
-  if (!commentText.value.trim() && commentAttachments.value.length === 0) return
   if (!localTicket.value) return
-  isSubmittingComment.value = true
+  const text = commentText.value.trim()
+  if (!text && commentAttachments.value.length === 0) return
 
+  isSubmittingComment.value = true
   try {
-    const res = await $fetch<{ success: boolean; comment: any; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}/comments`, {
+    const commentRes = await $fetch<{ success: boolean; comment: any }>(`/api/tickets/${localTicket.value.id}/comments`, {
       method: 'POST',
       body: {
         authorName: currentUser.value,
-        content: commentText.value.trim(),
-        ...(commentAttachments.value.length > 0 ? { attachments: commentAttachments.value } : {})
+        content: text
       }
     })
 
-    if (res?.success) {
-      localTicket.value = res.ticket
-      commentText.value = ''
-      commentAttachments.value = []
-      showCommentAttachmentPanel.value = false
-      emit('updated', res.ticket)
+    if (commentRes?.comment && commentAttachments.value.length > 0) {
+      for (const att of commentAttachments.value) {
+        await $fetch(`/api/tickets/${localTicket.value.id}/attachments`, {
+          method: 'POST',
+          body: {
+            commentId: commentRes.comment.id,
+            fileName: att.fileName,
+            contentType: att.contentType,
+            fileSize: att.fileSize,
+            url: att.url
+          }
+        })
+      }
     }
+
+    const fresh = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`)
+    if (fresh?.ticket) {
+      localTicket.value = fresh.ticket
+      emit('updated', fresh.ticket)
+    }
+
+    commentText.value = ''
+    commentAttachments.value = []
+    showCommentAttachmentPanel.value = false
   } catch (err) {
     console.error('Error submitting comment:', err)
   } finally {
     isSubmittingComment.value = false
   }
 }
-
-function handleClose() {
-  emit('update:open', false)
-}
 </script>
 
 <template>
-  <div v-if="open && localTicket" class="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex justify-end">
-    <div class="bg-card border-l border-border w-full max-w-2xl h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
+  <!-- Backdrop -->
+  <div
+    v-if="open"
+    class="fixed inset-0 bg-background/80 backdrop-blur-xs z-40 transition-opacity"
+    @click="emit('update:open', false)"
+  />
 
-      <!-- Header -->
-      <div class="p-5 border-b border-border flex items-center justify-between bg-card/60 shrink-0">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="p-2.5 rounded-xl bg-muted border border-border text-indigo-600 dark:text-indigo-400 shrink-0">
-            <Cpu class="h-5 w-5" />
-          </div>
-          <div class="min-w-0">
-            <span class="text-xs font-mono font-black text-indigo-600 dark:text-indigo-400">{{ localTicket.ticketNumber }}</span>
-            <h3 class="text-sm font-black uppercase text-foreground tracking-tight leading-tight truncate">
-              {{ localTicket.stationName }}
-            </h3>
-          </div>
+  <!-- Drawer panel -->
+  <div
+    v-if="open && localTicket"
+    class="fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden text-foreground animate-in slide-in-from-right duration-200"
+  >
+    <!-- Header -->
+    <div class="p-6 border-b border-border bg-muted/20 flex items-center justify-between">
+      <div class="space-y-1 min-w-0 pr-4">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">
+            {{ localTicket.ticketNumber }}
+          </span>
+          <span class="text-xs text-muted-foreground font-mono">
+            {{ new Date(localTicket.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+          </span>
+          <Badge
+            v-if="localTicket.isEscalated"
+            variant="outline"
+            class="text-[9px] bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40 uppercase font-black tracking-wider flex items-center gap-1 animate-pulse"
+          >
+            <AlertTriangle class="size-2.5" />
+            Escalated
+          </Badge>
         </div>
-        <Button variant="ghost" size="icon" @click="handleClose" class="text-muted-foreground hover:text-foreground rounded-xl shrink-0">
-          <X class="h-5 w-5" />
-        </Button>
+        <h3 class="text-lg font-bold text-foreground truncate">{{ localTicket.title }}</h3>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer shrink-0"
+        @click="emit('update:open', false)"
+      >
+        <X class="h-4 w-4" />
+      </Button>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+      <!-- Active Escalation Banner -->
+      <div
+        v-if="localTicket.isEscalated"
+        class="p-4 bg-rose-500/10 border-2 border-rose-500/40 rounded-2xl space-y-2 animate-in fade-in"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-black text-xs uppercase tracking-wider">
+            <AlertTriangle class="size-4 shrink-0 text-rose-500" />
+            <span>Active Incident Escalation</span>
+          </div>
+          <Button
+            size="sm"
+            @click="resolveEscalation"
+            :disabled="isSubmittingEscalation"
+            class="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black uppercase h-7 px-3"
+          >
+            Resolve Escalation
+          </Button>
+        </div>
+        <div class="text-xs text-rose-800 dark:text-rose-200">
+          <strong>Reason:</strong> {{ localTicket.escalationReason || 'Operational priority review' }}
+        </div>
+        <div class="text-[10px] text-rose-600 dark:text-rose-400 font-mono">
+          Escalated by {{ localTicket.escalatedBy || 'Technician' }} &mdash;
+          {{ localTicket.escalatedAt ? new Date(localTicket.escalatedAt).toLocaleString() : '' }}
+        </div>
       </div>
 
-      <!-- Main Scrollable Content -->
-      <div class="flex-1 overflow-y-auto p-5 space-y-5">
+      <!-- Equipment Box -->
+      <div class="p-4 bg-muted/40 rounded-2xl border border-border space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <Cpu class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <span class="text-xs font-black uppercase tracking-wider text-muted-foreground">Target Machine &amp; Controller</span>
+          </div>
+          <button
+            type="button"
+            @click="isEditingEquipment = !isEditingEquipment"
+            class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+          >
+            {{ isEditingEquipment ? 'Cancel' : 'Reassign Equipment' }}
+          </button>
+        </div>
 
-        <!-- ── OOO Warning ─────────────────────────────────────────── -->
-        <div
-          v-if="oooWarning"
-          class="flex items-start gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs"
-        >
-          <AlertTriangle class="h-4 w-4 shrink-0 mt-0.5" />
+        <div v-if="!isEditingEquipment" class="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <span class="font-black">⚠️ {{ oooWarning.technicianName }} is currently out of office.</span>
-            <span v-if="oooWarning.backupTechnicianName" class="ml-1">
-              Backup: <span class="font-bold text-amber-900 dark:text-amber-200">{{ oooWarning.backupTechnicianName }}</span>
-            </span>
+            <span class="text-muted-foreground text-[10px] block font-medium">Station</span>
+            <span class="font-bold text-foreground">{{ localTicket.stationName || 'Unassigned Station' }}</span>
+          </div>
+          <div>
+            <span class="text-muted-foreground text-[10px] block font-medium">IPC / Controller</span>
+            <span class="font-mono text-muted-foreground">{{ localTicket.controllerId || 'Direct' }}</span>
           </div>
         </div>
-
-        <!-- ── Status & Priority Banner ─────────────────────────────── -->
-        <div class="p-4 bg-muted/30 rounded-2xl border border-border space-y-3">
-          <div class="flex items-center justify-between flex-wrap gap-2">
-            <div class="flex items-center gap-2 flex-wrap">
-              <Badge
-                variant="outline"
-                :class="['text-xs font-black uppercase tracking-widest px-3 py-1 border flex items-center gap-1.5', statusBadgeColor]"
-              >
-                <span class="size-2 rounded-full" :class="ANDON_STYLES[getAndonColorForStatus(localTicket.status)].dotClass" />
-                <span>{{ getCanonicalColumn(localTicket.status).replace(/_/g, ' ') }}</span>
-              </Badge>
-              <!-- Pending sub-type badge if Pending -->
-              <Badge
-                v-if="getCanonicalColumn(localTicket.status) === 'Pending'"
-                variant="outline"
-                class="text-xs font-semibold px-2 py-0.5 bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 flex items-center gap-1"
-              >
-                <component :is="pendingIconMap[pendingReasonConfig.iconName]" class="size-3" />
-                <span>{{ getTicketPendingReason(localTicket) }}</span>
-                <span v-if="localTicket.pendingAuthority" class="text-[10px] opacity-80">
-                  • {{ localTicket.pendingAuthority.replace(/_/g, ' ') }}
-                </span>
-              </Badge>
-            </div>
-            <Badge variant="outline" :class="getAndonPriorityStyle(localTicket.priority).badgeClass" class="text-xs font-black uppercase tracking-widest px-3 py-1 flex items-center gap-1.5">
-              <span class="size-1.5 rounded-full" :class="getAndonPriorityStyle(localTicket.priority).dotClass" />
-              <span>Priority: {{ getAndonPriorityStyle(localTicket.priority).label }}</span>
-            </Badge>
-          </div>
-
-          <!-- Status Selector -->
-          <div class="pt-2 border-t border-border space-y-3">
-            <div class="flex items-center justify-between">
-              <p class="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Stage (Samsung Andon 6-Stage)</p>
-              <span class="text-[10px] font-mono text-muted-foreground">{{ ANDON_STYLES[getAndonColorForStatus(selectedStatus)].koreanLabel }}</span>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              <button
-                v-for="s in STATUSES"
-                :key="s.value"
-                type="button"
-                @click="selectedStatus = s.value"
-                :class="[
-                  'px-2.5 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide text-left transition-all flex items-center gap-2',
-                  selectedStatus === s.value ? ['ring-2 ring-primary scale-[1.02] shadow-sm', s.color] : ['opacity-60 hover:opacity-90', s.color]
-                ]"
-              >
-                <span class="size-2 rounded-full shrink-0" :class="s.dotClass" />
-                <span class="truncate">{{ s.label }}</span>
-              </button>
-            </div>
-
-            <!-- Interactive Pending Reason & Authority Selector (When Pending is selected) -->
-            <div v-if="getCanonicalColumn(selectedStatus) === 'Pending'" class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2.5 animate-in fade-in duration-200">
-              <div class="flex items-center justify-between">
-                <span class="text-[10px] font-black uppercase tracking-widest text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                  <Layers class="size-3 text-amber-600" />
-                  Select Pending Sub-Type:
-                </span>
-                <span class="text-[10px] text-amber-700 dark:text-amber-400 font-medium">Samsung Andon Caution</span>
-              </div>
-
-              <!-- 6 Pending Reasons Grid -->
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                <button
-                  v-for="r in PENDING_REASONS"
-                  :key="r.id"
-                  type="button"
-                  @click="selectedPendingReason = r.id"
-                  :class="[
-                    'p-2 rounded-lg border text-left transition-all flex flex-col gap-0.5',
-                    selectedPendingReason === r.id
-                      ? 'bg-amber-500/20 border-amber-500 text-amber-950 dark:text-amber-100 ring-2 ring-amber-500/50 shadow-xs'
-                      : 'bg-background/80 border-border text-foreground hover:bg-muted/80 opacity-80'
-                  ]"
-                >
-                  <div class="flex items-center gap-1.5 font-bold text-xs">
-                    <component :is="pendingIconMap[r.iconName]" class="size-3.5 text-amber-600 shrink-0" />
-                    <span>{{ r.shortLabel }}</span>
-                  </div>
-                  <p class="text-[10px] text-muted-foreground line-clamp-1 leading-tight">
-                    {{ r.description }}
-                  </p>
-                </button>
-              </div>
-
-              <!-- Closure Authority Selector if reason is Closure -->
-              <div v-if="selectedPendingReason === 'Closure'" class="p-2.5 bg-background/80 border border-purple-500/30 rounded-lg space-y-1.5 animate-in fade-in duration-200">
-                <div class="flex items-center gap-1 text-[11px] font-bold text-purple-800 dark:text-purple-300">
-                  <Lock class="size-3 text-purple-600" />
-                  <span>Required Sign-off Authority:</span>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-1">
-                  <button
-                    v-for="auth in CLOSURE_AUTHORITIES"
-                    :key="auth.id"
-                    type="button"
-                    @click="selectedPendingAuthority = auth.id"
-                    :class="[
-                      'px-2 py-1 rounded-md text-[11px] font-medium border text-center transition-all',
-                      selectedPendingAuthority === auth.id
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                        : 'bg-muted/60 border-border text-muted-foreground hover:text-foreground'
-                    ]"
-                  >
-                    {{ auth.label }}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- External Target if Escalated -->
-            <div v-if="selectedStatus === 'Escalated'" class="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-1.5 animate-in fade-in duration-200">
-              <div class="flex items-center gap-1.5 text-xs text-rose-700 dark:text-rose-300 font-bold">
-                <ExternalLink class="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                <span>External Escalation Target (Optional):</span>
-              </div>
-              <select
-                v-model="selectedExternalTarget"
-                class="w-full bg-background border border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-rose-400"
-              >
-                <option value="">Internal Escalation (No external dispatch)</option>
-                <option v-for="t in EXTERNAL_TARGETS" :key="t" :value="t">{{ t }}</option>
-              </select>
-            </div>
-
-            <!-- AOK Banner if Closure_Pending or Pending Closure -->
-            <div v-if="showAokBanner" class="flex items-center justify-between gap-3 p-3 rounded-xl border border-purple-500/30 bg-purple-500/10">
-              <div class="flex items-center gap-2 text-purple-700 dark:text-purple-300 text-xs">
-                <ShieldAlert class="h-4 w-4 shrink-0" />
-                <span class="font-bold">⚠️ Higher Authority Closure Verification</span>
-              </div>
-              <Button
-                size="sm"
-                @click="grantAokAndResolve"
-                class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider h-7 shrink-0"
-              >
-                Sign Off &amp; Resolve
-              </Button>
-            </div>
-
-            <Button
-              v-if="isStatusOrPendingChanged"
-              @click="applyStatusChange"
-              :disabled="isChangingStatus"
-              class="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase tracking-wider h-8 shadow-sm"
-            >
-              <span v-if="!isChangingStatus">Apply Status &amp; Sub-Type</span>
-              <span v-else>Updating…</span>
-            </Button>
-          </div>
-
-          <!-- Quick Action Workflow Buttons -->
-          <div class="flex flex-wrap gap-2 pt-2 border-t border-border">
-            <Button
-              v-if="localTicket.status === 'Open'"
-              size="sm"
-              @click="updateStatus('In_Progress')"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8"
-            >
-              <Play class="h-3.5 w-3.5 mr-1" />
-              Start Work
-            </Button>
-
-            <Button
-              v-if="localTicket.status === 'In_Progress'"
-              size="sm"
-              @click="updateStatus('Pending')"
-              class="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8"
-            >
-              <Package class="h-3.5 w-3.5 mr-1" />
-              Pending
-            </Button>
-
-            <Button
-              v-if="localTicket.status === 'In_Progress' || getCanonicalColumn(localTicket.status) === 'Pending'"
-              size="sm"
-              @click="updateStatus('Resolved')"
-              class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8"
-            >
-              <CheckCircle2 class="h-3.5 w-3.5 mr-1" />
-              Mark Resolved
-            </Button>
-
-            <Button
-              v-if="localTicket.status === 'Resolved'"
-              size="sm"
-              @click="updateStatus('Closed_Unresolved')"
-              class="bg-muted hover:bg-muted/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-wider h-8"
-            >
-              <Archive class="h-3.5 w-3.5 mr-1" />
-              Close Ticket
-            </Button>
-          </div>
+        <div v-else class="pt-2">
+          <MachineSearchCombobox @select="updateEquipment" />
         </div>
+      </div>
 
-        <!-- ── Incident Details ─────────────────────────────────────── -->
-        <div>
-          <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Incident Details</h4>
-          <div class="p-4 bg-muted/30 rounded-2xl border border-border space-y-2">
-            <h5 class="text-sm font-bold text-foreground">{{ localTicket.title }}</h5>
-            <p class="text-xs text-muted-foreground leading-relaxed">{{ localTicket.description }}</p>
+      <!-- Status & Pending Management -->
+      <div class="p-4 bg-muted/40 rounded-2xl border border-border space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <Clock class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <span class="text-xs font-black uppercase tracking-wider text-muted-foreground">Status &amp; Workflow</span>
           </div>
-        </div>
-
-        <!-- ── FB State ────────────────────────────────────────────── -->
-        <div v-if="localTicket.fbState">
-          <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Function Block State</h4>
-          <div class="p-3 bg-muted/30 rounded-2xl border border-border">
-            <code class="text-xs font-mono text-emerald-700 dark:text-emerald-400 leading-relaxed">
-              {{ localTicket.fbState.blockName }}: {{ localTicket.fbState.state }}
-              <span v-if="localTicket.fbState.subState"> / {{ localTicket.fbState.subState }}</span>
-              <span v-if="localTicket.fbState.errorCode" class="text-rose-600 dark:text-rose-400"> ({{ localTicket.fbState.errorCode }})</span>
-            </code>
-          </div>
-        </div>
-
-        <!-- ── SFC Serial ──────────────────────────────────────────── -->
-        <div v-if="localTicket.sfc" class="flex items-center gap-2">
-          <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground">SFC Serial:</h4>
-          <Badge variant="outline" class="text-xs font-mono bg-background border-border text-cyan-700 dark:text-cyan-400">
-            {{ localTicket.sfc }}
+          <Badge variant="outline" :class="getAndonPriorityStyle(localTicket.priority).badgeClass" class="text-xs font-black uppercase tracking-widest px-3 py-1 flex items-center gap-1.5">
+            <span class="size-1.5 rounded-full" :class="getAndonPriorityStyle(localTicket.priority).dotClass" />
+            <span>Priority: {{ getAndonPriorityStyle(localTicket.priority).label }}</span>
           </Badge>
         </div>
 
-        <!-- ── Telemetry Snapshot ──────────────────────────────────── -->
-        <div v-if="localTicket.telemetrySnapshot && Object.keys(localTicket.telemetrySnapshot.metrics).length > 0">
-          <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Telemetry Snapshot</h4>
-          <div class="p-3 bg-muted/30 rounded-2xl border border-border overflow-x-auto">
-            <table class="w-full text-xs">
-              <tbody>
-                <tr
-                  v-for="(val, key) in localTicket.telemetrySnapshot.metrics"
-                  :key="key"
-                  class="border-b border-border last:border-0"
-                >
-                  <td class="py-1 pr-4 font-mono text-muted-foreground whitespace-nowrap">{{ key }}</td>
-                  <td class="py-1 font-mono font-bold text-emerald-700 dark:text-emerald-400">{{ val }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <p class="text-[10px] font-mono text-muted-foreground mt-2">
-              Captured: {{ new Date(localTicket.telemetrySnapshot.timestamp).toLocaleString() }}
-            </p>
-          </div>
-        </div>
-
-        <!-- ── Target Machine / Equipment ─────────────────────────── -->
-        <div class="p-4 bg-muted/30 rounded-2xl border border-border space-y-2">
-          <div class="flex items-center justify-between">
-            <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground">Target Machine / Equipment</h4>
-            <Button
-              variant="ghost"
-              size="sm"
-              @click="isEditingEquipment = !isEditingEquipment"
-              class="h-6 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
-            >
-              {{ isEditingEquipment ? 'Cancel' : 'Reassign / Search' }}
-            </Button>
-          </div>
-
-          <div v-if="!isEditingEquipment" class="flex items-center justify-between text-xs">
-            <div>
-              <div class="font-bold text-foreground">{{ localTicket.stationName }}</div>
-              <div class="text-[10px] font-mono text-muted-foreground">{{ localTicket.stationId }}</div>
-            </div>
-            <span v-if="localTicket.controllerId" class="text-[10px] font-mono px-2 py-0.5 rounded bg-muted border border-border text-indigo-600 dark:text-indigo-400">
-              {{ localTicket.controllerId }}
-            </span>
-          </div>
-
-          <div v-else class="space-y-2 pt-1">
-            <MachineSearchCombobox
-              :model-value="localTicket.stationId"
-              :station-name="localTicket.stationName"
-              placeholder="Type machine ID or search from found machines..."
-              @select="updateEquipment"
-            />
-            <p class="text-[10px] text-muted-foreground">
-              Selecting a machine automatically updates the ticket's station and controller binding.
-            </p>
-          </div>
-        </div>
-
-        <!-- ── Metadata Info Grid ─────────────────────────────────── -->
-        <div class="grid grid-cols-2 gap-3 text-xs">
-          <div class="p-3 bg-muted/30 rounded-xl border border-border">
-            <span class="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Reported By</span>
-            <span class="font-bold text-foreground mt-1 block">{{ localTicket.reportedByUserName }}</span>
-          </div>
-          <div class="p-3 bg-muted/30 rounded-xl border border-border">
-            <span class="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Assigned Tech</span>
-            <span class="font-bold text-indigo-600 dark:text-indigo-400 mt-1 block">{{ localTicket.assignedTechnicianName || 'Unassigned' }}</span>
-          </div>
-        </div>
-
-        <!-- ── Tags ──────────────────────────────────────────────── -->
-        <div>
-          <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
-            <Tag class="h-3.5 w-3.5" /> Tags
-          </h4>
-          <div class="flex flex-wrap gap-1.5 mb-2">
-            <span
-              v-for="tag in localTicket.tags ?? []"
-              :key="tag"
-              class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
-            >
-              {{ tag }}
-              <button
-                @click="removeTag(tag)"
-                class="text-indigo-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors ml-0.5"
-                :title="`Remove ${tag}`"
-              >
-                <X class="h-2.5 w-2.5" />
-              </button>
-            </span>
-            <span v-if="!localTicket.tags?.length" class="text-[10px] text-muted-foreground">No tags yet</span>
-          </div>
-          <div class="flex gap-2">
-            <Input
-              v-model="newTagInput"
-              placeholder="Add tag (e.g. #Milling)"
-              class="bg-background border-border rounded-xl text-xs flex-1 h-8 text-foreground placeholder:text-muted-foreground"
-              @keyup.enter="addTag"
-            />
-            <Button
-              size="sm"
-              @click="addTag"
-              :disabled="isUpdatingTags || !newTagInput.trim()"
-              class="bg-muted hover:bg-muted/80 text-foreground rounded-xl text-[10px] font-black uppercase h-8 shrink-0"
-            >
-              Add
-            </Button>
-          </div>
-        </div>
-
-        <!-- ── Ticket Image Attachments ──────────────────────────── -->
-        <div>
-          <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
-            <ImageIcon class="h-3.5 w-3.5" /> Attachments
-          </h4>
-
-          <!-- Existing ticket-level thumbnails -->
-          <div v-if="ticketLevelAttachments.length > 0" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
-            <div
-              v-for="att in ticketLevelAttachments"
-              :key="att.id"
-              class="relative group aspect-square bg-muted rounded-xl overflow-hidden border border-border hover:border-primary/50 transition-colors cursor-pointer"
-              @click="openLightbox(att)"
-            >
-              <img
-                v-if="att.url"
-                :src="att.url"
-                :alt="att.fileName"
-                class="w-full h-full object-cover"
-              />
-              <div v-else class="w-full h-full flex items-center justify-center">
-                <ImageIcon class="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div class="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <ZoomIn class="h-5 w-5 text-foreground" />
-              </div>
-              <div class="absolute bottom-0 inset-x-0 px-1.5 py-1 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity">
-                <p class="text-[9px] font-mono text-foreground truncate">{{ att.fileName }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Upload new ticket-level images -->
-          <ImageAttachmentUploader
-            v-model="ticketAttachmentsDraft"
-            label="Add Images"
-            :max-files="10"
-          />
-          <Button
-            v-if="ticketAttachmentsDraft.length > 0"
-            @click="uploadTicketAttachments"
-            :disabled="isUploadingTicketAttachments"
-            class="mt-2 w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase h-8"
+        <!-- 5 Status Options -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
+          <button
+            v-for="s in STATUSES"
+            :key="s.value"
+            type="button"
+            @click="selectedStatus = s.value"
+            :class="[
+              'px-2.5 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide text-left transition-all flex items-center gap-2 cursor-pointer',
+              selectedStatus === s.value ? ['ring-2 ring-primary scale-[1.02] shadow-sm', s.color] : ['opacity-60 hover:opacity-90', s.color]
+            ]"
           >
-            {{ isUploadingTicketAttachments ? 'Uploading…' : `Upload ${ticketAttachmentsDraft.length} Image(s)` }}
+            <span class="size-2 rounded-full shrink-0" :class="s.dotClass" />
+            <span class="truncate">{{ s.label }}</span>
+          </button>
+        </div>
+
+        <!-- Pending Reason Config when Pending is Selected -->
+        <div v-if="selectedStatus === 'Pending'" class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2.5 animate-in fade-in">
+          <span class="text-[10px] font-black uppercase tracking-widest text-amber-800 dark:text-amber-300 flex items-center gap-1">
+            <Package class="size-3 text-amber-600" />
+            Select Pending Reason:
+          </span>
+
+          <div class="grid grid-cols-2 gap-1.5">
+            <button
+              v-for="(cfg, rKey) in PENDING_REASON_CONFIGS"
+              :key="rKey"
+              type="button"
+              @click="selectedPendingReason = rKey"
+              :class="[
+                'p-2 rounded-lg border text-left transition-all flex flex-col gap-0.5 cursor-pointer',
+                selectedPendingReason === rKey
+                  ? 'bg-amber-500/20 border-amber-500 text-amber-950 dark:text-amber-100 ring-2 ring-amber-500/50 shadow-xs'
+                  : 'bg-background/80 border-border text-foreground hover:bg-muted/80 opacity-80'
+              ]"
+            >
+              <span class="font-bold text-xs">{{ cfg.label }}</span>
+              <p class="text-[10px] text-muted-foreground line-clamp-1 leading-tight">{{ cfg.description }}</p>
+            </button>
+          </div>
+
+          <div class="space-y-1 pt-1">
+            <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pending Details (optional)</label>
+            <input
+              v-model="selectedPendingDetails"
+              type="text"
+              placeholder="e.g., Awaiting shipment ETA tomorrow"
+              class="w-full px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden"
+            />
+          </div>
+        </div>
+
+        <!-- Apply Status Change Button -->
+        <Button
+          v-if="isStatusOrPendingChanged"
+          @click="applyStatusChange"
+          :disabled="isChangingStatus"
+          class="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase tracking-wider h-8 shadow-sm cursor-pointer"
+        >
+          <span v-if="!isChangingStatus">Apply Status Change</span>
+          <span v-else>Updating…</span>
+        </Button>
+
+        <!-- Quick Workflow Actions -->
+        <div class="flex flex-wrap gap-2 pt-2 border-t border-border">
+          <Button
+            v-if="localTicket.status === 'Open'"
+            size="sm"
+            @click="updateStatus('InProgress')"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
+          >
+            <Play class="h-3.5 w-3.5 mr-1" />
+            Start Work
+          </Button>
+
+          <Button
+            v-if="localTicket.status === 'InProgress'"
+            size="sm"
+            @click="updateStatus('Pending')"
+            class="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
+          >
+            <Package class="h-3.5 w-3.5 mr-1" />
+            Set Pending
+          </Button>
+
+          <Button
+            v-if="localTicket.status === 'InProgress' || localTicket.status === 'Pending'"
+            size="sm"
+            @click="updateStatus('Resolved')"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
+          >
+            <CheckCircle2 class="h-3.5 w-3.5 mr-1" />
+            Mark Resolved
+          </Button>
+
+          <Button
+            v-if="localTicket.status === 'Resolved'"
+            size="sm"
+            @click="updateStatus('Closed')"
+            class="bg-muted hover:bg-muted/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
+          >
+            <Archive class="h-3.5 w-3.5 mr-1" />
+            Close Ticket
+          </Button>
+
+          <Button
+            v-if="localTicket.status === 'Closed'"
+            size="sm"
+            @click="updateStatus('Open')"
+            class="bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
+          >
+            <RotateCcw class="h-3.5 w-3.5 mr-1" />
+            Re-Open
+          </Button>
+
+          <!-- Escalate Action Trigger -->
+          <Button
+            v-if="!localTicket.isEscalated"
+            size="sm"
+            variant="outline"
+            @click="isEscalatingOpen = !isEscalatingOpen"
+            class="border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/10 rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer ml-auto"
+          >
+            <AlertTriangle class="h-3.5 w-3.5 mr-1 text-rose-500" />
+            Escalate
           </Button>
         </div>
 
-        <!-- ── Comments & Activity Log ──────────────────────────── -->
-        <div>
-          <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3">
-            Activity Timeline &amp; Technician Notes
-          </h4>
-
-          <div class="space-y-2.5 mb-4 max-h-72 overflow-y-auto pr-1">
-            <template v-if="localTicket.comments.length === 0">
-              <div class="p-4 text-center text-muted-foreground text-xs uppercase font-bold bg-muted/20 rounded-xl border border-border">
-                No technician notes recorded yet.
-              </div>
-            </template>
-            <template v-else>
-              <div
-                v-for="cmt in localTicket.comments"
-                :key="cmt.id"
-                class="p-3 bg-muted/30 rounded-xl border border-border space-y-1.5"
-              >
-                <!-- Author / time row -->
-                <div class="flex items-center justify-between text-[10px]">
-                  <span class="font-bold text-indigo-600 dark:text-indigo-400 uppercase">{{ cmt.authorName }}</span>
-                  <span class="text-muted-foreground font-mono">
-                    {{ new Date(cmt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
-                  </span>
-                </div>
-
-                <!-- State Transition Badge -->
-                <div
-                  v-if="cmt.transition"
-                  class="flex items-center gap-1.5 flex-wrap"
-                >
-                  <span
-                    :class="['text-[10px] font-black px-2 py-0.5 rounded-full border', statusColor(cmt.transition.fromStatus)]"
-                  >
-                    {{ cmt.transition.fromStatus.replace(/_/g, ' ') }}
-                  </span>
-                  <ArrowRightLeft class="h-3 w-3 text-muted-foreground" />
-                  <span
-                    :class="['text-[10px] font-black px-2 py-0.5 rounded-full border', statusColor(cmt.transition.toStatus)]"
-                  >
-                    {{ cmt.transition.toStatus.replace(/_/g, ' ') }}
-                  </span>
-                  <span v-if="cmt.transition.actor" class="text-[10px] text-muted-foreground ml-1">
-                    by {{ cmt.transition.actor }}
-                  </span>
-                </div>
-
-                <!-- Comment text (skip if empty and we only have a transition) -->
-                <p v-if="cmt.content" class="text-xs text-foreground leading-relaxed">{{ cmt.content }}</p>
-
-                <!-- Inline comment attachments -->
-                <div v-if="cmt.attachments && cmt.attachments.length > 0" class="grid grid-cols-3 gap-1.5 pt-1">
-                  <div
-                    v-for="att in cmt.attachments"
-                    :key="att.id"
-                    class="relative group aspect-square bg-muted rounded-lg overflow-hidden border border-border cursor-pointer"
-                    @click="openLightbox(att)"
-                  >
-                    <img v-if="att.url" :src="att.url" :alt="att.fileName" class="w-full h-full object-cover" />
-                    <div v-else class="w-full h-full flex items-center justify-center">
-                      <ImageIcon class="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div class="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <ZoomIn class="h-4 w-4 text-foreground" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-
-          <!-- Comment attachment panel -->
-          <div v-if="showCommentAttachmentPanel" class="mb-2 p-3 bg-muted/40 rounded-xl border border-border">
-            <ImageAttachmentUploader
-              v-model="commentAttachments"
-              label="Attach to this comment"
-              :max-files="5"
-            />
-          </div>
-
-          <!-- Add Comment Input -->
-          <div class="flex gap-2 items-center">
-            <!-- Paperclip toggle -->
-            <button
-              type="button"
-              @click="showCommentAttachmentPanel = !showCommentAttachmentPanel"
-              :class="[
-                'p-2 rounded-xl border transition-colors shrink-0',
-                showCommentAttachmentPanel || commentAttachments.length > 0
-                  ? 'bg-primary/20 border-primary/50 text-primary'
-                  : 'bg-background border-border text-muted-foreground hover:text-primary hover:border-primary/40'
-              ]"
-              title="Attach images to comment"
-            >
-              <Paperclip class="h-4 w-4" />
-            </button>
-
-            <Input
-              v-model="commentText"
-              placeholder="Add technician observation or note..."
-              class="bg-background border-border rounded-xl text-xs flex-1 text-foreground placeholder:text-muted-foreground"
-              @keyup.enter="addComment"
-            />
+        <!-- Inline Escalation Input Form -->
+        <div v-if="isEscalatingOpen && !localTicket.isEscalated" class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-2 animate-in fade-in">
+          <label class="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+            Escalation Reason *
+          </label>
+          <input
+            v-model="escalationReasonInput"
+            type="text"
+            placeholder="e.g. Critical downtime, OEM support escalation"
+            class="w-full px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden"
+          />
+          <div class="flex justify-end gap-2 pt-1">
             <Button
-              @click="addComment"
-              :disabled="isSubmittingComment || (!commentText.trim() && commentAttachments.length === 0)"
-              class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-4 text-xs font-black uppercase shrink-0"
+              size="sm"
+              variant="outline"
+              class="text-xs h-7"
+              @click="isEscalatingOpen = false"
             >
-              <Send class="h-3.5 w-3.5" />
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              :disabled="!escalationReasonInput.trim() || isSubmittingEscalation"
+              class="bg-rose-600 hover:bg-rose-500 text-white text-xs h-7 font-bold"
+              @click="confirmEscalate"
+            >
+              Confirm Escalation
             </Button>
           </div>
+        </div>
+      </div>
 
-          <!-- Attachment count hint -->
-          <p v-if="commentAttachments.length > 0" class="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 flex items-center gap-1">
-            <Paperclip class="h-2.5 w-2.5" />
-            {{ commentAttachments.length }} image(s) will be attached to this comment
-          </p>
+      <!-- Incident Description -->
+      <div class="space-y-1.5">
+        <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground">Incident Description</h4>
+        <div class="p-4 bg-muted/30 rounded-2xl border border-border space-y-2">
+          <h5 class="text-sm font-bold text-foreground">{{ localTicket.title }}</h5>
+          <p class="text-xs text-muted-foreground leading-relaxed">{{ localTicket.description || 'No detailed description provided.' }}</p>
+        </div>
+      </div>
+
+      <!-- Function Block State -->
+      <div v-if="localTicket.fbState">
+        <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Function Block State</h4>
+        <div class="p-3 bg-muted/30 rounded-2xl border border-border">
+          <code class="text-xs font-mono text-emerald-700 dark:text-emerald-400 leading-relaxed">
+            {{ localTicket.fbState.blockName }}: {{ localTicket.fbState.state }}
+            <span v-if="localTicket.fbState.subState"> / {{ localTicket.fbState.subState }}</span>
+            <span v-if="localTicket.fbState.errorCode" class="text-rose-600 dark:text-rose-400"> ({{ localTicket.fbState.errorCode }})</span>
+          </code>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div>
+        <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Tags</h4>
+        <div class="flex flex-wrap gap-1.5 mb-2">
+          <span
+            v-for="t in localTicket.tags ?? []"
+            :key="t"
+            class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-muted text-foreground border border-border flex items-center gap-1 group"
+          >
+            {{ t }}
+            <button
+              type="button"
+              @click="removeTag(t)"
+              class="text-muted-foreground hover:text-rose-500 text-xs leading-none"
+            >
+              &times;
+            </button>
+          </span>
+        </div>
+        <div class="flex gap-2">
+          <Input
+            v-model="newTagInput"
+            placeholder="Add tag (e.g. #Safety)..."
+            class="bg-muted/40 border-border rounded-xl text-xs h-8 text-foreground"
+            @keyup.enter="addTag"
+          />
+          <Button
+            size="sm"
+            @click="addTag"
+            :disabled="!newTagInput.trim() || isUpdatingTags"
+            class="rounded-xl text-xs font-bold px-3 h-8 cursor-pointer"
+          >
+            Add
+          </Button>
+        </div>
+      </div>
+
+      <!-- Ticket Attachments -->
+      <div>
+        <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Evidence &amp; Photos</h4>
+        <div v-if="ticketLevelAttachments.length > 0" class="grid grid-cols-4 gap-2 mb-3">
+          <div
+            v-for="att in ticketLevelAttachments"
+            :key="att.id"
+            class="relative group aspect-square bg-muted rounded-xl overflow-hidden border border-border cursor-pointer"
+            @click="openLightbox(att)"
+          >
+            <img v-if="att.url" :src="att.url" :alt="att.fileName" class="w-full h-full object-cover" />
+            <div v-else class="w-full h-full flex items-center justify-center">
+              <ImageIcon class="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div class="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <ZoomIn class="h-5 w-5 text-foreground" />
+            </div>
+          </div>
         </div>
 
+        <ImageAttachmentUploader
+          v-model="ticketAttachmentsDraft"
+          label="Add Images"
+          :max-files="10"
+        />
+        <Button
+          v-if="ticketAttachmentsDraft.length > 0"
+          @click="uploadTicketAttachments"
+          :disabled="isUploadingTicketAttachments"
+          class="mt-2 w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase h-8 cursor-pointer"
+        >
+          {{ isUploadingTicketAttachments ? 'Uploading…' : `Upload ${ticketAttachmentsDraft.length} Image(s)` }}
+        </Button>
       </div>
+
+      <!-- Comments Timeline -->
+      <div>
+        <h4 class="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3">
+          Activity Timeline &amp; Notes
+        </h4>
+        <div class="space-y-2.5 mb-4 max-h-72 overflow-y-auto pr-1">
+          <div v-if="localTicket.comments.length === 0" class="p-4 text-center text-muted-foreground text-xs uppercase font-bold bg-muted/20 rounded-xl border border-border">
+            No technician notes recorded yet.
+          </div>
+          <div
+            v-for="cmt in localTicket.comments"
+            :key="cmt.id"
+            class="p-3 bg-muted/30 rounded-xl border border-border space-y-1.5"
+          >
+            <div class="flex items-center justify-between text-[10px]">
+              <span class="font-bold text-indigo-600 dark:text-indigo-400 uppercase">{{ cmt.authorName }}</span>
+              <span class="text-muted-foreground font-mono">
+                {{ new Date(cmt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+              </span>
+            </div>
+
+            <div v-if="cmt.transition" class="flex items-center gap-1.5 flex-wrap">
+              <span :class="['text-[10px] font-black px-2 py-0.5 rounded-full border', statusColor(cmt.transition.fromStatus)]">
+                {{ cmt.transition.fromStatus }}
+              </span>
+              <ArrowRightLeft class="h-3 w-3 text-muted-foreground" />
+              <span :class="['text-[10px] font-black px-2 py-0.5 rounded-full border', statusColor(cmt.transition.toStatus)]">
+                {{ cmt.transition.toStatus }}
+              </span>
+              <span v-if="cmt.transition.actor" class="text-[10px] text-muted-foreground ml-1">
+                by {{ cmt.transition.actor }}
+              </span>
+            </div>
+
+            <p v-if="cmt.content" class="text-xs text-foreground leading-relaxed">{{ cmt.content }}</p>
+
+            <div v-if="cmt.attachments && cmt.attachments.length > 0" class="grid grid-cols-3 gap-1.5 pt-1">
+              <div
+                v-for="att in cmt.attachments"
+                :key="att.id"
+                class="relative group aspect-square bg-muted rounded-lg overflow-hidden border border-border cursor-pointer"
+                @click="openLightbox(att)"
+              >
+                <img v-if="att.url" :src="att.url" :alt="att.fileName" class="w-full h-full object-cover" />
+                <div class="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <ZoomIn class="h-4 w-4 text-foreground" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="showCommentAttachmentPanel" class="mb-2 p-3 bg-muted/40 rounded-xl border border-border">
+          <ImageAttachmentUploader
+            v-model="commentAttachments"
+            label="Attach to this comment"
+            :max-files="5"
+          />
+        </div>
+
+        <div class="flex gap-2 items-center">
+          <button
+            type="button"
+            @click="showCommentAttachmentPanel = !showCommentAttachmentPanel"
+            :class="[
+              'p-2 rounded-xl border transition-colors shrink-0 cursor-pointer',
+              showCommentAttachmentPanel || commentAttachments.length > 0
+                ? 'bg-primary/20 border-primary/50 text-primary'
+                : 'bg-background border-border text-muted-foreground hover:text-primary hover:border-primary/40'
+            ]"
+            title="Attach images to comment"
+          >
+            <Paperclip class="h-4 w-4" />
+          </button>
+
+          <Input
+            v-model="commentText"
+            placeholder="Add technician observation or note..."
+            class="bg-background border-border rounded-xl text-xs flex-1 text-foreground placeholder:text-muted-foreground"
+            @keyup.enter="addComment"
+          />
+          <Button
+            @click="addComment"
+            :disabled="isSubmittingComment || (!commentText.trim() && commentAttachments.length === 0)"
+            class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-4 text-xs font-black uppercase shrink-0 cursor-pointer"
+          >
+            <Send class="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
     </div>
   </div>
 

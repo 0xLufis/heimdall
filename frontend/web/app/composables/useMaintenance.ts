@@ -5,6 +5,7 @@ import type {
   TicketFilter,
   TicketMetrics,
   TicketStatus,
+  PendingReason,
   TicketComment,
   MaintenanceEvent
 } from '~/types/maintenance'
@@ -35,42 +36,28 @@ export const useMaintenance = () => {
     const list = tickets.value
     const total = list.length
     const open = list.filter(t => t.status === 'Open').length
-    const inProgress = list.filter(t => t.status === 'In_Progress').length
-    const pendingParts = list.filter(t => t.status === 'Pending_Parts' || t.status === 'Pending').length
-    const escalated = list.filter(t => t.status === 'Escalated').length
-    const escalatedExternal = list.filter(t => t.status === 'Escalated_External').length
-    const closurePending = list.filter(t => t.status === 'Closure_Pending').length
+    const inProgress = list.filter(t => t.status === 'InProgress').length
+    const pending = list.filter(t => t.status === 'Pending').length
     const resolved = list.filter(t => t.status === 'Resolved').length
-    const closedUnresolved = list.filter(t => t.status === 'Closed_Unresolved').length
     const closed = list.filter(t => t.status === 'Closed').length
-    const criticalOpen = list.filter(t => t.priority === 'Critical' && t.status !== 'Resolved' && t.status !== 'Closed' && t.status !== 'Closed_Unresolved').length
+    const escalated = list.filter(t => t.isEscalated).length
+    const criticalOpen = list.filter(t => t.priority === 'Critical' && t.status !== 'Resolved' && t.status !== 'Closed').length
     const now = Date.now()
-    const overdue = list.filter(t => t.slaDueAt && new Date(t.slaDueAt).getTime() < now && t.status !== 'Resolved' && t.status !== 'Closed' && t.status !== 'Closed_Unresolved').length
+    const overdue = list.filter(t => t.slaDueAt && new Date(t.slaDueAt).getTime() < now && t.status !== 'Resolved' && t.status !== 'Closed').length
     const slaCompliance = total > 0 ? Math.round(((total - overdue) / total) * 100) : 100
 
     metrics.value = {
       totalTickets: total,
       openCount: open,
-      openTickets: open,
       inProgressCount: inProgress,
-      inProgressTickets: inProgress,
-      pendingPartsCount: pendingParts,
-      pendingPartsTickets: pendingParts,
-      escalatedCount: escalated,
-      escalatedExternalCount: escalatedExternal,
-      closurePendingCount: closurePending,
+      pendingCount: pending,
       resolvedCount: resolved,
-      resolvedToday: resolved,
-      closedUnresolvedCount: closedUnresolved,
       closedCount: closed,
+      escalatedCount: escalated,
       criticalCount: criticalOpen,
-      criticalUnresolvedAlerts: criticalOpen,
       overdueCount: overdue,
-      slaCompliancePercent: slaCompliance,
-      slaComplianceRate: slaCompliance,
-      meanTimeToRepairMinutes: (metrics.value as any)?.meanTimeToRepairMinutes || 42,
-      activeTechniciansCount: (metrics.value as any)?.activeTechniciansCount || 4
-    } as any
+      slaCompliancePercent: slaCompliance
+    }
   }
 
   // Atomic On-Demand Live Event Handler
@@ -100,39 +87,41 @@ export const useMaintenance = () => {
         break
       }
 
-      case 'StatusChanged': {
-        const target = tickets.value.find(t => t.id === event.ticketId)
-        if (target) {
-          target.status = event.status
-          target.updatedAt = new Date().toISOString()
-          if (event.status === 'Resolved' && !target.resolvedAt) {
-            target.resolvedAt = new Date().toISOString()
-          }
+      case 'TicketDeleted': {
+        if (event.ticketId) {
+          tickets.value = tickets.value.filter(t => t.id !== event.ticketId)
           if (selectedTicket.value?.id === event.ticketId) {
-            selectedTicket.value = { ...selectedTicket.value, status: event.status, resolvedAt: target.resolvedAt }
+            selectedTicket.value = null
           }
           recalculateMetrics()
         }
         break
       }
 
-      case 'TicketDeleted': {
-        tickets.value = tickets.value.filter(t => t.id !== event.ticketId)
-        if (selectedTicket.value?.id === event.ticketId) {
-          selectedTicket.value = null
+      case 'StatusChanged': {
+        if (event.ticketId && event.status) {
+          const t = tickets.value.find(item => item.id === event.ticketId)
+          if (t) {
+            t.status = event.status
+            t.updatedAt = event.timestamp
+            if (selectedTicket.value?.id === event.ticketId) {
+              selectedTicket.value.status = event.status
+              selectedTicket.value.updatedAt = event.timestamp
+            }
+            recalculateMetrics()
+          }
         }
-        recalculateMetrics()
         break
       }
 
       case 'NewComment': {
-        const target = tickets.value.find(t => t.id === event.ticketId)
-        if (target && event.comment) {
-          if (!target.comments.some(c => c.id === event.comment.id)) {
-            target.comments.push(event.comment)
+        if (event.ticketId && event.comment) {
+          const t = tickets.value.find(item => item.id === event.ticketId)
+          if (t && !t.comments.some(c => c.id === event.comment?.id)) {
+            t.comments.push(event.comment)
           }
           if (selectedTicket.value?.id === event.ticketId) {
-            if (!selectedTicket.value.comments.some(c => c.id === event.comment.id)) {
+            if (!selectedTicket.value.comments.some(c => c.id === event.comment?.id)) {
               selectedTicket.value.comments.push(event.comment)
             }
           }
@@ -175,39 +164,36 @@ export const useMaintenance = () => {
     const target = tickets.value.find(t => t.id === id)
     const prevStatus = target?.status
     const prevReason = target?.pendingReason
-    const prevAuthority = target?.pendingAuthority
+    const prevDetails = target?.pendingDetails
 
-    // 1. Optimistically update local state for zero-latency feedback
     if (target) {
       target.status = status
       if (extra?.pendingReason !== undefined) target.pendingReason = extra.pendingReason
-      if (extra?.pendingAuthority !== undefined) target.pendingAuthority = extra.pendingAuthority
+      if (extra?.pendingDetails !== undefined) target.pendingDetails = extra.pendingDetails
       target.updatedAt = new Date().toISOString()
       if (selectedTicket.value?.id === id) {
         selectedTicket.value.status = status
         if (extra?.pendingReason !== undefined) selectedTicket.value.pendingReason = extra.pendingReason
-        if (extra?.pendingAuthority !== undefined) selectedTicket.value.pendingAuthority = extra.pendingAuthority
+        if (extra?.pendingDetails !== undefined) selectedTicket.value.pendingDetails = extra.pendingDetails
       }
       recalculateMetrics()
     }
 
     try {
-      // 2. Submit to backend / BFF
       const updated = await (service as any).updateTicketStatus(id, status, technicianName, extra)
       if (target && updated) {
         Object.assign(target, updated)
       }
       return updated
     } catch (err) {
-      // 3. Rollback on failure
       if (target && prevStatus) {
         target.status = prevStatus
         target.pendingReason = prevReason
-        target.pendingAuthority = prevAuthority
+        target.pendingDetails = prevDetails
         if (selectedTicket.value?.id === id) {
           selectedTicket.value.status = prevStatus
           selectedTicket.value.pendingReason = prevReason
-          selectedTicket.value.pendingAuthority = prevAuthority
+          selectedTicket.value.pendingDetails = prevDetails
         }
         recalculateMetrics()
       }
@@ -215,12 +201,75 @@ export const useMaintenance = () => {
     }
   }
 
-  const updateTicketPending = async (
+  const setPending = async (
     ticketId: string,
-    pendingReason: string,
-    pendingAuthority?: string
+    pendingReason: PendingReason,
+    pendingDetails?: string
   ) => {
-    return await updateStatus(ticketId, 'Pending', undefined, { pendingReason, pendingAuthority })
+    return await updateStatus(ticketId, 'Pending', undefined, { pendingReason, pendingDetails })
+  }
+
+  const escalateTicket = async (ticketId: string, reason: string, escalatedBy?: string) => {
+    const target = tickets.value.find(t => t.id === ticketId)
+    if (target) {
+      target.isEscalated = true
+      target.escalationReason = reason
+      target.escalatedBy = escalatedBy || 'Operator'
+      target.escalatedAt = new Date().toISOString()
+      if (selectedTicket.value?.id === ticketId) {
+        selectedTicket.value.isEscalated = true
+        selectedTicket.value.escalationReason = reason
+        selectedTicket.value.escalatedBy = escalatedBy || 'Operator'
+        selectedTicket.value.escalatedAt = new Date().toISOString()
+      }
+      recalculateMetrics()
+    }
+
+    try {
+      return await (service as any).escalate(ticketId, reason, escalatedBy || 'Operator')
+    } catch (err) {
+      // Fallback to PATCH /api/tickets/{id}
+      return await $fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        body: {
+          isEscalated: true,
+          escalationReason: reason,
+          escalatedBy: escalatedBy || 'Operator',
+          escalatedAt: new Date().toISOString()
+        }
+      })
+    }
+  }
+
+  const resolveEscalation = async (ticketId: string, resolvedBy?: string) => {
+    const target = tickets.value.find(t => t.id === ticketId)
+    if (target) {
+      target.isEscalated = false
+      target.escalationReason = null
+      target.escalationClosedBy = resolvedBy || 'Operator'
+      target.escalationClosedAt = new Date().toISOString()
+      if (selectedTicket.value?.id === ticketId) {
+        selectedTicket.value.isEscalated = false
+        selectedTicket.value.escalationReason = null
+        selectedTicket.value.escalationClosedBy = resolvedBy || 'Operator'
+        selectedTicket.value.escalationClosedAt = new Date().toISOString()
+      }
+      recalculateMetrics()
+    }
+
+    try {
+      return await (service as any).resolveEscalation(ticketId, resolvedBy || 'Operator')
+    } catch (err) {
+      return await $fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        body: {
+          isEscalated: false,
+          escalationReason: null,
+          escalationClosedBy: resolvedBy || 'Operator',
+          escalationClosedAt: new Date().toISOString()
+        }
+      })
+    }
   }
 
   const addComment = async (ticketId: string, authorName: string, content: string): Promise<TicketComment> => {
@@ -243,27 +292,22 @@ export const useMaintenance = () => {
       listenerCount++
       fetchTickets()
 
-      // Subscribe to live SignalR / WebSocket push events on first mount
       if (!globalUnsubscribeEvents) {
         globalUnsubscribeEvents = service.subscribeToEvents(handleLiveEvent)
       }
 
-      // Sync background dev tickets periodically in development
-      if (typeof window !== 'undefined' && !syncTimer) {
-        syncTimer = setInterval(() => {
-          if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-            fetchTickets()
+      syncTimer = setInterval(async () => {
+        try {
+          if (service.getPendingSyncCount) {
+            pendingOfflineCount.value = await service.getPendingSyncCount()
           }
-        }, 12000)
-      }
+        } catch {}
+      }, 5000)
     })
 
     onUnmounted(() => {
       listenerCount--
-      if (syncTimer) {
-        clearInterval(syncTimer)
-        syncTimer = null
-      }
+      if (syncTimer) clearInterval(syncTimer)
       if (listenerCount <= 0 && globalUnsubscribeEvents) {
         globalUnsubscribeEvents()
         globalUnsubscribeEvents = null
@@ -281,9 +325,11 @@ export const useMaintenance = () => {
     fetchTickets,
     createTicket,
     updateStatus,
-    updateTicketPending,
+    setPending,
+    escalateTicket,
+    resolveEscalation,
     addComment,
-    handleLiveEvent,
-    recalculateMetrics
+    recalculateMetrics,
+    handleLiveEvent
   }
 }

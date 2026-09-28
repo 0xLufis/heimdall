@@ -113,8 +113,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddSingleton<ICacheService, CacheService>();
 builder.Services.AddScoped<IStationRepository, StationRepository>();
 builder.Services.AddScoped<IControllerRepository, ControllerRepository>();
-builder.Services.AddScoped<IClientPcRepository, ClientPcRepository>();
-builder.Services.AddScoped<ClientPcRepository>();
+builder.Services.AddScoped<ControllerRepository>();
 builder.Services.AddScoped<IAssetRepository, AssetRepository>();
 builder.Services.AddScoped<IMaintenanceTicketRepository, MaintenanceTicketRepository>();
 builder.Services.AddScoped<IMachineGroupRepository, MachineGroupRepository>();

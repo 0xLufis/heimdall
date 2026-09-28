@@ -263,8 +263,8 @@ export class RestFallbackMaintenanceProvider implements IMaintenanceService {
     return {
       totalTickets: tickets.length,
       openCount: tickets.filter(t => t.status === 'Open').length,
-      inProgressCount: tickets.filter(t => t.status === 'In_Progress').length,
-      pendingPartsCount: tickets.filter(t => t.status === 'Pending_Parts').length,
+      inProgressCount: tickets.filter(t => t.status === 'InProgress').length,
+      pendingCount: tickets.filter(t => t.status === 'Pending').length,
       resolvedCount: tickets.filter(t => t.status === 'Resolved').length,
       closedCount: tickets.filter(t => t.status === 'Closed').length,
       criticalCount: tickets.filter(t => t.priority === 'Critical').length,

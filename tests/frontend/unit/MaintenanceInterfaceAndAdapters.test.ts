@@ -31,7 +31,7 @@ describe('IMaintenanceService & Provider Architecture', () => {
             id: 'tkt-2',
             ticketNumber: 'TKT-002',
             title: 'KUKA Robot Axis Fault',
-            status: 'In_Progress',
+            status: 'InProgress',
             priority: 'High',
             machine: { name: 'OP20 Robot' },
             createdAt: new Date().toISOString()

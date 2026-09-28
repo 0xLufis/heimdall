@@ -60,7 +60,7 @@ export interface SearchGroup {
   items?: SearchResultItem[]
 }
 
-export interface OmniSearchState {
+export interface HeimdallSearchState {
   rawQuery: string
   freeText: string
   tags: TagPill[]
@@ -71,7 +71,7 @@ export interface OmniSearchState {
 }
 
 // --------------------------------------------------------------------------
-// Parameterized OmniSearch Types & Contracts
+// Parameterized HeimdallSearch Types & Contracts
 // --------------------------------------------------------------------------
 
 export type SearchDataSource =
@@ -130,7 +130,7 @@ export interface RankedIndexingTableRef<T = any> {
   description?: string
 }
 
-export interface OmniSearchOptions<T = any> {
+export interface HeimdallSearchOptions<T = any> {
   dataSource?: SearchDataSource
   data?: MaybeRefOrGetter<T | T[] | Record<string, any> | Record<string, any>[]>
   template?: SearchTemplateName | any

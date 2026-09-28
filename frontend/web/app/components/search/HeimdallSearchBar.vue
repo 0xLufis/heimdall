@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import type { SearchInstanceConfig, SearchResultItem, AutoTagResult } from '~/types/search'
-import { useOmniSearch } from '~/composables/useOmniSearch'
+import { useHeimdallSearch } from '~/composables/useHeimdallSearch'
 import { Search as SearchIcon, X, Command } from 'lucide-vue-next'
 import { useGlobalSearchModal } from '~/composables/useGlobalSearchModal'
 import TagPillList from './TagPillList.vue'
@@ -54,7 +54,7 @@ const {
   executeSearch,
   fetchSearchKeys,
   dynamicKnownKeyValues
-} = useOmniSearch(props.config)
+} = useHeimdallSearch(props.config)
 
 const isFocused = ref(false)
 const isMenuExplicitlyClosed = ref(false)
@@ -168,8 +168,12 @@ const handleResultSelect = (item: SearchResultItem) => {
   isMenuExplicitlyClosed.value = true
   if (item.link) {
     router.push(item.link)
-  } else if (item.itemType === 'ClientPc') {
-    router.push('/dashboard/clients')
+  } else if (item.itemType === 'ClientPc' || item.itemType === 'endpoint') {
+    router.push({ path: '/dashboard/clients', query: { selected: item.id, hostname: item.name } })
+  } else if (item.itemType === 'Machine' || item.itemType === 'station') {
+    router.push({ path: '/dashboard/machines', query: { id: item.id, search: item.name } })
+  } else if (item.itemType === 'Ticket') {
+    router.push({ path: '/dashboard/tickets', query: { ticketId: item.id } })
   } else {
     router.push(`/dashboard/inventory/${item.id}`)
   }

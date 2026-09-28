@@ -9,8 +9,8 @@ defineProps<{
 </script>
 
 <template>
-  <Card class="bg-card border-border p-6 shadow-sm rounded-xl">
-    <CardContent class="p-0">
+  <Card class="bg-card border-border shadow-sm rounded-xl">
+    <CardContent class="p-6">
       <div class="flex items-center gap-5">
         <Avatar class="w-14 h-14 border border-border bg-muted">
           <AvatarFallback class="text-2xl font-bold text-foreground bg-transparent">

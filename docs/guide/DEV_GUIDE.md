@@ -25,12 +25,11 @@ heimdall/
 ├── infra/
 │   └── database/            # PostgreSQL 18, Redis 7.4, SSL certs, and seed data
 ├── tests/
-│   ├── backend/             # xUnit backend integration tests (208 tests)
-│   ├── frontend/unit/       # Vitest unit test suites (39 suites, 298 tests)
+│   ├── backend/             # xUnit backend integration tests (215 tests)
+│   ├── frontend/unit/       # Vitest unit test suites (43 suites, 348 tests)
 │   └── e2e/                 # Playwright browser end-to-end tests
 ├── docker-compose.yml       # Full stack local development compose file
-├── run_dev.sh               # Local development launch script
-└── run_simulators.sh        # Simulator runner script
+└── justfile                 # Modern command runner for dev, staging, testing, and production
 ```
 
 ---
@@ -105,9 +104,15 @@ python3 simulators/fleet/fleet_simulator.py --client ROBOT-CELL-01 --count 100
 ```
 
 ### 3.6 Frontend Architecture & Key Utilities
-* **FMFD / OmniSearch Engine (`useOmniSearch.ts`)**:
-  * Composable exported as both `useOmniSearch` and `useFmfd`.
-  * Provides parameterized search indexing across clients, machines, tickets, and inventory with tag directives (`@`, `#`, `!`), fuzzy matching, and GDPR data diagnostics.
+* **HeimdallSearch Engine (`useHeimdallSearch.ts`)**:
+  * Composable exported as both `useHeimdallSearch` and `useFmfd`.
+  * Provides parameterized search indexing across clients, machines, tickets, and inventory with tag directives (`@`, `#`, `!`), fuzzy matching, and GDPR data diagnostics. UI components include `HeimdallSearchBar.vue` and `GlobalHeimdallSearchModal.vue`.
+* **Canonical 5-State Ticketing & Orthogonal Escalation (`types/maintenance.ts`)**:
+  * Statuses strictly adhere to 5 canonical states: `Open`, `InProgress`, `Pending`, `Resolved`, and `Closed`.
+  * `PendingReason`: Strongly typed to `None | Parts | ExternalOk | Action`, mapping directly to the backend enum.
+  * Orthogonal Escalation: Escalation is decoupled from ticket status (`isEscalated`, `escalationReason`, `escalatedAt`, `escalatedBy`, `escalationClosedAt`, `escalationClosedBy`). A ticket can be escalated or resolved in any status.
+* **Modular Settings Architecture**:
+  * Tabbed subcomponents located in `frontend/web/app/components/settings/` (`SettingsProfileTab`, `SettingsRolesTab`, `SettingsSecurityTab`, `SettingsAppearanceTab`, `SettingsPersonasTab`).
 * **Drag-and-Drop Reordering (`reorderList.ts`)**:
   * `reorderAndPrioritize<T>(items, fromIndex, toIndex, options)`: Moves items between indices and recalculates sequential 1-based priority fields (`priority: 1, 2, 3...`).
   * `setDragImageAtClickPoint(event, element)`: Ensures HTML5 drag ghost images stay anchored to the exact cursor click point. Incorporates global `pointerdown` tracking to work around the Linux Chromium bug where `DragEvent.clientX/Y` reports `0` during `dragstart`, rendering temporary clones to force Blink to honor custom offsets.
@@ -154,25 +159,25 @@ docker compose down
 
 ## 5. Automated Test Verification
 
-### 5.0 Unified Test Execution
+### 5.0 Unified Test Execution via `just`
 To run all verification suites in one command:
 ```bash
-./run_dev.sh test all
+just test
 ```
-Executes seed validation, backend xUnit tests, frontend Vitest suites, and fleet simulator smoke tests.
+Executes seed validation (`just test-seed`), backend xUnit tests (`just test-backend`), and frontend Vitest suites (`just test-frontend`).
 
 ### 5.1 Backend & Agent Unit Tests (xUnit)
 ```bash
-dotnet test ./tests/backend/App.Backend.Tests/App.Backend.Tests.csproj
+dotnet test Heimdall.sln
 ```
-Executes 208 tests covering multi-tenancy global query filters, MFA policy rules, Active Directory OU synchronization, entity inheritance, AES-256-GCM encryption roundtrips, PII exclusion rules, predictive maintenance thresholds, MQTT broker communication, and API endpoints.
+Executes 215 tests covering multi-tenancy global query filters, MFA policy rules, Active Directory OU synchronization, entity inheritance, AES-256-GCM encryption roundtrips, PII exclusion rules, predictive maintenance thresholds, MQTT broker communication, centralized cache key generation, and API endpoints.
 
 ### 5.2 Frontend Unit Tests (Vitest)
 ```bash
 cd frontend/web
-bun run test:unit
+bun run test
 ```
-Executes 39 test suites (298 tests) covering rule reordering with drag-and-drop point-of-click anchoring, FMFD search keyboard shortcuts, 8-stage Kanban lifecycle, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, remote controller modal quick view, predictive maintenance metrics, feature flag gating, and all page routing.
+Executes 43 test suites (348 tests) covering rule reordering with drag-and-drop point-of-click anchoring, HeimdallSearch keyboard shortcuts, 5-state ticket lifecycle and orthogonal escalation, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, remote controller modal quick view, predictive maintenance metrics, feature flag gating, and all page routing.
 
 ### 5.3 Python Fleet Simulator & Mock CMI Tests
 ```bash

@@ -4,11 +4,9 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 
-namespace App.Shared.Entities;
+using App.Contracts.Enums;
 
-// Industrial domain entity aliases
-using ProductionStation = Machine;
-using IndustrialController = ClientPc;
+namespace App.Shared.Entities;
 
 // --- SHARED RESPONSIBILITY ---
 
@@ -273,16 +271,6 @@ public partial class StationController
 
     /// <summary>Flexible JSONB metadata for edge properties.</summary>
     public JsonDocument? Metadata { get; set; }
-
-    // Domain Graph-Relational alias helper properties
-    [NotMapped]
-    public Guid ProductionStationId { get => MachineId; set => MachineId = value; }
-    [NotMapped]
-    public Machine? ProductionStation { get => Machine; set => Machine = value; }
-    [NotMapped]
-    public Guid IndustrialControllerId { get => ClientPcId; set => ClientPcId = value; }
-    [NotMapped]
-    public ClientPc? IndustrialController { get => ClientPc; set => ClientPc = value; }
 }
 
 /// <summary>
@@ -442,8 +430,32 @@ public partial class MaintenanceTicket
     /// <summary>Detailed description of the issue or ticket work.</summary>
     public string? Description { get; set; }
 
-    /// <summary>Current status (e.g., "Open", "InProgress", "Resolved", "Closed").</summary>
+    /// <summary>Current status (strictly 5 canonical statuses: "Open", "InProgress", "Pending", "Resolved", "Closed").</summary>
     public string Status { get; set; } = "Open";
+
+    /// <summary>Sub-status reason for tickets in Pending status.</summary>
+    public PendingReason PendingReason { get; set; } = PendingReason.None;
+
+    /// <summary>Contextual detail for pending status (parts required, external party, action needed).</summary>
+    public string? PendingDetails { get; set; }
+
+    /// <summary>Orthogonal escalation flag; a ticket can be escalated in any status.</summary>
+    public bool IsEscalated { get; set; } = false;
+
+    /// <summary>Reason for ticket escalation.</summary>
+    public string? EscalationReason { get; set; }
+
+    /// <summary>Timestamp when ticket was escalated.</summary>
+    public DateTimeOffset? EscalatedAt { get; set; }
+
+    /// <summary>User who initiated the escalation.</summary>
+    public string? EscalatedBy { get; set; }
+
+    /// <summary>Timestamp when the escalation was closed/cleared.</summary>
+    public DateTimeOffset? EscalationClosedAt { get; set; }
+
+    /// <summary>User who closed/cleared the escalation.</summary>
+    public string? EscalationClosedBy { get; set; }
 
     /// <summary>Priority level (e.g., "Low", "Medium", "High", "Critical").</summary>
     public string Priority { get; set; } = "Medium";

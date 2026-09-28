@@ -72,7 +72,7 @@ def build_agent_win64():
     ]
     ok = run_cmd(cmd)
     if ok:
-        exe_path = os.path.join(SHARED_AGENT_DIR, "App.Agent.Daemon.exe")
+        exe_path = os.path.join(SHARED_AGENT_DIR, "heimdall-agent.exe")
         if os.path.exists(exe_path):
             size_mb = round(os.path.getsize(exe_path) / (1024 * 1024), 2)
             print(f"  ✓ Windows binary generated: {exe_path} ({size_mb} MB)")

@@ -63,6 +63,14 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         existing.Title = ticket.Title;
         existing.Description = ticket.Description;
         existing.Status = ticket.Status;
+        existing.PendingReason = ticket.PendingReason;
+        existing.PendingDetails = ticket.PendingDetails;
+        existing.IsEscalated = ticket.IsEscalated;
+        existing.EscalationReason = ticket.EscalationReason;
+        existing.EscalatedAt = ticket.EscalatedAt;
+        existing.EscalatedBy = ticket.EscalatedBy;
+        existing.EscalationClosedAt = ticket.EscalationClosedAt;
+        existing.EscalationClosedBy = ticket.EscalationClosedBy;
         existing.Priority = ticket.Priority;
         existing.MachineId = ticket.MachineId;
         existing.ClientPcId = ticket.ClientPcId;
@@ -89,6 +97,48 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         {
             existing.ResolvedAt = DateTimeOffset.UtcNow;
         }
+
+        await _context.SaveChangesAsync();
+        return existing;
+    }
+
+    public async Task<MaintenanceTicket?> EscalateAsync(Guid id, string reason, string escalatedBy)
+    {
+        var existing = await _context.MaintenanceTickets.FindAsync(id);
+        if (existing == null) return null;
+
+        existing.IsEscalated = true;
+        existing.EscalationReason = reason;
+        existing.EscalatedAt = DateTimeOffset.UtcNow;
+        existing.EscalatedBy = escalatedBy;
+        existing.EscalationClosedAt = null;
+        existing.EscalationClosedBy = null;
+
+        await _context.SaveChangesAsync();
+        return existing;
+    }
+
+    public async Task<MaintenanceTicket?> DeescalateAsync(Guid id, string resolvedBy, string? resolutionNotes = null)
+    {
+        var existing = await _context.MaintenanceTickets.FindAsync(id);
+        if (existing == null) return null;
+
+        existing.IsEscalated = false;
+        existing.EscalationClosedAt = DateTimeOffset.UtcNow;
+        existing.EscalationClosedBy = resolvedBy;
+
+        await _context.SaveChangesAsync();
+        return existing;
+    }
+
+    public async Task<MaintenanceTicket?> SetPendingAsync(Guid id, App.Contracts.Enums.PendingReason reason, string? details)
+    {
+        var existing = await _context.MaintenanceTickets.FindAsync(id);
+        if (existing == null) return null;
+
+        existing.Status = "Pending";
+        existing.PendingReason = reason;
+        existing.PendingDetails = details;
 
         await _context.SaveChangesAsync();
         return existing;

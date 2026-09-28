@@ -15,7 +15,7 @@ import ControllerCommandModal from '~/components/controllers/ControllerCommandMo
 import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
 import InteractiveMapCanvas from '~/components/map/InteractiveMapCanvas.vue'
 import MapPinningDialog from '~/components/dashboard/MapPinningDialog.vue'
-import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
+import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
 import type { IndustrialController } from '~/types/domain'
 import type { SearchInstanceConfig } from '~/types/search'
 
@@ -330,9 +330,9 @@ const onSearch = (q: string) => {
       </div>
     </div>
 
-    <!-- OmniSearch Bar -->
+    <!-- HeimdallSearch Bar -->
     <div class="max-w-4xl mx-auto w-full">
-      <OmniSearchBar
+      <HeimdallSearchBar
         :config="clientsSearchConfig"
         :immediate="true"
         @search="onSearch"

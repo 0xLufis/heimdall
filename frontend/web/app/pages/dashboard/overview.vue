@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useAuthSession } from '~/composables/useAuthSession'
 import { useDashboard } from '~/composables/useDashboard'
-import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
+import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
 import type { SearchInstanceConfig } from '~/types/search'
 
 definePageMeta({
@@ -15,7 +15,7 @@ const { stats, recentClients, securityEvents } = useDashboard()
 
 const dashboardSearchConfig: SearchInstanceConfig = {
   instanceId: 'dashboard',
-  placeholder: 'FMFD: Search stations, IPCs, assets, telemetry, or incident numbers...',
+  placeholder: 'Search stations, controllers, assets, telemetry, or incident numbers...',
   defaultEndpoints: ['/api/proxy/inventory/search'],
   enableAutoTagging: true,
   showGlobalShortcut: true
@@ -32,7 +32,7 @@ const dashboardSearchConfig: SearchInstanceConfig = {
 
     <!-- Quick Search Bar -->
     <div class="max-w-4xl mx-auto w-full">
-      <OmniSearchBar :config="dashboardSearchConfig" />
+      <HeimdallSearchBar :config="dashboardSearchConfig" />
     </div>
 
     <!-- Stats Grid -->

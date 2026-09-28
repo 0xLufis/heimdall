@@ -23,7 +23,7 @@ public class DatabaseTests
     {
         // Arrange
         using var context = CreateContext();
-        var repository = new ClientPcRepository(context);
+        var repository = new ControllerRepository(context);
         var pc = new ClientPc
         {
             Id = Guid.NewGuid(),

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { DEMO_PERSONAS, useAuthSession } from '../../../frontend/web/app/composables/useAuthSession'
-import { useOmniSearch } from '../../../frontend/web/app/composables/useOmniSearch'
+import { useHeimdallSearch } from '../../../frontend/web/app/composables/useHeimdallSearch'
 import filterHandler from '../../../frontend/web/server/api/inventory/filter'
 
 describe('Enterprise Engineering Org, Machines Views & OmniSearch Suite', () => {
@@ -146,7 +146,7 @@ describe('Enterprise Engineering Org, Machines Views & OmniSearch Suite', () => 
         selectValueSuggestion,
         handleInputChange,
         tags
-      } = useOmniSearch({ instanceId: 'machines' })
+      } = useHeimdallSearch({ instanceId: 'machines' })
 
       // User types `tech:`
       handleInputChange('tech:')
@@ -171,7 +171,7 @@ describe('Enterprise Engineering Org, Machines Views & OmniSearch Suite', () => 
         activePendingKey,
         valueSuggestions,
         handleInputChange
-      } = useOmniSearch({ instanceId: 'inventory' })
+      } = useHeimdallSearch({ instanceId: 'inventory' })
 
       handleInputChange('status:')
       expect(activePendingKey.value).toBe('status')
@@ -189,7 +189,7 @@ describe('Enterprise Engineering Org, Machines Views & OmniSearch Suite', () => 
         selectKeySuggestion,
         activePendingKey,
         handleInputChange
-      } = useOmniSearch({ instanceId: 'machines' })
+      } = useHeimdallSearch({ instanceId: 'machines' })
 
       // Typing `te` should suggest `tech:` and `type:`
       handleInputChange('te')

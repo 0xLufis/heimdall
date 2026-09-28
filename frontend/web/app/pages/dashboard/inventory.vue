@@ -18,7 +18,7 @@ import {
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import OmniSearchBar from '~/components/search/OmniSearchBar.vue'
+import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
 import DashboardInventoryEditModal from '~/components/dashboard/InventoryEditModal.vue'
 import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
 import { useInventoryLive } from '~/composables/useInventoryLive'
@@ -112,7 +112,7 @@ const filteredItems = computed(() => {
     list = list.filter(i => i.isStockItem === true)
   }
 
-  // 3. Instant client-side OmniSearch & keyword filtering
+  // 3. Instant client-side HeimdallSearch & keyword filtering
   if (currentQuery.value && currentQuery.value.trim()) {
     const q = currentQuery.value.toLowerCase().trim()
     const tokens = q.split(/\s+/).filter(Boolean)
@@ -530,9 +530,9 @@ onInventoryUpdate(() => {
       </div>
     </div>
 
-    <!-- OmniSearch Bar -->
+    <!-- HeimdallSearch Bar -->
     <div class="max-w-4xl mx-auto w-full">
-      <OmniSearchBar 
+      <HeimdallSearchBar 
         :config="inventorySearchConfig"
         :immediate="true"
         @search="onSearch"

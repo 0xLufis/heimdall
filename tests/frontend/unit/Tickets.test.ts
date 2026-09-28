@@ -11,7 +11,8 @@ describe('Maintenance Ticketing UI Components', () => {
     totalTickets: 10,
     openCount: 3,
     inProgressCount: 2,
-    pendingPartsCount: 1,
+    pendingCount: 1,
+    escalatedCount: 1,
     resolvedCount: 3,
     closedCount: 1,
     criticalCount: 2,
@@ -45,7 +46,7 @@ describe('Maintenance Ticketing UI Components', () => {
       stationName: 'OP20 Robotic Station',
       title: 'KUKA Servo Alarm',
       description: 'Axis 3 divergence error',
-      status: 'In_Progress',
+      status: 'InProgress',
       priority: 'High',
       reportedByUserId: 'usr-2',
       reportedByUserName: 'Operator Two',
@@ -64,7 +65,7 @@ describe('Maintenance Ticketing UI Components', () => {
     })
 
     expect(wrapper.text()).toContain('Critical')
-    expect(wrapper.text()).toContain('Pending Parts')
+    expect(wrapper.text()).toContain('Pending')
     expect(wrapper.text()).toContain('90%')
   })
 
@@ -174,7 +175,7 @@ describe('Maintenance Ticketing UI Components', () => {
     await startBtn!.trigger('click')
 
     expect(wrapper.emitted('moveStatus')).toBeTruthy()
-    expect(wrapper.emitted('moveStatus')![0]).toEqual(['tkt-test-1', 'In_Progress'])
+    expect(wrapper.emitted('moveStatus')![0]).toEqual(['tkt-test-1', 'InProgress'])
   })
 
   it('useMaintenance handles atomic on-demand live events and recalibrates metrics', async () => {
@@ -185,8 +186,8 @@ describe('Maintenance Ticketing UI Components', () => {
     tickets.value = [...mockTickets]
     recalculateMetrics()
 
-    expect(metrics.value?.openTickets).toBe(1)
-    expect(metrics.value?.inProgressTickets).toBe(1)
+    expect(metrics.value?.openCount).toBe(1)
+    expect(metrics.value?.inProgressCount).toBe(1)
 
     // Simulate on-demand StatusChanged live push event
     handleLiveEvent({
@@ -198,8 +199,8 @@ describe('Maintenance Ticketing UI Components', () => {
 
     const updated = tickets.value.find(t => t.id === 'tkt-test-1')
     expect(updated?.status).toBe('Resolved')
-    expect(metrics.value?.openTickets).toBe(0)
-    expect(metrics.value?.resolvedToday).toBe(1)
+    expect(metrics.value?.openCount).toBe(0)
+    expect(metrics.value?.resolvedCount).toBe(1)
   })
 
   it('supports 3-state asc-desc-restore sorting on TicketList table headers', async () => {

@@ -321,7 +321,7 @@ windows ACTION="status":
 windows-start:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ ! -f "{{SHARED_WIN_AGENT_DIR}}/App.Agent.Daemon.exe" ]; then
+    if [ ! -f "{{SHARED_WIN_AGENT_DIR}}/heimdall-agent.exe" ]; then
         just windows-build
     fi
     docker compose --profile windows up -d windows-agent 2>/dev/null || true

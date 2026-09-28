@@ -25,6 +25,12 @@ try {
     New-NetFirewallRule -Name "Heimdall_TwinCAT_ADS" -DisplayName "Beckhoff TwinCAT ADS Protocol" -Protocol TCP -LocalPort 48898 -Action Allow -Profile Any -ErrorAction SilentlyContinue
     New-NetFirewallRule -Name "Heimdall_OPC_UA" -DisplayName "OPC Unified Architecture (OPC UA)" -Protocol TCP -LocalPort 4840 -Action Allow -Profile Any -ErrorAction SilentlyContinue
     Write-Output "[Heimdall] WinRM and Firewall rules configured (5985, 5998, 22, 48898, 4840)."
+
+    # Configure hosts entry for host backend connectivity
+    $hostsPath = 'C:\Windows\System32\drivers\etc\hosts'
+    if (-not (Select-String -Path $hostsPath -Pattern 'backend' -SimpleMatch -ErrorAction SilentlyContinue)) {
+        Add-Content -Path $hostsPath -Value "`r`n172.18.0.1 backend" -Force
+    }
 } catch {
     Write-Warning "[Heimdall] WinRM / Firewall configuration notice: $_"
 }
@@ -134,21 +140,23 @@ if (Test-Path "C:\OEM\HeimdallTrayRunner.ps1") {
 # 6. Create Background Daemon Auto-Start Watcher
 $LauncherScript = @"
 `$ErrorActionPreference = 'Continue'
-`$SourcePath = 'Z:\agent'
+`$SourcePath = 'C:\Users\Docker\Desktop\Shared\agent'
 `$TargetPath = 'C:\Heimdall\Agent'
 
 Write-Host '[Watcher] Waiting for agent binary in ' + `$SourcePath
 while (`$true) {
-    if (Test-Path "`$SourcePath\App.Agent.Daemon.exe") {
+    if (Test-Path "`$SourcePath\heimdall-agent.exe") {
         Write-Host '[Watcher] Binary detected. Syncing and launching...'
         Copy-Item -Path "`$SourcePath\*" -Destination `$TargetPath -Recurse -Force -ErrorAction SilentlyContinue
         
         `$env:AGENT_URLS = 'http://0.0.0.0:5998'
         `$env:Backend__Url = 'http://backend:5001'
+        `$env:MQTT_BROKER_HOST = 'backend'
+        `$env:MQTT_BROKER_PORT = '1883'
         `$env:DOTNET_ENVIRONMENT = 'Development'
         
         Set-Location `$TargetPath
-        Start-Process -FilePath "`$TargetPath\App.Agent.Daemon.exe" -ArgumentList '--urls http://0.0.0.0:5998' -Wait
+        Start-Process -FilePath "`$TargetPath\heimdall-agent.exe" -ArgumentList '--urls http://0.0.0.0:5998' -Wait
     }
     Start-Sleep -Seconds 3
 }

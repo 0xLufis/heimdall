@@ -58,7 +58,7 @@ definePageMeta({
       </div>
     </div>
 
-    <!-- Section 1: FMFD (Find My Field Data) & Global Navigation -->
+    <!-- Section 1: Heimdall Search Heimdall Search & Global Navigation Global Navigation -->
     <Card class="bg-card border-border rounded-xl shadow-xs">
       <CardHeader class="p-5 border-b border-border">
         <div class="flex items-center gap-2.5">
@@ -67,7 +67,7 @@ definePageMeta({
           </div>
           <div>
             <CardTitle class="text-base font-semibold text-foreground">
-              FMFD (Find My Field Data) & Global Navigation
+              Heimdall Search Heimdall Search & Global Navigation Global Navigation
             </CardTitle>
             <CardDescription class="text-xs text-muted-foreground mt-0.5">
               High-throughput universal indexing across all fleet nodes, machine stations, and work orders
@@ -77,7 +77,7 @@ definePageMeta({
       </CardHeader>
       <CardContent class="p-5 space-y-4">
         <p class="text-xs text-foreground/90 leading-relaxed">
-          Heimdall provides FMFD ("Find My Field Data"), an instant fuzzy-search indexing engine accessible throughout the application. Operators and automation engineers can locate any plant asset in milliseconds using either physical hardware IDs, network attributes, or Active Directory organizational units.
+          Heimdall Search provides an instant fuzzy-search indexing engine accessible throughout the application. Operators and automation engineers can locate any plant asset in milliseconds using either physical hardware IDs, network attributes, or Active Directory organizational units.
         </p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">

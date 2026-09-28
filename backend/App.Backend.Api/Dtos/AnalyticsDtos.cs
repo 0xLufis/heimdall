@@ -83,13 +83,3 @@ public class LineKpiDto
     public double MttrMinutes { get; set; }
     public int IncidentCount { get; set; }
 }
-
-public class PowerBiConfigDto
-{
-    public string EmbedUrl { get; set; } = string.Empty;
-    public string ReportId { get; set; } = string.Empty;
-    public string DatasetId { get; set; } = string.Empty;
-    public string WorkspaceId { get; set; } = string.Empty;
-    public bool IsConfigured { get; set; }
-    public string AuthStatus { get; set; } = string.Empty;
-}

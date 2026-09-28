@@ -8,6 +8,11 @@ if (-not (Select-String -Path $hostsPath -Pattern 'backend' -SimpleMatch)) {
     Add-Content -Path $hostsPath -Value "`r`n172.18.0.1 backend"
 }
 
+Stop-Process -Name 'App.Agent.Daemon' -Force -ErrorAction SilentlyContinue
+Stop-Process -Name 'heimdall-agent' -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+
+Remove-Item -Path 'C:\Heimdall\Agent\App.Agent.Daemon.*' -Force -ErrorAction SilentlyContinue
 Copy-Item -Path 'C:\Users\Docker\Desktop\Shared\agent\*' -Destination 'C:\Heimdall\Agent' -Recurse -Force
 
 $config = @{
@@ -24,12 +29,14 @@ Set-Content -Path 'C:\ProgramData\Heimdall\agent.json' -Value $config -Force
 
 $env:AGENT_URLS = 'http://0.0.0.0:5998'
 $env:Backend__Url = 'http://backend:5001'
+$env:MQTT_BROKER_HOST = 'backend'
+$env:MQTT_BROKER_PORT = '1883'
 $env:DOTNET_ENVIRONMENT = 'Development'
 
-Start-Process -FilePath 'C:\Heimdall\Agent\App.Agent.Daemon.exe' -ArgumentList '--urls http://0.0.0.0:5998' -WorkingDirectory 'C:\Heimdall\Agent'
+Start-Process -FilePath 'C:\Heimdall\Agent\heimdall-agent.exe' -ArgumentList '--urls http://0.0.0.0:5998' -WorkingDirectory 'C:\Heimdall\Agent'
 Start-Sleep -Seconds 3
 
-Get-Process -Name 'App.Agent.Daemon' -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, WorkingSet64
+Get-Process -Name 'heimdall-agent' -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, WorkingSet64
 """
 
 r = s.run_ps(ps_script)

@@ -1,6 +1,6 @@
 /**
  * Damerau-Levenshtein distance and normalized fuzzy similarity scoring
- * for FMFD ("Find My Fucking Data" / "Find My Field Data") entity matching and key-value autocomplete.
+ * for Heimdall entity matching and key-value autocomplete.
  */
 
 export function calculateLevenshteinDistance(a: string, b: string): number {

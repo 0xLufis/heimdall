@@ -30,7 +30,7 @@ const TEMPLATE_POOL: DevTemplate[] = [
     category: 'Error',
     group: 'Motion & Drive',
     title: 'Axis Position Divergence',
-    targetStatus: 'In_Progress',
+    targetStatus: 'InProgress',
     tags: ['#Motion', '#Axis'],
     fbState: { blockName: 'FB_AxisControl', state: 'ERROR_STOP', errorCode: '16#4330' },
     telemetryKeys: ['axisPosition_mm', 'setpointPosition_mm', 'divergence_mm', 'torqueCurrent_A']
@@ -40,7 +40,7 @@ const TEMPLATE_POOL: DevTemplate[] = [
     category: 'Error',
     group: 'Safety System',
     title: 'Light Curtain Muting Fault',
-    targetStatus: 'Escalated',
+    targetStatus: 'Open',
     tags: ['#Safety', '#SIL2'],
     fbState: { blockName: 'FB_SafetyDoor', state: 'SAFE_STOP_2', errorCode: '16#F001' },
     telemetryKeys: ['safetyCategory', 'mutingSignal_ms', 'responseTime_ms', 'plcDiag']
@@ -60,7 +60,7 @@ const TEMPLATE_POOL: DevTemplate[] = [
     category: 'Error',
     group: 'Dispensing',
     title: 'Gap Filler Nozzle Pressure Sag',
-    targetStatus: 'Pending_Parts',
+    targetStatus: 'Pending',
     tags: ['#GapFiller', '#Parts'],
     fbState: { blockName: 'FB_DispensingControl', state: 'MATERIAL_LOW', errorCode: '16#5001' },
     telemetryKeys: ['nozzlePressure_bar', 'setpointPressure_bar', 'materialVolume_ml', 'pumpRpm']
@@ -70,7 +70,7 @@ const TEMPLATE_POOL: DevTemplate[] = [
     category: 'Prevention',
     group: 'Calibration',
     title: 'Load Cell Calibration Due',
-    targetStatus: 'Closure_Pending',
+    targetStatus: 'Pending',
     tags: ['#PM', '#Calibration'],
     fbState: null,
     telemetryKeys: ['loadCellOffset_N', 'lastCalibration_days', 'driftFactor_pct']
@@ -285,7 +285,7 @@ export default defineNitroPlugin(() => {
         controllerId: machine.controllerId,
         title:        ticketTitle,
         description:  buildDescription(template, machine.stationName),
-        // targetStatus may exceed the narrow server-store union (e.g. 'Escalated');
+        // targetStatus may exceed the narrow server-store union (e.g. 'Open');
         // cast to satisfy the type while preserving the richer value for the frontend.
         status:       template.targetStatus as MaintenanceTicket['status'],
         priority,

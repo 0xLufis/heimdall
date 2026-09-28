@@ -15,15 +15,15 @@ defineProps<{
 </script>
 
 <template>
-  <Card class="bg-card border-border p-6 shadow-sm rounded-xl">
-    <CardHeader class="p-0 mb-6 flex flex-row items-center justify-between space-y-0">
+  <Card class="bg-card border-border shadow-sm rounded-xl">
+    <CardHeader class="p-6 pb-4 flex flex-row items-center justify-between space-y-0">
       <CardTitle class="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
         <span class="w-2 h-2 bg-primary rounded-full"></span>
         Audit & Security Events
       </CardTitle>
     </CardHeader>
     
-    <CardContent class="p-0">
+    <CardContent class="p-6 pt-0">
       <div class="space-y-6 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border">
         <div v-for="(event, index) in events" :key="index" class="flex gap-4 relative group">
           <div class="w-3.5 h-3.5 rounded-full bg-background border-2 border-border group-hover:border-primary transition-colors z-10 flex-shrink-0 mt-1"></div>

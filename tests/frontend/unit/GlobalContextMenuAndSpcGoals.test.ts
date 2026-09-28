@@ -2,9 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { useGlobalContextMenu } from '../../../frontend/web/app/composables/useGlobalContextMenu'
 import GlobalContextMenu from '../../../frontend/web/app/components/common/GlobalContextMenu.vue'
-import GrafanaMassTelemetryEmbed from '../../../frontend/web/app/components/analytics/GrafanaMassTelemetryEmbed.vue'
 
-describe('Global Context Menu & Grafana Integration Test Suite', () => {
+describe('Global Context Menu Test Suite', () => {
   beforeEach(() => {
     vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => null),
@@ -141,70 +140,6 @@ describe('Global Context Menu & Grafana Integration Test Suite', () => {
       expect(wrapper.text()).toContain('Inspect Component Tree')
       expect(wrapper.text()).toContain('Copy Handle / ID')
       expect(wrapper.text()).toContain('Open Browser Context Menu')
-    })
-  })
-
-  describe('GrafanaMassTelemetryEmbed Component', () => {
-    it('renders dashboard presets and Heimdall metrics endpoints', () => {
-      const wrapper = mount(GrafanaMassTelemetryEmbed)
-
-      expect(wrapper.text()).toContain('Grafana OT Telemetry & Mass Visualization Workspace')
-      expect(wrapper.text()).toContain('Spindle Vibration & High-Frequency FFT')
-      expect(wrapper.text()).toContain('Statistical Process Control & Cpk Heatmaps')
-      expect(wrapper.text()).toContain('Multi-Axis Motor Thermal & Current Draw')
-      expect(wrapper.text()).toContain('Prometheus OT Edge Scrape Metrics')
-      expect(wrapper.text()).toContain('/api/v1/ReportExport/grafana/metrics')
-      expect(wrapper.text()).toContain('/api/v1/ReportExport/odata/telemetry')
-    })
-
-    it('updates active preset when clicked', async () => {
-      const wrapper = mount(GrafanaMassTelemetryEmbed)
-
-      const presetCards = wrapper.findAll('[role="button"]')
-      expect(presetCards.length).toBeGreaterThanOrEqual(4)
-
-      // Click second preset (SPC & Cpk)
-      await presetCards[1].trigger('click')
-
-      const iframe = wrapper.find('iframe')
-      expect(iframe.attributes('src')).toContain('spc-capability')
-    })
-
-    it('renders interactive demo panels by default and toggles between demo and iframe modes', async () => {
-      const wrapper = mount(GrafanaMassTelemetryEmbed)
-
-      // Verify interactive demo is active
-      expect(wrapper.text()).toContain('Interactive Demo')
-      expect(wrapper.text()).toContain('Infinity Engine: Online')
-      expect(wrapper.text()).toContain('High-Frequency FFT Spectral Spectrum')
-      expect(wrapper.text()).toContain('ISO 10816-3 Spindle Velocity RMS')
-
-      // Switch to External Server Iframe mode
-      const iframeBtn = wrapper.findAll('button').find(b => b.text().includes('External Server (Iframe)'))
-      expect(iframeBtn).toBeDefined()
-      await iframeBtn?.trigger('click')
-
-      // Now iframe controls are shown
-      expect(wrapper.text()).toContain('Targeting Grafana Instance')
-      expect(wrapper.text()).toContain('Reload')
-
-      // Switch back to Interactive Demo
-      const demoBtn = wrapper.findAll('button').find(b => b.text().includes('Interactive Demo'))
-      expect(demoBtn).toBeDefined()
-      await demoBtn?.trigger('click')
-
-      expect(wrapper.text()).toContain('Inject Telemetry Spike')
-    })
-
-    it('renders SPC capability panel when SPC preset is chosen in demo mode', async () => {
-      const wrapper = mount(GrafanaMassTelemetryEmbed)
-
-      const presetCards = wrapper.findAll('[role="button"]')
-      await presetCards[1].trigger('click')
-
-      expect(wrapper.text()).toContain('Real-Time X-Bar Chart')
-      expect(wrapper.text()).toContain('Capability Indices (Cp / Cpk)')
-      expect(wrapper.text()).toContain('Six-Sigma Compliant')
     })
   })
 })

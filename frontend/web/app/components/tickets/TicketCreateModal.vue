@@ -24,6 +24,7 @@ const props = defineProps<{
   prefilledStation?: string
   prefilledMachineType?: string
   prefilledGroupId?: string
+  prefilledTemplateId?: string
 }>()
 
 const emit = defineEmits<{
@@ -91,14 +92,24 @@ function applySelectedTemplate() {
   form.value.errorCode = tmpl.errorCode
   form.value.tags = [...tmpl.defaultTags]
 
-  if (tmpl.targetKanbanState === 'Escalated' || tmpl.targetKanbanState === 'Escalated_External') {
-    form.value.priority = 'Critical'
-  } else if (tmpl.targetKanbanState === 'Pending_Parts') {
+  if (tmpl.targetKanbanState === 'Pending') {
     form.value.priority = 'High'
   }
 
   showTemplateSelector.value = false
 }
+
+watch(() => [props.open, props.prefilledTemplateId] as const, ([isOpen, tId]) => {
+  if (isOpen && tId) {
+    const tmpl = getTemplateById(tId)
+    if (tmpl) {
+      selectedCategory.value = tmpl.category
+      selectedGroup.value = tmpl.errorGroup
+      selectedTemplateId.value = tmpl.id
+      applySelectedTemplate()
+    }
+  }
+})
 
 // ── Preferred Technician Suggestion ────────────────────────────────────────
 const rules = ref<TechnicianRule[]>([])
