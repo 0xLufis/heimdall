@@ -460,6 +460,61 @@ public partial class MaintenanceTicket
     /// <summary>Priority level (e.g., "Low", "Medium", "High", "Critical").</summary>
     public string Priority { get; set; } = "Medium";
 
+    /// <summary>Flag indicating whether this incident causes plant line stoppage.</summary>
+    public bool IsLineStop { get; set; } = false;
+
+    /// <summary>Duration in minutes of line stoppage caused by this ticket.</summary>
+    public double? LineStopDurationMinutes { get; set; }
+
+    /// <summary>Responsible department (Assy, SMT, Test, IT, MES, SAP, ProcessEngineering, ProductOwner, etc.).</summary>
+    [MaxLength(128)]
+    public string? ResponsibleDepartment { get; set; }
+
+    /// <summary>Originator classification (MachineAutomatic, ScheduledMaintenance, ManualUser).</summary>
+    [MaxLength(64)]
+    public string OriginatorType { get; set; } = "ManualUser";
+
+    /// <summary>Issue classification (Transient, Maintenance, Improvement, Other).</summary>
+    [MaxLength(64)]
+    public string IssueType { get; set; } = "Maintenance";
+
+    /// <summary>External system operator identifier or badge ID.</summary>
+    [MaxLength(128)]
+    public string? ExternalOperatorId { get; set; }
+
+    /// <summary>External system operator display name.</summary>
+    [MaxLength(255)]
+    public string? ExternalOperatorName { get; set; }
+
+    /// <summary>Timestamp when work started on the ticket.</summary>
+    public DateTimeOffset? StartedAt { get; set; }
+
+    /// <summary>Timestamp when technician scanned the ticket QR code.</summary>
+    public DateTimeOffset? QrScannedAt { get; set; }
+
+    /// <summary>Calculated reaction time in minutes from ticket creation to start / QR pickup.</summary>
+    public double? ReactionTimeMinutes { get; set; }
+
+    /// <summary>Technician who reserved the ticket while in Open status.</summary>
+    [MaxLength(128)]
+    public string? ReservedBy { get; set; }
+
+    /// <summary>Escalation target (DedicatedEngineer, Management, etc.).</summary>
+    [MaxLength(128)]
+    public string? EscalationTarget { get; set; }
+
+    /// <summary>Handover sub-state for escalation (Notification, HandOff, ParallelWork).</summary>
+    public EscalationHandoverState EscalationHandoverState { get; set; } = EscalationHandoverState.None;
+
+    /// <summary>Snapshot of real-time telemetry data-points recorded at ticket raise.</summary>
+    public string? TelemetrySnapshot { get; set; }
+
+    /// <summary>Comma-separated or JSON list of grouping tags.</summary>
+    public string? Tags { get; set; }
+
+    /// <summary>JSON audit log of ticket modifications allowing historical corrections.</summary>
+    public string? ChangeHistory { get; set; }
+
     /// <summary>Optional organization or plant floor assignment for multi-tenant scoping.</summary>
     [MaxLength(128)]
     public string? OrganizationId { get; set; }

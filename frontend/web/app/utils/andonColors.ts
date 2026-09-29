@@ -179,5 +179,23 @@ export const PENDING_REASON_CONFIGS: Record<PendingReason, PendingReasonConfig> 
     label: 'Pending action',
     description: 'Awaiting a specific corrective action by the technician or engineer',
     badgeClass: 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30'
+  },
+  SignOff: {
+    id: 'SignOff',
+    label: 'Pending sign-off',
+    description: 'Awaiting formal engineering, quality, or management sign-off',
+    badgeClass: 'bg-purple-500/15 text-purple-800 dark:text-purple-300 border border-purple-500/30'
+  },
+  External: {
+    id: 'External',
+    label: 'External vendor / OEM',
+    description: 'Awaiting external contractor, OEM support, or vendor service',
+    badgeClass: 'bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30'
+  },
+  Custom: {
+    id: 'Custom',
+    label: 'Custom reason',
+    description: 'Custom pending reason specified in pending details',
+    badgeClass: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30'
   }
 }

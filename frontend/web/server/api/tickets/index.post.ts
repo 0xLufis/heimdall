@@ -46,16 +46,71 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Automatic escalation detection for robot collisions or critical threshold
+  const textToScan = `${body.title} ${body.description} ${Array.isArray(body.tags) ? body.tags.join(' ') : ''}`.toLowerCase()
+  let isEscalated = Boolean(body.isEscalated ?? false)
+  let escalationReason = body.escalationReason || null
+  let escalationTarget = body.escalationTarget || null
+  let escalationHandoverState = body.escalationHandoverState || null
+
+  if (textToScan.includes('collision') || textToScan.includes('robot collision') || textToScan.includes('crash')) {
+    isEscalated = true
+    escalationReason = escalationReason || 'Automatic Trigger: Robot collision detected on cell'
+    escalationTarget = 'DedicatedEngineer'
+    escalationHandoverState = 'HandOff'
+  }
+
+  const isLineStop = Boolean(body.isLineStop ?? false)
+  const lineStopDurationMinutes = body.lineStopDurationMinutes !== undefined
+    ? Number(body.lineStopDurationMinutes)
+    : (isLineStop ? 0 : undefined)
+
   const newTicket: MaintenanceTicket = {
     id: `tkt-${Date.now()}-${randomSuffix}`,
     ticketNumber,
     stationId: body.stationId || 'GENERAL-FACTORY',
     stationName: body.stationName || body.stationId || 'General Factory Station',
+    machineType: body.machineType,
+    groupId: body.groupId,
     controllerId: body.controllerId,
     title: body.title,
     description: body.description,
-    status: 'Open',
+    status: (body.status || 'Open') as any,
     priority,
+    category: body.category || 'Error',
+    issueType: body.issueType || 'Maintenance',
+    originatorType: body.originatorType || 'ManualUser',
+    isLineStop,
+    lineStopDurationMinutes,
+    responsibleDepartment: body.responsibleDepartment || 'Assy',
+    externalOperatorId: body.externalOperatorId || null,
+    externalOperatorName: body.externalOperatorName || null,
+    startedAt: body.status === 'InProgress' ? now.toISOString() : undefined,
+    qrScannedAt: body.qrScannedAt || undefined,
+    reactionTimeMinutes: body.reactionTimeMinutes || undefined,
+    reservedBy: body.reservedBy || undefined,
+    errorGroup: body.errorGroup,
+    errorCode: body.errorCode,
+    tags: Array.isArray(body.tags) ? body.tags : [],
+    sfc: body.sfc,
+    pendingReason: body.pendingReason || 'None',
+    pendingDetails: body.pendingDetails || null,
+    isEscalated,
+    escalationReason,
+    escalationTarget,
+    escalationHandoverState,
+    escalatedAt: isEscalated ? (body.escalatedAt || now.toISOString()) : null,
+    escalatedBy: isEscalated ? (body.escalatedBy || 'System:AutoCollisionRule') : null,
+    telemetrySnapshot: body.telemetrySnapshot || {
+      timestamp: now.toISOString(),
+      metrics: {
+        Plc_State: 'RUN',
+        Cycle_Time_ms: 1420.5,
+        Spindle_Temp_C: 48.2,
+        Vibration_Envelope_mm_s: 1.34,
+        Hydraulic_Pressure_bar: 152.0
+      }
+    },
     reportedByUserId,
     reportedByUserName,
     assignedTechnicianId: body.assignedTechnicianId,
@@ -64,10 +119,23 @@ export default defineEventHandler(async (event) => {
     updatedAt: now.toISOString(),
     slaDueAt,
     comments: [],
-    attachments: body.attachments || []
+    attachments: body.attachments || [],
+    changeHistory: []
   }
 
   addTicketToStore(newTicket)
+
+  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5001'
+  $fetch(`${backendBase}/api/v1/tickets`, {
+    method: 'POST',
+    body: {
+      ...newTicket,
+      machineId: newTicket.stationId,
+      clientPcId: newTicket.controllerId,
+      createdBy: newTicket.reportedByUserName,
+      assignedTo: newTicket.assignedTechnicianName
+    }
+  }).catch(() => {})
 
   return {
     success: true,

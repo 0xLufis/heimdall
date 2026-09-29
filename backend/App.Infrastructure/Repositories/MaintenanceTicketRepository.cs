@@ -43,13 +43,31 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
             .ToListAsync();
     }
 
+    public async Task<List<MaintenanceTicket>> GetByDepartmentAsync(string department)
+    {
+        return await _context.MaintenanceTickets
+            .Include(t => t.Machine)
+            .Include(t => t.ClientPc)
+            .Include(t => t.Equipment)
+            .Where(t => t.ResponsibleDepartment != null && t.ResponsibleDepartment.ToLower() == department.ToLower())
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<MaintenanceTicket> CreateAsync(MaintenanceTicket ticket)
     {
         if (ticket.Id == Guid.Empty)
         {
             ticket.Id = Guid.NewGuid();
         }
-        ticket.CreatedAt = DateTimeOffset.UtcNow;
+        if (ticket.CreatedAt == default)
+        {
+            ticket.CreatedAt = DateTimeOffset.UtcNow;
+        }
+        if (ticket.Status.Equals("InProgress", StringComparison.OrdinalIgnoreCase))
+        {
+            ticket.StartedAt ??= ticket.CreatedAt;
+        }
         _context.MaintenanceTickets.Add(ticket);
         await _context.SaveChangesAsync();
         return ticket;
@@ -69,17 +87,46 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         existing.EscalationReason = ticket.EscalationReason;
         existing.EscalatedAt = ticket.EscalatedAt;
         existing.EscalatedBy = ticket.EscalatedBy;
+        existing.EscalationTarget = ticket.EscalationTarget;
+        existing.EscalationHandoverState = ticket.EscalationHandoverState;
         existing.EscalationClosedAt = ticket.EscalationClosedAt;
         existing.EscalationClosedBy = ticket.EscalationClosedBy;
         existing.Priority = ticket.Priority;
+        existing.IsLineStop = ticket.IsLineStop;
+        existing.LineStopDurationMinutes = ticket.LineStopDurationMinutes;
+        existing.ResponsibleDepartment = ticket.ResponsibleDepartment;
+        existing.OriginatorType = ticket.OriginatorType;
+        existing.IssueType = ticket.IssueType;
+        existing.ExternalOperatorId = ticket.ExternalOperatorId;
+        existing.ExternalOperatorName = ticket.ExternalOperatorName;
+        existing.StartedAt = ticket.StartedAt;
+        existing.QrScannedAt = ticket.QrScannedAt;
+        existing.ReactionTimeMinutes = ticket.ReactionTimeMinutes;
+        existing.ReservedBy = ticket.ReservedBy;
+        existing.TelemetrySnapshot = ticket.TelemetrySnapshot;
+        existing.Tags = ticket.Tags;
+        existing.ChangeHistory = ticket.ChangeHistory;
         existing.MachineId = ticket.MachineId;
         existing.ClientPcId = ticket.ClientPcId;
         existing.AssetId = ticket.AssetId;
         existing.AssignedTo = ticket.AssignedTo;
-        if (ticket.Status.Equals("Resolved", StringComparison.OrdinalIgnoreCase) || 
-            ticket.Status.Equals("Closed", StringComparison.OrdinalIgnoreCase))
+
+        if (ticket.Status.Equals("InProgress", StringComparison.OrdinalIgnoreCase))
+        {
+            existing.StartedAt ??= DateTimeOffset.UtcNow;
+            if (existing.ReactionTimeMinutes == null)
+            {
+                existing.ReactionTimeMinutes = (existing.StartedAt.Value - existing.CreatedAt).TotalMinutes;
+            }
+        }
+        else if (ticket.Status.Equals("Resolved", StringComparison.OrdinalIgnoreCase) || 
+                 ticket.Status.Equals("Closed", StringComparison.OrdinalIgnoreCase))
         {
             existing.ResolvedAt ??= DateTimeOffset.UtcNow;
+            if (existing.IsLineStop && existing.LineStopDurationMinutes == null)
+            {
+                existing.LineStopDurationMinutes = (DateTimeOffset.UtcNow - existing.CreatedAt).TotalMinutes;
+            }
         }
 
         await _context.SaveChangesAsync();
@@ -92,17 +139,34 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         if (existing == null) return null;
 
         existing.Status = status;
-        if (status.Equals("Resolved", StringComparison.OrdinalIgnoreCase) || 
-            status.Equals("Closed", StringComparison.OrdinalIgnoreCase))
+        if (status.Equals("InProgress", StringComparison.OrdinalIgnoreCase))
+        {
+            existing.StartedAt ??= DateTimeOffset.UtcNow;
+            if (existing.ReactionTimeMinutes == null)
+            {
+                existing.ReactionTimeMinutes = (existing.StartedAt.Value - existing.CreatedAt).TotalMinutes;
+            }
+        }
+        else if (status.Equals("Resolved", StringComparison.OrdinalIgnoreCase) || 
+                 status.Equals("Closed", StringComparison.OrdinalIgnoreCase))
         {
             existing.ResolvedAt = DateTimeOffset.UtcNow;
+            if (existing.IsLineStop && existing.LineStopDurationMinutes == null)
+            {
+                existing.LineStopDurationMinutes = (DateTimeOffset.UtcNow - existing.CreatedAt).TotalMinutes;
+            }
         }
 
         await _context.SaveChangesAsync();
         return existing;
     }
 
-    public async Task<MaintenanceTicket?> EscalateAsync(Guid id, string reason, string escalatedBy)
+    public async Task<MaintenanceTicket?> EscalateAsync(
+        Guid id,
+        string reason,
+        string escalatedBy,
+        App.Contracts.Enums.EscalationHandoverState handoverState = App.Contracts.Enums.EscalationHandoverState.Notification,
+        string? target = null)
     {
         var existing = await _context.MaintenanceTickets.FindAsync(id);
         if (existing == null) return null;
@@ -111,6 +175,8 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         existing.EscalationReason = reason;
         existing.EscalatedAt = DateTimeOffset.UtcNow;
         existing.EscalatedBy = escalatedBy;
+        existing.EscalationHandoverState = handoverState;
+        existing.EscalationTarget = target ?? "DedicatedEngineer";
         existing.EscalationClosedAt = null;
         existing.EscalationClosedBy = null;
 
@@ -139,6 +205,38 @@ public class MaintenanceTicketRepository : IMaintenanceTicketRepository
         existing.Status = "Pending";
         existing.PendingReason = reason;
         existing.PendingDetails = details;
+
+        await _context.SaveChangesAsync();
+        return existing;
+    }
+
+    public async Task<MaintenanceTicket?> ReserveAsync(Guid id, string technician)
+    {
+        var existing = await _context.MaintenanceTickets.FindAsync(id);
+        if (existing == null) return null;
+
+        existing.ReservedBy = technician;
+        existing.AssignedTo = technician;
+
+        await _context.SaveChangesAsync();
+        return existing;
+    }
+
+    public async Task<MaintenanceTicket?> QrPickupAsync(Guid id, string technician)
+    {
+        var existing = await _context.MaintenanceTickets.FindAsync(id);
+        if (existing == null) return null;
+
+        var now = DateTimeOffset.UtcNow;
+        existing.QrScannedAt = now;
+        existing.StartedAt = now;
+        existing.Status = "InProgress";
+        if (!string.IsNullOrWhiteSpace(technician))
+        {
+            existing.AssignedTo = technician;
+            existing.ReservedBy = technician;
+        }
+        existing.ReactionTimeMinutes = (now - existing.CreatedAt).TotalMinutes;
 
         await _context.SaveChangesAsync();
         return existing;

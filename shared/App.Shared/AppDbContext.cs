@@ -483,7 +483,10 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.AssignedTo);
             entity.HasIndex(e => e.OrganizationId);
             entity.HasIndex(e => e.IsEscalated);
+            entity.HasIndex(e => e.IsLineStop);
+            entity.HasIndex(e => e.ResponsibleDepartment);
             entity.Property(e => e.PendingReason).HasConversion<string>();
+            entity.Property(e => e.EscalationHandoverState).HasConversion<string>();
 
             entity.HasOne(e => e.Equipment)
                   .WithMany()

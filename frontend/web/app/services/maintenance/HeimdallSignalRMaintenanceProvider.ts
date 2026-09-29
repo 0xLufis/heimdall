@@ -158,12 +158,30 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
       ticketNumber: raw.ticketNumber || raw.ticket_number || `TKT-${(raw.id || '').substring(0, 8)}`,
       stationId: raw.stationId || raw.machineId || raw.MachineId,
       stationName: raw.stationName || raw.machine?.name || raw.machine?.customIdentifier || raw.stationId || 'Production Station',
+      machineType: raw.machineType || raw.MachineType,
+      groupId: raw.groupId || raw.GroupId,
       controllerId: raw.controllerId || raw.clientPcId || raw.ClientPcId,
       controllerName: raw.controllerName || raw.clientPc?.hostname || raw.clientPc?.name,
       title: raw.title || raw.Title || 'Maintenance Incident',
       description: raw.description || raw.Description || '',
       status: (raw.status || raw.Status || 'Open') as TicketStatus,
       priority: (raw.priority || raw.Priority || 'Medium') as any,
+      category: raw.category || raw.Category,
+      errorGroup: raw.errorGroup || raw.ErrorGroup,
+      errorCode: raw.errorCode || raw.ErrorCode,
+      tags: Array.isArray(raw.tags) ? raw.tags : [],
+      fbState: raw.fbState,
+      sfc: raw.sfc || raw.Sfc,
+      cameraInspection: raw.cameraInspection,
+      telemetrySnapshot: raw.telemetrySnapshot,
+      pendingReason: raw.pendingReason || raw.PendingReason || 'None',
+      pendingDetails: raw.pendingDetails || raw.PendingDetails || null,
+      isEscalated: Boolean(raw.isEscalated ?? raw.IsEscalated ?? false),
+      escalationReason: raw.escalationReason || raw.EscalationReason || null,
+      escalatedAt: raw.escalatedAt || raw.EscalatedAt || null,
+      escalatedBy: raw.escalatedBy || raw.EscalatedBy || null,
+      escalationClosedAt: raw.escalationClosedAt || raw.EscalationClosedAt || null,
+      escalationClosedBy: raw.escalationClosedBy || raw.EscalationClosedBy || null,
       reportedByUserId: raw.reportedByUserId || raw.createdBy,
       reportedByUserName: raw.reportedByUserName || raw.createdBy || 'Floor Operator',
       assignedTechnicianId: raw.assignedTechnicianId || raw.assignedTo,
@@ -340,6 +358,90 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
 
     const updated = await this.getTicketById(id)
     return updated || ({ id, status, assignedTechnicianName: technicianName, ...extra } as any)
+  }
+
+  public async setPending(id: string, reason: PendingReason, details?: string): Promise<MaintenanceTicket> {
+    return this.updateTicketStatus(id, 'Pending', undefined, { pendingReason: reason, pendingDetails: details })
+  }
+
+  public async escalate(
+    id: string,
+    reason: string,
+    escalatedBy: string,
+    handoverState: any = 'Notification',
+    target?: string
+  ): Promise<MaintenanceTicket> {
+    const payload = {
+      isEscalated: true,
+      escalationReason: reason,
+      escalatedBy,
+      escalationHandoverState: handoverState,
+      escalationTarget: target || 'DedicatedEngineer',
+      escalatedAt: new Date().toISOString()
+    }
+    return this.updateTicket(id, payload)
+  }
+
+  public async resolveEscalation(id: string, resolvedBy: string): Promise<MaintenanceTicket> {
+    const payload = {
+      isEscalated: false,
+      escalationReason: null,
+      escalationClosedBy: resolvedBy,
+      escalationClosedAt: new Date().toISOString()
+    }
+    return this.updateTicket(id, payload)
+  }
+
+  public async reserveTicket(id: string, technicianName: string): Promise<MaintenanceTicket> {
+    try {
+      const res = await $fetch<any>(`/api/tickets/${id}/reserve`, {
+        method: 'POST',
+        body: { technician: technicianName }
+      })
+      if (res?.ticket) return this.normalizeTicket(res.ticket)
+    } catch {}
+    return this.updateTicket(id, {
+      reservedBy: technicianName,
+      assignedTechnicianName: technicianName
+    })
+  }
+
+  public async qrPickup(id: string, technicianName?: string): Promise<MaintenanceTicket> {
+    try {
+      const res = await $fetch<any>(`/api/tickets/${id}/qr-pickup`, {
+        method: 'POST',
+        body: { technician: technicianName }
+      })
+      if (res?.ticket) return this.normalizeTicket(res.ticket)
+    } catch {}
+    const now = new Date()
+    return this.updateTicket(id, {
+      status: 'InProgress',
+      startedAt: now.toISOString(),
+      qrScannedAt: now.toISOString(),
+      assignedTechnicianName: technicianName,
+      reservedBy: technicianName
+    })
+  }
+
+  public async editWithHistory(
+    id: string,
+    updates: Partial<MaintenanceTicket>,
+    editorName: string,
+    reason?: string
+  ): Promise<MaintenanceTicket> {
+    try {
+      const res = await $fetch<any>(`/api/tickets/${id}`, {
+        method: 'PATCH',
+        body: { ...updates, editorName, changeReason: reason }
+      })
+      if (res?.ticket) return this.normalizeTicket(res.ticket)
+    } catch {}
+    return this.updateTicket(id, updates)
+  }
+
+  public async getStoppageStats(): Promise<any> {
+    return await $fetch<any>('/api/tickets/stoppage-stats')
   }
 
   public async addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment> {

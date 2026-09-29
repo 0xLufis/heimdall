@@ -62,6 +62,19 @@ public record CopiaCloudSyncResult(
     string? Error = null
 );
 
+public record TwinCatExtractionResult(
+    bool Success,
+    string DeviceId,
+    string TargetBranch,
+    string LocalCommitHash,
+    string SyncId,
+    IReadOnlyList<string> ExtractedFiles,
+    IReadOnlyList<string> IgnoredVolatileFiles,
+    string NotificationMessage,
+    DateTimeOffset Timestamp,
+    string? Error = null
+);
+
 /// <summary>
 /// Interface for Copia Automation Webhook Service and TwinCAT Integration.
 /// Follows Interface-Implementation model and Dependency Inversion Principle.
@@ -96,6 +109,13 @@ public interface ICopiaIntegrationService
         string userApiKey,
         string userEmail,
         string? userDisplayName = null,
+        CancellationToken cancellationToken = default);
+
+    // TwinCAT CurrentConfig.tnzip project archive extraction & controller branch rebase (autocommiting flow)
+    Task<TwinCatExtractionResult> ExtractAndRebasePlcConfigAsync(
+        string deviceId,
+        System.IO.Stream archiveStream,
+        string? targetBranch = null,
         CancellationToken cancellationToken = default);
 
     // DeviceLink backup trigger: Enforces user API key or delegates to local 'heimdall-probe' tracking

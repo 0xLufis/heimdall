@@ -2,7 +2,7 @@
 import { ref, watch, computed, defineAsyncComponent, onMounted } from 'vue'
 import {
   Plus, Camera, AlertTriangle, Check, X, ShieldAlert,
-  Sparkles, Layers, UserCheck, Paperclip, ChevronDown, ChevronUp
+  Sparkles, Layers, UserCheck, Paperclip, ChevronDown, ChevronUp, Flame
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -17,7 +17,7 @@ import {
   getTemplatesByGroup, getTemplateById
 } from '~/utils/errorTemplateEngine'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
-import type { TicketAttachment, TechnicianRule, ShiftAbsenceRecord } from '~/types/maintenance'
+import type { TicketAttachment, TechnicianRule, ShiftAbsenceRecord, TicketIssueType, TicketOriginatorType, ResponsibleDepartment } from '~/types/maintenance'
 
 const props = defineProps<{
   open: boolean
@@ -32,7 +32,7 @@ const emit = defineEmits<{
   (e: 'created', ticket: any): void
 }>()
 
-const { queueOfflineTicket } = useOfflineTickets()
+const { queueOfflineTickets: queueOfflineTicket } = useOfflineTickets() as any
 
 const showScanner = ref(false)
 const isSubmitting = ref(false)
@@ -53,7 +53,14 @@ const form = ref({
   errorCode: '',
   tags: [] as string[],
   sfc: '',
-  assignedTechnicianName: ''
+  assignedTechnicianName: '',
+  isLineStop: false,
+  lineStopDurationMinutes: 0,
+  responsibleDepartment: '' as string,
+  issueType: 'Maintenance' as TicketIssueType,
+  originatorType: 'ManualUser' as TicketOriginatorType,
+  externalOperatorId: '',
+  externalOperatorName: ''
 })
 
 const attachments = ref<TicketAttachment[]>([])
@@ -206,6 +213,13 @@ async function handleSubmit() {
     sfc: form.value.sfc.trim() || undefined,
     assignedTechnicianName: form.value.assignedTechnicianName.trim() || undefined,
     reportedByUserName: 'Operator (PWA)',
+    isLineStop: form.value.isLineStop,
+    lineStopDurationMinutes: form.value.isLineStop ? Number(form.value.lineStopDurationMinutes || 0) : 0,
+    responsibleDepartment: (form.value.responsibleDepartment as any) || undefined,
+    issueType: form.value.issueType,
+    originatorType: form.value.originatorType,
+    externalOperatorId: form.value.externalOperatorId.trim() || undefined,
+    externalOperatorName: form.value.externalOperatorName.trim() || undefined,
     attachments: attachments.value
   }
 
@@ -264,7 +278,14 @@ function resetForm() {
     errorCode: '',
     tags: [],
     sfc: '',
-    assignedTechnicianName: ''
+    assignedTechnicianName: '',
+    isLineStop: false,
+    lineStopDurationMinutes: 0,
+    responsibleDepartment: '',
+    issueType: 'Maintenance',
+    originatorType: 'ManualUser',
+    externalOperatorId: '',
+    externalOperatorName: ''
   }
   attachments.value = []
   errorMessage.value = null
@@ -462,6 +483,106 @@ function handleClose() {
             >
               {{ pr.label }}
             </button>
+          </div>
+        </div>
+
+        <!-- Line Stoppage & Attribution -->
+        <div class="p-3 bg-muted/20 border border-border rounded-2xl space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-foreground">
+              <input type="checkbox" v-model="form.isLineStop" class="rounded text-rose-600 size-4" />
+              <span class="flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                <Flame class="size-3.5" />
+                Line Stop (Active Plant Downtime)
+              </span>
+            </label>
+            <div v-if="form.isLineStop" class="flex items-center gap-1.5">
+              <span class="text-[10px] text-muted-foreground uppercase font-bold">Est. Stoppage:</span>
+              <Input
+                v-model.number="form.lineStopDurationMinutes"
+                type="number"
+                min="0"
+                class="w-20 h-7 text-xs bg-background"
+                placeholder="Mins"
+              />
+              <span class="text-[10px] text-muted-foreground">min</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Responsible Dept
+              </label>
+              <select
+                v-model="form.responsibleDepartment"
+                class="w-full px-2 py-1.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
+              >
+                <option value="">(Unassigned)</option>
+                <option value="Assy">Assy</option>
+                <option value="SMT">SMT</option>
+                <option value="Test">Test</option>
+                <option value="IT">IT</option>
+                <option value="MES">MES</option>
+                <option value="SAP">SAP</option>
+                <option value="ProcessEngineering">ProcessEngineering</option>
+                <option value="ProductOwner">ProductOwner</option>
+                <option value="Robotics">Robotics</option>
+                <option value="Vision">Vision</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Issue Type
+              </label>
+              <select
+                v-model="form.issueType"
+                class="w-full px-2 py-1.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
+              >
+                <option value="Transient">Transient</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Improvement">Improvement</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Originator
+              </label>
+              <select
+                v-model="form.originatorType"
+                class="w-full px-2 py-1.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
+              >
+                <option value="ManualUser">Manual User</option>
+                <option value="MachineAutomatic">Machine Automatic</option>
+                <option value="ScheduledMaintenance">Scheduled PM</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Operator ID / Badge (optional)
+              </label>
+              <Input
+                v-model="form.externalOperatorId"
+                placeholder="e.g. OP-8821"
+                class="h-7 text-xs bg-background"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Operator Name (optional)
+              </label>
+              <Input
+                v-model="form.externalOperatorName"
+                placeholder="e.g. John Doe"
+                class="h-7 text-xs bg-background"
+              />
+            </div>
           </div>
         </div>
 

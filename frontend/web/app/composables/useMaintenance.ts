@@ -315,6 +315,57 @@ export const useMaintenance = () => {
     })
   }
 
+  const reserveTicket = async (ticketId: string, technicianName: string) => {
+    const updated = await (service as any).reserveTicket(ticketId, technicianName)
+    const target = tickets.value.find(t => t.id === ticketId)
+    if (target && updated) {
+      Object.assign(target, updated)
+    }
+    if (selectedTicket.value?.id === ticketId && updated) {
+      Object.assign(selectedTicket.value, updated)
+    }
+    recalculateMetrics()
+    return updated
+  }
+
+  const qrPickup = async (ticketId: string, technicianName?: string) => {
+    const updated = await (service as any).qrPickup(ticketId, technicianName)
+    const target = tickets.value.find(t => t.id === ticketId)
+    if (target && updated) {
+      Object.assign(target, updated)
+    }
+    if (selectedTicket.value?.id === ticketId && updated) {
+      Object.assign(selectedTicket.value, updated)
+    }
+    recalculateMetrics()
+    return updated
+  }
+
+  const editWithHistory = async (
+    ticketId: string,
+    updates: Partial<MaintenanceTicket>,
+    editorName: string,
+    reason?: string
+  ) => {
+    const updated = await (service as any).editWithHistory(ticketId, updates, editorName, reason)
+    const target = tickets.value.find(t => t.id === ticketId)
+    if (target && updated) {
+      Object.assign(target, updated)
+    }
+    if (selectedTicket.value?.id === ticketId && updated) {
+      Object.assign(selectedTicket.value, updated)
+    }
+    recalculateMetrics()
+    return updated
+  }
+
+  const getStoppageStats = async () => {
+    if ((service as any).getStoppageStats) {
+      return await (service as any).getStoppageStats()
+    }
+    return null
+  }
+
   return {
     tickets,
     metrics,
@@ -328,6 +379,10 @@ export const useMaintenance = () => {
     setPending,
     escalateTicket,
     resolveEscalation,
+    reserveTicket,
+    qrPickup,
+    editWithHistory,
+    getStoppageStats,
     addComment,
     recalculateMetrics,
     handleLiveEvent

@@ -183,7 +183,7 @@ describe('Maintenance Ticketing UI Components', () => {
     const { tickets, metrics, handleLiveEvent, recalculateMetrics } = useMaintenance()
 
     // Simulate initial ticket list
-    tickets.value = [...mockTickets]
+    tickets.value = JSON.parse(JSON.stringify(mockTickets))
     recalculateMetrics()
 
     expect(metrics.value?.openCount).toBe(1)

@@ -131,26 +131,39 @@ Operators can select from predefined error templates covering:
 
 ## 5. Inventory & Asset Management (`/dashboard/inventory`)
 
-Heimdall replaces monolithic hierarchy tables with a high-performance, segmented inventory repository optimized for plant engineering workflows:
+Heimdall delivers an industrial-grade, segmented inventory and provisioning platform built for factory maintenance, warehouse managers, and plant operations:
 
-### 5.1 Repository Tabs: Parts vs. Stock
-* **Serialized Parts Tab (`isStockItem = false`)**:
-  * Displays high-value discrete capital assets (PLCs, cameras, servo drives, robotic manipulators).
-  * Equipment Status tracking:
-    * `InMachine`: Actively installed on a production station (with clickable station badge).
-    * `InStorage`: Spare units maintained in warehouse storage bins or racks.
-    * `UnderRepair`: Assets undergoing refurbishment in the central repair depot.
-  * Technology tags (`Assembly`, `Test`, `SMT`, `Welding`, `Fastening`, `Dispensing`, `Robotics`).
-* **Bulk Stock Tab (`isStockItem = true`)**:
-  * Displays quantity-tracked consumables (bolts, fittings, dispensing nozzles, solder paste, fuses).
-  * Current stock level gauges vs. configured minimum reorder thresholds.
-  * Low-stock warning badges (`Low Stock`, `Healthy Stock`).
-  * Warehouse storage bin addresses (e.g., `Bin 18-A`, `Bin 42-B`).
+### 5.1 Six Dedicated Workspace Modes
+1. **Warehouse Inventory (`PartsInventoryList.vue`)**:
+   * Unified catalog of serialized discrete assets and bulk consumable hardware.
+   * Real-time stock alerts (`optimal`, `low_stock`, `out_of_stock`).
+   * Dynamic safety buffers with scalar floating multipliers (`effectiveMinQuantity = minQuantity * minQuantityScalar`).
+   * Wear factor depreciation calculator (`estimatedResellPriceEur = basePriceEur * (1 - wear%)`).
+2. **Dedicated Provisioning Station (`PartProvisioningStation.vue`)**:
+   * Interactive workshop terminal for fast part lookup, wear inspection, and one-click dispatching.
+   * **Mandatory Cost Center Allocation (Strict OR Relation)**: Enforces tagging with at least one target (**Production Line OR Project OR Department**); an AND relation is explicitly not required.
+   * Supports work order ticket referencing and maintenance note tracking.
+   * Instant printable dispatch slips and audit confirmation.
+3. **Asset Templates & Blueprints (`AssetTemplatesManager.vue`)**:
+   * Reusable object-oriented blueprint templates with inheritance (`extendsTemplateId`).
+   * Sequential custom identifier generation schemes (e.g. `IPC-{number}`, `CAM-{number}`).
+   * Dynamic schema builder (`CreateEditTemplateModal.vue`) defining required instance fields (serial numbers, firmware builds, storage bins).
+4. **Machine Spare Parts Policies (`SparePartsPolicyManager.vue`)**:
+   * Intelligent coverage calculation matching active machine counts and fractional ratios (e.g., 0.25 = 1 spare per 4 running machines).
+   * Budgetary and quantity upper bound ceilings.
+   * Coverage status classification (`covered`, `shortage`, `critical`, `surplus`).
+5. **Production Machines & Installed Components (`DashboardInventoryTable.vue`)**:
+   * Machine-level installed components, CAD station hierarchies, and on-demand modal tree visualization.
+6. **Audit Ledger (`PartAuditLogDrawer.vue`)**:
+   * Immutable chronological trace of all part intakes, scrap operations, usage dispatches, and cost center allocations.
 
-### 5.2 On-Demand Station Component Tree Visualization
-Rather than cluttering the UI with an inflexible static hierarchy tree page, operators can click **Visualise Tree** next to any station or installed component to launch the modal tree inspector:
-* Displays the complete hierarchical tree of hardware components, client PCs, and software licenses for that process node.
-* Provides interactive node expansion, serial number badges, and component health indicators.
+### 5.2 Multi-Currency Valuation & Global Hero KPIs
+* Real-time exchange rates (Base: EUR) converting instantly to **HUF**, **USD**, and **GBP**.
+* Hero metric overview tracking total holding valuation, stock counts, operational health, and critical spare shortages.
+
+### 5.3 Automated AI Document Import & Code Scanner
+* **AI Machine BOM Import**: Uses LLM/ChatGPT parsing to ingest raw BOM text or structured JSON and automatically provision parent assemblies and child modular components.
+* **Integrated Code Scanner**: Fast QR and barcode lookup for rapid stock verification and mobile-friendly parts provisioning.
 
 ---
 

@@ -105,7 +105,41 @@ public enum PendingReason
     None = 0,
     Parts = 1,
     ExternalOk = 2,
-    Action = 3
+    Action = 3,
+    SignOff = 4,
+    Custom = 5
+}
+
+/// <summary>
+/// Sub-state for ticket escalation handover (Notification only, Hand-off of work, Parallel work).
+/// </summary>
+public enum EscalationHandoverState
+{
+    None = 0,
+    Notification = 1,
+    HandOff = 2,
+    ParallelWork = 3
+}
+
+/// <summary>
+/// Originator classification for maintenance tickets.
+/// </summary>
+public enum TicketOriginatorType
+{
+    ManualUser = 1,
+    MachineAutomatic = 2,
+    ScheduledMaintenance = 3
+}
+
+/// <summary>
+/// Nature or category of ticket issue.
+/// </summary>
+public enum TicketIssueType
+{
+    Transient = 1,
+    Maintenance = 2,
+    Improvement = 3,
+    Other = 4
 }
 
 /// <summary>

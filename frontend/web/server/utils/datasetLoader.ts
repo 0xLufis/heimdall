@@ -261,3 +261,79 @@ export function getPlantMachines(): PlantMachine[] {
 export function getPlantTechnicianRules(): PlantTechnicianRule[] {
   return getEnterpriseDataset().technicianRules
 }
+
+// ---------------------------------------------------------------------------
+// Canonical Inventory Dataset System
+// ---------------------------------------------------------------------------
+import type {
+  AssetTemplateDefinition,
+  InventoryPart,
+  MachineSparePartItem,
+  PartAuditRecord
+} from '../../app/types/inventory'
+
+export interface CanonicalInventoryDataset {
+  metadata: {
+    version: string
+    datasetName: string
+    createdAt: string
+    description: string
+  }
+  templates: AssetTemplateDefinition[]
+  parts: InventoryPart[]
+  sparePartsPolicies: MachineSparePartItem[]
+  auditLogs: PartAuditRecord[]
+}
+
+let cachedInventoryDataset: CanonicalInventoryDataset | null = null
+
+function findInventoryDatasetFile(): string | null {
+  const candidatePaths = [
+    path.resolve(process.cwd(), 'fixtures/canonical_inventory_dataset.json'),
+    path.resolve(process.cwd(), '../fixtures/canonical_inventory_dataset.json'),
+    path.resolve(process.cwd(), '../../fixtures/canonical_inventory_dataset.json'),
+    '/app/fixtures/canonical_inventory_dataset.json',
+    path.resolve(import.meta.dirname || '', '../../../fixtures/canonical_inventory_dataset.json'),
+    path.resolve(import.meta.dirname || '', '../../fixtures/canonical_inventory_dataset.json')
+  ]
+
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      return p
+    }
+  }
+  return null
+}
+
+export function getCanonicalInventoryDataset(): CanonicalInventoryDataset {
+  if (cachedInventoryDataset) return cachedInventoryDataset
+
+  const filePath = findInventoryDatasetFile()
+  if (filePath) {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8')
+      cachedInventoryDataset = JSON.parse(raw) as CanonicalInventoryDataset
+      return cachedInventoryDataset!
+    } catch (err) {
+      console.warn('[DatasetLoader] Error parsing inventory dataset from file:', err)
+    }
+  }
+
+  throw new Error('Could not locate fixtures/canonical_inventory_dataset.json')
+}
+
+export function getCanonicalInventoryTemplates(): AssetTemplateDefinition[] {
+  return getCanonicalInventoryDataset().templates
+}
+
+export function getCanonicalInventoryParts(): InventoryPart[] {
+  return getCanonicalInventoryDataset().parts
+}
+
+export function getCanonicalMachineSpareParts(): MachineSparePartItem[] {
+  return getCanonicalInventoryDataset().sparePartsPolicies
+}
+
+export function getCanonicalInventoryAuditLogs(): PartAuditRecord[] {
+  return getCanonicalInventoryDataset().auditLogs || []
+}

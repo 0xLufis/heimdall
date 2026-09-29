@@ -48,15 +48,15 @@ const columns: {
     id: 'InProgress',
     label: 'In Progress',
     andonType: 'blue',
-    nextStatus: 'Pending',
-    nextLabel: 'Pending'
+    nextStatus: 'Resolved',
+    nextLabel: 'Resolve'
   },
   {
     id: 'Pending',
     label: 'Pending',
     andonType: 'yellow',
-    nextStatus: 'Resolved',
-    nextLabel: 'Resolve'
+    nextStatus: 'InProgress',
+    nextLabel: 'Resume'
   },
   {
     id: 'Resolved',
@@ -436,6 +436,26 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
                   title="Escalate ticket"
                 >
                   Escalate
+                </button>
+
+                <!-- InProgress: Set Pending Action -->
+                <button
+                  v-if="col.id === 'InProgress'"
+                  @click.stop="openPendingSelector($event, ticket)"
+                  class="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-400 text-[9px] font-bold uppercase rounded-lg border border-amber-500/30 transition-colors cursor-pointer"
+                  title="Set ticket to Pending"
+                >
+                  Pending
+                </button>
+
+                <!-- Pending: Direct Resolve Action -->
+                <button
+                  v-if="col.id === 'Pending'"
+                  @click.stop="onQuickMove($event, ticket.id, 'Resolved')"
+                  class="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 text-[9px] font-bold uppercase rounded-lg border border-emerald-500/30 transition-colors cursor-pointer"
+                  title="Resolve ticket directly"
+                >
+                  Resolve
                 </button>
 
                 <!-- Quick Transition Button -->

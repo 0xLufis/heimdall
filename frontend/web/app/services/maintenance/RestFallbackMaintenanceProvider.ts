@@ -82,17 +82,35 @@ export class RestFallbackMaintenanceProvider implements IMaintenanceService {
       ticketNumber: r.ticketNumber || `TKT-${(r.id || '').substring(0, 8)}`,
       stationId: r.stationId || r.machineId,
       stationName: r.stationName || r.machine?.name || 'Production Station',
+      machineType: r.machineType || r.MachineType,
+      groupId: r.groupId || r.GroupId,
       controllerId: r.controllerId || r.clientPcId,
       controllerName: r.controllerName || r.clientPc?.hostname,
       title: r.title || r.Title || '',
       description: r.description || r.Description || '',
       status: (r.status || r.Status || 'Open') as TicketStatus,
       priority: (r.priority || r.Priority || 'Medium') as any,
+      category: r.category || r.Category,
+      errorGroup: r.errorGroup || r.ErrorGroup,
+      errorCode: r.errorCode || r.ErrorCode,
+      tags: Array.isArray(r.tags) ? r.tags : [],
+      sfc: r.sfc || r.Sfc,
+      pendingReason: r.pendingReason || r.PendingReason || 'None',
+      pendingDetails: r.pendingDetails || r.PendingDetails || null,
+      isEscalated: Boolean(r.isEscalated ?? r.IsEscalated ?? false),
+      escalationReason: r.escalationReason || r.EscalationReason || null,
+      escalatedAt: r.escalatedAt || r.EscalatedAt || null,
+      escalatedBy: r.escalatedBy || r.EscalatedBy || null,
+      escalationClosedAt: r.escalationClosedAt || r.EscalationClosedAt || null,
+      escalationClosedBy: r.escalationClosedBy || r.EscalationClosedBy || null,
+      reportedByUserId: r.reportedByUserId || r.createdBy,
       reportedByUserName: r.reportedByUserName || r.createdBy || 'Operator',
+      assignedTechnicianId: r.assignedTechnicianId || r.assignedTo,
       assignedTechnicianName: r.assignedTechnicianName || r.assignedTo || 'Unassigned',
       createdAt: r.createdAt || r.CreatedAt || new Date().toISOString(),
       updatedAt: r.updatedAt || r.UpdatedAt || new Date().toISOString(),
       slaDueAt: r.slaDueAt || r.sla_due_at,
+      resolvedAt: r.resolvedAt || r.ResolvedAt,
       comments: r.comments || [],
       attachments: r.attachments || []
     }))
@@ -108,17 +126,35 @@ export class RestFallbackMaintenanceProvider implements IMaintenanceService {
           ticketNumber: r.ticketNumber || `TKT-${(r.id || '').substring(0, 8)}`,
           stationId: r.stationId || r.machineId,
           stationName: r.stationName || r.machine?.name,
+          machineType: r.machineType || r.MachineType,
+          groupId: r.groupId || r.GroupId,
           controllerId: r.controllerId || r.clientPcId,
           controllerName: r.controllerName || r.clientPc?.hostname,
           title: r.title,
           description: r.description,
           status: (r.status || 'Open') as TicketStatus,
           priority: (r.priority || 'Medium') as any,
+          category: r.category || r.Category,
+          errorGroup: r.errorGroup || r.ErrorGroup,
+          errorCode: r.errorCode || r.ErrorCode,
+          tags: Array.isArray(r.tags) ? r.tags : [],
+          sfc: r.sfc || r.Sfc,
+          pendingReason: r.pendingReason || r.PendingReason || 'None',
+          pendingDetails: r.pendingDetails || r.PendingDetails || null,
+          isEscalated: Boolean(r.isEscalated ?? r.IsEscalated ?? false),
+          escalationReason: r.escalationReason || r.EscalationReason || null,
+          escalatedAt: r.escalatedAt || r.EscalatedAt || null,
+          escalatedBy: r.escalatedBy || r.EscalatedBy || null,
+          escalationClosedAt: r.escalationClosedAt || r.EscalationClosedAt || null,
+          escalationClosedBy: r.escalationClosedBy || r.EscalationClosedBy || null,
+          reportedByUserId: r.reportedByUserId || r.createdBy,
           reportedByUserName: r.reportedByUserName || r.createdBy,
+          assignedTechnicianId: r.assignedTechnicianId || r.assignedTo,
           assignedTechnicianName: r.assignedTechnicianName || r.assignedTo,
           createdAt: r.createdAt || new Date().toISOString(),
           updatedAt: r.updatedAt || new Date().toISOString(),
           slaDueAt: r.slaDueAt,
+          resolvedAt: r.resolvedAt,
           comments: r.comments || [],
           attachments: r.attachments || []
         }
@@ -139,6 +175,10 @@ export class RestFallbackMaintenanceProvider implements IMaintenanceService {
         description: r.description,
         status: (r.status || 'Open') as TicketStatus,
         priority: (r.priority || 'Medium') as any,
+        pendingReason: r.pendingReason || 'None',
+        pendingDetails: r.pendingDetails || null,
+        isEscalated: Boolean(r.isEscalated || false),
+        escalationReason: r.escalationReason || null,
         reportedByUserName: r.createdBy,
         assignedTechnicianName: r.assignedTo,
         createdAt: r.createdAt || new Date().toISOString(),
@@ -231,6 +271,90 @@ export class RestFallbackMaintenanceProvider implements IMaintenanceService {
       }).catch(() => {})
     }
     return (await this.getTicketById(id)) || ({ id, status, assignedTechnicianName: technicianName, ...extra } as any)
+  }
+
+  public async setPending(id: string, reason: any, details?: string): Promise<MaintenanceTicket> {
+    return this.updateTicketStatus(id, 'Pending', undefined, { pendingReason: reason, pendingDetails: details })
+  }
+
+  public async escalate(
+    id: string,
+    reason: string,
+    escalatedBy: string,
+    handoverState: any = 'Notification',
+    target?: string
+  ): Promise<MaintenanceTicket> {
+    const payload = {
+      isEscalated: true,
+      escalationReason: reason,
+      escalatedBy,
+      escalationHandoverState: handoverState,
+      escalationTarget: target || 'DedicatedEngineer',
+      escalatedAt: new Date().toISOString()
+    }
+    return this.updateTicket(id, payload)
+  }
+
+  public async resolveEscalation(id: string, resolvedBy: string): Promise<MaintenanceTicket> {
+    const payload = {
+      isEscalated: false,
+      escalationReason: null,
+      escalationClosedBy: resolvedBy,
+      escalationClosedAt: new Date().toISOString()
+    }
+    return this.updateTicket(id, payload)
+  }
+
+  public async reserveTicket(id: string, technicianName: string): Promise<MaintenanceTicket> {
+    try {
+      const res = await $fetch<any>(`/api/tickets/${id}/reserve`, {
+        method: 'POST',
+        body: { technician: technicianName }
+      })
+      if (res?.ticket) return res.ticket
+    } catch {}
+    return this.updateTicket(id, {
+      reservedBy: technicianName,
+      assignedTechnicianName: technicianName
+    })
+  }
+
+  public async qrPickup(id: string, technicianName?: string): Promise<MaintenanceTicket> {
+    try {
+      const res = await $fetch<any>(`/api/tickets/${id}/qr-pickup`, {
+        method: 'POST',
+        body: { technician: technicianName }
+      })
+      if (res?.ticket) return res.ticket
+    } catch {}
+    const now = new Date()
+    return this.updateTicket(id, {
+      status: 'InProgress',
+      startedAt: now.toISOString(),
+      qrScannedAt: now.toISOString(),
+      assignedTechnicianName: technicianName,
+      reservedBy: technicianName
+    })
+  }
+
+  public async editWithHistory(
+    id: string,
+    updates: Partial<MaintenanceTicket>,
+    editorName: string,
+    reason?: string
+  ): Promise<MaintenanceTicket> {
+    try {
+      const res = await $fetch<any>(`/api/tickets/${id}`, {
+        method: 'PATCH',
+        body: { ...updates, editorName, changeReason: reason }
+      })
+      if (res?.ticket) return res.ticket
+    } catch {}
+    return this.updateTicket(id, updates)
+  }
+
+  public async getStoppageStats(): Promise<any> {
+    return await $fetch<any>('/api/tickets/stoppage-stats')
   }
 
   public async addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment> {

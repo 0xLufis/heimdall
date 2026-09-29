@@ -9,7 +9,50 @@ export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical'
  * Describes why a ticket is in the Pending state.
  * Maps to the backend PendingReason enum.
  */
-export type PendingReason = 'None' | 'Parts' | 'ExternalOk' | 'Action'
+export type PendingReason = 'None' | 'Parts' | 'ExternalOk' | 'Action' | 'SignOff' | 'External' | 'Custom'
+
+export type EscalationHandoverState = 'None' | 'Notification' | 'HandOff' | 'ParallelWork'
+
+export type TicketOriginatorType = 'MachineAutomatic' | 'ScheduledMaintenance' | 'ManualUser'
+
+export type TicketIssueType = 'Transient' | 'Maintenance' | 'Improvement' | 'Other'
+
+export type ResponsibleDepartment =
+  | 'Assy'
+  | 'SMT'
+  | 'Test'
+  | 'IT'
+  | 'MES'
+  | 'SAP'
+  | 'ProcessEngineering'
+  | 'ProductOwner'
+  | 'Mechanical'
+  | 'Robotics'
+  | 'Vision'
+  | string
+
+export interface TicketChangeRecord {
+  id: string
+  timestamp: string
+  changedBy: string
+  field: string
+  oldValue?: any
+  newValue?: any
+  note?: string
+}
+
+export interface StoppageDepartmentSummary {
+  department: string
+  stoppageMinutes: number
+  incidentCount: number
+}
+
+export interface StoppageStats {
+  totalStoppageMinutesThisWeek: number
+  totalLineStopIncidents: number
+  departmentBreakdown: StoppageDepartmentSummary[]
+  topWorstMachines: Array<{ machineName: string; totalStoppageMinutes: number; incidentCount: number }>
+}
 
 export interface StateTransitionMeta {
   fromStatus: TicketStatus
@@ -153,20 +196,33 @@ export interface MaintenanceTicket {
   description?: string
   status: TicketStatus
   priority: TicketPriority
-  category?: 'Prevention' | 'Error' | 'Improvement' | 'ETC'
+  category?: 'Prevention' | 'Error' | 'Improvement' | 'ETC' | string
+  issueType?: TicketIssueType
+  originatorType?: TicketOriginatorType
+  isLineStop?: boolean
+  lineStopDurationMinutes?: number
+  responsibleDepartment?: ResponsibleDepartment
+  externalOperatorId?: string
+  externalOperatorName?: string
+  startedAt?: string
+  qrScannedAt?: string
+  reactionTimeMinutes?: number
+  reservedBy?: string
   errorGroup?: string
   errorCode?: string
   tags?: string[]
   fbState?: FunctionBlockState
   sfc?: string
   cameraInspection?: CameraInspectionData
-  telemetrySnapshot?: TelemetrySnapshot
+  telemetrySnapshot?: TelemetrySnapshot | Record<string, any>
   // Pending details
   pendingReason?: PendingReason | null
   pendingDetails?: string | null
   // Escalation (orthogonal to status)
   isEscalated?: boolean
   escalationReason?: string | null
+  escalationTarget?: 'DedicatedEngineer' | 'Management' | string | null
+  escalationHandoverState?: EscalationHandoverState | null
   escalatedAt?: string | null
   escalatedBy?: string | null
   escalationClosedAt?: string | null
@@ -182,6 +238,7 @@ export interface MaintenanceTicket {
   resolvedAt?: string
   comments: TicketComment[]
   attachments: TicketAttachment[]
+  changeHistory?: TicketChangeRecord[]
   metadata?: Record<string, any>
 }
 
@@ -195,7 +252,13 @@ export interface CreateTicketInput {
   controllerId?: string
   controllerName?: string
   priority: TicketPriority
-  category?: 'Prevention' | 'Error' | 'Improvement' | 'ETC'
+  category?: 'Prevention' | 'Error' | 'Improvement' | 'ETC' | string
+  issueType?: TicketIssueType
+  originatorType?: TicketOriginatorType
+  isLineStop?: boolean
+  responsibleDepartment?: ResponsibleDepartment
+  externalOperatorId?: string
+  externalOperatorName?: string
   errorGroup?: string
   errorCode?: string
   tags?: string[]
@@ -266,8 +329,12 @@ export interface IMaintenanceService {
   updateTicket(id: string, updates: Partial<MaintenanceTicket>): Promise<MaintenanceTicket>
   updateTicketStatus(id: string, status: TicketStatus, technicianName?: string, extra?: Record<string, any>): Promise<MaintenanceTicket>
   setPending(id: string, reason: PendingReason, details?: string): Promise<MaintenanceTicket>
-  escalate(id: string, reason: string, escalatedBy: string): Promise<MaintenanceTicket>
+  escalate(id: string, reason: string, escalatedBy: string, handoverState?: EscalationHandoverState, target?: string): Promise<MaintenanceTicket>
   resolveEscalation(id: string, resolvedBy: string): Promise<MaintenanceTicket>
+  reserveTicket(ticketId: string, technicianName: string): Promise<MaintenanceTicket>
+  qrPickup(ticketId: string, technicianName?: string): Promise<MaintenanceTicket>
+  editWithHistory(ticketId: string, updates: Partial<MaintenanceTicket>, editorName: string, reason?: string): Promise<MaintenanceTicket>
+  getStoppageStats?(): Promise<StoppageStats>
   addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment>
   uploadAttachment?(ticketId: string, file: File): Promise<TicketAttachment>
   getMetrics(): Promise<TicketMetrics>

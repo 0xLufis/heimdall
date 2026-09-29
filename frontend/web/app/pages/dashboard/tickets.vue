@@ -8,6 +8,7 @@ import {
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
+import TicketPersonalHeader from '~/components/tickets/TicketPersonalHeader.vue'
 import TicketMetricsOverview from '~/components/tickets/TicketMetricsOverview.vue'
 import TicketList from '~/components/tickets/TicketList.vue'
 import TicketKanbanBoard from '~/components/tickets/TicketKanbanBoard.vue'
@@ -24,6 +25,7 @@ const QrScanner = defineAsyncComponent(() => import('~/components/ui/qr-scanner/
 import { useMaintenance } from '~/composables/useMaintenance'
 import { useFeatureFlags } from '~/composables/useFeatureFlags'
 import { parseQrUri } from '~/utils/qrActionGenerator'
+import { authClient } from '~/utils/auth-client'
 import type { MaintenanceTicket, TicketStatus } from '~/types/maintenance'
 
 definePageMeta({
@@ -43,7 +45,9 @@ const {
   updateStatus,
   setPending,
   escalateTicket,
-  resolveEscalation
+  resolveEscalation,
+  reserveTicket,
+  qrPickup
 } = useMaintenance()
 
 // ── View Modes ─────────────────────────────────────────────────────────────
@@ -270,6 +274,25 @@ function onEscalateTicket(ticketId: string, reason: string) {
 function onResolveEscalation(ticketId: string) {
   resolveEscalation(ticketId)
 }
+
+async function onReserveTicket(ticketId: string) {
+  const session = (authClient as any).useSession?.()
+  const techName = session?.data?.value?.user?.name || 'On-Duty Tech'
+  await reserveTicket(ticketId, techName)
+  await fetchTickets()
+}
+
+async function onPickupTicket(ticketId: string) {
+  const session = (authClient as any).useSession?.()
+  const techName = session?.data?.value?.user?.name || 'On-Duty Tech'
+  await qrPickup(ticketId, techName)
+  await fetchTickets()
+}
+
+async function onResumeTicket(ticketId: string) {
+  await updateStatus(ticketId, 'InProgress')
+  await fetchTickets()
+}
 </script>
 
 <template>
@@ -290,7 +313,7 @@ function onResolveEscalation(ticketId: string) {
         <div>
           <div class="flex items-center gap-2.5">
             <h1 class="text-2xl font-bold tracking-tight text-foreground group-hover:text-foreground/90 transition-colors">
-              Maintenance & Incident Management
+              Maintenance & Floor Incidents
             </h1>
             <Badge
               v-if="pendingOfflineCount > 0"
@@ -426,6 +449,14 @@ function onResolveEscalation(ticketId: string) {
       <QrScanner @scanned="onQrScanned" @close="showQrScanner = false" />
     </div>
 
+    <!-- Personal Dedicated Header (Hides completely if empty as per specification) -->
+    <TicketPersonalHeader
+      :tickets="tickets"
+      @select-ticket="onSelectTicket"
+      @pickup-ticket="onPickupTicket"
+      @resume-ticket="onResumeTicket"
+    />
+
     <!-- Metrics Cards Overview -->
     <TicketMetricsOverview
       :metrics="metrics || undefined"
@@ -467,6 +498,7 @@ function onResolveEscalation(ticketId: string) {
         :tickets="displayedTickets"
         :loading="isLoading"
         @selectTicket="onSelectTicket"
+        @reserveTicket="onReserveTicket"
         @filterChange="fetchTickets"
       />
     </template>

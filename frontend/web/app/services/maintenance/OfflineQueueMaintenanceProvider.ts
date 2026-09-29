@@ -248,7 +248,9 @@ export class OfflineQueueMaintenanceProvider implements IMaintenanceService {
     if (existing) {
       existing.status = status
       if (extra?.pendingReason !== undefined) existing.pendingReason = extra.pendingReason
-      if (extra?.pendingAuthority !== undefined) existing.pendingAuthority = extra.pendingAuthority
+      if (extra?.pendingDetails !== undefined) existing.pendingDetails = extra.pendingDetails
+      if (extra?.isEscalated !== undefined) existing.isEscalated = extra.isEscalated
+      if (extra?.escalationReason !== undefined) existing.escalationReason = extra.escalationReason
       existing.updatedAt = new Date().toISOString()
       await db.put(STORE_TICKETS, existing)
     }
@@ -261,6 +263,93 @@ export class OfflineQueueMaintenanceProvider implements IMaintenanceService {
     })
 
     return existing || ({ id, status, ...extra } as any)
+  }
+
+  public async setPending(id: string, reason: PendingReason, details?: string): Promise<MaintenanceTicket> {
+    if (this.isOnline && (this.innerProvider as any).setPending) {
+      return await (this.innerProvider as any).setPending(id, reason, details)
+    }
+    return this.updateTicketStatus(id, 'Pending', undefined, { pendingReason: reason, pendingDetails: details })
+  }
+
+  public async escalate(
+    id: string,
+    reason: string,
+    escalatedBy: string,
+    handoverState: any = 'Notification',
+    target?: string
+  ): Promise<MaintenanceTicket> {
+    if (this.isOnline && (this.innerProvider as any).escalate) {
+      return await (this.innerProvider as any).escalate(id, reason, escalatedBy, handoverState, target)
+    }
+    return this.updateTicket(id, {
+      isEscalated: true,
+      escalationReason: reason,
+      escalatedBy,
+      escalationHandoverState: handoverState,
+      escalationTarget: target || 'DedicatedEngineer',
+      escalatedAt: new Date().toISOString()
+    })
+  }
+
+  public async resolveEscalation(id: string, resolvedBy: string): Promise<MaintenanceTicket> {
+    if (this.isOnline && (this.innerProvider as any).resolveEscalation) {
+      return await (this.innerProvider as any).resolveEscalation(id, resolvedBy)
+    }
+    return this.updateTicket(id, {
+      isEscalated: false,
+      escalationReason: null,
+      escalationClosedBy: resolvedBy,
+      escalationClosedAt: new Date().toISOString()
+    })
+  }
+
+  public async reserveTicket(id: string, technicianName: string): Promise<MaintenanceTicket> {
+    if (this.isOnline && (this.innerProvider as any).reserveTicket) {
+      return await (this.innerProvider as any).reserveTicket(id, technicianName)
+    }
+    return this.updateTicket(id, {
+      reservedBy: technicianName,
+      assignedTechnicianName: technicianName
+    })
+  }
+
+  public async qrPickup(id: string, technicianName?: string): Promise<MaintenanceTicket> {
+    if (this.isOnline && (this.innerProvider as any).qrPickup) {
+      return await (this.innerProvider as any).qrPickup(id, technicianName)
+    }
+    const now = new Date()
+    return this.updateTicket(id, {
+      status: 'InProgress',
+      startedAt: now.toISOString(),
+      qrScannedAt: now.toISOString(),
+      assignedTechnicianName: technicianName,
+      reservedBy: technicianName
+    })
+  }
+
+  public async editWithHistory(
+    id: string,
+    updates: Partial<MaintenanceTicket>,
+    editorName: string,
+    reason?: string
+  ): Promise<MaintenanceTicket> {
+    if (this.isOnline && (this.innerProvider as any).editWithHistory) {
+      return await (this.innerProvider as any).editWithHistory(id, updates, editorName, reason)
+    }
+    return this.updateTicket(id, updates)
+  }
+
+  public async getStoppageStats(): Promise<any> {
+    if (this.isOnline && (this.innerProvider as any).getStoppageStats) {
+      return await (this.innerProvider as any).getStoppageStats()
+    }
+    return await $fetch<any>('/api/tickets/stoppage-stats').catch(() => ({
+      totalStoppageMinutesThisWeek: 0,
+      totalLineStopIncidents: 0,
+      departmentBreakdown: [],
+      topWorstMachines: []
+    }))
   }
 
   public async addComment(ticketId: string, authorName: string, content: string): Promise<TicketComment> {

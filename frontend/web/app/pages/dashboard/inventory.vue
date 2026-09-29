@@ -14,15 +14,36 @@ import {
   FolderTree,
   Boxes,
   Wrench,
-  PackageCheck
+  PackageCheck,
+  QrCode,
+  Bot,
+  History,
+  Send,
+  PackagePlus,
+  ShieldCheck
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
 import DashboardInventoryEditModal from '~/components/dashboard/InventoryEditModal.vue'
 import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
+import DashboardInventoryAddModal from '~/components/dashboard/InventoryAddModal.vue'
+import DashboardInventoryTable from '~/components/dashboard/InventoryTable.vue'
+import PartsInventoryList from '~/components/inventory/PartsInventoryList.vue'
+import UsePartModal from '~/components/inventory/UsePartModal.vue'
+import LogPartModal from '~/components/inventory/LogPartModal.vue'
+import BulkPartIntakeModal from '~/components/inventory/BulkPartIntakeModal.vue'
+import AssetTemplatesManager from '~/components/inventory/AssetTemplatesManager.vue'
+import MachineDocumentImportModal from '~/components/inventory/MachineDocumentImportModal.vue'
+import SparePartsPolicyManager from '~/components/inventory/SparePartsPolicyManager.vue'
+import InventoryCodeScannerModal from '~/components/inventory/InventoryCodeScannerModal.vue'
+import PartAuditLogDrawer from '~/components/inventory/PartAuditLogDrawer.vue'
+import PartProvisioningStation from '~/components/inventory/PartProvisioningStation.vue'
+import CreateEditTemplateModal from '~/components/inventory/CreateEditTemplateModal.vue'
 import { useInventoryLive } from '~/composables/useInventoryLive'
+import { usePartsInventory } from '~/composables/usePartsInventory'
 import type { SearchInstanceConfig } from '~/types/search'
+import type { InventoryPart, PartUsageCostCenter } from '~/types/inventory'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -288,8 +309,95 @@ const handleSaveEdit = async (updatedItem: any) => {
   }
 }
 
+// Split Parts Inventory State & Composables (docs/TODO/inventory.TODO.md)
+const activeSection = ref<'parts' | 'provisioning' | 'templates' | 'spare_parts' | 'assets' | 'audit'>('parts')
+const provisioningPreselectedId = ref<string | undefined>(undefined)
+
+const {
+  parts: partsList,
+  templates: templatesList,
+  spareParts: sparePartsList,
+  sparePartsReport,
+  auditLogs,
+  loading: partsLoading,
+  kpis: partsKpis,
+  activeCurrency,
+  formatCurrency: formatPartsCurrency,
+  fetchParts,
+  logPart: handleLogPart,
+  bulkLogParts: handleBulkLogParts,
+  usePart: handleUsePartAction,
+  fetchTemplates,
+  fetchSpareParts,
+  fetchAuditLogs
+} = usePartsInventory()
+
+const showUsePartModal = ref(false)
+const selectedPartForUse = ref<InventoryPart | null>(null)
+const showLogPartModal = ref(false)
+const showBulkIntakeModal = ref(false)
+const showMachineImportModal = ref(false)
+const showCodeScannerModal = ref(false)
+const showAuditDrawer = ref(false)
+const showCreateTemplateModal = ref(false)
+
+const handleOpenUsePart = (part: InventoryPart) => {
+  selectedPartForUse.value = part
+  showUsePartModal.value = true
+}
+
+const openProvisioningForPart = (part: InventoryPart) => {
+  provisioningPreselectedId.value = part.id
+  activeSection.value = 'provisioning'
+}
+
+const onConfirmUsePart = async (data: { partId: string; costCenter: PartUsageCostCenter; quantity: number }) => {
+  await handleUsePartAction(data.partId, data.costCenter, data.quantity)
+  await fetchParts()
+  await fetchMasterInventory()
+}
+
+const onPartProvisioned = async (record: any) => {
+  await fetchParts()
+  await fetchMasterInventory()
+  await fetchAuditLogs()
+  await fetchTemplates()
+}
+
+const onConfirmLogPart = async (payload: Partial<InventoryPart>) => {
+  await handleLogPart(payload)
+  await fetchParts()
+  await fetchTemplates()
+}
+
+const onConfirmBulkLogged = async (items: Array<Partial<InventoryPart>>) => {
+  await handleBulkLogParts(items)
+  await fetchParts()
+  await fetchTemplates()
+}
+
+const onMachineImportSuccess = async () => {
+  await fetchMasterInventory()
+  await fetchParts()
+  await fetchTemplates()
+}
+
+const onScannerLogWithCode = (code: string) => {
+  showLogPartModal.value = true
+}
+
+const onScannerUsePart = (part: InventoryPart) => {
+  provisioningPreselectedId.value = part.id
+  showCodeScannerModal.value = false
+  activeSection.value = 'provisioning'
+}
+
 onMounted(() => {
   fetchMasterInventory()
+  fetchParts()
+  fetchTemplates()
+  fetchSpareParts()
+  fetchAuditLogs()
 })
 
 let updateDebounceTimer: any = null
@@ -297,13 +405,14 @@ onInventoryUpdate(() => {
   if (updateDebounceTimer) clearTimeout(updateDebounceTimer)
   updateDebounceTimer = setTimeout(() => {
     fetchMasterInventory()
+    fetchParts()
   }, 1000)
 })
 </script>
 
 <template>
   <div class="space-y-6 animate-in fade-in duration-300">
-    <!-- Header Area with KPI Badges & Controls -->
+    <!-- Header Area with Primary Section Navigation Tabs & Controls -->
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-border">
       <div>
         <div class="flex items-center gap-3">
@@ -315,13 +424,213 @@ onInventoryUpdate(() => {
               Inventory & Asset Infrastructure
             </h1>
             <p class="text-sm text-muted-foreground mt-0.5">
-              Hardware components, software licenses, serialized parts, and bulk consumable stock
+              Split parts inventory, production machine assets, template inheritance, and spare part policies
             </p>
           </div>
         </div>
 
-        <!-- KPI Metric Badges (Interactive Filters) -->
-        <div class="flex flex-wrap items-center gap-2 mt-4">
+        <!-- Primary Top-Level Section Navigation Tabs -->
+        <div class="flex flex-wrap items-center gap-1.5 mt-4 p-1 bg-muted/60 rounded-xl border border-border w-fit">
+          <button
+            type="button"
+            @click="activeSection = 'parts'"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+            :class="activeSection === 'parts' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            <Boxes class="size-3.5" />
+            <span>Warehouse Inventory</span>
+          </button>
+
+          <button
+            type="button"
+            @click="activeSection = 'provisioning'"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer relative"
+            :class="activeSection === 'provisioning' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            <Wrench class="size-3.5 text-amber-500" />
+            <span>Provisioning Station</span>
+            <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </button>
+
+          <button
+            type="button"
+            @click="activeSection = 'templates'"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+            :class="activeSection === 'templates' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            <FolderTree class="size-3.5" />
+            <span>Asset Templates</span>
+          </button>
+
+          <button
+            type="button"
+            @click="activeSection = 'spare_parts'"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+            :class="activeSection === 'spare_parts' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            <ShieldCheck class="size-3.5 text-emerald-500" />
+            <span>Spare Parts & Policies</span>
+          </button>
+
+          <button
+            type="button"
+            @click="activeSection = 'assets'"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+            :class="activeSection === 'assets' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            <Cpu class="size-3.5" />
+            <span>Production Machines</span>
+          </button>
+
+          <button
+            type="button"
+            @click="activeSection = 'audit'"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+            :class="activeSection === 'audit' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            <History class="size-3.5" />
+            <span>Audit Ledger</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Header Action Controls & Currency Switcher -->
+      <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+        <!-- Live Currency Switcher -->
+        <div class="flex items-center p-0.5 bg-muted/60 rounded-lg border border-border">
+          <button
+            v-for="curr in (['EUR', 'HUF', 'USD', 'GBP'] as const)"
+            :key="curr"
+            type="button"
+            @click="activeCurrency = curr; fetchParts()"
+            class="px-2 py-0.5 rounded text-[11px] font-mono font-bold transition-all cursor-pointer"
+            :class="activeCurrency === curr ? 'bg-primary text-primary-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            {{ curr }}
+          </button>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          @click="showCodeScannerModal = true"
+          class="border-primary/40 bg-card hover:bg-primary/10 text-primary rounded-lg text-xs font-medium h-8 px-3 gap-1.5 shadow-xs cursor-pointer"
+        >
+          <QrCode class="h-3.5 w-3.5" />
+          <span>Scanner</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          @click="showMachineImportModal = true"
+          class="border-emerald-500/40 bg-card hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-medium h-8 px-3 gap-1.5 shadow-xs cursor-pointer"
+        >
+          <Bot class="h-3.5 w-3.5" />
+          <span>AI Import</span>
+        </Button>
+
+        <Button
+          size="sm"
+          @click="showLogPartModal = true"
+          class="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-xs font-semibold h-8 px-3 gap-1.5 shadow-xs cursor-pointer"
+        >
+          <PackagePlus class="h-3.5 w-3.5" />
+          <span>Intake Part</span>
+        </Button>
+      </div>
+    </div>
+
+    <!-- Global Floor & Warehouse KPI Hero Bar -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <!-- Valuation -->
+      <div class="p-3.5 rounded-xl bg-card border border-border shadow-xs space-y-1">
+        <div class="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider flex items-center justify-between">
+          <span>Valuation</span>
+          <span class="font-mono text-primary text-[10px]">{{ activeCurrency }}</span>
+        </div>
+        <div class="font-mono text-lg font-bold text-foreground">
+          {{ formatPartsCurrency(partsKpis.totalWarehouseValuationConverted) }}
+        </div>
+        <div class="text-[10px] text-muted-foreground">
+          Base: €{{ formatPartsCurrency(partsKpis.totalWarehouseValuationEur, 'EUR') }}
+        </div>
+      </div>
+
+      <!-- Total Parts -->
+      <div class="p-3.5 rounded-xl bg-card border border-border shadow-xs space-y-1">
+        <div class="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">
+          Total Stock
+        </div>
+        <div class="font-mono text-lg font-bold text-foreground">
+          {{ partsKpis.totalPartsCount }}
+        </div>
+        <div class="text-[10px] text-muted-foreground flex items-center gap-1.5">
+          <span>{{ partsKpis.serializedCount }} serialized</span>
+          <span>•</span>
+          <span>{{ partsKpis.bulkCount }} bulk</span>
+        </div>
+      </div>
+
+      <!-- Operational Readiness -->
+      <div class="p-3.5 rounded-xl bg-card border border-border shadow-xs space-y-1">
+        <div class="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">
+          Operational State
+        </div>
+        <div class="font-mono text-lg font-bold text-emerald-600 dark:text-emerald-400">
+          {{ partsKpis.workingCount }} Ready
+        </div>
+        <div class="text-[10px] text-muted-foreground">
+          {{ partsKpis.inServiceCount }} in service, {{ partsKpis.brokenCount }} broken
+        </div>
+      </div>
+
+      <!-- Stock Alerts -->
+      <div class="p-3.5 rounded-xl bg-card border border-border shadow-xs space-y-1">
+        <div class="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">
+          Stock Alerts
+        </div>
+        <div class="font-mono text-lg font-bold" :class="partsKpis.lowStockAlertCount + partsKpis.outOfStockAlertCount > 0 ? 'text-amber-500' : 'text-foreground'">
+          {{ partsKpis.lowStockAlertCount + partsKpis.outOfStockAlertCount }} Alerts
+        </div>
+        <div class="text-[10px] text-muted-foreground">
+          {{ partsKpis.lowStockAlertCount }} low stock, {{ partsKpis.outOfStockAlertCount }} out
+        </div>
+      </div>
+
+      <!-- Blueprint Templates -->
+      <div class="p-3.5 rounded-xl bg-card border border-border shadow-xs space-y-1">
+        <div class="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">
+          Asset Templates
+        </div>
+        <div class="font-mono text-lg font-bold text-foreground">
+          {{ templatesList.length }}
+        </div>
+        <div class="text-[10px] text-muted-foreground">
+          {{ templatesList.filter(t => t.extendsTemplateId).length }} inherited models
+        </div>
+      </div>
+
+      <!-- Spare Policy Coverage -->
+      <div class="p-3.5 rounded-xl bg-card border border-border shadow-xs space-y-1">
+        <div class="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">
+          Critical Spares
+        </div>
+        <div class="font-mono text-lg font-bold text-foreground">
+          {{ sparePartsReport?.totalCovered || 0 }} / {{ sparePartsList.length }}
+        </div>
+        <div class="text-[10px]" :class="(sparePartsReport?.criticalShortages || 0) > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground'">
+          {{ sparePartsReport?.criticalShortages || 0 }} critical shortages
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. Production Assets Section -->
+    <div v-if="activeSection === 'assets'" class="space-y-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-border">
+        <div>
+          <!-- KPI Metric Badges (Interactive Filters) -->
+          <div class="flex flex-wrap items-center gap-2 mt-4">
           <button 
             type="button"
             @click="classification = 'all'; tracking = 'all'"
@@ -649,6 +958,85 @@ onInventoryUpdate(() => {
         </div>
       </div>
     </div>
+    </div>
+
+    <!-- 2. Parts Inventory Section -->
+    <div v-else-if="activeSection === 'parts'" class="space-y-4">
+      <PartsInventoryList
+        :parts="partsList"
+        :loading="partsLoading"
+        :kpis="partsKpis"
+        @usePart="openProvisioningForPart"
+        @logPart="showLogPartModal = true"
+        @bulkIntake="showBulkIntakeModal = true"
+        @scanCode="showCodeScannerModal = true"
+        @viewAudit="showAuditDrawer = true"
+        @filterChange="fetchParts"
+      />
+    </div>
+
+    <!-- 2b. Dedicated Part Provisioning Station Section -->
+    <div v-else-if="activeSection === 'provisioning'" class="space-y-4">
+      <PartProvisioningStation
+        :parts="partsList"
+        :preselected-part-id="provisioningPreselectedId"
+        @scan-requested="showCodeScannerModal = true"
+        @part-provisioned="onPartProvisioned"
+      />
+    </div>
+
+    <!-- 3. Asset Templates Section -->
+    <div v-else-if="activeSection === 'templates'" class="space-y-4">
+      <AssetTemplatesManager
+        :templates="templatesList"
+        @refresh="() => { fetchTemplates(); fetchParts(); }"
+      />
+    </div>
+
+    <!-- 4. Machine Spare Parts & Policies Section -->
+    <div v-else-if="activeSection === 'spare_parts'" class="space-y-4">
+      <SparePartsPolicyManager
+        :spareParts="sparePartsList"
+        :reporting="sparePartsReport"
+        @refresh="fetchSpareParts"
+      />
+    </div>
+
+    <!-- 5. Audit History Ledger Section -->
+    <div v-else-if="activeSection === 'audit'" class="space-y-4">
+      <div class="p-4 rounded-xl bg-card border border-border shadow-xs">
+        <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
+          <History class="size-4 text-primary" />
+          <span>Global Parts Consumption & Intake Ledger</span>
+        </h3>
+        <div class="space-y-2.5 max-h-[600px] overflow-y-auto custom-scrollbar">
+          <div
+            v-for="log in auditLogs"
+            :key="log.id"
+            class="p-3 rounded-lg border border-border bg-muted/20 text-xs space-y-1.5"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-bold text-primary">{{ log.partIdentifier }}</span>
+                <span class="font-semibold text-foreground">{{ log.partName }}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-primary/10 text-primary">
+                  {{ log.action.replace('_', ' ') }}
+                </span>
+              </div>
+              <span class="font-mono text-muted-foreground text-[11px]">{{ log.timestamp }}</span>
+            </div>
+            <div v-if="log.costCenter" class="p-2 rounded bg-amber-500/5 border border-amber-500/20 grid grid-cols-1 sm:grid-cols-3 gap-1 text-[11px] font-mono text-muted-foreground">
+              <div><strong class="text-foreground">Line:</strong> {{ log.costCenter.prodLine }}</div>
+              <div><strong class="text-foreground">Project:</strong> {{ log.costCenter.project }}</div>
+              <div><strong class="text-foreground">Dept:</strong> {{ log.costCenter.department }}</div>
+            </div>
+            <div v-if="log.notes" class="text-[11px] text-muted-foreground italic">
+              "{{ log.notes }}" - {{ log.actorName }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- On-Demand Station Component Tree Visualizer Modal -->
     <DashboardInventoryStationComponentTreeModal
@@ -670,6 +1058,59 @@ onInventoryUpdate(() => {
       :item="selectedEditItem"
       @update:open="showEditModal = $event"
       @save="handleSaveEdit"
+    />
+
+    <!-- Use Part Modal Overlay (Mandatory Cost Center) -->
+    <UsePartModal
+      :open="showUsePartModal"
+      :part="selectedPartForUse"
+      @update:open="showUsePartModal = $event"
+      @used="onConfirmUsePart"
+    />
+
+    <!-- Log Part Modal Overlay -->
+    <LogPartModal
+      :open="showLogPartModal"
+      :templates="templatesList"
+      @update:open="showLogPartModal = $event"
+      @logged="onConfirmLogPart"
+    />
+
+    <!-- Bulk Part Intake Modal Overlay (Visual & JSON) -->
+    <BulkPartIntakeModal
+      :open="showBulkIntakeModal"
+      @update:open="showBulkIntakeModal = $event"
+      @bulkLogged="onConfirmBulkLogged"
+    />
+
+    <!-- AI Machine Document Import Modal Overlay -->
+    <MachineDocumentImportModal
+      :open="showMachineImportModal"
+      @update:open="showMachineImportModal = $event"
+      @imported="onMachineImportSuccess"
+    />
+
+    <!-- Code Scanner Modal Overlay (QR, Barcode, RFID) -->
+    <InventoryCodeScannerModal
+      :open="showCodeScannerModal"
+      @update:open="showCodeScannerModal = $event"
+      @usePart="onScannerUsePart"
+      @logPartWithCode="onScannerLogWithCode"
+    />
+
+    <!-- Part Audit Log Drawer -->
+    <PartAuditLogDrawer
+      :open="showAuditDrawer"
+      :auditLogs="auditLogs"
+      @update:open="showAuditDrawer = $event"
+    />
+
+    <!-- Global Create / Edit Template Modal -->
+    <CreateEditTemplateModal
+      :open="showCreateTemplateModal"
+      :available-templates="templatesList"
+      @update:open="showCreateTemplateModal = $event"
+      @saved="() => { fetchTemplates(); fetchParts(); }"
     />
   </div>
 </template>

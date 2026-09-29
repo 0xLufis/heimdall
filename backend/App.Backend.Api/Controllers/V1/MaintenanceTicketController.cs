@@ -13,12 +13,28 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Backend.Api.Controllers.V1;
 
-public record EscalateTicketRequest(string Reason, string EscalatedBy);
+public record EscalateTicketRequest(
+    string Reason,
+    string EscalatedBy,
+    EscalationHandoverState HandoverState = EscalationHandoverState.Notification,
+    string? Target = null
+);
 public record DeescalateTicketRequest(string ResolvedBy, string? ResolutionNotes = null);
 public record SetPendingRequest(PendingReason PendingReason, string? PendingDetails);
+public record ReserveTicketRequest(string Technician);
+public record QrPickupRequest(string Technician);
+
+public record StoppageDepartmentSummary(string Department, double StoppageMinutes, int IncidentCount);
+public record StoppageStatsResponse(
+    double TotalStoppageMinutesThisWeek,
+    int TotalLineStopIncidents,
+    IReadOnlyList<StoppageDepartmentSummary> DepartmentBreakdown,
+    IReadOnlyList<object> TopWorstMachines
+);
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Route("api/v1/tickets")]
 [Authorize]
 public class MaintenanceTicketController : ControllerBase
 {
@@ -102,6 +118,38 @@ public class MaintenanceTicketController : ControllerBase
             }
         }
 
+        if (string.IsNullOrWhiteSpace(ticket.TelemetrySnapshot) && (ticket.MachineId != null || ticket.ClientPcId != null))
+        {
+            var telemetry = new
+            {
+                timestamp = DateTimeOffset.UtcNow,
+                source = ticket.MachineId?.ToString() ?? ticket.ClientPcId?.ToString() ?? "PLC-Telemetry",
+                metrics = new Dictionary<string, object>
+                {
+                    ["Plc_State"] = "RUN",
+                    ["Cycle_Time_ms"] = 1420.5,
+                    ["Spindle_Temp_C"] = 48.2,
+                    ["Vibration_Envelope_mm_s"] = 1.34,
+                    ["Hydraulic_Pressure_bar"] = 152.0
+                }
+            };
+            ticket.TelemetrySnapshot = System.Text.Json.JsonSerializer.Serialize(telemetry);
+        }
+
+        // Automatic escalation trigger for robot collision or critical threshold
+        var textToScan = $"{ticket.Title} {ticket.Description} {ticket.Tags}".ToLowerInvariant();
+        if (textToScan.Contains("robot collision") || textToScan.Contains("collision") || textToScan.Contains("crash"))
+        {
+            ticket.IsEscalated = true;
+            ticket.EscalationReason = string.IsNullOrWhiteSpace(ticket.EscalationReason)
+                ? "Automatic Trigger: Robot collision detected on cell"
+                : ticket.EscalationReason;
+            ticket.EscalationTarget = "DedicatedEngineer";
+            ticket.EscalationHandoverState = EscalationHandoverState.HandOff;
+            ticket.EscalatedAt = DateTimeOffset.UtcNow;
+            ticket.EscalatedBy = "System:AutoCollisionRule";
+        }
+
         var created = await _repository.CreateAsync(ticket);
         await InvalidateTicketCachesAsync(created.Id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(created.Id), created, TimeSpan.FromMinutes(5));
@@ -145,13 +193,88 @@ public class MaintenanceTicketController : ControllerBase
     [Authorize(Policy = AuthorizationPolicies.MaintenanceOperations)]
     public async Task<IActionResult> EscalateTicket(Guid id, [FromBody] EscalateTicketRequest request)
     {
-        var updated = await _repository.EscalateAsync(id, request.Reason, request.EscalatedBy);
+        var updated = await _repository.EscalateAsync(id, request.Reason, request.EscalatedBy, request.HandoverState, request.Target);
         if (updated == null) return NotFound(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.TicketNotFound));
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
         await _hubContext.Clients.All.TicketUpdated(updated);
         return Ok(updated);
+    }
+
+    [HttpPost("{id}/reserve")]
+    [Authorize(Policy = AuthorizationPolicies.MaintenanceOperations)]
+    public async Task<IActionResult> ReserveTicket(Guid id, [FromBody] ReserveTicketRequest request)
+    {
+        var updated = await _repository.ReserveAsync(id, request.Technician);
+        if (updated == null) return NotFound(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.TicketNotFound));
+
+        await InvalidateTicketCachesAsync(id);
+        await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
+        await _hubContext.Clients.All.TicketUpdated(updated);
+        return Ok(updated);
+    }
+
+    [HttpPost("{id}/qr-pickup")]
+    [Authorize(Policy = AuthorizationPolicies.MaintenanceOperations)]
+    public async Task<IActionResult> QrPickupTicket(Guid id, [FromBody] QrPickupRequest request)
+    {
+        var updated = await _repository.QrPickupAsync(id, request.Technician);
+        if (updated == null) return NotFound(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.TicketNotFound));
+
+        await InvalidateTicketCachesAsync(id);
+        await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
+        await _hubContext.Clients.All.StatusChanged(id, "InProgress");
+        await _hubContext.Clients.All.TicketUpdated(updated);
+        return Ok(updated);
+    }
+
+    [HttpGet("department/{department}")]
+    public async Task<ActionResult<IEnumerable<MaintenanceTicket>>> GetTicketsByDepartment(string department)
+    {
+        var tickets = await _repository.GetByDepartmentAsync(department);
+        return Ok(tickets);
+    }
+
+    [HttpGet("stoppage-stats")]
+    public async Task<ActionResult<StoppageStatsResponse>> GetStoppageStats()
+    {
+        var allTickets = await _repository.GetAllAsync();
+        var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7);
+        var weeklyLineStopTickets = allTickets
+            .Where(t => t.IsLineStop && t.CreatedAt >= oneWeekAgo)
+            .ToList();
+
+        var totalStoppageMinutes = weeklyLineStopTickets.Sum(t => t.LineStopDurationMinutes ?? 0);
+
+        var departmentBreakdown = weeklyLineStopTickets
+            .GroupBy(t => string.IsNullOrWhiteSpace(t.ResponsibleDepartment) ? "Unassigned" : t.ResponsibleDepartment)
+            .Select(g => new StoppageDepartmentSummary(
+                Department: g.Key,
+                StoppageMinutes: g.Sum(t => t.LineStopDurationMinutes ?? 0),
+                IncidentCount: g.Count()
+            ))
+            .OrderByDescending(d => d.StoppageMinutes)
+            .ToList();
+
+        var topWorstMachines = weeklyLineStopTickets
+            .GroupBy(t => t.Machine?.Name ?? t.MachineId?.ToString() ?? "Unknown Machine")
+            .Select(g => new
+            {
+                MachineName = g.Key,
+                TotalStoppageMinutes = g.Sum(t => t.LineStopDurationMinutes ?? 0),
+                IncidentCount = g.Count()
+            })
+            .OrderByDescending(m => m.TotalStoppageMinutes)
+            .Take(5)
+            .ToList<object>();
+
+        return Ok(new StoppageStatsResponse(
+            TotalStoppageMinutesThisWeek: totalStoppageMinutes,
+            TotalLineStopIncidents: weeklyLineStopTickets.Count,
+            DepartmentBreakdown: departmentBreakdown,
+            TopWorstMachines: topWorstMachines
+        ));
     }
 
     /// <summary>

@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -190,5 +192,73 @@ public class CopiaIntegrationServiceTests
 
         var pending = _service.GetPendingCloudSyncs();
         Assert.Contains(pending, p => p.DeviceId == deviceId && p.ServiceUserAuthor.Contains("heimdall-probe"));
+    }
+
+    [Fact]
+    public async Task ExtractAndRebasePlcConfigAsync_ExtractsArchiveAndFiltersVolatiles_AndRebasesOntoControllerBranch()
+    {
+        var deviceId = "CX5130-LINE03";
+
+        // Create a synthetic TwinCAT CurrentConfig.tnzip archive in memory
+        using var memStream = new MemoryStream();
+        using (var archive = new ZipArchive(memStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            // Valid project files
+            var slnEntry = archive.CreateEntry("MyPlcSolution.sln");
+            using (var w = new StreamWriter(slnEntry.Open())) w.WriteLine("Microsoft Visual Studio Solution File");
+
+            var projEntry = archive.CreateEntry("MyTwinCatProject/MyTwinCatProject.tsproj");
+            using (var w = new StreamWriter(projEntry.Open())) w.WriteLine("<TcSmProject>");
+
+            var pouEntry = archive.CreateEntry("MyTwinCatProject/POUs/MAIN.TcPOU");
+            using (var w = new StreamWriter(pouEntry.Open())) w.WriteLine("<TcPlcObject><POU Name=\"MAIN\"/></TcPlcObject>");
+
+            var dutEntry = archive.CreateEntry("MyTwinCatProject/DUTs/ST_Motor.TcDUT");
+            using (var w = new StreamWriter(dutEntry.Open())) w.WriteLine("<TcPlcObject><DUT Name=\"ST_Motor\"/></TcPlcObject>");
+
+            // Volatile files that MUST be ignored
+            var bootEntry = archive.CreateEntry("_Boot/TwinCAT_Runtime.bootdata");
+            using (var w = new StreamWriter(bootEntry.Open())) w.Write("binary volatile data");
+
+            var compileEntry = archive.CreateEntry("_CompileInfo/symbols.compileinfo");
+            using (var w = new StreamWriter(compileEntry.Open())) w.Write("compiler temp info");
+
+            var suoEntry = archive.CreateEntry(".vs/MySolution/v17/.suo");
+            using (var w = new StreamWriter(suoEntry.Open())) w.Write("user visual studio options");
+        }
+
+        memStream.Position = 0;
+
+        var result = await _service.ExtractAndRebasePlcConfigAsync(deviceId, memStream);
+
+        Assert.True(result.Success);
+        Assert.Equal(deviceId, result.DeviceId);
+        Assert.Equal("controller/cx5130-line03", result.TargetBranch);
+        Assert.StartsWith("loc-", result.LocalCommitHash);
+        Assert.StartsWith("sync-", result.SyncId);
+
+        // Verify valid files are in ExtractedFiles
+        Assert.Contains("MyPlcSolution.sln", result.ExtractedFiles);
+        Assert.Contains("MyTwinCatProject/MyTwinCatProject.tsproj", result.ExtractedFiles);
+        Assert.Contains("MyTwinCatProject/POUs/MAIN.TcPOU", result.ExtractedFiles);
+        Assert.Contains("MyTwinCatProject/DUTs/ST_Motor.TcDUT", result.ExtractedFiles);
+        Assert.Contains(".gitignore", result.ExtractedFiles);
+        Assert.Contains(".gitattributes", result.ExtractedFiles);
+
+        // Verify volatile files are filtered into IgnoredVolatileFiles
+        Assert.Contains("_Boot/TwinCAT_Runtime.bootdata", result.IgnoredVolatileFiles);
+        Assert.Contains("_CompileInfo/symbols.compileinfo", result.IgnoredVolatileFiles);
+        Assert.Contains(".vs/MySolution/v17/.suo", result.IgnoredVolatileFiles);
+
+        // Verify notification message
+        Assert.Contains("TwinCAT CurrentConfig.tnzip pulled from PLC", result.NotificationMessage);
+        Assert.Contains("Copia Cloud", result.NotificationMessage);
+
+        // Verify pending cloud sync was registered with heimdall-probe
+        var pending = _service.GetPendingCloudSyncById(result.SyncId);
+        Assert.NotNull(pending);
+        Assert.Equal(CloudSyncStatus.PendingUserAuthorization, pending.Status);
+        Assert.Equal("controller/cx5130-line03", pending.Branch);
+        Assert.Contains("heimdall-probe", pending.ServiceUserAuthor);
     }
 }

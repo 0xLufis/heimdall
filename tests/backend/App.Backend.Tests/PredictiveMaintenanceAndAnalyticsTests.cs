@@ -44,12 +44,15 @@ public class FakeMaintenanceTicketRepository : IMaintenanceTicketRepository
     public Task<List<MaintenanceTicket>> GetAllAsync() => Task.FromResult(Tickets.ToList());
     public Task<MaintenanceTicket?> GetByIdAsync(Guid id) => Task.FromResult(Tickets.FirstOrDefault(t => t.Id == id));
     public Task<List<MaintenanceTicket>> GetByStatusAsync(string status) => Task.FromResult(Tickets.Where(t => t.Status == status).ToList());
+    public Task<List<MaintenanceTicket>> GetByDepartmentAsync(string department) => Task.FromResult(Tickets.Where(t => t.ResponsibleDepartment?.Equals(department, StringComparison.OrdinalIgnoreCase) == true).ToList());
     public Task<MaintenanceTicket> CreateAsync(MaintenanceTicket ticket) { Tickets.Add(ticket); return Task.FromResult(ticket); }
     public Task<MaintenanceTicket?> UpdateAsync(MaintenanceTicket ticket) => Task.FromResult<MaintenanceTicket?>(ticket);
     public Task<MaintenanceTicket?> UpdateStatusAsync(Guid id, string status) => Task.FromResult<MaintenanceTicket?>(null);
-    public Task<MaintenanceTicket?> EscalateAsync(Guid id, string reason, string escalatedBy) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> EscalateAsync(Guid id, string reason, string escalatedBy, App.Contracts.Enums.EscalationHandoverState handoverState = App.Contracts.Enums.EscalationHandoverState.Notification, string? target = null) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<MaintenanceTicket?> DeescalateAsync(Guid id, string resolvedBy, string? resolutionNotes = null) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<MaintenanceTicket?> SetPendingAsync(Guid id, App.Contracts.Enums.PendingReason reason, string? details) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> ReserveAsync(Guid id, string technician) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> QrPickupAsync(Guid id, string technician) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<bool> DeleteAsync(Guid id) => Task.FromResult(true);
     public Task<int> GetPendingAlertsCountAsync(TimeSpan timeSpan) => Task.FromResult(Tickets.Count(t => t.Status == "Open"));
     public Task<List<AgentEvent>> GetRecentAgentEventsAsync(int count) => Task.FromResult(new List<AgentEvent>());

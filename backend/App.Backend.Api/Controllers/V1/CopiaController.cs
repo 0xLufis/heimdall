@@ -48,6 +48,38 @@ public class CopiaController : ControllerBase
     }
 
     /// <summary>
+    /// Ingests a TwinCAT CurrentConfig.tnzip project archive from a PLC controller, extracts clean
+    /// project structure, rebases onto the configured controller branch, records local commit,
+    /// and generates a pending notification for the engineer to pull/push to Copia Cloud.
+    /// </summary>
+    [HttpPost("ingest-current-config")]
+    [Authorize]
+    public async Task<ActionResult<TwinCatExtractionResult>> IngestCurrentConfig(
+        [FromForm] string deviceId,
+        [FromForm] string? targetBranch,
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(deviceId))
+        {
+            return BadRequest(new { error = "DeviceId is required." });
+        }
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { error = "A valid CurrentConfig.tnzip archive file must be uploaded." });
+        }
+
+        await using var stream = file.OpenReadStream();
+        var result = await _copiaService.ExtractAndRebasePlcConfigAsync(deviceId, stream, targetBranch, cancellationToken);
+        if (!result.Success)
+        {
+            return BadRequest(new { error = result.Error ?? "Failed to extract TwinCAT archive." });
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Stage 2: Pulls/pushes the local Git repository into Copia Cloud using the user's personal API key.
     /// Enforces strict Copia EULA compliance by prohibiting user pooling or service accounts.
     /// </summary>
