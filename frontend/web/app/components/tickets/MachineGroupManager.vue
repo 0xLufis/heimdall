@@ -293,23 +293,23 @@ const totalClustersCount = computed(() => {
             </div>
           </div>
 
-          <p v-if="root.description" class="text-xs text-muted-foreground pl-5">{{ root.description }}</p>
+          <p v-if="root.description" class="text-xs text-muted-foreground pl-3 sm:pl-5">{{ root.description }}</p>
 
           <!-- Nested Subgroups Level 1 (Lines) -->
           <div
             v-for="sub in getChildGroups(root.id)"
             :key="sub.id"
-            class="ml-5 pl-4 border-l-2 border-primary/30 py-2 space-y-2"
+            class="ml-2 sm:ml-4 pl-2.5 sm:pl-3 border-l-2 border-primary/30 py-1.5 sm:py-2 space-y-1.5"
           >
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="w-2.5 h-2.5 rounded-full bg-primary"></div>
-                <span class="font-semibold text-xs text-foreground">{{ sub.name }}</span>
-                <Badge v-if="sub.leadEngineerName" variant="outline" class="text-[10px] border-primary/30 text-primary py-0 px-1.5 bg-primary/10">
+              <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <div class="w-2.5 h-2.5 rounded-full bg-primary shrink-0"></div>
+                <span class="font-semibold text-xs text-foreground truncate">{{ sub.name }}</span>
+                <Badge v-if="sub.leadEngineerName" variant="outline" class="text-[10px] border-primary/30 text-primary py-0 px-1.5 bg-primary/10 shrink-0">
                   Lead: {{ sub.leadEngineerName }}
                 </Badge>
               </div>
-              <div class="flex items-center gap-1">
+              <div class="flex items-center gap-0.5 sm:gap-1 shrink-0">
                 <button
                   class="p-1 rounded text-muted-foreground hover:text-primary hover:bg-muted transition cursor-pointer"
                   title="Add cell sub-group"
@@ -335,11 +335,11 @@ const totalClustersCount = computed(() => {
             </div>
 
             <!-- Technology cluster tags -->
-            <div v-if="sub.machineTypes && sub.machineTypes.length > 0" class="flex flex-wrap gap-1.5 pl-4">
+            <div v-if="sub.machineTypes && sub.machineTypes.length > 0" class="flex flex-wrap gap-1 pl-2 sm:pl-3">
               <span
                 v-for="mt in sub.machineTypes"
                 :key="mt"
-                class="text-[9px] font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border"
+                class="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border"
               >
                 {{ mt }}
               </span>
@@ -349,14 +349,14 @@ const totalClustersCount = computed(() => {
             <div
               v-for="cell in getChildGroups(sub.id)"
               :key="cell.id"
-              class="ml-4 pl-3 border-l-2 border-purple-500/30 py-1.5 space-y-1.5"
+              class="ml-2 sm:ml-3 pl-2 sm:pl-2.5 border-l-2 border-purple-500/30 py-1 space-y-1"
             >
               <div class="flex items-center justify-between">
-                <div class="flex items-center gap-1.5">
-                  <div class="w-2 h-2 rounded-full bg-purple-500"></div>
-                  <span class="font-medium text-xs text-foreground">{{ cell.name }}</span>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <div class="w-2 h-2 rounded-full bg-purple-500 shrink-0"></div>
+                  <span class="font-medium text-xs text-foreground truncate">{{ cell.name }}</span>
                 </div>
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-0.5 shrink-0">
                   <button
                     class="p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
                     title="Edit group"
@@ -373,7 +373,7 @@ const totalClustersCount = computed(() => {
                   </button>
                 </div>
               </div>
-              <div v-if="cell.machineTypes && cell.machineTypes.length > 0" class="flex flex-wrap gap-1 pl-3">
+              <div v-if="cell.machineTypes && cell.machineTypes.length > 0" class="flex flex-wrap gap-1 pl-2">
                 <span
                   v-for="cmt in cell.machineTypes"
                   :key="cmt"
@@ -388,16 +388,27 @@ const totalClustersCount = computed(() => {
       </div>
 
       <!-- Create / Edit Form Panel (5 cols on page, 6 on modal) -->
-      <div :class="isModal ? 'lg:col-span-6' : 'lg:col-span-5'">
-        <div class="rounded-2xl border border-border bg-card p-5 space-y-4 sticky top-6">
+      <div id="group-form-panel" :class="isModal ? 'lg:col-span-6' : 'lg:col-span-5'">
+        <div class="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 sticky top-6 shadow-xs">
           <div class="flex items-center justify-between pb-3 border-b border-border">
             <h4 class="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-2">
               <Cpu class="w-4 h-4 text-primary" />
               <span>{{ isCreating ? 'Create New Envelope Group' : isEditing ? 'Edit Envelope Group' : 'Group Configuration' }}</span>
             </h4>
-            <Badge v-if="isCreating || isEditing" variant="outline" class="text-[9px] uppercase font-bold border-primary/40 text-primary bg-primary/10">
-              {{ isCreating ? 'New' : 'Editing' }}
-            </Badge>
+            <div class="flex items-center gap-1.5">
+              <Badge v-if="isCreating || isEditing" variant="outline" class="text-[9px] uppercase font-bold border-primary/40 text-primary bg-primary/10">
+                {{ isCreating ? 'New' : 'Editing' }}
+              </Badge>
+              <button
+                v-if="isCreating || isEditing"
+                type="button"
+                @click="isCreating = false; isEditing = false"
+                class="p-1 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+                title="Dismiss drawer"
+              >
+                <X class="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
 
           <div v-if="!isCreating && !isEditing" class="p-10 text-center text-muted-foreground text-xs space-y-3">

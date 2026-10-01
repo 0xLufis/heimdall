@@ -43,6 +43,7 @@ watch(() => route.fullPath, (val) => {
     links.value = setLinks()
   }
 })
+import LanguageSwitcher from '~/components/common/LanguageSwitcher.vue'
 </script>
 
 <template>
@@ -52,8 +53,9 @@ watch(() => route.fullPath, (val) => {
       <Separator orientation="vertical" />
       <BaseBreadcrumbCustom :links="links" />
     </div>
-    <div class="ml-auto">
+    <div class="ml-auto flex items-center gap-2">
       <slot />
+      <LanguageSwitcher />
     </div>
   </header>
 </template>

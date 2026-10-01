@@ -7,6 +7,8 @@ import { useAppSettings } from '~/composables/useAppSettings'
 import { useAuthSession } from '~/composables/useAuthSession'
 import { useRbacPermission } from '~/composables/useRbacPermission'
 
+import { useFeatureFlags } from '~/composables/useFeatureFlags'
+
 /**
  * Resolves the appropriate component for a given navigation item.
  * @param {NavLink | NavGroup | NavSectionTitle} item - The navigation item to resolve.
@@ -21,23 +23,35 @@ function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): an
 
 const { user: authUser, userRole } = useAuthSession()
 const { checkCapability } = useRbacPermission()
+const { isModuleEnabled } = useFeatureFlags()
 
 /**
- * Filter navigation groups to hide empty sections if all items are hidden by RBAC
+ * Filter navigation groups to hide empty sections if all items are hidden by RBAC or module gating
  */
 const visibleNavMenu = computed(() => {
-  return navMenu.map(group => {
-    const visibleItems = group.items.filter((item: any) => {
-      if (item.hideWhenUnauthorized && item.requiredCapability) {
-        return checkCapability(item.requiredCapability)
+  return navMenu
+    .filter(group => {
+      if (group.requiredModule && !isModuleEnabled(group.requiredModule)) {
+        return false
       }
       return true
     })
-    return {
-      ...group,
-      items: visibleItems
-    }
-  }).filter(group => group.items.length > 0)
+    .map(group => {
+      const visibleItems = group.items.filter((item: any) => {
+        if (item.requiredModule && !isModuleEnabled(item.requiredModule)) {
+          return false
+        }
+        if (item.hideWhenUnauthorized && item.requiredCapability) {
+          return checkCapability(item.requiredCapability)
+        }
+        return true
+      })
+      return {
+        ...group,
+        items: visibleItems
+      }
+    })
+    .filter(group => group.items.length > 0)
 })
 
 /**

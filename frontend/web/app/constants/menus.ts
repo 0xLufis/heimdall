@@ -14,6 +14,7 @@ export const navMenu: NavMenu[] = [
         title: 'Inventory',
         icon: 'i-lucide-package',
         link: '/dashboard/inventory',
+        requiredModule: 'inventory',
       },
       {
         title: 'Machines',
@@ -39,16 +40,19 @@ export const navMenu: NavMenu[] = [
   },
   {
     heading: 'Data',
+    requiredModule: 'telemetry',
     items: [
       {
         title: 'Live Telemetry',
         icon: 'i-lucide-activity',
         link: '/dashboard/telemetry',
+        requiredModule: 'telemetry',
       },
       {
         title: 'Fleet Analytics',
         icon: 'i-lucide-bar-chart-3',
         link: '/dashboard/analytics',
+        requiredModule: 'telemetry',
       },
       {
         title: 'Telemetry Templates',
@@ -56,6 +60,7 @@ export const navMenu: NavMenu[] = [
         link: '/dashboard/telemetry/templates',
         requiredCapability: 'canManageEndpoints',
         requiredTooltip: RBAC_TOOLTIPS.ENDPOINT_MANAGEMENT,
+        requiredModule: 'telemetry',
       },
       {
         title: 'Telemetry Config',
@@ -63,21 +68,25 @@ export const navMenu: NavMenu[] = [
         link: '/dashboard/telemetry/configure',
         requiredCapability: 'canManageEndpoints',
         requiredTooltip: RBAC_TOOLTIPS.ENDPOINT_MANAGEMENT,
+        requiredModule: 'telemetry',
       },
     ],
   },
   {
     heading: 'Maintenance',
+    requiredModule: 'ticketing',
     items: [
       {
         title: 'Tickets',
         icon: 'i-lucide-wrench',
         link: '/dashboard/tickets',
+        requiredModule: 'ticketing',
       },
       {
         title: 'Delegations',
         icon: 'i-lucide-users',
         link: '/dashboard/delegations',
+        requiredModule: 'ticketing',
       },
     ],
   },
