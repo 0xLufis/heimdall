@@ -81,6 +81,15 @@ builder.Services.AddSingleton<MinimalOpcClient>(sp => (MinimalOpcClient)sp.GetRe
 builder.Services.AddSingleton<ITelemetryTriggerEngine, TelemetryTriggerEngine>();
 builder.Services.AddSingleton<TelemetryTriggerEngine>(sp => (TelemetryTriggerEngine)sp.GetRequiredService<ITelemetryTriggerEngine>());
 
+// Supervisor Watchdog & Recipe Change Watcher
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Supervisor.DaemonSupervisorService>();
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Supervisor.IDaemonSupervisor>(sp => sp.GetRequiredService<App.Agent.Daemon.Infrastructure.Supervisor.DaemonSupervisorService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<App.Agent.Daemon.Infrastructure.Supervisor.DaemonSupervisorService>());
+
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.FileSystem.RecipeWatcherService>();
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.FileSystem.IRecipeWatcherService>(sp => sp.GetRequiredService<App.Agent.Daemon.Infrastructure.FileSystem.RecipeWatcherService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<App.Agent.Daemon.Infrastructure.FileSystem.RecipeWatcherService>());
+
 // Hosted Worker Service
 builder.Services.AddSingleton<Worker>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Worker>());
