@@ -16,7 +16,8 @@ import {
   ExternalLink,
   PlusCircle,
   Hash,
-  ArrowUpRight
+  ArrowUpRight,
+  Archive
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -24,6 +25,14 @@ const { isOpen, x, y, contextData, isNativeMenuBypassed, closeContextMenu, unloc
 
 const isCopied = ref(false)
 const showNativeUnlockNotice = ref(false)
+
+const decommissionMachineFromMenu = () => {
+  const mId = contextData.value?.machineId || contextData.value?.entityId
+  closeContextMenu()
+  if (mId) {
+    router.push({ path: '/dashboard/machines', query: { decommission: mId } })
+  }
+}
 
 const displayName = computed(() => {
   if (!contextData.value) return 'Entity'
@@ -289,6 +298,17 @@ onBeforeUnmount(() => {
         >
           <FolderTree class="w-3.5 h-3.5 text-zinc-400 group-hover:text-purple-400 transition-colors" />
           <span>Inspect Component Tree</span>
+        </button>
+
+        <!-- 7b. Decommission Machine (for machine entities) -->
+        <button
+          v-if="contextData?.entityType === 'machine' || contextData?.machineId"
+          type="button"
+          @click="decommissionMachineFromMenu"
+          class="w-full px-3 py-1.5 flex items-center gap-2.5 text-left text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors group cursor-pointer"
+        >
+          <Archive class="w-3.5 h-3.5 text-rose-400 group-hover:text-rose-300 transition-colors" />
+          <span>Decommission Machine</span>
         </button>
 
         <!-- Divider -->

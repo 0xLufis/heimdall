@@ -186,6 +186,10 @@ class PartsInventoryStore {
     }
   }
 
+  public getPartById(id: string): InventoryPart | undefined {
+    return this.getPartByIdOrIdentifier(id)
+  }
+
   public getPartByIdOrIdentifier(lookup: string, targetCurrency: string = 'EUR'): InventoryPart | undefined {
     const q = lookup.trim().toLowerCase()
     const part = Array.from(this.parts.values()).find(p => 
@@ -691,7 +695,7 @@ class PartsInventoryStore {
   public editPart(
     partId: string,
     updates: Partial<InventoryPart>,
-    actor: { id: string; name: string }
+    actor: { id: string; name: string } = { id: 'sys-inventory', name: 'System Inventory Engine' }
   ): InventoryPart {
     const part = this.parts.get(partId)
     if (!part) {
@@ -723,6 +727,9 @@ class PartsInventoryStore {
       part.minQuantityScalar = Number(updates.minQuantityScalar)
       part.effectiveMinQuantity = Math.round(part.minQuantity * part.minQuantityScalar * 100) / 100
     }
+    if (updates.linkedMachineId !== undefined) part.linkedMachineId = updates.linkedMachineId
+    if (updates.stationId !== undefined) part.stationId = updates.stationId
+    if (updates.specFields) part.specFields = { ...part.specFields, ...updates.specFields }
 
     part.updatedAt = new Date().toISOString()
     this.parts.set(part.id, part)
