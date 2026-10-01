@@ -26,6 +26,37 @@ default:
 # Development Environment
 # ------------------------------------------------------------------------------
 
+# One-command dev setup: verify prerequisites, check ports, initialize DB and seed enterprise dataset
+dev-setup *ARGS:
+    @python3 tools/dev_setup.py {{ARGS}}
+
+# Launch optional pgAdmin 4 portal targeting local PostgreSQL development instance
+pgadmin ACTION="up":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{ACTION}}" in
+        up|start)
+            docker compose --profile pgadmin up -d pgadmin
+            echo "✓ pgAdmin 4 portal online at http://localhost:5050 (admin@heimdall.local / secret)."
+            ;;
+        down|stop)
+            docker compose --profile pgadmin stop pgadmin
+            echo "✓ pgAdmin 4 portal stopped."
+            ;;
+        restart)
+            docker compose --profile pgadmin stop pgadmin
+            sleep 1
+            docker compose --profile pgadmin up -d pgadmin
+            echo "✓ pgAdmin 4 portal restarted at http://localhost:5050."
+            ;;
+        logs)
+            docker compose --profile pgadmin logs -f --tail=50 pgadmin
+            ;;
+        *)
+            echo "Available pgadmin actions: up, down, restart, logs"
+            ;;
+    esac
+
 # Start development stack and launch TUI dashboard (pass --daemon for background)
 dev *ARGS:
     #!/usr/bin/env bash
