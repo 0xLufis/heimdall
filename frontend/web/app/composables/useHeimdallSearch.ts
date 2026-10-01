@@ -41,7 +41,7 @@ const DEFAULT_CONFIG: SearchInstanceConfig = {
   defaultEndpoints: ['/api/proxy/inventory/search'],
   allowedTagKeys: ['line', 'tech', 'status', 'mfr', 'manufacturer', 'serial', 'location', 'category', 'station', 'type', 'isstock', 'ip', 'mac', 'spec', 'cost', 'role', 'quality', 'unit'],
   minCharsForSuggestions: 2,
-  debounceMs: 250,
+  debounceMs: 150,
   enableAutoTagging: true,
   showGlobalShortcut: true,
   enableDiagnostics: true
@@ -203,6 +203,8 @@ export const useHeimdallSearch = (
     return { matches: false, score: 0.0 }
   }
 
+  const localQueryCache = new Map<string, { primary: SearchResultItem[]; cross: SearchResultItem[]; timestamp: number }>()
+
   // Execute multi-tier search across instance primary and cross-table indexing
   const executeSearch = async (queryStr: string = effectiveQueryString.value) => {
     const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
@@ -215,9 +217,21 @@ export const useHeimdallSearch = (
       return
     }
 
-    isLoading.value = true
+    const cacheKey = `${config.instanceId}:${queryStr}:${tags.value.map(t => `${t.key}=${t.value}`).join(';')}`
+    const cached = localQueryCache.get(cacheKey)
+    if (cached && (Date.now() - cached.timestamp) < 60000) {
+      primaryResults.value = cached.primary
+      crossTableResults.value = cached.cross
+      results.value = [...cached.primary, ...cached.cross]
+    } else {
+      isLoading.value = true
+    }
+
     try {
-      const cleanQ = rawInput.value.toLowerCase().trim()
+      let cleanQ = (rawInput.value || '').toLowerCase().trim()
+      if (!cleanQ && queryStr) {
+        cleanQ = queryStr.replace(/(?:\w+):(?:"[^"]+"|\S+)/g, '').replace(/[@#!*%](?:"[^"]+"|\S+)/g, '').toLowerCase().trim()
+      }
       let primary: SearchResultItem[] = []
       let cross: SearchResultItem[] = []
 
@@ -426,6 +440,7 @@ export const useHeimdallSearch = (
       primaryResults.value = primary
       crossTableResults.value = cross
       results.value = [...primary, ...cross]
+      localQueryCache.set(cacheKey, { primary, cross, timestamp: Date.now() })
 
       // Record GDPR-compliant diagnostics
       const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startTime

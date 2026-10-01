@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
 import {
@@ -17,7 +17,9 @@ import {
   PlusCircle,
   Hash,
   ArrowUpRight,
-  Archive
+  Archive,
+  Download,
+  Share2
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -25,6 +27,14 @@ const { isOpen, x, y, contextData, isNativeMenuBypassed, closeContextMenu, unloc
 
 const isCopied = ref(false)
 const showNativeUnlockNotice = ref(false)
+const focusedIndex = ref(0)
+const menuContainerRef = ref<HTMLElement | null>(null)
+
+watch(isOpen, (open) => {
+  if (open) {
+    focusedIndex.value = 0
+  }
+})
 
 const decommissionMachineFromMenu = () => {
   const mId = contextData.value?.machineId || contextData.value?.entityId
@@ -120,6 +130,36 @@ const navigateToComponentTree = () => {
   }
 }
 
+const openInNewTab = () => {
+  let url = '/dashboard'
+  if (contextData.value?.entityType === 'machine' || contextData.value?.machineId) {
+    url = `/dashboard/machines?id=${encodeURIComponent(contextData.value.machineId || contextData.value.entityId || '')}`
+  } else if (contextData.value?.entityType === 'controller' || contextData.value?.controllerId) {
+    url = `/dashboard/clients?selected=${encodeURIComponent(contextData.value.controllerId || contextData.value.entityId || '')}`
+  } else if (contextData.value?.entityType === 'ticket') {
+    url = `/dashboard/tickets?ticketId=${encodeURIComponent(contextData.value.entityId || '')}`
+  }
+  closeContextMenu()
+  if (typeof window !== 'undefined') {
+    window.open(url, '_blank')
+  }
+}
+
+const exportEntityData = async () => {
+  const data = { ...contextData.value, exportedAt: new Date().toISOString() }
+  const jsonStr = JSON.stringify(data, null, 2)
+  try {
+    await navigator.clipboard.writeText(jsonStr)
+    isCopied.value = true
+    setTimeout(() => {
+      isCopied.value = false
+      closeContextMenu()
+    }, 1000)
+  } catch {
+    closeContextMenu()
+  }
+}
+
 const handleCopyHandle = async () => {
   const text = contextData.value?.handle || contextData.value?.entityId || displayName.value
   if (!text) return
@@ -143,9 +183,34 @@ const handleUnlockNative = () => {
   }, 4000)
 }
 
+const getVisibleMenuItems = (): HTMLElement[] => {
+  if (!menuContainerRef.value) return []
+  return Array.from(menuContainerRef.value.querySelectorAll('[data-context-item]')) as HTMLElement[]
+}
+
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && isOpen.value) {
+  if (!isOpen.value) return
+
+  if (e.key === 'Escape') {
+    e.preventDefault()
     closeContextMenu()
+    return
+  }
+
+  const items = getVisibleMenuItems()
+  if (items.length === 0) return
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    focusedIndex.value = (focusedIndex.value + 1) % items.length
+    items[focusedIndex.value]?.focus()
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    focusedIndex.value = (focusedIndex.value - 1 + items.length) % items.length
+    items[focusedIndex.value]?.focus()
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    items[focusedIndex.value]?.click()
   }
 }
 
@@ -178,6 +243,9 @@ onBeforeUnmount(() => {
   <div v-if="isOpen" class="fixed inset-0 z-50 pointer-events-none">
     <!-- Context Menu Panel -->
     <div
+      ref="menuContainerRef"
+      role="menu"
+      aria-label="Entity Context Menu"
       class="pointer-events-auto absolute w-64 bg-zinc-950/95 border border-zinc-800 rounded-xl shadow-2xl backdrop-blur text-xs text-zinc-200 py-1.5 overflow-hidden transition-all duration-100 ease-out select-none"
       :style="{ left: `${x}px`, top: `${y}px` }"
       @click.stop
@@ -199,8 +267,10 @@ onBeforeUnmount(() => {
         <!-- 1. Go to Machine -->
         <button
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="navigateToMachine"
-          class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <div class="flex items-center gap-2.5">
             <Factory class="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-400 transition-colors" />
@@ -212,8 +282,10 @@ onBeforeUnmount(() => {
         <!-- 2. Go to Node / Controller -->
         <button
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="navigateToNode"
-          class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <div class="flex items-center gap-2.5">
             <Monitor class="w-3.5 h-3.5 text-zinc-400 group-hover:text-sky-400 transition-colors" />
@@ -222,12 +294,29 @@ onBeforeUnmount(() => {
           <ArrowUpRight class="w-3 h-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
 
-        <!-- 3. Go to Owner (Team) -->
+        <!-- 3. Open in New Tab -->
+        <button
+          type="button"
+          role="menuitem"
+          data-context-item="true"
+          @click="openInNewTab"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
+        >
+          <div class="flex items-center gap-2.5">
+            <ExternalLink class="w-3.5 h-3.5 text-zinc-400 group-hover:text-primary transition-colors" />
+            <span>Open in New Tab</span>
+          </div>
+          <span class="text-[9px] font-mono text-zinc-500 group-hover:text-zinc-300">^V</span>
+        </button>
+
+        <!-- 4. Go to Owner (Team) -->
         <button
           v-if="contextData?.ownerTeam"
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="navigateToOwnerTeam"
-          class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <div class="flex items-center gap-2.5 truncate pr-2">
             <Users class="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-400 transition-colors shrink-0" />
@@ -236,12 +325,14 @@ onBeforeUnmount(() => {
           <ArrowUpRight class="w-3 h-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </button>
 
-        <!-- 4. Go to Owner (Person / Assigned Technician) -->
+        <!-- 5. Go to Owner (Person / Assigned Technician) -->
         <button
           v-if="contextData?.ownerPerson"
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="navigateToOwnerPerson"
-          class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <div class="flex items-center gap-2.5 truncate pr-2">
             <UserCheck class="w-3.5 h-3.5 text-zinc-400 group-hover:text-teal-400 transition-colors shrink-0" />
@@ -253,11 +344,13 @@ onBeforeUnmount(() => {
         <!-- Divider -->
         <div class="my-1 border-t border-zinc-800/70"></div>
 
-        <!-- 5. Tickets & Incident Creation -->
+        <!-- 6. Tickets & Incident Creation -->
         <button
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="navigateToTickets(false)"
-          class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <div class="flex items-center gap-2.5">
             <Wrench class="w-3.5 h-3.5 text-zinc-400 group-hover:text-orange-400 transition-colors" />
@@ -273,39 +366,47 @@ onBeforeUnmount(() => {
 
         <button
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="navigateToTickets(true)"
-          class="w-full px-3 py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <PlusCircle class="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-400 transition-colors" />
           <span>Create Incident Ticket</span>
         </button>
 
-        <!-- 6. Telemetry & Diagnostics -->
+        <!-- 7. Telemetry & Diagnostics -->
         <button
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="navigateToTelemetry"
-          class="w-full px-3 py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <Activity class="w-3.5 h-3.5 text-zinc-400 group-hover:text-indigo-400 transition-colors" />
           <span>Live Telemetry & Diagnostics</span>
         </button>
 
-        <!-- 7. Component Tree -->
+        <!-- 8. Component Tree -->
         <button
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="navigateToComponentTree"
-          class="w-full px-3 py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <FolderTree class="w-3.5 h-3.5 text-zinc-400 group-hover:text-purple-400 transition-colors" />
           <span>Inspect Component Tree</span>
         </button>
 
-        <!-- 7b. Decommission Machine (for machine entities) -->
+        <!-- 8b. Decommission Machine (for machine entities) -->
         <button
           v-if="contextData?.entityType === 'machine' || contextData?.machineId"
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="decommissionMachineFromMenu"
-          class="w-full px-3 py-1.5 flex items-center gap-2.5 text-left text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors group cursor-pointer"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center gap-2.5 text-left text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors group cursor-pointer focus:bg-rose-500/15 focus:outline-hidden"
         >
           <Archive class="w-3.5 h-3.5 text-rose-400 group-hover:text-rose-300 transition-colors" />
           <span>Decommission Machine</span>
@@ -314,11 +415,13 @@ onBeforeUnmount(() => {
         <!-- Divider -->
         <div class="my-1 border-t border-zinc-800/70"></div>
 
-        <!-- 8. Copy Identifier / Handle -->
+        <!-- 9. Copy Identifier / Handle -->
         <button
           type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="handleCopyHandle"
-          class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <div class="flex items-center gap-2.5">
             <Check v-if="isCopied" class="w-3.5 h-3.5 text-emerald-400" />
@@ -328,11 +431,28 @@ onBeforeUnmount(() => {
           <span class="text-[10px] text-zinc-500 font-mono">Clip</span>
         </button>
 
-        <!-- 9. Open Browser Context Menu (Native fallback) -->
+        <!-- 10. Export Data (JSON) -->
         <button
           type="button"
+          role="menuitem"
+          data-context-item="true"
+          @click="exportEntityData"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
+        >
+          <div class="flex items-center gap-2.5">
+            <Download class="w-3.5 h-3.5 text-zinc-400 group-hover:text-sky-300" />
+            <span>Export Entity Data (JSON)</span>
+          </div>
+          <span class="text-[10px] text-zinc-500 font-mono">Export</span>
+        </button>
+
+        <!-- 11. Open Browser Context Menu (Native fallback) -->
+        <button
+          type="button"
+          role="menuitem"
+          data-context-item="true"
           @click="handleUnlockNative"
-          class="w-full px-3 py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group text-zinc-400"
+          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group text-zinc-400 cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
         >
           <div class="flex items-center gap-2.5">
             <Globe class="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-300" />

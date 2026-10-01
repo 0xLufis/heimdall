@@ -6,11 +6,11 @@ This document outlines the redesign, stability fixes, and UX improvements for th
 
 ## 1. Interaction Model & Stability Refinements
 
-- [ ] **Elimination of Jitter & Premature Modal Close**:
+- [x] **Elimination of Jitter & Premature Modal Close**:
   - Eliminate layout jumping caused by asynchronous result height shifts and unbuffered search results.
   - Fix focus loss and accidental dropdown dismissal during rapid typing or filter navigation.
   - Enforce smooth debouncing (150ms) with instant local cache lookup.
-- [ ] **Predictable Keyboard Navigation (`telescope.nvim` Style)**:
+- [x] **Predictable Keyboard Navigation (`telescope.nvim` Style)**:
   - Implement full keyboard control:
     - `Ctrl+j` / `Down Arrow`: Navigate down result list.
     - `Ctrl+k` / `Up Arrow`: Navigate up result list.
@@ -24,7 +24,7 @@ This document outlines the redesign, stability fixes, and UX improvements for th
 
 ## 2. Advanced Search Menu & Split Preview
 
-- [ ] **Streamlined UI with Advanced Filter Menu**:
+- [x] **Streamlined UI with Advanced Filter Menu**:
   - Provide a clean, minimal search bar by default with an expandable drawer or hotkey (`Ctrl+f`) for advanced scoping.
   - Filter scoping tags: `@machine`, `#ticket`, `!controller`, `*part`, `%alarm`.
   - Dedicated side-by-side preview panel showing entity details (e.g. machine live status, ticket description, part inventory count) without navigating away from search results.

@@ -28,6 +28,7 @@ const emit = defineEmits<{
 const router = useRouter()
 const containerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
+const dropdownRef = ref<any>(null)
 const isInteractingWithDropdown = ref(false)
 const { focusTriggerSignal, isOpen: isGlobalModalOpen } = useGlobalSearchModal()
 
@@ -87,6 +88,29 @@ watchDebounced(
   { debounce: props.config?.debounceMs ?? 250 }
 )
 
+const getResultUrl = (item: SearchResultItem): string => {
+  if (item.link) return item.link
+  if (item.itemType === 'ClientPc' || item.itemType === 'endpoint') {
+    return `/dashboard/clients?selected=${encodeURIComponent(item.id)}&hostname=${encodeURIComponent(item.name)}`
+  }
+  if (item.itemType === 'Machine' || item.itemType === 'station') {
+    return `/dashboard/machines?id=${encodeURIComponent(item.id)}&search=${encodeURIComponent(item.name)}`
+  }
+  if (item.itemType === 'Ticket') {
+    return `/dashboard/tickets?ticketId=${encodeURIComponent(item.id)}`
+  }
+  return `/dashboard/inventory/${encodeURIComponent(item.id)}`
+}
+
+const handleResultSelectNewTab = (item: SearchResultItem) => {
+  emit('select-result', item)
+  isFocused.value = false
+  isMenuExplicitlyClosed.value = true
+  if (typeof window !== 'undefined') {
+    window.open(getResultUrl(item), '_blank')
+  }
+}
+
 const handleKeydown = (e: KeyboardEvent) => {
   // 1. Ctrl+Space / Cmd+Space: IntelliSense autocomplete trigger
   if ((e.ctrlKey || e.metaKey) && (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar')) {
@@ -97,18 +121,46 @@ const handleKeydown = (e: KeyboardEvent) => {
     return
   }
 
-  // 2. ArrowDown: Open dropdown if closed
-  if (e.key === 'ArrowDown') {
+  // 2. Telescope Navigate Down: ArrowDown or Ctrl+J
+  if (e.key === 'ArrowDown' || (e.ctrlKey && e.key.toLowerCase() === 'j')) {
+    e.preventDefault()
     if (isMenuExplicitlyClosed.value || !showDropdown.value) {
-      e.preventDefault()
       isMenuExplicitlyClosed.value = false
       isFocused.value = true
       handleInputChange(rawInput.value)
+    } else {
+      dropdownRef.value?.navigateNext()
+    }
+    return
+  }
+
+  // 3. Telescope Navigate Up: ArrowUp or Ctrl+K
+  if (e.key === 'ArrowUp' || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
+    e.preventDefault()
+    if (showDropdown.value) {
+      dropdownRef.value?.navigatePrev()
+    }
+    return
+  }
+
+  // 4. Telescope Filter Drawer: Ctrl+F
+  if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+    e.preventDefault()
+    dropdownRef.value?.toggleFilterDrawer()
+    return
+  }
+
+  // 5. Telescope Open in New Tab: Ctrl+V or Ctrl+X
+  if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'x')) {
+    const selected = dropdownRef.value?.getSelectedResult()
+    if (showDropdown.value && selected) {
+      e.preventDefault()
+      handleResultSelectNewTab(selected)
       return
     }
   }
 
-  // 3. Tab: Complete top suggestion if dropdown is open
+  // 6. Tab: Complete top suggestion or cycle category tabs
   if (e.key === 'Tab' && showDropdown.value) {
     if (activePendingKey.value && valueSuggestions.value.length > 0) {
       e.preventDefault()
@@ -126,11 +178,21 @@ const handleKeydown = (e: KeyboardEvent) => {
       selectKeySuggestion(matchingKeys.value[0].key)
       inputRef.value?.focus()
       return
+    } else {
+      e.preventDefault()
+      dropdownRef.value?.cycleView(e.shiftKey ? -1 : 1)
+      return
     }
   }
 
+  // 7. Enter: Activate selected result or execute search
   if (e.key === 'Enter') {
     e.preventDefault()
+    const selected = dropdownRef.value?.getSelectedResult()
+    if (showDropdown.value && selected) {
+      handleResultSelect(selected)
+      return
+    }
     if (activePendingKey.value && valueSuggestions.value.length > 0) {
       selectValueSuggestion(valueSuggestions.value[0].value)
       emit('search', effectiveQueryString.value)
@@ -366,6 +428,7 @@ onUnmounted(() => {
       @touchend="setTimeout(() => { isInteractingWithDropdown = false }, 200)"
     >
       <AutoTagSuggestionDropdown
+        ref="dropdownRef"
         :auto-suggestions="autoSuggestions"
         :results="results"
         :primary-results="primaryResults"

@@ -389,7 +389,45 @@ export class AutoTagEngine {
       })
     }
 
-    const remainingText = input.replace(tagRegex, ' ').replace(/\s+/g, ' ').trim()
+    // Telescope-style scoping prefix tags: @machine, #ticket, !controller, *part, %alarm
+    const prefixRegex = /(?:^|\s)([@#!*%])(?:"([^"]+)"|([a-zA-Z0-9_-]+))/g
+    while ((match = prefixRegex.exec(input)) !== null) {
+      const prefix = match[1]
+      const rawVal = match[2] || match[3]
+      let key = 'keyword'
+      let value = rawVal
+
+      if (prefix === '@') {
+        key = 'station'
+        value = rawVal.toLowerCase() === 'machine' || rawVal.toLowerCase() === 'station' ? 'all' : rawVal
+      } else if (prefix === '#') {
+        key = 'ticket'
+        value = rawVal.toLowerCase() === 'ticket' ? 'all' : rawVal
+      } else if (prefix === '!') {
+        key = 'host'
+        value = rawVal.toLowerCase() === 'controller' || rawVal.toLowerCase() === 'ipc' ? 'all' : rawVal
+      } else if (prefix === '*') {
+        key = 'part'
+        value = rawVal.toLowerCase() === 'part' || rawVal.toLowerCase() === 'inventory' ? 'all' : rawVal
+      } else if (prefix === '%') {
+        key = 'status'
+        value = rawVal.toLowerCase() === 'alarm' ? 'maintenance' : rawVal
+      }
+
+      tags.push({
+        id: `tag-${key}-${value}`,
+        key,
+        value,
+        label: `${prefix}${value}`,
+        removable: true
+      })
+    }
+
+    const remainingText = input
+      .replace(tagRegex, ' ')
+      .replace(prefixRegex, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
 
     return {
       tags,
