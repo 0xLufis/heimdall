@@ -24,9 +24,12 @@ const isNativeMenuBypassed = ref(false)
 let bypassTimer: ReturnType<typeof setTimeout> | null = null
 
 export function useGlobalContextMenu() {
-  const openContextMenu = (event: MouseEvent, data: ContextMenuContextData) => {
+  const openContextMenu = (
+    event: MouseEvent | TouchEvent | { clientX: number; clientY: number; shiftKey?: boolean; preventDefault?: () => void; stopPropagation?: () => void },
+    data: ContextMenuContextData
+  ) => {
     // If Shift is pressed or native menu bypass is active, let native browser menu open
-    if (event.shiftKey || isNativeMenuBypassed.value) {
+    if (('shiftKey' in event && event.shiftKey) || isNativeMenuBypassed.value) {
       if (isNativeMenuBypassed.value) {
         isNativeMenuBypassed.value = false
         if (bypassTimer) {
@@ -38,16 +41,31 @@ export function useGlobalContextMenu() {
       return
     }
 
-    event.preventDefault()
-    event.stopPropagation()
+    if (typeof event.preventDefault === 'function') event.preventDefault()
+    if (typeof event.stopPropagation === 'function') event.stopPropagation()
+
+    // Determine coordinates from MouseEvent or TouchEvent
+    let clientX = 100
+    let clientY = 100
+
+    if ('touches' in event && event.touches && event.touches.length > 0) {
+      clientX = event.touches[0].clientX
+      clientY = event.touches[0].clientY
+    } else if ('changedTouches' in event && (event as any).changedTouches && (event as any).changedTouches.length > 0) {
+      clientX = (event as any).changedTouches[0].clientX
+      clientY = (event as any).changedTouches[0].clientY
+    } else if ('clientX' in event) {
+      clientX = event.clientX
+      clientY = event.clientY
+    }
 
     // Clamp coordinates to viewport dimensions to avoid overflow
     const menuWidth = 260
-    const menuHeight = 340
+    const menuHeight = 360
     const padding = 12
 
-    let targetX = event.clientX
-    let targetY = event.clientY
+    let targetX = clientX
+    let targetY = clientY
 
     if (typeof window !== 'undefined') {
       if (targetX + menuWidth > window.innerWidth - padding) {
@@ -79,6 +97,34 @@ export function useGlobalContextMenu() {
     }, 10000)
   }
 
+  /**
+   * Helper factory for binding long-press gestures on mobile/tablet screens
+   */
+  const bindLongPress = (data: ContextMenuContextData, delayMs: number = 500) => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const onTouchstart = (e: TouchEvent) => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        openContextMenu(e, data)
+      }, delayMs)
+    }
+
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
+    }
+
+    return {
+      onTouchstart,
+      onTouchend: clearTimer,
+      onTouchmove: clearTimer,
+      onTouchcancel: clearTimer
+    }
+  }
+
   return {
     isOpen,
     x,
@@ -87,6 +133,7 @@ export function useGlobalContextMenu() {
     isNativeMenuBypassed,
     openContextMenu,
     closeContextMenu,
-    unlockNativeMenu
+    unlockNativeMenu,
+    bindLongPress
   }
 }

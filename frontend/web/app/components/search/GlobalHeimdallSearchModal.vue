@@ -150,7 +150,7 @@ onUnmounted(() => {
   <Dialog :open="isOpen" @update:open="isOpen = $event">
     <DialogContent
       :show-close="false"
-      class="max-w-2xl bg-card/95 backdrop-blur-xl border-border text-foreground p-6 rounded-2xl shadow-2xl"
+      class="max-w-4xl lg:max-w-5xl w-full bg-card/95 backdrop-blur-xl border-border text-foreground p-5 sm:p-6 rounded-2xl shadow-2xl transition-all duration-200"
       @pointer-down-outside="(e) => {
         const rawTarget = (e as any).detail?.originalEvent?.target || (e as any).target
         const target = rawTarget as HTMLElement | null

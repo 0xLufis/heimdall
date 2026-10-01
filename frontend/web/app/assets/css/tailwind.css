@@ -322,3 +322,29 @@
   @apply bg-muted text-muted-foreground border border-border text-xs font-medium;
 }
 
+/* Card and Badge Fill-Mode Variants (docs/TODO/UI.TODO.md) */
+@utility card-outline {
+  @apply bg-transparent border border-border shadow-xs;
+}
+@utility card-semi-filled {
+  @apply bg-card/60 backdrop-blur-xs border border-border shadow-xs;
+}
+@utility card-solid-filled {
+  @apply bg-card border border-border shadow-xs;
+}
+
+@utility badge-outline {
+  @apply bg-transparent border border-border text-foreground font-mono text-xs;
+}
+@utility badge-semi-filled {
+  @apply bg-muted/50 border border-border text-foreground font-mono text-xs;
+}
+@utility badge-solid-filled {
+  @apply bg-muted border border-border/80 text-foreground font-mono text-xs;
+}
+
+/* Floor-Ready Touchscreen Target Standards (44x44px minimum) */
+@utility touch-target {
+  @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+}
+
