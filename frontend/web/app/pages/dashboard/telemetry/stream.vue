@@ -41,8 +41,7 @@ import { useFeatureFlags } from '~/composables/useFeatureFlags'
 import type { IndustrialController } from '~/types/domain'
 
 definePageMeta({
-  layout: 'shadcn-dashboard',
-  alias: ['/dashboard/telemetry']
+  layout: 'shadcn-dashboard'
 })
 
 interface DiagnosticSnapshotSummary {

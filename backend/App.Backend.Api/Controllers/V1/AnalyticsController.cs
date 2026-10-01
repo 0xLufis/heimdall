@@ -40,13 +40,14 @@ public class AnalyticsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets rolling telemetry trends and statistical Z-score anomalies for a machine metric.
+    /// Gets rolling telemetry trends, statistical regression corridors, and recipe-based failure forecast.
     /// </summary>
     [HttpGet("trends")]
     public ActionResult<MachineTrendSeriesDto> GetMachineTrends(
         [FromQuery] string machineId = "m-op20",
         [FromQuery] string metric = "cycle_time",
-        [FromQuery] string range = "8h")
+        [FromQuery] string range = "8h",
+        [FromQuery] string? recipeId = null)
     {
         TimeSpan timeRange = range.ToLower() switch
         {
@@ -56,7 +57,7 @@ public class AnalyticsController : ControllerBase
             _ => TimeSpan.FromHours(8)
         };
 
-        var trends = _predictiveService.GetMachineTrends(machineId, metric, timeRange);
+        var trends = _predictiveService.GetMachineTrends(machineId, metric, timeRange, recipeId);
         return Ok(trends);
     }
 

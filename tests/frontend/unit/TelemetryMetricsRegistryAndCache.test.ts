@@ -251,7 +251,7 @@ describe('Telemetry Metrics Registry & Cached Telemetry Store', () => {
       // Wait for async onMounted to complete
       await new Promise(r => setTimeout(r, 50))
 
-      expect(wrapper.text()).toContain('Predictive Telemetry Drift & Anomaly Tracker')
+      expect(wrapper.text()).toContain('Metric Trends')
       expect(wrapper.text()).toContain('Cycle Time Deviation (ms)')
       expect(wrapper.text()).toContain('Nominal Target')
       expect(wrapper.text()).toContain('Period Mean (μ)')
