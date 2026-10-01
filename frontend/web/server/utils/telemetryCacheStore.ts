@@ -14,14 +14,34 @@ export interface TelemetryMetricDefinition {
   description?: string
   unit: string
   category: string
+  dataType?: 'Boolean' | 'Int' | 'Float' | 'String'
+  updateFrequencyMs?: number
   sourceType: string
   pathOrSymbol?: string
+  activeControllers?: string[]
   nominalValue: number
   upperTolerance: number
   lowerTolerance: number
   isUserDefined: boolean
   createdAt: string
   updatedAt?: string
+}
+
+export interface TelemetryDataPointCatalogItem {
+  id: string
+  key: string
+  name: string
+  description: string
+  category: string
+  dataType: 'Boolean' | 'Int' | 'Float' | 'String'
+  unit: string
+  updateFrequencyMs: number
+  sourceType: string
+  pathOrSymbol: string
+  activeControllers: string[]
+  nominalValue: number
+  upperTolerance: number
+  lowerTolerance: number
 }
 
 export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
@@ -32,8 +52,11 @@ export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
     description: 'Actual operating station cycle duration compared to engineered tact time',
     unit: 'ms',
     category: 'cycle',
+    dataType: 'Float',
+    updateFrequencyMs: 50,
     sourceType: 'BeckhoffAds',
     pathOrSymbol: 'MAIN.fbStation.nActualCycleTime',
+    activeControllers: ['ctrl-op20-ads', 'ctrl-op50-ads'],
     nominalValue: 1200.0,
     upperTolerance: 1280.0,
     lowerTolerance: 1120.0,
@@ -47,8 +70,11 @@ export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
     description: 'Cyclic task scheduling jitter measured across TwinCAT real-time kernel cores',
     unit: 'μs',
     category: 'jitter',
+    dataType: 'Float',
+    updateFrequencyMs: 10,
     sourceType: 'BeckhoffAds',
     pathOrSymbol: 'TwinCAT_System.TaskInfo.CycleJitter',
+    activeControllers: ['ctrl-op20-ads', 'ctrl-op10-ads'],
     nominalValue: 14.5,
     upperTolerance: 45.0,
     lowerTolerance: 2.0,
@@ -62,8 +88,11 @@ export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
     description: 'Core winding and bearing thermal feedback from integrated PT100/KTY sensors',
     unit: '°C',
     category: 'thermal',
+    dataType: 'Float',
+    updateFrequencyMs: 500,
     sourceType: 'BeckhoffAds',
     pathOrSymbol: 'Axis1.stDriveState.fMotorTemp',
+    activeControllers: ['ctrl-op20-ads', 'ctrl-op30-ads'],
     nominalValue: 48.5,
     upperTolerance: 65.0,
     lowerTolerance: 25.0,
@@ -77,11 +106,68 @@ export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
     description: 'Mechanical vibration velocity RMS indicating kinematic wear or unbalance',
     unit: 'mm/s',
     category: 'vibration',
+    dataType: 'Float',
+    updateFrequencyMs: 100,
     sourceType: 'BeckhoffEtherCat',
     pathOrSymbol: 'IO.Terminal_EL3632.VibRMS',
+    activeControllers: ['ctrl-op20-ads'],
     nominalValue: 1.45,
     upperTolerance: 2.80,
     lowerTolerance: 0.50,
+    isUserDefined: false,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'met-spindle-rpm',
+    key: 'spindle_rpm',
+    name: 'Spindle Rotational Speed',
+    description: 'Actual drive spindle rotary feedback in revolutions per minute',
+    unit: 'RPM',
+    category: 'motion',
+    dataType: 'Float',
+    updateFrequencyMs: 100,
+    sourceType: 'BeckhoffAds',
+    pathOrSymbol: 'Axis1.stAxisStatus.fActVelo',
+    activeControllers: ['ctrl-op20-ads', 'ctrl-op50-ads'],
+    nominalValue: 3200.0,
+    upperTolerance: 4500.0,
+    lowerTolerance: 1000.0,
+    isUserDefined: false,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'met-hydraulic',
+    key: 'hydraulic_pressure_bar',
+    name: 'Hydraulic Clamp Fluid Pressure',
+    description: 'Proportional hydraulic clamp circuit pressure transducer reading',
+    unit: 'bar',
+    category: 'hydraulic',
+    dataType: 'Float',
+    updateFrequencyMs: 200,
+    sourceType: 'OpcUaSubscription',
+    pathOrSymbol: 'ns=2;s=Hydraulics.Circuit1.PressureBar',
+    activeControllers: ['ctrl-op50-ads'],
+    nominalValue: 160.0,
+    upperTolerance: 210.0,
+    lowerTolerance: 130.0,
+    isUserDefined: false,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'met-tool-clamped',
+    key: 'tool_clamped_state',
+    name: 'Tool Clamping Interlock Confirmed',
+    description: 'Binary inductive prox switch confirmation of pneumatic tool clamping chuck',
+    unit: '',
+    category: 'discrete',
+    dataType: 'Boolean',
+    updateFrequencyMs: 50,
+    sourceType: 'BeckhoffEtherCat',
+    pathOrSymbol: 'IO.Terminal_EL1008.Channel1.Input',
+    activeControllers: ['ctrl-op20-ads', 'ctrl-op50-ads'],
+    nominalValue: 1.0,
+    upperTolerance: 1.0,
+    lowerTolerance: 1.0,
     isUserDefined: false,
     createdAt: '2026-01-01T00:00:00.000Z'
   },
@@ -92,8 +178,11 @@ export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
     description: 'Aggregated core processing workload across all physical cores',
     unit: '%',
     category: 'resources',
+    dataType: 'Float',
+    updateFrequencyMs: 1000,
     sourceType: 'SystemCim',
     pathOrSymbol: 'Win32_PerfFormattedData_PerfOS_Processor.PercentProcessorTime',
+    activeControllers: ['ctrl-op20-ads', 'ctrl-op10-ads', 'ctrl-op50-ads'],
     nominalValue: 42.0,
     upperTolerance: 85.0,
     lowerTolerance: 10.0,
@@ -107,8 +196,11 @@ export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
     description: 'Physical RAM active allocation percentage',
     unit: '%',
     category: 'resources',
+    dataType: 'Float',
+    updateFrequencyMs: 1000,
     sourceType: 'SystemCim',
     pathOrSymbol: 'Win32_OperatingSystem.FreePhysicalMemory',
+    activeControllers: ['ctrl-op20-ads', 'ctrl-op10-ads', 'ctrl-op50-ads'],
     nominalValue: 58.4,
     upperTolerance: 90.0,
     lowerTolerance: 20.0,
@@ -122,8 +214,11 @@ export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
     description: 'Factory floor main pneumatic supply pressure monitored at valve terminal',
     unit: 'bar',
     category: 'pneumatics',
+    dataType: 'Float',
+    updateFrequencyMs: 250,
     sourceType: 'OpcUaSubscription',
     pathOrSymbol: 'ns=2;s=Pneumatics.PressureSensor.ActualBar',
+    activeControllers: ['ctrl-op10-ads', 'ctrl-op30-ads'],
     nominalValue: 6.3,
     upperTolerance: 7.5,
     lowerTolerance: 5.4,
@@ -137,8 +232,11 @@ export const BUILTIN_METRICS: TelemetryMetricDefinition[] = [
     description: 'EtherCAT or PROFINET frame corruption and cyclic packet drop frequency',
     unit: 'err/min',
     category: 'fieldbus',
+    dataType: 'Float',
+    updateFrequencyMs: 1000,
     sourceType: 'BeckhoffEtherCat',
     pathOrSymbol: 'Master0.Port0.CrcErrorsPerMin',
+    activeControllers: ['ctrl-op20-ads', 'ctrl-op50-ads'],
     nominalValue: 0.2,
     upperTolerance: 2.0,
     lowerTolerance: 0.0,
@@ -340,3 +438,53 @@ export async function recordCachedTelemetryDatapoint(
     } catch { }
   }
 }
+
+/**
+ * Queries and indexes available telemetry data-points across controllers, edge schemas, and custom metrics.
+ */
+export async function getTelemetryDataPointCatalog(params?: {
+  query?: string
+  category?: string
+  dataType?: string
+  controllerId?: string
+}): Promise<TelemetryDataPointCatalogItem[]> {
+  const metrics = await getAllTelemetryMetrics()
+  let catalog: TelemetryDataPointCatalogItem[] = metrics.map(m => ({
+    id: m.id,
+    key: m.key,
+    name: m.name,
+    description: m.description || '',
+    category: m.category,
+    dataType: m.dataType || 'Float',
+    unit: m.unit,
+    updateFrequencyMs: m.updateFrequencyMs || 100,
+    sourceType: m.sourceType,
+    pathOrSymbol: m.pathOrSymbol || '',
+    activeControllers: m.activeControllers || ['ctrl-op20-ads'],
+    nominalValue: m.nominalValue,
+    upperTolerance: m.upperTolerance,
+    lowerTolerance: m.lowerTolerance
+  }))
+
+  if (params?.category && params.category !== 'all') {
+    catalog = catalog.filter(c => c.category.toLowerCase() === params.category!.toLowerCase())
+  }
+  if (params?.dataType && params.dataType !== 'all') {
+    catalog = catalog.filter(c => c.dataType.toLowerCase() === params.dataType!.toLowerCase())
+  }
+  if (params?.controllerId) {
+    catalog = catalog.filter(c => c.activeControllers.includes(params.controllerId!))
+  }
+  if (params?.query) {
+    const q = params.query.toLowerCase().trim()
+    catalog = catalog.filter(c =>
+      c.key.toLowerCase().includes(q) ||
+      c.name.toLowerCase().includes(q) ||
+      c.description.toLowerCase().includes(q) ||
+      c.pathOrSymbol.toLowerCase().includes(q)
+    )
+  }
+
+  return catalog
+}
+

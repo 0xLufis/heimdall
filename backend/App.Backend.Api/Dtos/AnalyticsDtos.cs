@@ -50,6 +50,41 @@ public class MachineTrendSeriesDto
     public double LowerTolerance { get; set; }
     public List<TelemetryPointDto> Points { get; set; } = new();
     public List<AnomalyDetailDto> DetectedAnomalies { get; set; } = new();
+    public RollingTrendsDto StatisticalTrends { get; set; } = new();
+    public RecipeForecastDto? RecipeForecast { get; set; }
+    public List<RecipeItemDto> AvailableRecipes { get; set; } = new();
+}
+
+public class RollingTrendsDto
+{
+    public double LinearRegressionSlope { get; set; }
+    public double LinearRegressionIntercept { get; set; }
+    public double R2Score { get; set; }
+    public int MovingAverageWindow { get; set; } = 5;
+    public List<double> MovingAverages { get; set; } = new();
+    public List<double> UpperStdDevCorridor { get; set; } = new();
+    public List<double> LowerStdDevCorridor { get; set; } = new();
+    public string TrendDirection { get; set; } = "Stable"; // "Stable" | "DriftingUp" | "DriftingDown" | "Volatile"
+}
+
+public class RecipeForecastDto
+{
+    public string RecipeId { get; set; } = string.Empty;
+    public string RecipeName { get; set; } = string.Empty;
+    public double TargetBaseline { get; set; }
+    public double UpperTolerance { get; set; }
+    public double LowerTolerance { get; set; }
+    public double DriftPercentage { get; set; }
+    public int ForecastCyclesUntilFailure { get; set; }
+    public string ToolWearStatus { get; set; } = "Nominal"; // "Nominal" | "Warning" | "CriticalImpendingFailure"
+    public string RecommendedAction { get; set; } = string.Empty;
+}
+
+public class RecipeItemDto
+{
+    public string RecipeId { get; set; } = string.Empty;
+    public string RecipeName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
 }
 
 public class TelemetryPointDto

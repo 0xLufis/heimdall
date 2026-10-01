@@ -222,9 +222,98 @@ export const useTelemetryMetrics = () => {
     return true
   }
 
+  const catalogItems = ref<import('~/types/telemetryMetrics').TelemetryDataPointCatalogItem[]>([])
+  const isCatalogLoading = ref(false)
+
+  const fetchCatalog = async (filters?: { q?: string; category?: string; dataType?: string; controllerId?: string }) => {
+    isCatalogLoading.value = true
+    try {
+      const res = await $fetch<{ total: number; items: import('~/types/telemetryMetrics').TelemetryDataPointCatalogItem[] }>('/api/telemetry/catalog', {
+        query: filters
+      })
+      if (res && Array.isArray(res.items)) {
+        catalogItems.value = res.items
+      }
+    } catch {
+      // Fallback from builtin metrics
+      catalogItems.value = metrics.value.map(m => ({
+        id: m.id,
+        key: m.key,
+        name: m.name,
+        description: m.description || '',
+        category: m.category,
+        dataType: m.dataType || 'Float',
+        unit: m.unit,
+        updateFrequencyMs: m.updateFrequencyMs || 100,
+        sourceType: m.sourceType,
+        pathOrSymbol: m.pathOrSymbol || '',
+        activeControllers: m.activeControllers || ['ctrl-op20-ads'],
+        nominalValue: m.nominalValue,
+        upperTolerance: m.upperTolerance,
+        lowerTolerance: m.lowerTolerance
+      }))
+    } finally {
+      isCatalogLoading.value = false
+    }
+  }
+
   const getMetricByKey = (key: string): UserTelemetryMetric | undefined => {
     const lowerKey = key.toLowerCase()
     return metrics.value.find(m => m.key.toLowerCase() === lowerKey)
+  }
+
+  const PINNED_STORAGE_KEY = 'heimdall_pinned_telemetry_widgets'
+
+  const getPinnedWidgets = (): import('~/types/telemetryMetrics').PinnedTelemetryWidget[] => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = localStorage.getItem(PINNED_STORAGE_KEY)
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  }
+
+  const pinToOverview = (widget: {
+    machineId: string
+    machineName: string
+    metricKey: string
+    metricName: string
+    unit: string
+    currentValue: number
+    status?: 'nominal' | 'warning' | 'critical'
+  }): boolean => {
+    if (typeof window === 'undefined') return false
+    const existing = getPinnedWidgets()
+    const id = `pin-${widget.machineId}-${widget.metricKey}`
+    const idx = existing.findIndex(w => w.id === id)
+    const newWidget: import('~/types/telemetryMetrics').PinnedTelemetryWidget = {
+      id,
+      machineId: widget.machineId,
+      machineName: widget.machineName,
+      metricKey: widget.metricKey,
+      metricName: widget.metricName,
+      unit: widget.unit,
+      currentValue: widget.currentValue,
+      status: widget.status || 'nominal',
+      pinnedAt: new Date().toISOString()
+    }
+    if (idx !== -1) {
+      existing[idx] = newWidget
+    } else {
+      existing.push(newWidget)
+    }
+    localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(existing))
+    window.dispatchEvent(new CustomEvent('heimdall:pinned-telemetry-changed'))
+    return true
+  }
+
+  const unpinFromOverview = (widgetId: string): boolean => {
+    if (typeof window === 'undefined') return false
+    const existing = getPinnedWidgets().filter(w => w.id !== widgetId)
+    localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(existing))
+    window.dispatchEvent(new CustomEvent('heimdall:pinned-telemetry-changed'))
+    return true
   }
 
   return {
@@ -235,6 +324,12 @@ export const useTelemetryMetrics = () => {
     fetchMetrics,
     createCustomMetric,
     deleteCustomMetric,
-    getMetricByKey
+    getMetricByKey,
+    catalogItems,
+    isCatalogLoading,
+    fetchCatalog,
+    getPinnedWidgets,
+    pinToOverview,
+    unpinFromOverview
   }
 }

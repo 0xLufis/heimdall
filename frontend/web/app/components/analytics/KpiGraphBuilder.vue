@@ -14,8 +14,20 @@ import {
   Sparkles,
   Check,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Plus,
+  Search,
+  Filter,
+  ArrowUpDown,
+  Tag,
+  Clock,
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-vue-next'
+
+export type KpiTag = 'OEE' | 'Energy' | 'Thermal' | 'Hydraulic'
+export type TimeAggregation = '1m' | '5m' | '1h' | 'shift' | '24h' | 'custom'
 
 export interface PinnedKpiWidget {
   id: string
@@ -23,12 +35,17 @@ export interface PinnedKpiWidget {
   metric: string
   visualType: 'gauge' | 'trend' | 'bar' | 'bullet'
   targetLine: string
+  machineId?: string
   interval: 'shift' | 'hourly' | 'daily'
+  timeAggregation: TimeAggregation
   currentValue: number
   targetValue: number
   upperLimit: number
   lowerLimit: number
   unit: string
+  tag: KpiTag
+  priority: 'Critical' | 'High' | 'Normal'
+  author: string
 }
 
 const defaultWidgets: PinnedKpiWidget[] = [
@@ -39,11 +56,15 @@ const defaultWidgets: PinnedKpiWidget[] = [
     visualType: 'gauge',
     targetLine: 'All Lines',
     interval: 'shift',
+    timeAggregation: 'shift',
     currentValue: 90.8,
     targetValue: 88.0,
     upperLimit: 96.0,
     lowerLimit: 82.0,
-    unit: '%'
+    unit: '%',
+    tag: 'OEE',
+    priority: 'Critical',
+    author: 'Chief Operations Officer'
   },
   {
     id: 'kpi-2',
@@ -52,11 +73,15 @@ const defaultWidgets: PinnedKpiWidget[] = [
     visualType: 'bullet',
     targetLine: 'Line 1 - Pre-Assembly',
     interval: 'hourly',
+    timeAggregation: '1h',
     currentValue: 28.0,
     targetValue: 30.0,
     upperLimit: 45.0,
     lowerLimit: 15.0,
-    unit: 'min'
+    unit: 'min',
+    tag: 'OEE',
+    priority: 'High',
+    author: 'Shift Lead Tech'
   },
   {
     id: 'kpi-3',
@@ -65,15 +90,77 @@ const defaultWidgets: PinnedKpiWidget[] = [
     visualType: 'trend',
     targetLine: 'Line 5 - Robotic Welding Cell',
     interval: 'daily',
+    timeAggregation: '24h',
     currentValue: 99.1,
     targetValue: 98.5,
     upperLimit: 100.0,
     lowerLimit: 97.0,
-    unit: '%'
+    unit: '%',
+    tag: 'OEE',
+    priority: 'Normal',
+    author: 'Robotics Engineer'
+  },
+  {
+    id: 'kpi-4',
+    title: 'Robotics Cell Total Active Power',
+    metric: 'energy',
+    visualType: 'trend',
+    targetLine: 'Line 5 - Robotic Welding Cell',
+    interval: 'hourly',
+    timeAggregation: '1m',
+    currentValue: 42.6,
+    targetValue: 40.0,
+    upperLimit: 55.0,
+    lowerLimit: 20.0,
+    unit: 'kW',
+    tag: 'Energy',
+    priority: 'High',
+    author: 'Energy Facility Lead'
+  },
+  {
+    id: 'kpi-5',
+    title: 'Spindle Bearing Thermal Load',
+    metric: 'thermal',
+    visualType: 'gauge',
+    targetLine: 'Line 2 - Fastening',
+    interval: 'shift',
+    timeAggregation: '5m',
+    currentValue: 52.4,
+    targetValue: 48.0,
+    upperLimit: 65.0,
+    lowerLimit: 25.0,
+    unit: '°C',
+    tag: 'Thermal',
+    priority: 'Critical',
+    author: 'Maintenance Specialist'
+  },
+  {
+    id: 'kpi-6',
+    title: 'Main Clamping Hydraulic Circuit',
+    metric: 'hydraulic',
+    visualType: 'bar',
+    targetLine: 'Line 4 - Dispensing',
+    interval: 'hourly',
+    timeAggregation: '1h',
+    currentValue: 168.0,
+    targetValue: 160.0,
+    upperLimit: 210.0,
+    lowerLimit: 130.0,
+    unit: 'bar',
+    tag: 'Hydraulic',
+    priority: 'Normal',
+    author: 'Fluid Power Tech'
   }
 ]
 
 const pinnedWidgets = ref<PinnedKpiWidget[]>([...defaultWidgets])
+const isBuilderOpen = ref(true)
+
+// Filter & Sort States
+const searchQuery = ref('')
+const selectedTagFilter = ref<'All' | KpiTag>('All')
+const selectedLineFilter = ref('All')
+const selectedSort = ref<'priority' | 'title' | 'val-desc' | 'val-asc' | 'line'>('priority')
 
 onMounted(() => {
   if (typeof window !== 'undefined') {
@@ -84,6 +171,10 @@ onMounted(() => {
         if (Array.isArray(parsed) && parsed.length > 0) {
           pinnedWidgets.value = parsed.map(w => ({
             ...w,
+            tag: w.tag || 'OEE',
+            priority: w.priority || 'Normal',
+            author: w.author || 'System Engineer',
+            timeAggregation: w.timeAggregation || 'shift',
             upperLimit: w.upperLimit ?? (w.targetValue ? Math.round((w.targetValue * 1.08) * 10) / 10 : 100),
             lowerLimit: w.lowerLimit ?? (w.targetValue ? Math.round((w.targetValue * 0.92) * 10) / 10 : 0)
           }))
@@ -101,11 +192,14 @@ onMounted(() => {
 })
 
 // Builder Form State
-const builderTitle = ref('Custom Line OEE')
-const selectedMetric = ref<'oee' | 'availability' | 'performance' | 'quality' | 'mtbf' | 'mttr' | 'faults'>('oee')
+const builderTitle = ref('Custom Production KPI')
+const selectedMetric = ref<'oee' | 'energy' | 'thermal' | 'hydraulic' | 'availability' | 'performance' | 'quality' | 'mtbf' | 'mttr' | 'faults'>('oee')
 const selectedVisual = ref<'gauge' | 'trend' | 'bar' | 'bullet'>('gauge')
 const selectedLine = ref('Line 1 - Pre-Assembly')
-const selectedInterval = ref<'shift' | 'hourly' | 'daily'>('shift')
+const selectedTag = ref<KpiTag>('OEE')
+const selectedPriority = ref<'Critical' | 'High' | 'Normal'>('Normal')
+const selectedAggregation = ref<TimeAggregation>('shift')
+const builderAuthor = ref('Maintenance Engineer')
 
 // SPC Threshold Goals
 const targetMean = ref(88.0)
@@ -115,6 +209,12 @@ const isSaved = ref(false)
 
 const metricMeta = computed(() => {
   switch (selectedMetric.value) {
+    case 'energy':
+      return { unit: 'kW', defaultVal: 45.2, defaultTarget: 40.0, defaultUcl: 60.0, defaultLcl: 20.0 }
+    case 'thermal':
+      return { unit: '°C', defaultVal: 54.0, defaultTarget: 48.0, defaultUcl: 65.0, defaultLcl: 25.0 }
+    case 'hydraulic':
+      return { unit: 'bar', defaultVal: 165.0, defaultTarget: 160.0, defaultUcl: 210.0, defaultLcl: 130.0 }
     case 'availability':
       return { unit: '%', defaultVal: 96.5, defaultTarget: 95.0, defaultUcl: 99.0, defaultLcl: 90.0 }
     case 'performance':
@@ -134,10 +234,14 @@ const metricMeta = computed(() => {
 })
 
 // Synchronize inputs when metric changes
-watch(selectedMetric, () => {
+watch(selectedMetric, (m) => {
   targetMean.value = metricMeta.value.defaultTarget
   upperControlLimit.value = metricMeta.value.defaultUcl
   lowerControlLimit.value = metricMeta.value.defaultLcl
+  if (m === 'energy') selectedTag.value = 'Energy'
+  else if (m === 'thermal') selectedTag.value = 'Thermal'
+  else if (m === 'hydraulic') selectedTag.value = 'Hydraulic'
+  else selectedTag.value = 'OEE'
 }, { immediate: true })
 
 const getSpcStatus = (val: number, ucl: number, lcl: number) => {
@@ -161,12 +265,16 @@ const handlePinWidget = () => {
     metric: selectedMetric.value,
     visualType: selectedVisual.value,
     targetLine: selectedLine.value,
-    interval: selectedInterval.value,
+    interval: selectedAggregation.value === '1h' || selectedAggregation.value === '1m' || selectedAggregation.value === '5m' ? 'hourly' : (selectedAggregation.value === '24h' ? 'daily' : 'shift'),
+    timeAggregation: selectedAggregation.value,
     currentValue: metricMeta.value.defaultVal,
     targetValue: targetMean.value,
     upperLimit: upperControlLimit.value,
     lowerLimit: lowerControlLimit.value,
-    unit: metricMeta.value.unit
+    unit: metricMeta.value.unit,
+    tag: selectedTag.value,
+    priority: selectedPriority.value,
+    author: builderAuthor.value || 'Engineer'
   }
 
   pinnedWidgets.value.unshift(newWidget)
@@ -177,7 +285,7 @@ const handlePinWidget = () => {
   isSaved.value = true
   setTimeout(() => {
     isSaved.value = false
-  }, 2000)
+  }, 1500)
 }
 
 const handleRemoveWidget = (id: string) => {
@@ -186,385 +294,426 @@ const handleRemoveWidget = (id: string) => {
     localStorage.setItem('heimdall_pinned_kpis', JSON.stringify(pinnedWidgets.value))
   }
 }
+
+// Filtered and Sorted Widgets
+const filteredWidgets = computed(() => {
+  let list = [...pinnedWidgets.value]
+
+  // 1. Search Query
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim()
+    list = list.filter(w =>
+      w.title.toLowerCase().includes(q) ||
+      w.targetLine.toLowerCase().includes(q) ||
+      w.author.toLowerCase().includes(q) ||
+      w.tag.toLowerCase().includes(q)
+    )
+  }
+
+  // 2. Tag Filter
+  if (selectedTagFilter.value !== 'All') {
+    list = list.filter(w => w.tag === selectedTagFilter.value)
+  }
+
+  // 3. Line Filter
+  if (selectedLineFilter.value !== 'All') {
+    list = list.filter(w => w.targetLine === selectedLineFilter.value)
+  }
+
+  // 4. Sort
+  list.sort((a, b) => {
+    if (selectedSort.value === 'priority') {
+      const pMap: Record<string, number> = { Critical: 3, High: 2, Normal: 1 }
+      return (pMap[b.priority] || 0) - (pMap[a.priority] || 0)
+    }
+    if (selectedSort.value === 'title') {
+      return a.title.localeCompare(b.title)
+    }
+    if (selectedSort.value === 'val-desc') {
+      return b.currentValue - a.currentValue
+    }
+    if (selectedSort.value === 'val-asc') {
+      return a.currentValue - b.currentValue
+    }
+    if (selectedSort.value === 'line') {
+      return a.targetLine.localeCompare(b.targetLine)
+    }
+    return 0
+  })
+
+  return list
+})
+
+const availableLines = [
+  'Line 1 - Pre-Assembly',
+  'Line 2 - Fastening',
+  'Line 4 - Dispensing',
+  'Line 5 - Robotic Welding Cell',
+  'Line 7 - Battery EOL',
+  'All Lines'
+]
 </script>
 
 <template>
-  <div class="space-y-8">
-    <!-- Section 1: Interactive KPI Graph Builder Card -->
-    <div class="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
-      <div class="flex items-center justify-between">
+  <div class="space-y-6">
+    <!-- Header Controls: Title, Filter Bar & Launch Builder Button -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-card border border-border rounded-2xl shadow-xs">
+      <div>
+        <div class="flex items-center gap-2">
+          <Activity class="w-4 h-4 text-primary" />
+          <h3 class="text-base font-bold text-foreground">Operational KPI Dashboard</h3>
+          <Badge variant="outline" class="font-mono text-[10px] px-2 py-0.5">
+            {{ filteredWidgets.length }} Widgets
+          </Badge>
+        </div>
+        <p class="text-xs text-muted-foreground mt-0.5">
+          Filtered industrial telemetry metrics with Statistical Process Control (SPC) thresholds.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <Button
+          @click="isBuilderOpen = !isBuilderOpen"
+          variant="outline"
+          size="sm"
+          class="gap-1.5 text-xs font-semibold cursor-pointer"
+        >
+          <Sliders class="w-3.5 h-3.5" />
+          <span>{{ isBuilderOpen ? 'Hide KPI Builder' : 'Open KPI Builder' }}</span>
+          <ChevronUp v-if="isBuilderOpen" class="w-3.5 h-3.5" />
+          <ChevronDown v-else class="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    </div>
+
+    <!-- Section 1: On-Demand Expandable KPI Builder Drawer -->
+    <div
+      v-show="isBuilderOpen"
+      class="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6 transition-all"
+    >
+      <div class="flex items-center justify-between border-b border-border pb-3">
         <div class="flex items-center gap-2.5">
           <div class="p-2 rounded-lg bg-muted border border-border text-foreground">
             <Sliders class="w-4 h-4" />
           </div>
           <div>
-            <h3 class="text-sm font-semibold text-foreground">Custom KPI Widget & Chart Builder</h3>
-            <p class="text-xs text-muted-foreground">Parameterize KPI metrics with statistical Upper/Lower Control Limits and Mean targets.</p>
+            <h4 class="text-sm font-semibold text-foreground">Custom KPI Graph & Tolerance Builder</h4>
+            <span class="text-xs text-muted-foreground font-mono">Define custom thresholds, SPC bounds, and aggregations</span>
           </div>
         </div>
-        <Badge variant="outline" class="text-xs font-mono border-border bg-muted/30 text-foreground">
-          SPC / OT Analytics
-        </Badge>
+
+        <button
+          type="button"
+          @click="isBuilderOpen = false"
+          class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          title="Close Builder Drawer"
+        >
+          <X class="w-4 h-4" />
+        </button>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <!-- Configuration Controls (7 cols) -->
-        <div class="lg:col-span-7 space-y-4">
-          <!-- Widget Title -->
-          <div class="space-y-1.5">
-            <label class="text-xs font-medium text-muted-foreground">Widget Title</label>
-            <input
-              v-model="builderTitle"
-              type="text"
-              class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="e.g. Line 2 Screwing OEE Rate"
-            />
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Builder Form -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="sm:col-span-2 space-y-1">
+              <label class="text-xs font-medium text-foreground">Widget Title</label>
+              <input
+                type="text"
+                v-model="builderTitle"
+                placeholder="e.g. Master Fastening Cycle OEE"
+                class="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring h-9"
+              />
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-foreground">Tag Category</label>
+              <select
+                v-model="selectedTag"
+                class="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring h-9"
+              >
+                <option value="OEE">OEE</option>
+                <option value="Energy">Energy</option>
+                <option value="Thermal">Thermal</option>
+                <option value="Hydraulic">Hydraulic</option>
+              </select>
+            </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Target Metric -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Target Metric</label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-foreground">Telemetry Metric</label>
               <select
                 v-model="selectedMetric"
-                class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                class="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring h-9"
               >
-                <option value="oee">OEE (Overall Equipment Effectiveness)</option>
-                <option value="availability">Plant Availability %</option>
-                <option value="performance">Line Performance Rate %</option>
-                <option value="quality">First-Pass Quality Yield %</option>
-                <option value="mtbf">MTBF (Mean Time Between Failures)</option>
-                <option value="mttr">MTTR (Mean Time to Repair)</option>
-                <option value="faults">Fault Frequency Index</option>
+                <option value="oee">Overall Equipment Effectiveness (OEE)</option>
+                <option value="energy">Active Electrical Power (kW)</option>
+                <option value="thermal">Motor / Bearing Temperature (°C)</option>
+                <option value="hydraulic">Hydraulic Fluid Pressure (bar)</option>
+                <option value="availability">Operational Availability (%)</option>
+                <option value="performance">Speed Performance Index (%)</option>
+                <option value="quality">First-Pass Yield Quality (%)</option>
+                <option value="mtbf">Mean Time Between Failures (hrs)</option>
+                <option value="mttr">Mean Time to Repair (min)</option>
+                <option value="faults">Micro-Stoppage Frequency (shift)</option>
               </select>
             </div>
 
-            <!-- Target Production Line -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Production Scope</label>
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-foreground">Target Production Line</label>
               <select
                 v-model="selectedLine"
-                class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                class="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring h-9"
               >
-                <option value="All Lines">All Production Lines (Fleet-Wide)</option>
-                <option value="Line 1 - Pre-Assembly">Line 1 - Pre-Assembly</option>
-                <option value="Line 2 - Screwing & Fastening">Line 2 - Screwing & Fastening</option>
-                <option value="Line 3 - Vision & Quality">Line 3 - Vision & Quality</option>
-                <option value="Line 4 - Dispensing & Bonding">Line 4 - Dispensing & Bonding</option>
-                <option value="Line 5 - Robotic Welding Cell">Line 5 - Robotic Welding Cell</option>
-                <option value="Line 7 - High Voltage Battery">Line 7 - High Voltage Battery</option>
+                <option v-for="l in availableLines" :key="l" :value="l">{{ l }}</option>
+              </select>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-foreground">Time Aggregation</label>
+              <select
+                v-model="selectedAggregation"
+                class="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring h-9"
+              >
+                <option value="1m">1 Minute (Ultra-High Res)</option>
+                <option value="5m">5 Minutes (Micro-Cycle)</option>
+                <option value="1h">1 Hour (Hourly Tact)</option>
+                <option value="shift">Shift (8-Hour Shift)</option>
+                <option value="24h">24 Hours (Daily)</option>
+                <option value="custom">Custom Range</option>
               </select>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Visual Type -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Chart Visualization Type</label>
-              <select
-                v-model="selectedVisual"
-                class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="gauge">Radial SVG Dial Gauge</option>
-                <option value="bullet">Target vs Actual Bullet Chart</option>
-                <option value="trend">Historical Area Trend Line</option>
-                <option value="bar">Interval Comparison Bar Chart</option>
-              </select>
-            </div>
-
-            <!-- Aggregation Window -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Aggregation Interval</label>
-              <select
-                v-model="selectedInterval"
-                class="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="shift">Per Shift (8 Hours)</option>
-                <option value="hourly">Hourly Rolling</option>
-                <option value="daily">Daily Plant Aggregate (24h)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Statistical Process Control Limits (Mean Goal, UCL, LCL) -->
-          <div class="p-3.5 rounded-xl bg-muted/30 border border-border space-y-3">
+          <!-- SPC Thresholds -->
+          <div class="p-4 rounded-xl bg-muted/20 border border-border space-y-3">
             <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <Target class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>KPI Goals & Statistical Process Control (SPC) Limits</span>
-              </label>
-              <span class="text-[10px] font-mono text-muted-foreground">Mean Target & Control Bands</span>
+              <span class="text-xs font-bold text-foreground">KPI Goals & Statistical Process Control (SPC) Limits</span>
+              <Badge variant="outline" class="text-[10px] px-2 py-0.5" :class="currentPreviewStatus.class">
+                Status: {{ currentPreviewStatus.label }}
+              </Badge>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <!-- Mean Target Goal -->
+            <div class="grid grid-cols-3 gap-3 font-mono text-xs">
               <div class="space-y-1">
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-muted-foreground font-medium">Target / Mean</span>
-                  <span class="font-mono text-amber-600 dark:text-amber-400">{{ targetMean }} {{ metricMeta.unit }}</span>
-                </div>
+                <span class="text-muted-foreground block text-[10px]">Lower Limit (LCL)</span>
                 <input
-                  v-model.number="targetMean"
                   type="number"
-                  step="0.1"
-                  class="w-full px-2.5 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-
-              <!-- Upper Control Limit (UCL) -->
-              <div class="space-y-1">
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-muted-foreground font-medium">Upper Limit (UCL)</span>
-                  <span class="font-mono text-rose-600 dark:text-rose-400">{{ upperControlLimit }} {{ metricMeta.unit }}</span>
-                </div>
-                <input
-                  v-model.number="upperControlLimit"
-                  type="number"
-                  step="0.1"
-                  class="w-full px-2.5 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-
-              <!-- Lower Control Limit (LCL) -->
-              <div class="space-y-1">
-                <div class="flex justify-between items-center text-[11px]">
-                  <span class="text-muted-foreground font-medium">Lower Limit (LCL)</span>
-                  <span class="font-mono text-amber-600 dark:text-amber-400">{{ lowerControlLimit }} {{ metricMeta.unit }}</span>
-                </div>
-                <input
                   v-model.number="lowerControlLimit"
+                  class="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              <div class="space-y-1">
+                <span class="text-muted-foreground block text-[10px]">Target / Mean</span>
+                <input
                   type="number"
-                  step="0.1"
-                  class="w-full px-2.5 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                  v-model.number="targetMean"
+                  class="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              <div class="space-y-1">
+                <span class="text-muted-foreground block text-[10px]">Upper Limit (UCL)</span>
+                <input
+                  type="number"
+                  v-model.number="upperControlLimit"
+                  class="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>
-          </div>
-
-          <div class="pt-2">
-            <Button
-              data-testid="pin-kpi-btn"
-              @click="handlePinWidget"
-              class="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md"
-            >
-              <Check v-if="isSaved" class="w-4 h-4 text-emerald-300" />
-              <Pin v-else class="w-4 h-4 text-primary-foreground/80" />
-              <span>{{ isSaved ? 'Widget Pinned to Dashboard!' : 'Pin Custom KPI Widget' }}</span>
-            </Button>
           </div>
         </div>
 
-        <!-- Live Widget Preview Canvas (5 cols) -->
-        <div class="lg:col-span-5 p-5 rounded-xl bg-muted/20 border border-border flex flex-col justify-between space-y-4">
-          <div class="flex items-center justify-between text-xs text-muted-foreground">
-            <span class="font-mono text-[11px] uppercase tracking-wider text-foreground">Live Widget Preview</span>
-            <Badge variant="outline" class="text-[10px] border-border text-muted-foreground">{{ selectedInterval }}</Badge>
+        <!-- Live Preview Card & Save Action -->
+        <div class="flex flex-col justify-between p-4 rounded-xl bg-muted/30 border border-border space-y-4">
+          <div class="space-y-2">
+            <span class="text-xs font-bold text-muted-foreground uppercase tracking-wide">Widget Preview</span>
+            <div class="font-mono text-2xl font-bold text-foreground">
+              {{ metricMeta.defaultVal }} <span class="text-xs font-normal text-muted-foreground">{{ metricMeta.unit }}</span>
+            </div>
+            <p class="text-xs text-muted-foreground font-mono">
+              Target: {{ targetMean }} {{ metricMeta.unit }} (LCL: {{ lowerControlLimit }} / UCL: {{ upperControlLimit }})
+            </p>
           </div>
 
-          <div class="space-y-1">
-            <h4 class="text-sm font-semibold text-foreground">{{ builderTitle || 'Custom Metric Tile' }}</h4>
-            <div class="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{{ selectedLine }}</span>
-              <span class="font-mono text-[11px] text-amber-600 dark:text-amber-400">Target: {{ targetMean }} {{ metricMeta.unit }}</span>
-            </div>
-          </div>
-
-          <!-- Dynamic SVG Preview Based on Selected Visual Type -->
-          <div class="h-32 flex items-center justify-center py-2">
-            <!-- 1. GAUGE -->
-            <div v-if="selectedVisual === 'gauge'" class="flex flex-col items-center justify-center">
-              <div class="relative flex items-center justify-center">
-                <svg class="w-24 h-24 transform -rotate-90">
-                  <circle cx="48" cy="48" r="38" stroke="currentColor" class="text-muted/60" stroke-width="8" fill="none" />
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="38"
-                    stroke="#57715b"
-                    stroke-width="8"
-                    fill="none"
-                    stroke-dasharray="238.7"
-                    :stroke-dashoffset="238.7 - (238.7 * Math.min(metricMeta.defaultVal, 100)) / 100"
-                    stroke-linecap="round"
-                  />
-                </svg>
-                <div class="absolute text-center">
-                  <span class="text-base font-bold font-mono text-foreground">{{ metricMeta.defaultVal }}</span>
-                  <span class="text-[10px] text-muted-foreground block -mt-1">{{ metricMeta.unit }}</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-3 text-[10px] font-mono mt-2 text-muted-foreground">
-                <span class="text-amber-600 dark:text-amber-400">LCL: {{ lowerControlLimit }}</span>
-                <span class="text-emerald-600 dark:text-emerald-400">Mean: {{ targetMean }}</span>
-                <span class="text-rose-600 dark:text-rose-400">UCL: {{ upperControlLimit }}</span>
-              </div>
-            </div>
-
-            <!-- 2. BULLET / PROGRESS -->
-            <div v-else-if="selectedVisual === 'bullet'" class="w-full space-y-3 px-4">
-              <div class="flex justify-between text-xs font-mono">
-                <span class="text-foreground">Actual: {{ metricMeta.defaultVal }} {{ metricMeta.unit }}</span>
-                <span class="text-amber-600 dark:text-amber-400">Goal: {{ targetMean }} {{ metricMeta.unit }}</span>
-              </div>
-              <div class="w-full bg-muted/60 h-4 rounded-full overflow-hidden border border-border relative">
-                <!-- Safe control zone band -->
-                <div
-                  class="absolute top-0 bottom-0 bg-emerald-500/10 border-x border-emerald-500/20"
-                  :style="{
-                    left: `${Math.max(0, Math.min(lowerControlLimit, 100))}%`,
-                    width: `${Math.max(0, Math.min(upperControlLimit - lowerControlLimit, 100))}%`
-                  }"
-                ></div>
-
-                <!-- Actual bar -->
-                <div
-                  class="bg-primary/80 h-full rounded-full transition-all"
-                  :style="{ width: `${Math.min(metricMeta.defaultVal, 100)}%` }"
-                ></div>
-
-                <!-- LCL Marker -->
-                <div
-                  class="absolute top-0 bottom-0 w-0.5 bg-amber-400/80 z-10"
-                  :style="{ left: `${Math.min(lowerControlLimit, 100)}%` }"
-                  title="Lower Control Limit"
-                ></div>
-
-                <!-- Target Mean Marker -->
-                <div
-                  class="absolute top-0 bottom-0 w-1 bg-amber-400 z-20 shadow-[0_0_6px_rgba(251,191,36,0.6)]"
-                  :style="{ left: `${Math.min(targetMean, 100)}%` }"
-                  title="Target Mean Goal"
-                ></div>
-
-                <!-- UCL Marker -->
-                <div
-                  class="absolute top-0 bottom-0 w-0.5 bg-rose-400/80 z-10"
-                  :style="{ left: `${Math.min(upperControlLimit, 100)}%` }"
-                  title="Upper Control Limit"
-                ></div>
-              </div>
-              <div class="flex justify-between text-[10px] font-mono text-muted-foreground">
-                <span>LCL: {{ lowerControlLimit }}</span>
-                <span class="text-amber-600 dark:text-amber-400">Target: {{ targetMean }}</span>
-                <span>UCL: {{ upperControlLimit }}</span>
-              </div>
-            </div>
-
-            <!-- 3. TREND -->
-            <div v-else-if="selectedVisual === 'trend'" class="w-full h-full flex flex-col items-center justify-center relative">
-              <svg viewBox="0 0 200 80" class="w-full h-20">
-                <!-- UCL Line -->
-                <line x1="0" y1="20" x2="200" y2="20" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3" opacity="0.6" />
-                <text x="5" y="16" fill="#f43f5e" font-size="6" font-family="monospace">UCL: {{ upperControlLimit }}</text>
-
-                <!-- Mean Line -->
-                <line x1="0" y1="40" x2="200" y2="40" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,2" opacity="0.7" />
-                <text x="5" y="36" fill="#fbbf24" font-size="6" font-family="monospace">Target: {{ targetMean }}</text>
-
-                <!-- LCL Line -->
-                <line x1="0" y1="65" x2="200" y2="65" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3" opacity="0.6" />
-                <text x="5" y="61" fill="#f59e0b" font-size="6" font-family="monospace">LCL: {{ lowerControlLimit }}</text>
-
-                <!-- Actual Trend Curve -->
-                <path
-                  d="M 10 60 Q 50 20, 100 45 T 190 30"
-                  fill="none"
-                  stroke="#57715b"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                />
-                <circle cx="190" cy="30" r="3.5" fill="#768f79" />
-              </svg>
-            </div>
-
-            <!-- 4. BAR -->
-            <div v-else class="w-full h-full flex items-end justify-center gap-3 pb-2 px-6">
-              <div class="w-7 bg-muted-foreground/30 rounded-t h-12"></div>
-              <div class="w-7 bg-muted-foreground/50 rounded-t h-16"></div>
-              <div class="w-7 bg-muted-foreground/70 rounded-t h-20"></div>
-              <div class="w-7 bg-primary rounded-t h-24"></div>
-            </div>
-          </div>
-
-          <div class="text-[11px] text-muted-foreground border-t border-border pt-2 flex justify-between font-mono items-center">
-            <span>Actual: {{ metricMeta.defaultVal }} {{ metricMeta.unit }}</span>
-            <Badge variant="outline" :class="currentPreviewStatus.class" class="text-[10px] font-mono border">
-              {{ currentPreviewStatus.label }}
-            </Badge>
-          </div>
+          <Button
+            @click="handlePinWidget"
+            data-testid="pin-kpi-btn"
+            class="w-full gap-2 cursor-pointer font-semibold"
+          >
+            <Check v-if="isSaved" class="w-4 h-4 text-emerald-400" />
+            <Pin v-else class="w-4 h-4" />
+            <span>{{ isSaved ? 'Widget Created!' : 'Save & Pin Widget' }}</span>
+          </Button>
         </div>
       </div>
     </div>
 
-    <!-- Section 2: Currently Pinned KPI Dashboard Grid -->
-    <div class="space-y-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <Pin class="w-4 h-4 text-muted-foreground" />
-          <h4 class="text-sm font-semibold text-foreground">Pinned Production KPI Tiles ({{ pinnedWidgets.length }})</h4>
-        </div>
-        <span class="text-xs text-muted-foreground font-mono">Live Real-Time OT Refresh</span>
+    <!-- Filter & Sort Bar -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 bg-muted/20 border border-border rounded-xl">
+      <!-- Search Input (using semantic type="search") -->
+      <div class="relative flex-1 max-w-sm">
+        <Search class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+        <input
+          type="search"
+          v-model="searchQuery"
+          placeholder="Filter by title, line, author..."
+          class="w-full pl-8 pr-3 py-1.5 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring h-8"
+        />
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div
-          v-for="widget in pinnedWidgets"
-          :key="widget.id"
-          class="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-4 relative group hover:border-primary/40 transition-colors"
-        >
-          <!-- Delete button -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Tag Filter Pills -->
+        <div class="flex items-center bg-background border border-border p-0.5 rounded-lg text-xs font-medium">
           <button
             type="button"
-            @click="handleRemoveWidget(widget.id)"
-            class="absolute top-4 right-4 p-1.5 rounded-md bg-background hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 border border-border transition-colors opacity-0 group-hover:opacity-100"
-            title="Unpin Widget"
+            @click="selectedTagFilter = 'All'"
+            :class="selectedTagFilter === 'All' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded transition-all cursor-pointer"
           >
-            <Trash2 class="w-3.5 h-3.5" />
+            All
           </button>
-
-          <div class="space-y-1 pr-6">
-            <h5 class="text-sm font-semibold text-foreground">{{ widget.title }}</h5>
-            <span class="text-xs text-muted-foreground block truncate">{{ widget.targetLine }}</span>
-          </div>
-
-          <!-- Value & SPC Thresholds -->
-          <div class="flex items-baseline justify-between font-mono">
-            <div>
-              <span class="text-3xl font-bold text-foreground">{{ widget.currentValue }}</span>
-              <span class="text-xs font-normal text-muted-foreground ml-1">{{ widget.unit }}</span>
-            </div>
-            <div class="text-right text-xs space-y-0.5">
-              <div class="flex items-center gap-1.5 justify-end">
-                <span class="text-[10px] text-muted-foreground uppercase">Target:</span>
-                <span class="text-amber-600 dark:text-amber-400 font-medium">{{ widget.targetValue }} {{ widget.unit }}</span>
-              </div>
-              <div class="flex items-center gap-2 text-[10px] text-muted-foreground justify-end">
-                <span v-if="widget.upperLimit != null" class="text-rose-600 dark:text-rose-400/90 font-mono">UCL: {{ widget.upperLimit }}</span>
-                <span v-if="widget.lowerLimit != null" class="text-amber-600 dark:text-amber-400/90 font-mono">LCL: {{ widget.lowerLimit }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Mini SPC Indicator Bar -->
-          <div class="w-full bg-muted/60 h-2 rounded-full overflow-hidden border border-border relative">
-            <div
-              class="bg-primary h-full rounded-full transition-all"
-              :style="{ width: `${Math.min((widget.currentValue / (widget.targetValue || 1)) * 100, 100)}%` }"
-            ></div>
-          </div>
-
-          <div class="flex items-center justify-between text-[11px] text-muted-foreground font-mono pt-1">
-            <span>Interval: {{ widget.interval }}</span>
-            <Badge
-              variant="outline"
-              :class="getSpcStatus(widget.currentValue, widget.upperLimit, widget.lowerLimit).class"
-              class="text-[10px] font-mono border"
-            >
-              {{ getSpcStatus(widget.currentValue, widget.upperLimit, widget.lowerLimit).label }}
-            </Badge>
-          </div>
+          <button
+            v-for="t in (['OEE', 'Energy', 'Thermal', 'Hydraulic'] as KpiTag[])"
+            :key="t"
+            type="button"
+            @click="selectedTagFilter = t"
+            :class="selectedTagFilter === t ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded transition-all cursor-pointer"
+          >
+            {{ t }}
+          </button>
         </div>
+
+        <!-- Line Filter Dropdown -->
+        <select
+          v-model="selectedLineFilter"
+          class="px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring h-8"
+        >
+          <option value="All">All Lines</option>
+          <option v-for="l in availableLines" :key="l" :value="l">{{ l }}</option>
+        </select>
+
+        <!-- Sort Dropdown -->
+        <select
+          v-model="selectedSort"
+          class="px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring h-8"
+        >
+          <option value="priority">Sort by Priority</option>
+          <option value="title">Sort by Title (A-Z)</option>
+          <option value="val-desc">Sort by Value (High to Low)</option>
+          <option value="val-asc">Sort by Value (Low to High)</option>
+          <option value="line">Sort by Line</option>
+        </select>
       </div>
+    </div>
+
+    <!-- Active KPI Widgets Grid -->
+    <div v-if="filteredWidgets.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <Card
+        v-for="w in filteredWidgets"
+        :key="w.id"
+        class="border border-border bg-card shadow-xs relative group flex flex-col justify-between"
+      >
+        <CardHeader class="pb-2">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <Badge
+                  variant="outline"
+                  class="text-[9px] px-1.5 py-0 font-mono"
+                  :class="{
+                    'border-indigo-500/40 text-indigo-600 dark:text-indigo-400 bg-indigo-500/10': w.tag === 'OEE',
+                    'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10': w.tag === 'Energy',
+                    'border-rose-500/40 text-rose-600 dark:text-rose-400 bg-rose-500/10': w.tag === 'Thermal',
+                    'border-sky-500/40 text-sky-600 dark:text-sky-400 bg-sky-500/10': w.tag === 'Hydraulic'
+                  }"
+                >
+                  {{ w.tag }}
+                </Badge>
+                <Badge
+                  v-if="w.priority === 'Critical'"
+                  variant="destructive"
+                  class="text-[9px] px-1 py-0 h-4"
+                >
+                  Critical
+                </Badge>
+                <span class="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                  <Clock class="w-2.5 h-2.5" /> {{ w.timeAggregation }}
+                </span>
+              </div>
+              <CardTitle class="text-sm font-bold text-foreground mt-1 line-clamp-1">
+                {{ w.title }}
+              </CardTitle>
+              <p class="text-[11px] text-muted-foreground mt-0.5">
+                {{ w.targetLine }}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              @click="handleRemoveWidget(w.id)"
+              class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-all cursor-pointer"
+              title="Remove widget"
+            >
+              <Trash2 class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </CardHeader>
+
+        <CardContent class="space-y-4 pt-1">
+          <!-- Main Metric Value Display -->
+          <div class="flex items-baseline justify-between border-b border-border/50 pb-2">
+            <div class="font-mono text-2xl font-black text-foreground">
+              {{ w.currentValue }} <span class="text-xs font-normal text-muted-foreground">{{ w.unit }}</span>
+            </div>
+            <div class="text-right">
+              <Badge
+                variant="outline"
+                class="text-[10px] px-2 py-0.5 font-mono"
+                :class="getSpcStatus(w.currentValue, w.upperLimit, w.lowerLimit).class"
+              >
+                {{ getSpcStatus(w.currentValue, w.upperLimit, w.lowerLimit).label }}
+              </Badge>
+            </div>
+          </div>
+
+          <!-- Mini SPC Bounds Bar -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+              <span>LCL: {{ w.lowerLimit }}</span>
+              <span>Target: {{ w.targetValue }}</span>
+              <span>UCL: {{ w.upperLimit }}</span>
+            </div>
+            <div class="w-full bg-muted rounded-full h-1.5 overflow-hidden flex relative">
+              <div
+                class="h-full bg-primary rounded-full transition-all"
+                :style="{
+                  width: `${Math.min(100, Math.max(5, ((w.currentValue - w.lowerLimit) / (w.upperLimit - w.lowerLimit || 1)) * 100))}%`
+                }"
+              />
+            </div>
+          </div>
+
+          <!-- Author Footnote -->
+          <div class="pt-1 text-[10px] text-muted-foreground/80 font-mono flex items-center justify-between">
+            <span>Author: {{ w.author }}</span>
+            <span class="capitalize">{{ w.visualType }} View</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else class="text-center py-16 bg-muted/10 border border-border rounded-2xl p-8 space-y-3">
+      <Filter class="w-8 h-8 text-muted-foreground mx-auto" />
+      <h4 class="text-sm font-semibold text-foreground">No KPI Widgets Match Criteria</h4>
+      <p class="text-xs text-muted-foreground max-w-sm mx-auto">
+        Adjust your search query or tag filters, or construct a new custom KPI widget using the builder.
+      </p>
+      <Button size="sm" @click="searchQuery = ''; selectedTagFilter = 'All'; selectedLineFilter = 'All'">
+        Reset Filters
+      </Button>
     </div>
   </div>
 </template>

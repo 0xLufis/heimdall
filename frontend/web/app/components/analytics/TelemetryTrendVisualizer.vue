@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { Badge } from '~/components/ui/badge'
 import { Card } from '~/components/ui/card'
 import { useTelemetryMetrics } from '~/composables/useTelemetryMetrics'
+import type { RollingTrends, RecipeForecast, RecipeItem } from '~/types/telemetryMetrics'
 import {
   TrendingUp,
   AlertTriangle,
@@ -11,7 +12,10 @@ import {
   Maximize2,
   RefreshCw,
   HelpCircle,
-  ShieldAlert
+  ShieldAlert,
+  Wrench,
+  CheckCircle2,
+  Activity
 } from 'lucide-vue-next'
 
 export interface TelemetryPoint {
@@ -41,6 +45,9 @@ export interface TrendSeriesData {
   lowerTolerance: number
   points: TelemetryPoint[]
   detectedAnomalies: AnomalyDetail[]
+  statisticalTrends?: RollingTrends
+  recipeForecast?: RecipeForecast
+  availableRecipes?: RecipeItem[]
   source?: string
   isUserDefined?: boolean
 }
@@ -57,6 +64,10 @@ const {
 const activeMachineId = ref(props.initialMachineId || 'm-op20')
 const activeMetric = ref<string>('cycle_time')
 const activeRange = ref<'1h' | '8h' | '24h' | '7d'>('8h')
+const activeRecipeId = ref<string>('REC-ALU-01')
+const showLinearTrend = ref(true)
+const showCorridor = ref(true)
+const showMovingAverage = ref(true)
 const isLoading = ref(false)
 
 const trendData = ref<TrendSeriesData>({
@@ -67,11 +78,15 @@ const trendData = ref<TrendSeriesData>({
   upperTolerance: 1280.0,
   lowerTolerance: 1120.0,
   points: [],
-  detectedAnomalies: []
+  detectedAnomalies: [],
+  availableRecipes: [
+    { recipeId: 'REC-ALU-01', recipeName: 'Aluminum Lightweight Weld 1.5mm', description: 'High-speed laser stitch welding on 6061-T6 aluminum sheet' },
+    { recipeId: 'REC-STL-02', recipeName: 'Structural Steel Bracket Fastening', description: 'Multi-spindle M8 class 10.9 torque-controlled torque-angle fastening' },
+    { recipeId: 'REC-COMP-03', recipeName: 'Carbon Composite Adhesive Dispense', description: '2K structural polyurethane high-precision micro-bead bonding' }
+  ]
 })
 
 const hoveredPoint = ref<TelemetryPoint | null>(null)
-const hoveredAnomaly = ref<AnomalyDetail | null>(null)
 
 const machinesList = [
   { id: 'm-op20', name: 'OP20-Weld (Laser Robotic Cell)' },
@@ -88,7 +103,8 @@ const fetchTrends = async () => {
       params: {
         machineId: activeMachineId.value,
         metric: activeMetric.value,
-        range: activeRange.value
+        range: activeRange.value,
+        recipeId: activeRecipeId.value
       }
     })
     if (data && data.points) {
@@ -101,7 +117,8 @@ const fetchTrends = async () => {
         params: {
           machineId: activeMachineId.value,
           metric: activeMetric.value,
-          range: activeRange.value
+          range: activeRange.value,
+          recipeId: activeRecipeId.value
         }
       })
       if (fallback && fallback.points) {
@@ -115,7 +132,7 @@ const fetchTrends = async () => {
   }
 }
 
-watch([activeMachineId, activeMetric, activeRange], () => {
+watch([activeMachineId, activeMetric, activeRange, activeRecipeId], () => {
   fetchTrends()
 })
 
@@ -175,6 +192,41 @@ const svgAreaPath = computed(() => {
   return `${line} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`
 })
 
+// Statistical Moving Average Path
+const movingAveragePath = computed(() => {
+  const mas = trendData.value.statisticalTrends?.movingAverages
+  if (!mas || !mas.length) return ''
+  return mas.map((val, i) => `${i === 0 ? 'M' : 'L'} ${getX(i, mas.length)} ${getY(val)}`).join(' ')
+})
+
+// Standard Deviation Corridor Area Path
+const corridorAreaPath = computed(() => {
+  const upper = trendData.value.statisticalTrends?.upperStdDevCorridor
+  const lower = trendData.value.statisticalTrends?.lowerStdDevCorridor
+  if (!upper || !lower || !upper.length || !lower.length) return ''
+  const upperPath = upper.map((v, i) => `${i === 0 ? 'M' : 'L'} ${getX(i, upper.length)} ${getY(v)}`).join(' ')
+  const lowerPathReversed = lower.slice().reverse().map((v, i) => {
+    const origIdx = lower.length - 1 - i
+    return `L ${getX(origIdx, lower.length)} ${getY(v)}`
+  }).join(' ')
+  return `${upperPath} ${lowerPathReversed} Z`
+})
+
+// Linear Regression Trend Line
+const regressionCoords = computed(() => {
+  const reg = trendData.value.statisticalTrends?.linearRegression
+  const pts = trendData.value.points
+  if (!reg || !pts.length) return null
+  const yStart = reg.intercept
+  const yEnd = reg.intercept + reg.slope * (pts.length - 1)
+  return {
+    x1: getX(0, pts.length),
+    y1: getY(yStart),
+    x2: getX(pts.length - 1, pts.length),
+    y2: getY(yEnd)
+  }
+})
+
 // Summary statistics
 const currentVal = computed(() => {
   const pts = trendData.value.points
@@ -191,15 +243,27 @@ const meanVal = computed(() => {
 
 <template>
   <div class="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
-    <!-- Header Controls: Machine Selector, Metric Switcher & Time Range -->
+    <!-- Header Controls: Machine Selector, Recipe Selector & Time Range -->
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div class="space-y-1">
         <div class="flex items-center gap-2">
-          <TrendingUp class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          <h3 class="text-base font-semibold text-foreground">Predictive Telemetry Drift & Anomaly Tracker</h3>
+          <TrendingUp class="w-4 h-4 text-primary" />
+          <h3 class="text-base font-semibold text-foreground">Metric Trends & Statistical Forecast</h3>
+          <Badge
+            v-if="trendData.statisticalTrends"
+            variant="outline"
+            :class="{
+              'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10': trendData.statisticalTrends.trendDirection === 'Stable',
+              'border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10': trendData.statisticalTrends.trendDirection === 'DriftingUp' || trendData.statisticalTrends.trendDirection === 'DriftingDown',
+              'border-rose-500/30 text-rose-600 dark:text-rose-400 bg-rose-500/10': trendData.statisticalTrends.trendDirection === 'Volatile'
+            }"
+            class="text-[10px] uppercase font-mono px-2 py-0.5"
+          >
+            {{ trendData.statisticalTrends.trendDirection }}
+          </Badge>
         </div>
         <p class="text-xs text-muted-foreground">
-          Rolling statistical analysis with Z-score outlier detection (|z| > 2.5σ warning, |z| > 3.0σ critical).
+          Linear regression drift analysis, standard deviation corridors (±1.5σ), and recipe tool wear forecasting.
         </p>
       </div>
 
@@ -212,12 +276,26 @@ const meanVal = computed(() => {
           <option v-for="m in machinesList" :key="m.id" :value="m.id">{{ m.name }}</option>
         </select>
 
+        <select
+          v-model="activeRecipeId"
+          class="px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          title="Product Recipe Baseline Envelope"
+        >
+          <option
+            v-for="r in trendData.availableRecipes || []"
+            :key="r.recipeId"
+            :value="r.recipeId"
+          >
+            {{ r.recipeName }}
+          </option>
+        </select>
+
         <div class="flex items-center bg-muted/40 p-1 rounded-lg border border-border text-xs font-medium">
           <button
             type="button"
             @click="activeRange = '1h'"
             :class="activeRange === '1h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded transition-all"
+            class="px-2.5 py-1 rounded transition-all cursor-pointer"
           >
             1h
           </button>
@@ -225,15 +303,15 @@ const meanVal = computed(() => {
             type="button"
             @click="activeRange = '8h'"
             :class="activeRange === '8h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded transition-all"
+            class="px-2.5 py-1 rounded transition-all cursor-pointer"
           >
-            8h (Shift)
+            8h
           </button>
           <button
             type="button"
             @click="activeRange = '24h'"
             :class="activeRange === '24h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded transition-all"
+            class="px-2.5 py-1 rounded transition-all cursor-pointer"
           >
             24h
           </button>
@@ -241,7 +319,7 @@ const meanVal = computed(() => {
             type="button"
             @click="activeRange = '7d'"
             :class="activeRange === '7d' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded transition-all"
+            class="px-2.5 py-1 rounded transition-all cursor-pointer"
           >
             7d
           </button>
@@ -250,11 +328,60 @@ const meanVal = computed(() => {
         <button
           type="button"
           @click="fetchTrends"
-          class="p-2 rounded-lg bg-background hover:bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors"
+          class="p-2 rounded-lg bg-background hover:bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           title="Refresh Timeseries Data"
         >
           <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5" />
         </button>
+      </div>
+    </div>
+
+    <!-- Recipe-Based Forecast Banner -->
+    <div
+      v-if="trendData.recipeForecast"
+      class="p-4 rounded-xl border transition-all"
+      :class="{
+        'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200': trendData.recipeForecast.toolWearStatus === 'Nominal',
+        'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200': trendData.recipeForecast.toolWearStatus === 'Warning',
+        'bg-rose-500/10 border-rose-500/30 text-rose-900 dark:text-rose-200': trendData.recipeForecast.toolWearStatus === 'CriticalImpendingFailure'
+      }"
+    >
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <div class="p-2 rounded-lg bg-background/60 border border-current/20 shrink-0">
+            <Wrench class="w-4 h-4" />
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-xs uppercase tracking-wide">Recipe Forecast: {{ trendData.recipeForecast.recipeName }}</span>
+              <Badge
+                variant="outline"
+                class="text-[10px] px-1.5 py-0 uppercase"
+                :class="{
+                  'border-emerald-500 text-emerald-700 dark:text-emerald-300': trendData.recipeForecast.toolWearStatus === 'Nominal',
+                  'border-amber-500 text-amber-700 dark:text-amber-300': trendData.recipeForecast.toolWearStatus === 'Warning',
+                  'border-rose-500 text-rose-700 dark:text-rose-300': trendData.recipeForecast.toolWearStatus === 'CriticalImpendingFailure'
+                }"
+              >
+                {{ trendData.recipeForecast.toolWearStatus }}
+              </Badge>
+            </div>
+            <p class="text-xs opacity-90 mt-0.5 font-mono">
+              {{ trendData.recipeForecast.recommendedAction }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4 shrink-0 text-xs font-mono">
+          <div>
+            <span class="block opacity-75 text-[10px]">Drift Rate</span>
+            <span class="font-bold">{{ trendData.recipeForecast.driftPercentage > 0 ? '+' : '' }}{{ trendData.recipeForecast.driftPercentage }}%</span>
+          </div>
+          <div class="border-l border-current/20 pl-4">
+            <span class="block opacity-75 text-[10px]">Cycles Until Failure</span>
+            <span class="font-bold">{{ trendData.recipeForecast.forecastCyclesUntilFailure }} cycles</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -265,14 +392,37 @@ const meanVal = computed(() => {
         :key="m.key"
         type="button"
         @click="activeMetric = m.key"
-        :class="activeMetric === m.key ? 'bg-muted text-foreground border-border shadow-sm font-semibold' : 'bg-background text-muted-foreground border-border hover:text-foreground hover:bg-muted/40'"
+        :class="activeMetric === m.key ? 'bg-muted text-foreground border-border shadow-xs font-semibold' : 'bg-background text-muted-foreground border-border hover:text-foreground hover:bg-muted/40'"
         class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
       >
         <span>{{ m.name }} ({{ m.unit }})</span>
-        <Badge v-if="m.isUserDefined" variant="outline" class="text-[9px] px-1 py-0 border-indigo-500/30 text-indigo-600 dark:text-indigo-400">
+        <Badge v-if="m.isUserDefined" variant="outline" class="text-[9px] px-1 py-0 border-primary/30 text-primary">
           Custom
         </Badge>
       </button>
+    </div>
+
+    <!-- Statistical Overlays Toggle Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-3">
+        <label class="flex items-center gap-1.5 cursor-pointer select-none text-muted-foreground hover:text-foreground">
+          <input type="checkbox" v-model="showLinearTrend" class="rounded border-border text-primary focus:ring-ring" />
+          <span>Linear Regression</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer select-none text-muted-foreground hover:text-foreground">
+          <input type="checkbox" v-model="showMovingAverage" class="rounded border-border text-primary focus:ring-ring" />
+          <span>Moving Average (5 pt)</span>
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer select-none text-muted-foreground hover:text-foreground">
+          <input type="checkbox" v-model="showCorridor" class="rounded border-border text-primary focus:ring-ring" />
+          <span>Std Dev Corridor (±1.5σ)</span>
+        </label>
+      </div>
+
+      <div v-if="trendData.statisticalTrends?.linearRegression" class="text-[11px] font-mono text-muted-foreground flex items-center gap-2">
+        <span>Slope: {{ trendData.statisticalTrends.linearRegression.slope > 0 ? '+' : '' }}{{ trendData.statisticalTrends.linearRegression.slope }}/pt</span>
+        <span>R²: {{ trendData.statisticalTrends.linearRegression.r2 }}</span>
+      </div>
     </div>
 
     <!-- Interactive SVG Chart Canvas -->
@@ -286,6 +436,10 @@ const meanVal = computed(() => {
             <stop offset="0%" stop-color="#57715b" stop-opacity="0.3" />
             <stop offset="100%" stop-color="#57715b" stop-opacity="0.0" />
           </linearGradient>
+          <linearGradient id="corridorGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6366f1" stop-opacity="0.15" />
+            <stop offset="100%" stop-color="#6366f1" stop-opacity="0.05" />
+          </linearGradient>
         </defs>
 
         <!-- Grid Lines -->
@@ -296,6 +450,17 @@ const meanVal = computed(() => {
           <line :x1="padding.left" :y1="padding.top + chartHeight * 0.75" :x2="svgWidth - padding.right" :y2="padding.top + chartHeight * 0.75" />
           <line :x1="padding.left" :y1="padding.top + chartHeight" :x2="svgWidth - padding.right" :y2="padding.top + chartHeight" />
         </g>
+
+        <!-- Standard Deviation Corridor (±1.5σ) -->
+        <path
+          v-if="showCorridor && corridorAreaPath"
+          :d="corridorAreaPath"
+          fill="url(#corridorGradient)"
+          stroke="#818cf8"
+          stroke-width="0.8"
+          stroke-dasharray="2,2"
+          opacity="0.8"
+        />
 
         <!-- Nominal Tolerance Bands (Upper & Lower Limits) -->
         <g stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,4" opacity="0.6">
@@ -318,11 +483,33 @@ const meanVal = computed(() => {
           <text :x="padding.left - 8" :y="padding.top + chartHeight">{{ yBounds.min }}</text>
         </g>
 
-        <!-- Shaded Trend Area -->
+        <!-- Shaded Raw Telemetry Trend Area -->
         <path :d="svgAreaPath" fill="url(#trendGradient)" />
 
-        <!-- Line Trend Path -->
+        <!-- Raw Telemetry Line Path -->
         <path :d="svgPath" fill="none" stroke="#768f79" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+        <!-- Rolling Moving Average Line (5 pt) -->
+        <path
+          v-if="showMovingAverage && movingAveragePath"
+          :d="movingAveragePath"
+          fill="none"
+          stroke="#06b6d4"
+          stroke-width="1.8"
+          stroke-linecap="round"
+        />
+
+        <!-- Linear Regression Trend Line -->
+        <line
+          v-if="showLinearTrend && regressionCoords"
+          :x1="regressionCoords.x1"
+          :y1="regressionCoords.y1"
+          :x2="regressionCoords.x2"
+          :y2="regressionCoords.y2"
+          stroke="#ec4899"
+          stroke-width="2"
+          stroke-dasharray="5,5"
+        />
 
         <!-- Telemetry Points & Outlier Markers -->
         <g v-for="(p, i) in trendData.points" :key="i">
@@ -399,7 +586,7 @@ const meanVal = computed(() => {
         <span class="text-foreground font-bold text-sm">{{ trendData.nominalValue }} {{ trendData.unit }}</span>
       </div>
       <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
-        <span class="text-muted-foreground block text-[11px]">Detected Outliers</span>
+        <span class="text-muted-foreground block text-[11px]">Statistical Outliers</span>
         <span
           :class="trendData.detectedAnomalies.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'"
           class="font-bold text-sm"

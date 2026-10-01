@@ -128,7 +128,7 @@ onMounted(() => {
         class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Sparkles class="w-4 h-4" />
-        <span>Predictive Drift</span>
+        <span>Metric Trends</span>
       </button>
 
       <button

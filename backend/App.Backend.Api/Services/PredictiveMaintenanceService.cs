@@ -174,9 +174,10 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
     }
 
     /// <summary>
-    /// Generates rolling timeseries trends for a target machine and metric with upper/lower limits.
+    /// Generates rolling timeseries trends for a target machine and metric with upper/lower limits,
+    /// statistical trend lines (linear regression, moving averages, std dev corridors), and recipe forecasting.
     /// </summary>
-    public MachineTrendSeriesDto GetMachineTrends(string machineId, string metricName, TimeSpan timeRange)
+    public MachineTrendSeriesDto GetMachineTrends(string machineId, string metricName, TimeSpan timeRange, string? recipeId = null)
     {
         var now = DateTime.UtcNow;
         int pointCount = timeRange.TotalHours <= 1 ? 30 : (timeRange.TotalHours <= 8 ? 48 : 60);
@@ -221,6 +222,30 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
                 break;
         }
 
+        var availableRecipes = new List<RecipeItemDto>
+        {
+            new() { RecipeId = "REC-ALU-01", RecipeName = "Aluminum Lightweight Weld 1.5mm", Description = "High-speed laser stitch welding on 6061-T6 aluminum sheet" },
+            new() { RecipeId = "REC-STL-02", RecipeName = "Structural Steel Bracket Fastening", Description = "Multi-spindle M8 class 10.9 torque-controlled torque-angle fastening" },
+            new() { RecipeId = "REC-COMP-03", RecipeName = "Carbon Composite Adhesive Dispense", Description = "2K structural polyurethane high-precision micro-bead bonding" }
+        };
+
+        var selectedRecipe = availableRecipes.FirstOrDefault(r => string.Equals(r.RecipeId, recipeId, StringComparison.OrdinalIgnoreCase))
+                             ?? availableRecipes[0];
+
+        // Adjust nominal & tolerances if recipe is explicitly selected
+        if (selectedRecipe.RecipeId == "REC-ALU-01" && metricName.Contains("Cycle Time"))
+        {
+            nominal = 1160.0;
+            upper = 1240.0;
+            lower = 1080.0;
+        }
+        else if (selectedRecipe.RecipeId == "REC-STL-02" && metricName.Contains("Cycle Time"))
+        {
+            nominal = 1290.0;
+            upper = 1360.0;
+            lower = 1210.0;
+        }
+
         var rand = new Random(machineId.GetHashCode() ^ metricName.GetHashCode());
         var points = new List<TelemetryPointDto>();
 
@@ -250,6 +275,114 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
 
         var anomalies = DetectAnomalies(metricName, points);
 
+        // Compute rolling statistical trends (Linear Regression, Moving Averages, Std Dev Corridors)
+        int n = points.Count;
+        double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0, sumYY = 0;
+        for (int i = 0; i < n; i++)
+        {
+            double x = i;
+            double y = points[i].Value;
+            sumX += x;
+            sumY += y;
+            sumXY += x * y;
+            sumXX += x * x;
+            sumYY += y * y;
+        }
+
+        double denominator = (n * sumXX - sumX * sumX);
+        double slope = denominator != 0 ? (n * sumXY - sumX * sumY) / denominator : 0;
+        double intercept = n > 0 ? (sumY - slope * sumX) / n : nominal;
+
+        // R^2 calculation
+        double totalSumSquares = sumYY - (sumY * sumY) / (n > 0 ? n : 1);
+        double regressionSumSquares = slope * (sumXY - (sumX * sumY) / (n > 0 ? n : 1));
+        double r2 = totalSumSquares > 0.0001 ? Math.Clamp(regressionSumSquares / totalSumSquares, 0.0, 1.0) : 0.0;
+
+        // Moving averages and standard deviation corridor
+        const int window = 5;
+        var movingAverages = new List<double>();
+        var upperCorridor = new List<double>();
+        var lowerCorridor = new List<double>();
+
+        double overallMean = n > 0 ? sumY / n : nominal;
+        double overallStdDev = n > 0 ? Math.Sqrt(Math.Max(0, (sumYY / n) - (overallMean * overallMean))) : 1.0;
+
+        for (int i = 0; i < n; i++)
+        {
+            int startIdx = Math.Max(0, i - window + 1);
+            int count = i - startIdx + 1;
+            double windowSum = 0;
+            for (int w = startIdx; w <= i; w++)
+            {
+                windowSum += points[w].Value;
+            }
+            double ma = Math.Round(windowSum / count, 2);
+            movingAverages.Add(ma);
+            upperCorridor.Add(Math.Round(ma + 1.5 * overallStdDev, 2));
+            lowerCorridor.Add(Math.Round(ma - 1.5 * overallStdDev, 2));
+        }
+
+        // Trend Direction
+        string direction = "Stable";
+        double normalizedSlope = slope / (nominal != 0 ? nominal : 1.0);
+        if (normalizedSlope > 0.002)
+        {
+            direction = "DriftingUp";
+        }
+        else if (normalizedSlope < -0.002)
+        {
+            direction = "DriftingDown";
+        }
+        else if (overallStdDev / (overallMean != 0 ? overallMean : 1.0) > 0.12)
+        {
+            direction = "Volatile";
+        }
+
+        var rollingTrends = new RollingTrendsDto
+        {
+            LinearRegressionSlope = Math.Round(slope, 4),
+            LinearRegressionIntercept = Math.Round(intercept, 2),
+            R2Score = Math.Round(r2, 3),
+            MovingAverageWindow = window,
+            MovingAverages = movingAverages,
+            UpperStdDevCorridor = upperCorridor,
+            LowerStdDevCorridor = lowerCorridor,
+            TrendDirection = direction
+        };
+
+        // Compute Recipe-Based Forecast
+        double latestVal = points.Count > 0 ? points[^1].Value : nominal;
+        double driftPct = nominal != 0 ? Math.Round(((latestVal - nominal) / nominal) * 100.0, 2) : 0.0;
+        int cyclesRemaining = 1200;
+        string wearStatus = "Nominal";
+        string action = "Operating within normal recipe tolerance envelope.";
+
+        if (Math.Abs(driftPct) >= 8.0 || Math.Abs(latestVal - nominal) > (upper - nominal) * 0.75)
+        {
+            cyclesRemaining = Math.Max(45, (int)(450 - Math.Abs(driftPct) * 18));
+            wearStatus = "CriticalImpendingFailure";
+            action = "Impending process failure detected: Schedule electrode/tool tip replacement before next shift.";
+        }
+        else if (Math.Abs(driftPct) >= 3.5 || Math.Abs(latestVal - nominal) > (upper - nominal) * 0.45)
+        {
+            cyclesRemaining = Math.Max(250, (int)(850 - Math.Abs(driftPct) * 40));
+            wearStatus = "Warning";
+            action = "Accelerated tool degradation: Inspect calibration and lubrication parameters during scheduled break.";
+        }
+
+        var recipeForecast = new RecipeForecastDto
+        {
+            RecipeId = selectedRecipe.RecipeId,
+            RecipeName = selectedRecipe.RecipeName,
+            TargetBaseline = nominal,
+            UpperTolerance = upper,
+            LowerTolerance = lower,
+            DriftPercentage = driftPct,
+            ForecastCyclesUntilFailure = cyclesRemaining,
+            ToolWearStatus = wearStatus,
+            RecommendedAction = action
+        };
+
         return new MachineTrendSeriesDto
         {
             MachineId = machineId,
@@ -259,7 +392,10 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
             UpperTolerance = upper,
             LowerTolerance = lower,
             Points = points,
-            DetectedAnomalies = anomalies
+            DetectedAnomalies = anomalies,
+            StatisticalTrends = rollingTrends,
+            RecipeForecast = recipeForecast,
+            AvailableRecipes = availableRecipes
         };
     }
 
