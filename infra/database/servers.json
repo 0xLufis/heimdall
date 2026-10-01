@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Heimdall Development PostgreSQL",
+      "Group": "Heimdall OT Cluster",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "heimdall_dev_db",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}

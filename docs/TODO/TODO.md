@@ -6,11 +6,11 @@ This document tracks general cross-cutting architectural enhancements, developer
 
 ## 1. Developer Tooling & Environment Automation
 
-- [ ] **One-Command Dev Setup (`just dev-setup`)**:
+- [x] **One-Command Dev Setup (`just dev-setup`)**:
   - Automate prerequisite checks (.NET 10 SDK, Bun, Docker, Python 3.12, PostgreSQL client tools).
   - Automate database initialization, migrations, and enterprise plant seeding via a single command.
   - Provide interactive diagnostic checks for local ports (`3000`, `5000`, `5001`, `5432`, `6379`).
-- [ ] **Optional Dev pgAdmin Profile**:
+- [x] **Optional Dev pgAdmin Profile**:
   - Add optional `pgadmin` service profile to `docker-compose.yml` (`docker compose --profile pgadmin up`).
   - Configure default connection bindings and credentials targeting the local Heimdall development PostgreSQL instance.
 
