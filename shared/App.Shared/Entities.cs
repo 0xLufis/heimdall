@@ -139,6 +139,20 @@ public partial class Machine : BaseInventoryItem
     /// <summary>The CAD/DXF object handle for mapping this station to a spatial layout.</summary>
     public string? PinnedObjectHandle { get; set; }
     
+    /// <summary>Machine operational lifecycle status: active, inactive, maintenance, decommissioned, dismantled.</summary>
+    [MaxLength(64)]
+    public string Status { get; set; } = "active";
+
+    /// <summary>Documented user justification for decommissioning.</summary>
+    public string? DecommissionReason { get; set; }
+
+    /// <summary>Timestamp when the machine was decommissioned.</summary>
+    public DateTimeOffset? DecommissionDate { get; set; }
+
+    /// <summary>Disposition of installed parts on decommission (salvage_donor, scrap, retain).</summary>
+    [MaxLength(64)]
+    public string? DecommissionDisposition { get; set; }
+
     /// <summary>List of Client PCs that control or monitor this station.</summary>
     public List<ClientPc> Controllers { get; set; } = new();
 

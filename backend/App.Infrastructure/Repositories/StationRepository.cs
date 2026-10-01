@@ -79,6 +79,27 @@ public class StationRepository : IStationRepository
         return machine;
     }
 
+    public async Task<Machine?> UpdateStatusAsync(Guid id, string status)
+    {
+        var machine = await _context.Machines.FindAsync(id);
+        if (machine == null) return null;
+        machine.Status = status;
+        await _context.SaveChangesAsync();
+        return machine;
+    }
+
+    public async Task<Machine?> DecommissionAsync(Guid id, string reason, string targetDisposition, string partsHandling, DateTimeOffset? date)
+    {
+        var machine = await _context.Machines.FindAsync(id);
+        if (machine == null) return null;
+        machine.Status = targetDisposition == "dismantled" ? "dismantled" : "decommissioned";
+        machine.DecommissionReason = reason;
+        machine.DecommissionDate = date ?? DateTimeOffset.UtcNow;
+        machine.DecommissionDisposition = partsHandling;
+        await _context.SaveChangesAsync();
+        return machine;
+    }
+
     public async Task<bool> DeleteAsync(Guid id)
     {
         var machine = await _context.Machines.FindAsync(id);

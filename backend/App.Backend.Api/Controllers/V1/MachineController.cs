@@ -36,6 +36,10 @@ public class MachineController : ControllerBase
             PreferredTechnicianId = m.PreferredTechnicianId,
             PreferredTechnicianName = m.PreferredTechnicianName,
             PinnedObjectHandle = m.PinnedObjectHandle,
+            Status = m.Status ?? "active",
+            DecommissionReason = m.DecommissionReason,
+            DecommissionDate = m.DecommissionDate,
+            DecommissionDisposition = m.DecommissionDisposition,
             Controllers = m.Controllers.Select(c => new App.Backend.Api.Dtos.ClientPcSummaryDto
             {
                 Id = c.Id,
@@ -141,5 +145,35 @@ public class MachineController : ControllerBase
 
         if (updated == null) return NotFound();
         return NoContent();
+    }
+
+    [HttpPut("{id}/status")]
+    public async Task<IActionResult> UpdateMachineStatus(Guid id, [FromBody] App.Backend.Api.Dtos.MachineStatusUpdateDto update)
+    {
+        var machine = await _stationRepository.UpdateStatusAsync(id, update.Status);
+        if (machine == null) return NotFound();
+        return Ok(new { machine.Id, machine.Status });
+    }
+
+    [HttpPost("{id}/decommission")]
+    public async Task<IActionResult> DecommissionMachine(Guid id, [FromBody] App.Backend.Api.Dtos.MachineDecommissionDto decommission)
+    {
+        var machine = await _stationRepository.DecommissionAsync(
+            id,
+            decommission.Reason,
+            decommission.TargetDisposition,
+            decommission.PartsHandling,
+            decommission.DecommissionDate
+        );
+
+        if (machine == null) return NotFound();
+        return Ok(new
+        {
+            machine.Id,
+            machine.Status,
+            machine.DecommissionReason,
+            machine.DecommissionDate,
+            machine.DecommissionDisposition
+        });
     }
 }

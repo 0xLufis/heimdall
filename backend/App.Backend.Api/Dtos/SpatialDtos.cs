@@ -95,12 +95,33 @@ public class MachineDto
     public string? PreferredTechnicianName { get; set; }
     /// <summary>CAD object handle for spatial mapping.</summary>
     public string? PinnedObjectHandle { get; set; }
+    /// <summary>Machine operational lifecycle status: active, inactive, maintenance, decommissioned, dismantled.</summary>
+    public string Status { get; set; } = "active";
+    /// <summary>Documented user justification for decommissioning.</summary>
+    public string? DecommissionReason { get; set; }
+    /// <summary>Timestamp when the machine was decommissioned.</summary>
+    public DateTimeOffset? DecommissionDate { get; set; }
+    /// <summary>Disposition of installed parts on decommission.</summary>
+    public string? DecommissionDisposition { get; set; }
     /// <summary>Summary of Client PCs controlling this station.</summary>
     public List<ClientPcSummaryDto> Controllers { get; set; } = new();
     /// <summary>List of teams responsible for this station.</summary>
     public List<TeamSummaryDto> ResponsibleTeams { get; set; } = new();
     /// <summary>Tree of hardware components installed at this station.</summary>
     public List<InventoryItemDto> Children { get; set; } = new();
+}
+
+public class MachineDecommissionDto
+{
+    public string Reason { get; set; } = string.Empty;
+    public string TargetDisposition { get; set; } = "decommissioned"; // decommissioned or dismantled
+    public string PartsHandling { get; set; } = "salvage_donor"; // salvage_donor, scrap, retain
+    public DateTimeOffset? DecommissionDate { get; set; }
+}
+
+public class MachineStatusUpdateDto
+{
+    public string Status { get; set; } = "active";
 }
 
 /// <summary>

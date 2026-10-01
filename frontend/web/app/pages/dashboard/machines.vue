@@ -15,7 +15,10 @@ import {
   ChevronRight,
   ShieldAlert,
   SlidersHorizontal,
-  Plus
+  Plus,
+  Archive,
+  Wrench,
+  Trash2
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import RbacButton from '~/components/common/RbacButton.vue'
@@ -24,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '~/com
 import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
 import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
 import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
+import DecommissionMachineModal from '~/components/machines/DecommissionMachineModal.vue'
 import { useAuthSession } from '~/composables/useAuthSession'
 import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
@@ -36,13 +40,25 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
-const { user, canApproveLineStops, isOperativePlanner, isEngineer } = useAuthSession()
+const { user, canApproveLineStops, isOperativePlanner, isEngineer, isAdmin } = useAuthSession()
 const { openContextMenu } = useGlobalContextMenu()
 
 // Switchable view states
 const activeView = ref<'machines' | 'lines' | 'technologies'>('machines')
+const statusFilter = ref<'active_floor' | 'active' | 'inactive' | 'maintenance' | 'decommissioned' | 'dismantled' | 'all'>('active_floor')
+const isDecommissionModalOpen = ref(false)
+const selectedMachineToDecommission = ref<any>(null)
 const loading = ref(false)
 const searchQuery = ref('')
+
+const openDecommissionModal = (m: any) => {
+  selectedMachineToDecommission.value = m
+  isDecommissionModalOpen.value = true
+}
+
+const onMachineDecommissioned = () => {
+  fetchData()
+}
 
 const resetMachinesView = () => {
   searchQuery.value = ''
@@ -80,6 +96,12 @@ watch(() => route.query, (q) => {
   }
   if (q.tree) {
     openTreeForStation(q.tree as string)
+  }
+  if (q.decommission) {
+    const target = machines.value.find(m => m.id === q.decommission || m.customIdentifier === q.decommission)
+    if (target) {
+      openDecommissionModal(target)
+    }
   }
 }, { immediate: true })
 
@@ -127,7 +149,7 @@ const fetchData = async () => {
   loading.value = true
   try {
     const [machRes, lineRes, techRes, kpiRes] = await Promise.allSettled([
-      $fetch<any[]>('/api/proxy/v1/machine'),
+      $fetch<any[]>('/api/machines?includeDecommissioned=true').catch(() => $fetch<any[]>('/api/proxy/v1/machine')),
       $fetch<any[]>('/api/proxy/v1/machine/by-line'),
       $fetch<any[]>('/api/proxy/v1/machine/by-technology'),
       $fetch<any[]>('/api/analytics/kpis')
@@ -153,6 +175,7 @@ const fetchData = async () => {
           customIdentifier: 'LINE1-OP10',
           machineType: 'Assembly',
           groupId: 'Line 1',
+          status: 'active',
           controllers: [{ id: 'c-1', hostname: 'IPC-L1-01', ipAddress: '192.168.1.110', isOnline: true }],
           responsibleTeams: [{ name: 'Mechanical Maintenance' }]
         },
@@ -163,6 +186,7 @@ const fetchData = async () => {
           customIdentifier: 'LINE1-OP20',
           machineType: 'Welding',
           groupId: 'Line 1',
+          status: 'active',
           controllers: [{ id: 'c-2', hostname: 'IPC-L1-02', ipAddress: '192.168.1.111', isOnline: true }],
           responsibleTeams: [{ name: 'Electrical Engineering' }]
         },
@@ -173,6 +197,7 @@ const fetchData = async () => {
           customIdentifier: 'LINE2-OP30',
           machineType: 'Test',
           groupId: 'Line 2',
+          status: 'maintenance',
           controllers: [{ id: 'c-3', hostname: 'IPC-L2-03', ipAddress: '192.168.1.120', isOnline: true }],
           responsibleTeams: [{ name: 'Quality Automation' }]
         },
@@ -183,6 +208,7 @@ const fetchData = async () => {
           customIdentifier: 'LINE1-OP40',
           machineType: 'Fastening',
           groupId: 'Line 1',
+          status: 'active',
           controllers: [{ id: 'c-4', hostname: 'IPC-L1-04', ipAddress: '192.168.1.114', isOnline: true }],
           responsibleTeams: [{ name: 'Assembly Engineering' }]
         },
@@ -193,6 +219,7 @@ const fetchData = async () => {
           customIdentifier: 'LINE2-OP50',
           machineType: 'Dispensing',
           groupId: 'Line 2',
+          status: 'inactive',
           controllers: [{ id: 'c-5', hostname: 'IPC-L2-05', ipAddress: '192.168.1.125', isOnline: true }],
           responsibleTeams: [{ name: 'Chemical & Dispensing' }]
         },
@@ -203,8 +230,23 @@ const fetchData = async () => {
           customIdentifier: 'LINE2-OP60',
           machineType: 'Robotics',
           groupId: 'Line 2',
+          status: 'active',
           controllers: [{ id: 'c-6', hostname: 'IPC-L2-06', ipAddress: '192.168.1.128', isOnline: true }],
           responsibleTeams: [{ name: 'Robotics Engineering' }]
+        },
+        {
+          id: '77777777-7777-7777-7777-777777777777',
+          name: 'OP70-LegacyPress',
+          displayName: 'Legacy Hydraulic Stamping Press #3',
+          customIdentifier: 'LINE1-OP70',
+          machineType: 'Pressing',
+          groupId: 'Line 1',
+          status: 'decommissioned',
+          decommissionReason: 'Replaced by High-Speed Servo Stamping Cell',
+          decommissionDate: '2026-08-15T10:00:00.000Z',
+          decommissionDisposition: 'retain',
+          controllers: [],
+          responsibleTeams: [{ name: 'Mechanical Maintenance' }]
         }
       ]
     }
@@ -260,10 +302,35 @@ const onSearch = (q: string) => {
   searchQuery.value = q
 }
 
-// Filter machines by search query
+// Machine counts grouped by operational lifecycle status
+const machineCounts = computed(() => {
+  const all = machines.value || []
+  return {
+    total: all.length,
+    active_floor: all.filter(m => m.status !== 'decommissioned' && m.status !== 'dismantled').length,
+    active: all.filter(m => m.status === 'active' || (!m.status && m.status !== 'inactive' && m.status !== 'maintenance' && m.status !== 'decommissioned' && m.status !== 'dismantled')).length,
+    inactive: all.filter(m => m.status === 'inactive').length,
+    maintenance: all.filter(m => m.status === 'maintenance').length,
+    decommissioned: all.filter(m => m.status === 'decommissioned').length,
+    dismantled: all.filter(m => m.status === 'dismantled').length
+  }
+})
+
+// Filter machines by status and search query
 const filteredMachines = computed(() => {
+  let list = machines.value || []
+
+  // Status Filter
+  if (statusFilter.value === 'active_floor') {
+    list = list.filter(m => m.status !== 'decommissioned' && m.status !== 'dismantled')
+  } else if (statusFilter.value === 'active') {
+    list = list.filter(m => m.status === 'active' || (!m.status && m.status !== 'inactive' && m.status !== 'maintenance' && m.status !== 'decommissioned' && m.status !== 'dismantled'))
+  } else if (statusFilter.value !== 'all') {
+    list = list.filter(m => m.status === statusFilter.value)
+  }
+
   const q = searchQuery.value.toLowerCase().trim()
-  if (!q) return machines.value
+  if (!q) return list
 
   const tagMatches: Record<string, string> = {}
   const tagRegex = /(\w+):"([^"]+)"|(\w+):(\S+)/g
@@ -275,11 +342,12 @@ const filteredMachines = computed(() => {
   }
   const cleanText = q.replace(tagRegex, '').trim()
 
-  return machines.value.filter(m => {
+  return list.filter(m => {
     for (const [tagKey, tagVal] of Object.entries(tagMatches)) {
       if (tagKey === 'station' && !m.name?.toLowerCase().includes(tagVal) && !m.customIdentifier?.toLowerCase().includes(tagVal)) return false
       if (tagKey === 'line' && !m.groupId?.toLowerCase().includes(tagVal)) return false
       if (tagKey === 'tech' && !m.machineType?.toLowerCase().includes(tagVal)) return false
+      if (tagKey === 'status' && !m.status?.toLowerCase().includes(tagVal)) return false
     }
 
     if (route.query.id && m.id && m.id.toLowerCase() === (route.query.id as string).toLowerCase()) {
@@ -293,8 +361,9 @@ const filteredMachines = computed(() => {
       const identMatch = (m.customIdentifier || '').toLowerCase().includes(cleanText)
       const typeMatch = (m.machineType || '').toLowerCase().includes(cleanText)
       const lineMatch = (m.groupId || '').toLowerCase().includes(cleanText)
+      const statusMatch = (m.status || '').toLowerCase().includes(cleanText)
       const ctrlMatch = (m.controllers || []).some((c: any) => (c.hostname || '').toLowerCase().includes(cleanText) || (c.ipAddress || '').toLowerCase().includes(cleanText))
-      return idMatch || nameMatch || dispMatch || identMatch || typeMatch || lineMatch || ctrlMatch
+      return idMatch || nameMatch || dispMatch || identMatch || typeMatch || lineMatch || statusMatch || ctrlMatch
     }
 
     return true
@@ -460,12 +529,104 @@ onMounted(() => {
     </div>
 
     <!-- Unified HeimdallSearch Bar across all 3 views -->
-    <div class="max-w-5xl mx-auto w-full">
+    <div class="max-w-5xl mx-auto w-full space-y-3">
       <HeimdallSearchBar
         :config="machinesSearchConfig"
         :immediate="true"
         @search="onSearch"
       />
+
+      <!-- Operational Status Filter Bar (active floor vs decommissioned/all) -->
+      <div v-if="activeView === 'machines'" class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+        <button
+          type="button"
+          @click="statusFilter = 'active_floor'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'active_floor' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span>Active Floor</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'active_floor' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.active_floor }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'active'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'active' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span class="size-1.5 rounded-full bg-emerald-500" />
+          <span>Active</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'active' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.active }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'inactive'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'inactive' ? 'bg-zinc-700 text-white border-zinc-700 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span class="size-1.5 rounded-full bg-zinc-400" />
+          <span>Inactive</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'inactive' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.inactive }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'maintenance'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'maintenance' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span class="size-1.5 rounded-full bg-amber-400" />
+          <span>Maintenance</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'maintenance' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.maintenance }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'decommissioned'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'decommissioned' ? 'bg-rose-700 text-white border-rose-700 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <Archive class="size-3 text-rose-400" />
+          <span>Decommissioned</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'decommissioned' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.decommissioned }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'dismantled'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'dismantled' ? 'bg-purple-700 text-white border-purple-700 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <Wrench class="size-3 text-purple-400" />
+          <span>Dismantled</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'dismantled' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.dismantled }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'all'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'all' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span>All</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'all' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.total }}
+          </span>
+        </button>
+      </div>
     </div>
 
     <!-- VIEW 1: Cards of Machines -->
@@ -499,9 +660,25 @@ onMounted(() => {
               </div>
 
               <div class="flex flex-col items-end gap-1">
-                <Badge variant="outline" class="text-xs font-medium font-mono text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                  {{ mach.machineType || 'Assembly' }}
-                </Badge>
+                <div class="flex items-center gap-1">
+                  <!-- Operational Status Badge -->
+                  <Badge
+                    variant="outline"
+                    class="text-[10px] font-medium font-mono uppercase tracking-wider px-1.5 py-0.2 rounded"
+                    :class="{
+                      'text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10': mach.status === 'active' || (!mach.status && mach.status !== 'inactive' && mach.status !== 'maintenance' && mach.status !== 'decommissioned' && mach.status !== 'dismantled'),
+                      'text-zinc-500 dark:text-zinc-400 border-zinc-500/30 bg-zinc-500/10': mach.status === 'inactive',
+                      'text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10': mach.status === 'maintenance',
+                      'text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10': mach.status === 'decommissioned',
+                      'text-purple-600 dark:text-purple-400 border-purple-500/30 bg-purple-500/10': mach.status === 'dismantled'
+                    }"
+                  >
+                    {{ mach.status || 'active' }}
+                  </Badge>
+                  <Badge variant="outline" class="text-xs font-medium font-mono text-muted-foreground border-border bg-muted/60 px-2 py-0.5 rounded-md">
+                    {{ mach.machineType || 'Assembly' }}
+                  </Badge>
+                </div>
                 <span class="text-xs font-mono text-muted-foreground">
                   Line: <span class="text-foreground font-medium">{{ mach.groupId || 'Line 1' }}</span>
                 </span>
@@ -513,6 +690,26 @@ onMounted(() => {
             <div class="space-y-3">
               <div class="text-xs text-foreground font-medium">
                 {{ mach.displayName || 'Industrial Automation Station' }}
+              </div>
+
+              <!-- Decommissioned / Dismantled State Notice Banner -->
+              <div
+                v-if="mach.status === 'decommissioned' || mach.status === 'dismantled'"
+                class="p-2.5 rounded-lg border text-xs space-y-1"
+                :class="mach.status === 'dismantled' ? 'bg-purple-500/10 border-purple-500/20 text-purple-700 dark:text-purple-300' : 'bg-destructive/10 border-destructive/20 text-destructive'"
+              >
+                <div class="font-semibold flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <Archive class="size-3.5" />
+                    <span>{{ mach.status === 'dismantled' ? 'Machinery Dismantled' : 'Decommissioned Machine' }}</span>
+                  </div>
+                  <span v-if="mach.decommissionDate" class="text-[10px] font-mono opacity-80">
+                    {{ new Date(mach.decommissionDate).toLocaleDateString() }}
+                  </span>
+                </div>
+                <div v-if="mach.decommissionReason" class="text-[11px] opacity-90 line-clamp-2" :title="mach.decommissionReason">
+                  {{ mach.decommissionReason }}
+                </div>
               </div>
 
               <!-- Controller PCs associated -->
@@ -565,6 +762,18 @@ onMounted(() => {
                 >
                   <Monitor class="w-3.5 h-3.5 text-emerald-500" />
                   <span>Quick View</span>
+                </Button>
+
+                <Button
+                  v-if="mach.status !== 'decommissioned' && mach.status !== 'dismantled'"
+                  variant="ghost"
+                  size="sm"
+                  @click="openDecommissionModal(mach)"
+                  class="h-8 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs font-medium rounded-lg gap-1 transition-colors"
+                  title="Decommission Machine"
+                >
+                  <Archive class="w-3.5 h-3.5" />
+                  <span>Decommission</span>
                 </Button>
               </div>
 
@@ -817,6 +1026,14 @@ onMounted(() => {
       :controller="quickViewTargetController"
       :open="isQuickViewModalOpen"
       @update:open="isQuickViewModalOpen = $event"
+    />
+
+    <!-- Decommission Machine Modal -->
+    <DecommissionMachineModal
+      :open="isDecommissionModalOpen"
+      :machine="selectedMachineToDecommission"
+      @update:open="isDecommissionModalOpen = $event"
+      @decommissioned="onMachineDecommissioned"
     />
   </div>
 </template>
