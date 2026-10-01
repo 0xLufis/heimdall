@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PaletteIcon, SunIcon, MoonIcon, MonitorIcon } from 'lucide-vue-next'
+import LanguageSwitcher from '~/components/common/LanguageSwitcher.vue'
 
 const colorMode = useColorMode()
 </script>
@@ -50,6 +51,16 @@ const colorMode = useColorMode()
               <MonitorIcon class="h-8 w-8 text-muted-foreground" />
               <div class="font-bold text-sm">System Default</div>
             </button>
+          </div>
+        </div>
+
+        <div class="border-t border-border/60 pt-6">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <div class="text-xs font-semibold text-muted-foreground uppercase">Language &amp; Localization</div>
+              <p class="text-xs text-muted-foreground mt-0.5">Select preferred display language for UI labels, date, and currency standards.</p>
+            </div>
+            <LanguageSwitcher variant="inline" />
           </div>
         </div>
       </CardContent>

@@ -38,11 +38,27 @@ export default defineNuxtConfig({
     payloadExtraction: false
   },
   modules: [
+    '@nuxtjs/i18n',
     'shadcn-nuxt',
     '@nuxt/icon',
     '@vueuse/nuxt',
     '@nuxtjs/color-mode'
   ],
+  i18n: {
+    locales: [
+      { code: 'en', language: 'en-US', name: 'English', file: 'en.json' },
+      { code: 'hu', language: 'hu-HU', name: 'Magyar', file: 'hu.json' }
+    ],
+    defaultLocale: 'en',
+    strategy: 'no_prefix',
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'heimdall_locale',
+      redirectOn: 'root',
+      alwaysRedirect: false,
+      fallbackLocale: 'en'
+    }
+  },
   colorMode: {
     classSuffix: '',
     preference: 'dark',
@@ -62,11 +78,17 @@ export default defineNuxtConfig({
     enableDevFeatures: process.env.HEIMDALL_ENABLE_DEV === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
     enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true',
     enableSimulation: process.env.HEIMDALL_ENABLE_SIMULATION === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false'),
+    enableTicketing: process.env.HEIMDALL_MODULE_TICKETING !== 'false',
+    enableInventory: process.env.HEIMDALL_MODULE_INVENTORY !== 'false',
+    enableTelemetry: process.env.HEIMDALL_MODULE_TELEMETRY !== 'false',
     public: {
       signalrHubUrl: process.env.SIGNALR_HUB_URL || '',
       enableDevFeatures: process.env.HEIMDALL_ENABLE_DEV === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
       enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true',
-      enableSimulation: process.env.HEIMDALL_ENABLE_SIMULATION === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false')
+      enableSimulation: process.env.HEIMDALL_ENABLE_SIMULATION === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false'),
+      enableTicketing: process.env.HEIMDALL_MODULE_TICKETING !== 'false',
+      enableInventory: process.env.HEIMDALL_MODULE_INVENTORY !== 'false',
+      enableTelemetry: process.env.HEIMDALL_MODULE_TELEMETRY !== 'false'
     }
   },
   nitro: {

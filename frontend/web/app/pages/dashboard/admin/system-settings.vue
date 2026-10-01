@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import RootCertImportModal from '@/components/admin/RootCertImportModal.vue'
 import AdHostImportModal from '@/components/admin/AdHostImportModal.vue'
 import OuCertificateRuleModal from '@/components/admin/OuCertificateRuleModal.vue'
+import ModularFeaturesManager from '@/components/admin/ModularFeaturesManager.vue'
 import { 
   SlidersHorizontalIcon, 
   KeyIcon, 
@@ -42,7 +43,7 @@ definePageMeta({
   alias: ['/dashboard/admin']
 })
 
-const activeTab = ref<'auth' | 'vlan-ad-import' | 'certificates' | 'integrations' | 'agent-master'>('auth')
+const activeTab = ref<'auth' | 'vlan-ad-import' | 'certificates' | 'integrations' | 'agent-master' | 'modules'>('auth')
 const loading = ref(false)
 const saving = ref(false)
 const pushingPolicy = ref(false)
@@ -577,6 +578,16 @@ onMounted(() => {
       >
         <NetworkIcon class="h-4 w-4" />
         Industrial Automation & Webhooks
+      </button>
+
+      <button 
+        @click="activeTab = 'modules'"
+        class="pb-3 flex items-center gap-2 transition-colors relative whitespace-nowrap"
+        :class="activeTab === 'modules' ? 'text-blue-600 dark:text-blue-400 font-semibold border-b-2 border-blue-600 dark:border-blue-400' : 'text-muted-foreground hover:text-foreground'"
+        data-testid="tab-modules"
+      >
+        <LayersIcon class="h-4 w-4" />
+        Modular Feature Governance
       </button>
     </div>
 
@@ -1348,6 +1359,13 @@ onMounted(() => {
           </div>
         </CardContent>
       </Card>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 6: Modular Feature Governance & Decoupling                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div v-if="activeTab === 'modules'" class="space-y-6" data-testid="tab-modules-content">
+      <ModularFeaturesManager />
     </div>
 
     <!-- Modals -->

@@ -298,7 +298,7 @@ const saveEditResell = async () => {
             </div>
 
             <div v-if="tmpl.instances && tmpl.instances.length > 0" class="border border-border rounded-lg overflow-x-auto bg-card">
-              <table class="w-full text-xs text-left">
+              <table class="w-full text-xs text-left min-w-[680px]">
                 <thead class="bg-muted/40 text-muted-foreground border-b border-border font-medium">
                   <tr>
                     <th class="p-2.5">Identifier & Serial</th>
@@ -389,9 +389,9 @@ const saveEditResell = async () => {
       </div>
     </div>
 
-    <!-- Edit Valuation Modal Overlay -->
-    <div v-if="editingInstance" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div class="relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl p-6 space-y-4">
+    <!-- Edit Valuation Modal / Drawer Overlay -->
+    <div v-if="editingInstance" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
+      <div class="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between pb-3 border-b border-border">
           <div>
             <h4 class="text-sm font-bold text-foreground">Adjust Resell Price & Wear Scalar</h4>

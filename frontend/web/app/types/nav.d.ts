@@ -8,10 +8,12 @@ export interface NavLink {
   requiredCapability?: string
   requiredTooltip?: string
   hideWhenUnauthorized?: boolean
+  requiredModule?: 'core' | 'ticketing' | 'inventory' | 'telemetry'
 }
 
 export interface NavSectionTitle {
   heading: string
+  requiredModule?: 'core' | 'ticketing' | 'inventory' | 'telemetry'
 }
 
 export interface NavGroup {
@@ -19,11 +21,13 @@ export interface NavGroup {
   icon?: string
   new?: boolean
   children: NavLink[]
+  requiredModule?: 'core' | 'ticketing' | 'inventory' | 'telemetry'
 }
 
 export interface NavMenu {
   heading: string
   items: NavMenuItems
+  requiredModule?: 'core' | 'ticketing' | 'inventory' | 'telemetry'
 }
 
 export declare type NavMenuItems = (NavLink | NavGroup | NavSectionTitle)[]
