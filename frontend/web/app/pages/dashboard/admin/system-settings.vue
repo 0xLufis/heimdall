@@ -64,6 +64,7 @@ const masterPolicy = ref({
   deltaEvaluationAlgorithm: 'xxHash64',
   deadbandTolerancePercentage: 1.0,
   maxSpoolDiskMb: 500,
+  maxMemoryMb: 512,
   heartbeatIntervalSeconds: 10,
 })
 
@@ -1321,6 +1322,36 @@ onMounted(() => {
                 <option value="Standard">Standard (Mask Credentials & Passwords)</option>
                 <option value="Disabled">Disabled</option>
               </select>
+            </div>
+
+            <div>
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Heartbeat Cadence (Seconds)</label>
+              <Input v-model.number="masterPolicy.heartbeatIntervalSeconds" type="number" min="1" max="300" class="mt-1.5 font-mono text-sm bg-background border-border text-foreground" />
+              <p class="text-[11px] text-muted-foreground mt-1">Health check interval across edge client PC fleet (default: 10s)</p>
+            </div>
+
+            <div>
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Process Memory Limit (MB)</label>
+              <Input v-model.number="masterPolicy.maxMemoryMb" type="number" min="64" max="8192" class="mt-1.5 font-mono text-sm bg-background border-border text-foreground" />
+              <p class="text-[11px] text-muted-foreground mt-1">Triggers aggressive GC and supervisor watchdog alerts above threshold (default: 512MB)</p>
+            </div>
+
+            <div>
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Offline Spool Disk Limit (MB)</label>
+              <Input v-model.number="masterPolicy.maxSpoolDiskMb" type="number" min="50" max="50000" class="mt-1.5 font-mono text-sm bg-background border-border text-foreground" />
+              <p class="text-[11px] text-muted-foreground mt-1">Maximum local offline storage for buffered telemetry (default: 500MB)</p>
+            </div>
+
+            <div>
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Egress Bandwidth Cap (Bytes/Sec)</label>
+              <Input v-model.number="masterPolicy.maxNetworkEgressBytesPerSec" type="number" min="65536" class="mt-1.5 font-mono text-sm bg-background border-border text-foreground" />
+              <p class="text-[11px] text-muted-foreground mt-1">Token bucket rate limit per IPC client (1048576 = 1 MB/s)</p>
+            </div>
+
+            <div>
+              <label class="text-xs font-semibold text-muted-foreground uppercase">Deadband Delta Tolerance (%)</label>
+              <Input v-model.number="masterPolicy.deadbandTolerancePercentage" type="number" step="0.1" min="0" max="50" class="mt-1.5 font-mono text-sm bg-background border-border text-foreground" />
+              <p class="text-[11px] text-muted-foreground mt-1">Suppresses telemetry transmission if drift is below threshold</p>
             </div>
           </div>
         </CardContent>

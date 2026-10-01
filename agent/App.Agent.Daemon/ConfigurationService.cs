@@ -94,6 +94,11 @@ public class AgentConfig
     public int MaxSpoolDiskMb { get; set; } = 500;
 
     /// <summary>
+    /// Maximum allowable process memory usage in megabytes before garbage collection or alerting triggers.
+    /// </summary>
+    public int MaxMemoryMb { get; set; } = 512;
+
+    /// <summary>
     /// Health check heartbeat interval in seconds.
     /// </summary>
     public int HeartbeatIntervalSeconds { get; set; } = 10;
@@ -102,6 +107,21 @@ public class AgentConfig
     /// Polling interval for stable hardware and OS inventory metrics in seconds.
     /// </summary>
     public int HardwarePollIntervalSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Enables or disables the internal supervisor watchdog monitoring service.
+    /// </summary>
+    public bool WatchdogEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Directory paths monitored by the real-time recipe and production config watcher.
+    /// </summary>
+    public List<string> RecipeWatchDirectories { get; set; } = new() { "recipes", "cnc_programs" };
+
+    /// <summary>
+    /// Cryptographic hashing algorithm for recipe drift detection.
+    /// </summary>
+    public string RecipeChecksumAlgorithm { get; set; } = "SHA256";
 
     // Plugin & Extension Architecture
     /// <summary>

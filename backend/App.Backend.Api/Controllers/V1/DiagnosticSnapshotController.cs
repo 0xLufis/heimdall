@@ -87,4 +87,43 @@ public class DiagnosticSnapshotController : ControllerBase
 
         return Ok(snapshot);
     }
+
+    /// <summary>
+    /// Ingests post-mortem diagnostic crash reports from edge daemons upon link recovery.
+    /// </summary>
+    [HttpPost("crash-telemetry")]
+    [AllowAnonymous]
+    public IActionResult IngestCrashTelemetry([FromBody] App.Backend.Api.Dtos.CrashTelemetryReportDto report)
+    {
+        _logger.LogWarning(
+            "Ingested post-mortem edge crash telemetry for Machine {MachineId} ({Hostname}): ExitCode={ExitCode}, Reason={Reason}, Memory={MemoryMB}MB",
+            report.MachineIdentifier, report.Hostname, report.ExitCode, report.Reason, report.WorkingSetBytes / (1024 * 1024));
+
+        return Ok(new
+        {
+            status = "Acknowledged",
+            machineIdentifier = report.MachineIdentifier,
+            receivedAtUtc = DateTimeOffset.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// Ingests real-time production recipe and configuration drift/change events from edge daemons.
+    /// </summary>
+    [HttpPost("recipe-changed")]
+    [AllowAnonymous]
+    public IActionResult IngestRecipeChangeEvent([FromBody] App.Backend.Api.Dtos.RecipeChangedEventDto changeEvent)
+    {
+        _logger.LogInformation(
+            "Production recipe change event recorded for Machine {MachineId}: File={FileName}, Type={ChangeType}, SHA256={Checksum}",
+            changeEvent.MachineIdentifier, changeEvent.FileName, changeEvent.ChangeType, changeEvent.ChecksumSha256[..Math.Min(8, changeEvent.ChecksumSha256.Length)]);
+
+        return Ok(new
+        {
+            status = "Logged",
+            changeType = changeEvent.ChangeType,
+            checksum = changeEvent.ChecksumSha256,
+            recordedAtUtc = DateTimeOffset.UtcNow
+        });
+    }
 }
