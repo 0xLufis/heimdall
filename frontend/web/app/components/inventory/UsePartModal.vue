@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
   X,
   Send,
@@ -10,12 +10,16 @@ import {
   User,
   FileText,
   Boxes,
-  CheckCircle2
+  CheckCircle2,
+  Cpu,
+  Barcode,
+  HelpCircle
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { InventoryPart, PartUsageCostCenter } from '~/types/inventory'
+import { usePartsInventory } from '~/composables/usePartsInventory'
 
 const props = defineProps<{
   open: boolean
@@ -24,8 +28,29 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:open', val: boolean): void
-  (e: 'used', data: { partId: string; costCenter: PartUsageCostCenter; quantity: number }): void
+  (
+    e: 'used',
+    data: {
+      partId: string
+      costCenter: PartUsageCostCenter
+      quantity: number
+      isSerializeOnUse?: boolean
+      machineId?: string
+      machineName?: string
+      justification?: string
+      serialNumber?: string
+      wbsElement?: string
+    }
+  ): void
 }>()
+
+const { indexedFields, fetchIndexedFields } = usePartsInventory()
+
+const isSerializeOnUse = ref(false)
+const selectedMachineId = ref('')
+const justification = ref('')
+const serialNumber = ref('')
+const wbsElement = ref('')
 
 const form = ref<PartUsageCostCenter & { quantity: number }>({
   prodLine: '',
@@ -60,10 +85,15 @@ const DEPARTMENTS = [
 
 watch(
   () => props.open,
-  (val) => {
+  async (val) => {
     if (val) {
       errorMessage.value = ''
       showSuccess.value = false
+      isSerializeOnUse.value = false
+      selectedMachineId.value = props.part?.linkedMachineId || ''
+      justification.value = ''
+      serialNumber.value = `SN-${Math.floor(100000 + Math.random() * 900000)}`
+      wbsElement.value = ''
       form.value = {
         prodLine: '',
         project: '',
@@ -72,6 +102,7 @@ watch(
         notes: '',
         quantity: 1
       }
+      await fetchIndexedFields()
     }
   }
 )
@@ -84,19 +115,34 @@ const hasCostCenter = computed(() => {
   )
 })
 
+const hasMachineOrJustification = computed(() => {
+  const hasMachine = Boolean(selectedMachineId.value && selectedMachineId.value.trim().length > 0)
+  const hasJust = Boolean(justification.value && justification.value.trim().length > 0)
+  return hasMachine || hasJust
+})
+
 const isFormValid = computed(() => {
+  // If serialize-on-use is active, mandatory linkage OR justification is required
+  if (isSerializeOnUse.value && !hasMachineOrJustification.value) {
+    return false
+  }
   return hasCostCenter.value && form.value.quantity > 0
 })
 
 const handleSubmit = async () => {
   if (!props.part) return
 
+  if (isSerializeOnUse.value && !hasMachineOrJustification.value) {
+    errorMessage.value = 'Mandatory linkage required: select an installed machine OR provide a documented text justification.'
+    return
+  }
+
   if (!hasCostCenter.value) {
     errorMessage.value = 'Mandatory cost center tagging required: provide at least one of Production Line, Project, or Department.'
     return
   }
 
-  if (props.part.trackingType === 'bulk' && form.value.quantity > props.part.quantity) {
+  if (!isSerializeOnUse.value && props.part.trackingType === 'bulk' && form.value.quantity > props.part.quantity) {
     errorMessage.value = `Cannot use ${form.value.quantity} items. Stock has only ${props.part.quantity} units available.`
     return
   }
@@ -105,6 +151,8 @@ const handleSubmit = async () => {
   errorMessage.value = ''
 
   try {
+    const selectedMachine = indexedFields.value.machines.find(m => m.id === selectedMachineId.value)
+
     emit('used', {
       partId: props.part.id,
       costCenter: {
@@ -114,8 +162,15 @@ const handleSubmit = async () => {
         technician: form.value.technician?.trim() || undefined,
         notes: form.value.notes?.trim() || undefined
       },
-      quantity: props.part.trackingType === 'serialized' ? 1 : form.value.quantity
+      quantity: isSerializeOnUse.value ? 1 : (props.part.trackingType === 'serialized' ? 1 : form.value.quantity),
+      isSerializeOnUse: isSerializeOnUse.value,
+      machineId: selectedMachineId.value || undefined,
+      machineName: selectedMachine?.name || undefined,
+      justification: justification.value.trim() || undefined,
+      serialNumber: serialNumber.value.trim() || undefined,
+      wbsElement: wbsElement.value.trim() || undefined
     })
+
     showSuccess.value = true
     setTimeout(() => {
       emit('update:open', false)
@@ -139,10 +194,10 @@ const handleSubmit = async () => {
           </div>
           <div>
             <h2 class="text-base font-semibold text-foreground">
-              Use Part / Consume from Stock
+              {{ isSerializeOnUse ? 'Serialize on Use (Dynamic Conversion)' : 'Use Part / Consume from Stock' }}
             </h2>
             <p class="text-xs text-muted-foreground mt-0.5">
-              Requires mandatory cost center tagging for production accounting
+              Requires mandatory cost center tagging and machine linkage validation
             </p>
           </div>
         </div>
@@ -183,7 +238,72 @@ const handleSubmit = async () => {
           <span>Part successfully allocated and cost center recorded!</span>
         </div>
 
-        <!-- Mandatory Notice -->
+        <!-- Mode Toggle for Bulk Items: Standard vs Serialize On Use -->
+        <div v-if="part?.trackingType === 'bulk'" class="p-3 rounded-xl bg-muted/40 border border-border flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <Cpu class="size-4 text-primary" />
+            <div>
+              <div class="text-xs font-semibold text-foreground">Serialize on Use</div>
+              <div class="text-[11px] text-muted-foreground">Convert 1 bulk unit into a discrete machine-linked asset</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="isSerializeOnUse = !isSerializeOnUse"
+            class="px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+            :class="isSerializeOnUse ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'"
+          >
+            {{ isSerializeOnUse ? 'Active' : 'Enable' }}
+          </button>
+        </div>
+
+        <!-- Machine Linkage OR Justification -->
+        <div class="p-3.5 rounded-lg border space-y-3" :class="isSerializeOnUse ? 'bg-primary/5 border-primary/20' : 'bg-muted/20 border-border'">
+          <div class="flex items-center justify-between text-xs font-semibold" :class="isSerializeOnUse ? 'text-primary' : 'text-foreground'">
+            <span class="flex items-center gap-1.5">
+              <Cpu class="size-3.5" />
+              <span>Machine Linkage & Allocation</span>
+            </span>
+            <span v-if="isSerializeOnUse" class="text-[10px] text-destructive font-bold uppercase tracking-wider">Mandatory Machine OR Reason</span>
+          </div>
+
+          <div class="space-y-1.5">
+            <Label class="text-xs text-foreground">Target Machine (from active registry)</Label>
+            <select
+              v-model="selectedMachineId"
+              class="w-full h-9 px-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+            >
+              <option value="">Select target machine (optional if justification given)...</option>
+              <option v-for="m in indexedFields.machines" :key="m.id" :value="m.id">
+                {{ m.name }} ({{ m.id }})
+              </option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <Label class="text-xs text-foreground">Non-Machine Allocation Justification</Label>
+            <Input
+              v-model="justification"
+              placeholder="e.g. Off-line test bench, training rig, or custom line fixture"
+              class="h-9 text-xs"
+            />
+          </div>
+
+          <!-- Dynamic Serial Number Input for Serialize on Use -->
+          <div v-if="isSerializeOnUse" class="space-y-1.5 pt-2 border-t border-border/50">
+            <Label class="text-xs text-foreground flex items-center gap-1.5">
+              <Barcode class="size-3.5 text-primary" />
+              <span>Assigned Serial Number / Barcode Scan</span>
+            </Label>
+            <Input
+              v-model="serialNumber"
+              placeholder="Auto-generated or physical scan..."
+              class="h-9 text-xs font-mono"
+            />
+          </div>
+        </div>
+
+        <!-- Cost Center Policy Banner -->
         <div class="p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-primary text-xs">
           <span class="font-semibold">Cost Center Accounting Policy:</span>
           At least one cost center tagging field is strictly mandatory: Production Line, Project ID, or Department (OR relation).
@@ -245,8 +365,21 @@ const handleSubmit = async () => {
           </select>
         </div>
 
-        <!-- Quantity (if bulk) -->
-        <div v-if="part?.trackingType === 'bulk'" class="space-y-1.5">
+        <!-- WBS Element (Work Breakdown Structure for Financial Auditing) -->
+        <div class="space-y-1.5">
+          <Label class="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+            <HelpCircle class="size-3.5 text-muted-foreground" />
+            <span>WBS Element (Optional Financial Audit)</span>
+          </Label>
+          <Input
+            v-model="wbsElement"
+            placeholder="e.g. WBS-HU-2026-AUT-441"
+            class="h-9 text-xs font-mono"
+          />
+        </div>
+
+        <!-- Quantity (if bulk and NOT serializing on use) -->
+        <div v-if="part?.trackingType === 'bulk' && !isSerializeOnUse" class="space-y-1.5">
           <Label class="text-xs font-semibold flex items-center gap-1.5 text-foreground">
             <Boxes class="size-3.5 text-primary" />
             <span>Quantity to Consume <span class="text-destructive">*</span></span>
@@ -310,7 +443,7 @@ const handleSubmit = async () => {
           class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 gap-1.5 cursor-pointer disabled:opacity-50"
         >
           <Send class="size-3.5" />
-          <span>Confirm Use Part</span>
+          <span>{{ isSerializeOnUse ? 'Serialize & Deploy' : 'Confirm Use Part' }}</span>
         </Button>
       </div>
     </div>

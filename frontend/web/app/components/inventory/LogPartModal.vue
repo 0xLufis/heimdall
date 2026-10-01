@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
   X,
   PackagePlus,
@@ -9,7 +9,9 @@ import {
   DollarSign,
   Tag,
   MapPin,
-  CheckCircle2
+  CheckCircle2,
+  Sliders,
+  AlertTriangle
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +23,7 @@ import type {
   PartLifecycleCondition,
   PartOperationalState
 } from '~/types/inventory'
+import { usePartsInventory } from '~/composables/usePartsInventory'
 
 const props = defineProps<{
   open: boolean
@@ -31,6 +34,8 @@ const emit = defineEmits<{
   (e: 'update:open', val: boolean): void
   (e: 'logged', part: Partial<InventoryPart>): void
 }>()
+
+const { indexedFields, fetchIndexedFields } = usePartsInventory()
 
 const selectedTemplateId = ref<string>('')
 const trackingType = ref<PartTrackingType>('serialized')
@@ -51,7 +56,9 @@ const minQuantity = ref<number>(1)
 const minQuantityScalar = ref<number>(1.0)
 const serialNumber = ref('')
 const customIdentifier = ref('')
+const specValues = ref<Record<string, any>>({})
 
+const errorMessage = ref('')
 const isSubmitting = ref(false)
 
 const LIFECYCLE_CONDITIONS: { value: PartLifecycleCondition; label: string; desc: string }[] = [
@@ -69,9 +76,15 @@ const OPERATIONAL_STATES: { value: PartOperationalState; label: string }[] = [
   { value: 'broken', label: 'Broken / Defective' }
 ]
 
+const selectedTemplate = computed(() => {
+  if (!selectedTemplateId.value || !props.templates) return null
+  return props.templates.find(t => t.id === selectedTemplateId.value) || null
+})
+
 watch(
   () => selectedTemplateId.value,
   (tmplId) => {
+    specValues.value = {}
     if (!tmplId || !props.templates) return
     const tmpl = props.templates.find(t => t.id === tmplId)
     if (tmpl) {
@@ -83,14 +96,20 @@ watch(
       if (tmpl.identifierPattern) {
         customIdentifier.value = tmpl.identifierPattern.replace('{number}', String(tmpl.sequentialCounter + 1).padStart(4, '0'))
       }
+      if (tmpl.specFields) {
+        for (const f of tmpl.specFields) {
+          specValues.value[f.key] = ''
+        }
+      }
     }
   }
 )
 
 watch(
   () => props.open,
-  (val) => {
+  async (val) => {
     if (val) {
+      errorMessage.value = ''
       selectedTemplateId.value = ''
       trackingType.value = 'serialized'
       name.value = ''
@@ -110,6 +129,9 @@ watch(
       minQuantityScalar.value = 1.0
       serialNumber.value = `SN-${Math.floor(100000 + Math.random() * 900000)}`
       customIdentifier.value = ''
+      specValues.value = {}
+
+      await fetchIndexedFields()
     }
   }
 )
@@ -120,8 +142,8 @@ const effectiveMinPreview = computed(() => {
 })
 
 const calculatedResellPrice = computed(() => {
-  if (resellPriceOverride.value !== undefined && resellPriceOverride.value !== null) {
-    return resellPriceOverride.value
+  if (resellPriceOverride.value !== undefined && resellPriceOverride.value !== null && String(resellPriceOverride.value) !== '') {
+    return Number(resellPriceOverride.value)
   }
   const wear = condition.value === 'new' ? 0 : wearDepreciation.value
   return Math.round(priceEur.value * (1 - (wear / 100)) * 100) / 100
@@ -133,6 +155,18 @@ const isValid = computed(() => {
 
 const handleSubmit = () => {
   if (!isValid.value) return
+  errorMessage.value = ''
+
+  // Validate required template spec fields
+  if (selectedTemplate.value?.specFields) {
+    for (const f of selectedTemplate.value.specFields) {
+      if (f.required && (specValues.value[f.key] === undefined || specValues.value[f.key] === null || String(specValues.value[f.key]).trim() === '')) {
+        errorMessage.value = `Required specification attribute missing: "${f.label}".`
+        return
+      }
+    }
+  }
+
   isSubmitting.value = true
 
   const payload: Partial<InventoryPart> = {
@@ -152,14 +186,15 @@ const handleSubmit = () => {
     location: location.value.trim(),
     priceEur: priceEur.value,
     wearDepreciationPercentage: wearDepreciation.value,
-    resellPriceOverrideEur: resellPriceOverride.value,
+    resellPriceOverrideEur: resellPriceOverride.value !== undefined && String(resellPriceOverride.value) !== '' ? Number(resellPriceOverride.value) : undefined,
     estimatedResellPriceEur: calculatedResellPrice.value,
     quantity: trackingType.value === 'serialized' ? 1 : Math.max(1, quantity.value),
     minQuantity: minQuantity.value,
     minQuantityScalar: minQuantityScalar.value || 1.0,
     effectiveMinQuantity: effectiveMinPreview.value,
     serialNumber: trackingType.value === 'serialized' ? serialNumber.value.trim() : undefined,
-    customIdentifier: customIdentifier.value.trim() || undefined
+    customIdentifier: customIdentifier.value.trim() || undefined,
+    specifications: Object.keys(specValues.value).length > 0 ? { ...specValues.value } : undefined
   }
 
   emit('logged', payload)
@@ -182,7 +217,7 @@ const handleSubmit = () => {
               Log Part into Warehouse Stock
             </h2>
             <p class="text-xs text-muted-foreground mt-0.5">
-              Intake new, used, or donor parts (bulk consumable or serialized asset instance)
+              Intake new, used, or donor parts with dynamic specification validation & auto-indexing
             </p>
           </div>
         </div>
@@ -195,8 +230,25 @@ const handleSubmit = () => {
         </button>
       </div>
 
+      <!-- Datalists for autocomplete indexing -->
+      <datalist id="log-manufacturers-datalist">
+        <option v-for="m in indexedFields.manufacturers" :key="m" :value="m" />
+      </datalist>
+      <datalist id="log-suppliers-datalist">
+        <option v-for="s in indexedFields.suppliers" :key="s" :value="s" />
+      </datalist>
+      <datalist id="log-locations-datalist">
+        <option v-for="l in indexedFields.locations" :key="l" :value="l" />
+      </datalist>
+
       <!-- Form Body -->
       <form @submit.prevent="handleSubmit" class="p-6 space-y-4 overflow-y-auto flex-1">
+        <!-- Error Banner -->
+        <div v-if="errorMessage" class="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
+          <AlertTriangle class="size-4 shrink-0" />
+          <span>{{ errorMessage }}</span>
+        </div>
+
         <!-- Optional Template Picker -->
         <div v-if="templates && templates.length > 0" class="space-y-1.5 pb-2 border-b border-border">
           <Label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -213,7 +265,7 @@ const handleSubmit = () => {
             </option>
           </select>
           <p class="text-[11px] text-muted-foreground">
-            Instantiating from a template pre-fills manufacturer, specs, and sequential identifier pattern.
+            Instantiating from a template pre-fills specs, dynamic attributes, and sequential identifier pattern.
           </p>
         </div>
 
@@ -248,63 +300,111 @@ const handleSubmit = () => {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="space-y-1.5 sm:col-span-2">
             <Label class="text-xs font-semibold text-foreground">Part Name *</Label>
-            <Input v-model="name" placeholder="e.g. Beckhoff CX5140 Modular Controller IPC" class="h-9 text-xs" required />
+            <Input v-model="name" placeholder="e.g. Beckhoff CX5140 Embedded PC or Festo Cylinder" required class="h-9 text-xs" />
           </div>
 
           <div class="space-y-1.5">
-            <Label class="text-xs font-semibold text-foreground">Category</Label>
+            <Label class="text-xs font-semibold text-foreground">Top-Level Category</Label>
             <select
               v-model="category"
               class="w-full h-9 px-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
             >
-              <option value="Hardware">Hardware</option>
-              <option value="Software">Software</option>
+              <option value="Hardware">Hardware (Mechanical / Electrical)</option>
+              <option value="Software">Software (License / Firmware)</option>
             </select>
           </div>
 
           <div class="space-y-1.5">
             <Label class="text-xs font-semibold text-foreground">Custom Identifier / Barcode</Label>
-            <Input v-model="customIdentifier" placeholder="Auto-generated or custom e.g. IPC-1005" class="h-9 text-xs font-mono" />
+            <Input v-model="customIdentifier" placeholder="e.g. IPC-0042 or leave blank for auto" class="h-9 text-xs font-mono" />
           </div>
 
           <div class="space-y-1.5">
-            <Label class="text-xs font-semibold text-foreground">Manufacturer *</Label>
-            <Input v-model="manufacturer" placeholder="e.g. Siemens, Beckhoff, Cognex" class="h-9 text-xs" required />
+            <Label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Building class="size-3.5 text-muted-foreground" />
+              <span>Manufacturer *</span>
+            </Label>
+            <Input
+              v-model="manufacturer"
+              list="log-manufacturers-datalist"
+              placeholder="e.g. Siemens, Beckhoff, Festo..."
+              required
+              class="h-9 text-xs"
+            />
           </div>
 
           <div class="space-y-1.5">
-            <Label class="text-xs font-semibold text-foreground">Supplier</Label>
-            <Input v-model="supplier" placeholder="e.g. Beckhoff Direct Germany" class="h-9 text-xs" />
+            <Label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Building class="size-3.5 text-muted-foreground" />
+              <span>Supplier (Vendor)</span>
+            </Label>
+            <Input
+              v-model="supplier"
+              list="log-suppliers-datalist"
+              placeholder="e.g. RS Components, Endrich..."
+              class="h-9 text-xs"
+            />
+          </div>
+        </div>
+
+        <!-- Dynamic Template Specification Fields (Rendered when template is selected) -->
+        <div v-if="selectedTemplate?.specFields && selectedTemplate.specFields.length > 0" class="p-3.5 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+          <div class="text-xs font-semibold text-primary flex items-center justify-between">
+            <span class="flex items-center gap-1.5">
+              <Sliders class="size-3.5" />
+              <span>Dynamic Specifications: {{ selectedTemplate.name }}</span>
+            </span>
+            <span class="text-[10px] text-muted-foreground font-normal">Inherited Template Attributes</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div v-for="field in selectedTemplate.specFields" :key="field.key" class="space-y-1">
+              <Label class="text-[11px] font-semibold text-foreground flex items-center gap-1">
+                <span>{{ field.label }}</span>
+                <span v-if="field.unit" class="text-muted-foreground font-normal">({{ field.unit }})</span>
+                <span v-if="field.required" class="text-destructive">*</span>
+              </Label>
+              <Input
+                v-model="specValues[field.key]"
+                :type="field.type === 'number' ? 'number' : 'text'"
+                :placeholder="`Enter ${field.label}...`"
+                :required="field.required"
+                class="h-8 text-xs"
+              />
+            </div>
           </div>
         </div>
 
         <!-- Serial Number (if serialized) -->
         <div v-if="trackingType === 'serialized'" class="space-y-1.5">
-          <Label class="text-xs font-semibold text-foreground">Serial Number</Label>
-          <Input v-model="serialNumber" placeholder="e.g. SN-BKHF-9981-A" class="h-9 text-xs font-mono" />
+          <Label class="text-xs font-semibold text-foreground">Unit Serial Number *</Label>
+          <Input v-model="serialNumber" placeholder="e.g. SN-884920" class="h-9 text-xs font-mono" required />
         </div>
 
-        <!-- Quantities (if bulk) -->
-        <div v-if="trackingType === 'bulk'" class="space-y-3">
-          <div class="grid grid-cols-2 gap-3">
-            <div class="space-y-1.5">
-              <Label class="text-xs font-semibold text-foreground">Intake Quantity *</Label>
-              <Input v-model.number="quantity" type="number" min="0.01" step="any" class="h-9 text-xs font-mono" required />
-            </div>
-            <div class="space-y-1.5">
-              <Label class="text-xs font-semibold text-foreground">Min Quantity Threshold</Label>
-              <Input v-model.number="minQuantity" type="number" min="0" step="any" class="h-9 text-xs font-mono" required />
-            </div>
+        <!-- Quantities & Floating Minimum Buffers -->
+        <div v-if="trackingType === 'bulk'" class="p-3.5 rounded-lg bg-muted/30 border border-border space-y-3">
+          <div class="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <Boxes class="size-3.5 text-primary" />
+            <span>Bulk Quantities & Floating Stock Alert Buffers</span>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/20 p-2.5 rounded-lg border border-border">
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div class="space-y-1">
-              <Label class="text-xs font-semibold text-foreground">Buffer Scalar Multiplier</Label>
+              <Label class="text-xs font-semibold text-foreground">Intake Quantity *</Label>
+              <Input v-model.number="quantity" type="number" min="1" class="h-8 text-xs font-mono" required />
+            </div>
+            <div class="space-y-1">
+              <Label class="text-xs font-semibold text-foreground">Minimum Threshold</Label>
+              <Input v-model.number="minQuantity" type="number" min="0" step="0.5" class="h-8 text-xs font-mono" />
+            </div>
+            <div class="space-y-1">
+              <Label class="text-xs font-semibold text-foreground">Buffer Multiplier</Label>
               <Input v-model.number="minQuantityScalar" type="number" min="0.1" step="0.05" placeholder="1.0" class="h-8 text-xs font-mono" />
             </div>
-            <div class="flex flex-col justify-center text-xs">
-              <span class="text-muted-foreground text-[11px]">Effective Minimum Alert:</span>
-              <span class="font-mono font-bold text-primary">{{ effectiveMinPreview }} units</span>
-            </div>
+          </div>
+          <div class="text-[11px] text-muted-foreground flex items-center gap-2">
+            <span>Effective Minimum Alert Trigger:</span>
+            <span class="font-mono font-bold text-primary">{{ effectiveMinPreview }} units</span>
           </div>
         </div>
 
@@ -339,7 +439,12 @@ const handleSubmit = () => {
               <MapPin class="size-3.5 text-muted-foreground" />
               <span>Storage Location</span>
             </Label>
-            <Input v-model="location" placeholder="e.g. Warehouse Central / Rack 2 / Shelf B4" class="h-9 text-xs" />
+            <Input
+              v-model="location"
+              list="log-locations-datalist"
+              placeholder="e.g. Warehouse Central / Rack 2 / Shelf B4"
+              class="h-9 text-xs"
+            />
           </div>
         </div>
 

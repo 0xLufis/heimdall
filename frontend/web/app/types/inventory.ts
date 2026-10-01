@@ -156,6 +156,7 @@ export type PartAuditAction =
   | 'log_part' 
   | 'bulk_log' 
   | 'use_part' 
+  | 'serialize_on_use'
   | 'condition_update' 
   | 'operational_state_update' 
   | 'resell_price_update' 
@@ -174,6 +175,7 @@ export interface PartAuditRecord {
   actorName: string
   quantityDelta?: number
   costCenter?: PartUsageCostCenter
+  wbsElement?: string
   previousState?: Record<string, any>
   newState?: Record<string, any>
   notes?: string

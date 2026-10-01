@@ -38,13 +38,20 @@ const emit = defineEmits<{
   (e: 'scanRequested'): void
 }>()
 
-const { usePart, formatCurrency, activeCurrency, fetchParts, canUsePart } = usePartsInventory()
+const { usePart, serializeOnUse, indexedFields, fetchIndexedFields, formatCurrency, activeCurrency, fetchParts, canUsePart } = usePartsInventory()
 
 // State
 const searchQuery = ref('')
 const selectedTrackingFilter = ref<'all' | 'serialized' | 'bulk'>('all')
 const selectedPart = ref<InventoryPart | null>(null)
 const quantityToUse = ref(1)
+
+// Serialize on Use state
+const isSerializeOnUse = ref(false)
+const targetMachineId = ref('')
+const justification = ref('')
+const serialNumber = ref('')
+const wbsElement = ref('')
 
 // Cost Center Fields (Strict OR relation: at least one of prodLine, project, department)
 const prodLine = ref('')
@@ -62,9 +69,15 @@ const showSuccessBanner = ref(false)
 const selectPart = (part: InventoryPart) => {
   selectedPart.value = part
   quantityToUse.value = 1
+  isSerializeOnUse.value = false
+  targetMachineId.value = part.linkedMachineId || ''
+  justification.value = ''
+  serialNumber.value = `SN-${Math.floor(100000 + Math.random() * 900000)}`
+  wbsElement.value = ''
   errorMessage.value = null
   showSuccessBanner.value = false
   lastAuditRecord.value = null
+  fetchIndexedFields()
 }
 
 // Initialize or react to preselectedPartId
@@ -117,7 +130,12 @@ const activeCostCenterTarget = computed(() => {
 const canSubmit = computed(() => {
   if (!selectedPart.value) return false
   if (selectedPart.value.quantity <= 0) return false
-  if (quantityToUse.value <= 0 || quantityToUse.value > selectedPart.value.quantity) return false
+  if (!isSerializeOnUse.value && (quantityToUse.value <= 0 || quantityToUse.value > selectedPart.value.quantity)) return false
+  if (isSerializeOnUse.value) {
+    const hasMachine = Boolean(targetMachineId.value && targetMachineId.value.trim())
+    const hasJust = Boolean(justification.value && justification.value.trim())
+    if (!hasMachine && !hasJust) return false
+  }
   if (!isCostCenterValid.value) return false
   return true
 })
@@ -149,7 +167,21 @@ const handleProvision = async () => {
       notes: notes.value.trim() ? (ticketNumber.value.trim() ? `[${ticketNumber.value.trim()}] ${notes.value.trim()}` : notes.value.trim()) : (ticketNumber.value.trim() ? `Ticket: ${ticketNumber.value.trim()}` : undefined)
     }
 
-    const res = await usePart(selectedPart.value.id, costCenterPayload, quantityToUse.value)
+    let res: any
+    if (isSerializeOnUse.value && selectedPart.value.trackingType === 'bulk') {
+      const targetMachine = indexedFields.value.machines.find(m => m.id === targetMachineId.value)
+      res = await serializeOnUse(selectedPart.value.id, {
+        machineId: targetMachineId.value || undefined,
+        machineName: targetMachine?.name || undefined,
+        serialNumber: serialNumber.value.trim() || undefined,
+        justification: justification.value.trim() || undefined,
+        costCenter: costCenterPayload,
+        wbsElement: wbsElement.value.trim() || undefined
+      })
+    } else {
+      res = await usePart(selectedPart.value.id, costCenterPayload, quantityToUse.value)
+    }
+
     lastAuditRecord.value = res.auditRecord
     showSuccessBanner.value = true
     emit('partProvisioned', res.auditRecord)
@@ -469,16 +501,68 @@ const resetWorkstation = () => {
             </div>
           </div>
 
-          <!-- Quantity to Provision -->
-          <div class="p-4 rounded-xl bg-card border border-border space-y-2 shadow-xs">
-            <div class="flex items-center justify-between">
+          <!-- Quantity to Provision / Serialize on Use -->
+          <div class="p-4 rounded-xl bg-card border border-border space-y-3 shadow-xs">
+            <!-- Serialize on Use Toggle for Bulk Items -->
+            <div v-if="selectedPart.trackingType === 'bulk'" class="p-3 rounded-lg bg-muted/40 border border-border flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <Cpu class="size-4 text-primary" />
+                <div>
+                  <div class="text-xs font-semibold text-foreground">Serialize on Use</div>
+                  <div class="text-[11px] text-muted-foreground">Convert 1 bulk unit to a serialized, machine-linked unit</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                @click="isSerializeOnUse = !isSerializeOnUse"
+                class="px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors"
+                :class="isSerializeOnUse ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'"
+              >
+                {{ isSerializeOnUse ? 'Active' : 'Enable' }}
+              </button>
+            </div>
+
+            <!-- Target Machine OR Justification for Serialize on Use -->
+            <div v-if="isSerializeOnUse" class="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+              <div class="text-xs font-semibold text-primary">Machine Allocation (Mandatory Machine OR Reason)</div>
+              <div class="space-y-1">
+                <Label class="text-[11px] text-foreground">Target Production Machine</Label>
+                <select
+                  v-model="targetMachineId"
+                  class="w-full h-8 px-2.5 rounded-md bg-background border border-border text-xs text-foreground"
+                >
+                  <option value="">Select indexed machine...</option>
+                  <option v-for="m in indexedFields.machines" :key="m.id" :value="m.id">
+                    {{ m.name }} ({{ m.id }})
+                  </option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <Label class="text-[11px] text-foreground">Allocation Reason / Justification</Label>
+                <Input
+                  v-model="justification"
+                  placeholder="Required if machine not indexed (e.g. Test rig fixture)"
+                  class="h-8 text-xs"
+                />
+              </div>
+              <div class="space-y-1">
+                <Label class="text-[11px] text-foreground">Unit Serial Number</Label>
+                <Input v-model="serialNumber" class="h-8 text-xs font-mono" />
+              </div>
+              <div class="space-y-1">
+                <Label class="text-[11px] text-foreground">WBS Element (Optional)</Label>
+                <Input v-model="wbsElement" placeholder="e.g. WBS-HU-2026-AUT-441" class="h-8 text-xs font-mono" />
+              </div>
+            </div>
+
+            <div v-if="!isSerializeOnUse" class="flex items-center justify-between">
               <Label class="text-xs font-bold text-foreground">Quantity to Use / Dispatch</Label>
               <span class="text-[11px] text-muted-foreground">
                 Max available: <strong class="text-foreground">{{ selectedPart.quantity }}</strong>
               </span>
             </div>
 
-            <div v-if="selectedPart.trackingType === 'bulk'" class="flex items-center gap-2">
+            <div v-if="selectedPart.trackingType === 'bulk' && !isSerializeOnUse" class="flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"

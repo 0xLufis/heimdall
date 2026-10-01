@@ -24,6 +24,21 @@ export function usePartsInventory() {
   const auditLogs = ref<PartAuditRecord[]>([])
   const loading = ref(false)
   const activeCurrency = ref<'EUR' | 'HUF' | 'USD' | 'GBP'>('EUR')
+  const indexedFields = ref<{
+    manufacturers: string[]
+    suppliers: string[]
+    categories: string[]
+    locations: string[]
+    costCenters: string[]
+    machines: Array<{ id: string; name: string }>
+  }>({
+    manufacturers: [],
+    suppliers: [],
+    categories: [],
+    locations: [],
+    costCenters: [],
+    machines: []
+  })
 
   const kpis = ref({
     totalPartsCount: 0,
@@ -223,6 +238,110 @@ export function usePartsInventory() {
   }
 
   // -------------------------------------------------------------------------
+  // Serialize On Use (Dynamic Bulk to Serialized Conversion)
+  // -------------------------------------------------------------------------
+  const serializeOnUse = async (
+    partId: string,
+    payload: {
+      machineId?: string
+      machineName?: string
+      serialNumber?: string
+      customIdentifier?: string
+      justification?: string
+      costCenter?: PartUsageCostCenter
+      wbsElement?: string
+    }
+  ) => {
+    loading.value = true
+    try {
+      const res = await $fetch<any>(`/api/inventory/parts/${partId}/serialize-on-use`, {
+        method: 'POST',
+        body: {
+          ...payload,
+          actor: getActor()
+        }
+      })
+      await fetchParts()
+      return res
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Edit Part Post-Intake
+  // -------------------------------------------------------------------------
+  const editPart = async (partId: string, updates: Partial<InventoryPart>) => {
+    loading.value = true
+    try {
+      const res = await $fetch<any>(`/api/inventory/parts/${partId}/edit`, {
+        method: 'PUT',
+        body: {
+          ...updates,
+          actor: getActor()
+        }
+      })
+      await fetchParts()
+      return res.part
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Lifecycle State Machine Transition
+  // -------------------------------------------------------------------------
+  const transitionLifecycle = async (
+    partId: string,
+    toState: 'in_machine' | 'removed_from_machine' | 'decommissioned' | 'donor' | 'scrap',
+    options: {
+      machineId?: string
+      machineName?: string
+      justification?: string
+      notes?: string
+    } = {}
+  ) => {
+    loading.value = true
+    try {
+      const res = await $fetch<any>(`/api/inventory/parts/${partId}/lifecycle`, {
+        method: 'POST',
+        body: {
+          toState,
+          options,
+          actor: getActor()
+        }
+      })
+      await fetchParts()
+      return res
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Field Indexing (Auto-complete for manufacturer, supplier, categories, locations)
+  // -------------------------------------------------------------------------
+  const fetchIndexedFields = async () => {
+    try {
+      const res = await $fetch<any>('/api/inventory/indexing', { method: 'GET' })
+      if (res && res.success) {
+        indexedFields.value = {
+          manufacturers: res.manufacturers || [],
+          suppliers: res.suppliers || [],
+          categories: res.categories || [],
+          locations: res.locations || [],
+          costCenters: res.costCenters || [],
+          machines: res.machines || []
+        }
+      }
+      return indexedFields.value
+    } catch (err) {
+      console.error('[usePartsInventory] fetchIndexedFields error:', err)
+      return indexedFields.value
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Asset Templates & Instances
   // -------------------------------------------------------------------------
   const fetchTemplates = async () => {
@@ -399,6 +518,7 @@ export function usePartsInventory() {
     loading,
     activeCurrency,
     kpis,
+    indexedFields,
     canUsePart,
     canLogPart,
     canManageInventory,
@@ -406,6 +526,10 @@ export function usePartsInventory() {
     logPart,
     bulkLogParts,
     usePart,
+    serializeOnUse,
+    editPart,
+    transitionLifecycle,
+    fetchIndexedFields,
     updatePartCondition,
     updateResellPrice,
     fetchTemplates,
