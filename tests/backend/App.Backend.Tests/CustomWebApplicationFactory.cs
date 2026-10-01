@@ -6,7 +6,9 @@ using App.Shared.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
 
 namespace App.Backend.Tests;
@@ -45,6 +47,21 @@ public class CustomWebApplicationFactory : WebApplicationFactory<App.Backend.Api
             {
                 options.UseInMemoryDatabase(dbName);
             });
+
+            // Replace Redis with MemoryDistributedCache for test isolation and CI performance
+            var distCacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+            if (distCacheDescriptor != null)
+            {
+                services.Remove(distCacheDescriptor);
+            }
+            services.AddDistributedMemoryCache();
+
+            // Remove background MQTT hosted services to prevent connection retries during test execution
+            var hostedServices = services.Where(d => d.ServiceType == typeof(IHostedService)).ToList();
+            foreach (var hs in hostedServices)
+            {
+                services.Remove(hs);
+            }
 
             // Configure test MQTT options with isolated dynamic port
             services.Configure<MqttOptions>(opts =>

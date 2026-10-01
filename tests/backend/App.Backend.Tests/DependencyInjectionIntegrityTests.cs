@@ -1,7 +1,10 @@
 using System;
+using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Xunit;
 
 namespace App.Backend.Tests;
@@ -16,6 +19,15 @@ public class DependencyInjectionIntegrityTests : IClassFixture<WebApplicationFac
         {
             builder.UseSetting("ConnectionStrings:DefaultConnection", "Host=localhost;Database=dummy;Username=test;Password=test");
             builder.UseSetting("REDIS_CONNECTION_STRING", "localhost:6379");
+            builder.ConfigureServices(services =>
+            {
+                var distCache = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+                if (distCache != null) services.Remove(distCache);
+                services.AddDistributedMemoryCache();
+
+                var hosted = services.Where(d => d.ServiceType == typeof(IHostedService)).ToList();
+                foreach (var h in hosted) services.Remove(h);
+            });
         });
     }
 

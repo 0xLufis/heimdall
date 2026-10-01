@@ -88,7 +88,14 @@ public class MqttIngestionHostedService : BackgroundService, IMqttIngestionServi
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "MQTT Ingestion loop encountered an issue. Reconnecting in 5s...");
-                await Task.Delay(5000, stoppingToken);
+                try
+                {
+                    await Task.Delay(5000, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
     }
@@ -333,8 +340,27 @@ public class MqttIngestionHostedService : BackgroundService, IMqttIngestionServi
             }
         }
 
-        await _brokerService.StopAsync(cancellationToken);
-        await base.StopAsync(cancellationToken);
+        try
+        {
+            await _brokerService.StopAsync(cancellationToken);
+        }
+        catch
+        {
+            // Ignore broker stop errors during host shutdown
+        }
+
+        try
+        {
+            await base.StopAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal shutdown cancellation
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Exception encountered during MQTT Ingestion service shutdown.");
+        }
     }
 
     public override void Dispose()
