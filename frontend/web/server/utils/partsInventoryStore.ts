@@ -550,10 +550,368 @@ class PartsInventoryStore {
         wearDepreciationPercentage: part.wearDepreciationPercentage,
         resellPriceOverrideEur: part.resellPriceOverrideEur
       },
-      notes: `Resell valuation adjusted to €${part.estimatedResellPriceEur}`
+      notes: `Wear adjusted to ${part.wearDepreciationPercentage ?? 'N/A'}%`
     })
 
     return part
+  }
+
+  // -------------------------------------------------------------------------
+  // Serialize On Use (Dynamic Serialization of Bulk Stock to discrete Machine Units)
+  // -------------------------------------------------------------------------
+  public serializeOnUse(
+    partId: string,
+    payload: {
+      machineId?: string
+      machineName?: string
+      serialNumber?: string
+      customIdentifier?: string
+      justification?: string
+      costCenter?: PartUsageCostCenter
+      wbsElement?: string
+    },
+    actor: { id: string; name: string }
+  ): { success: boolean; bulkPart: InventoryPart; serializedPart: InventoryPart; auditRecord: PartAuditRecord } {
+    const bulkPart = this.parts.get(partId)
+    if (!bulkPart) {
+      throw new Error(`Part with ID "${partId}" was not found.`)
+    }
+    if (bulkPart.trackingType !== 'bulk') {
+      throw new Error(`Part "${bulkPart.customIdentifier}" is already a serialized unit.`)
+    }
+    if (bulkPart.quantity < 1) {
+      throw new Error(`Bulk part "${bulkPart.customIdentifier}" is out of stock (quantity: ${bulkPart.quantity}).`)
+    }
+
+    // MANDATORY LINKAGE OR JUSTIFICATION VALIDATION:
+    // Mandatory indexed machine OR custom text justification
+    const hasMachine = Boolean(payload.machineId && String(payload.machineId).trim())
+    const hasJustification = Boolean(payload.justification && String(payload.justification).trim())
+
+    if (!hasMachine && !hasJustification) {
+      throw new Error('Mandatory linkage required: specify an installed Machine (machineId) OR a documented cleartext justification.')
+    }
+
+    // Decrement bulk quantity
+    bulkPart.quantity -= 1
+    const effectiveMin = bulkPart.effectiveMinQuantity !== undefined
+      ? bulkPart.effectiveMinQuantity
+      : Math.round((bulkPart.minQuantity * (bulkPart.minQuantityScalar ?? 1.0)) * 100) / 100
+
+    if (bulkPart.quantity === 0) {
+      bulkPart.stockAlertStatus = 'out_of_stock'
+    } else if (bulkPart.quantity <= effectiveMin) {
+      bulkPart.stockAlertStatus = 'low_stock'
+    } else {
+      bulkPart.stockAlertStatus = 'optimal'
+    }
+    bulkPart.updatedAt = new Date().toISOString()
+    this.parts.set(bulkPart.id, bulkPart)
+
+    // Generate serial number and identifier
+    const template = bulkPart.templateId ? this.templates.get(bulkPart.templateId) : undefined
+    let customIdentifier = payload.customIdentifier
+    if (!customIdentifier) {
+      if (template?.identifierPattern) {
+        template.sequentialCounter++
+        customIdentifier = template.identifierPattern.replace('{number}', String(template.sequentialCounter).padStart(4, '0'))
+      } else {
+        customIdentifier = `${bulkPart.customIdentifier}-S${Date.now().toString().slice(-4)}`
+      }
+    }
+    const serialNumber = payload.serialNumber || `SN-${randomUUID().substring(0, 8).toUpperCase()}`
+
+    const locationStr = hasMachine
+      ? `Installed: ${payload.machineName || payload.machineId}`
+      : `Deployed: ${payload.justification}`
+
+    const newSerializedPart: InventoryPart = {
+      ...bulkPart,
+      id: randomUUID(),
+      customIdentifier,
+      serialNumber,
+      trackingType: 'serialized',
+      quantity: 1,
+      minQuantity: 1,
+      minQuantityScalar: 1.0,
+      effectiveMinQuantity: 1,
+      condition: 'used',
+      operationalState: 'working',
+      isMachineLinked: hasMachine,
+      linkedMachineId: payload.machineId,
+      linkedMachineName: payload.machineName,
+      location: locationStr,
+      tags: [...(bulkPart.tags || []), 'SerializedOnUse', ...(payload.wbsElement ? [`#WBS-${payload.wbsElement}`] : [])],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    this.parts.set(newSerializedPart.id, newSerializedPart)
+    this.rebuildTemplateInstances()
+
+    const auditRecord: PartAuditRecord = {
+      id: `aud-${randomUUID().substring(0, 8)}`,
+      partId: bulkPart.id,
+      partIdentifier: bulkPart.customIdentifier,
+      partName: bulkPart.name,
+      action: 'serialize_on_use',
+      timestamp: new Date().toISOString(),
+      actorId: actor.id,
+      actorName: actor.name,
+      quantityDelta: -1,
+      costCenter: payload.costCenter || {
+        prodLine: payload.machineName,
+        notes: `Serialized on use to ${locationStr} (Serial: ${serialNumber})`
+      },
+      wbsElement: payload.wbsElement,
+      newState: {
+        serializedPartId: newSerializedPart.id,
+        serializedIdentifier: newSerializedPart.customIdentifier,
+        serialNumber: newSerializedPart.serialNumber,
+        machineId: payload.machineId,
+        justification: payload.justification,
+        remainingBulkQuantity: bulkPart.quantity
+      },
+      notes: `Serialized on use: Created serialized part ${newSerializedPart.customIdentifier} (${newSerializedPart.id})`
+    }
+
+    this.auditLog.unshift(auditRecord)
+
+    return {
+      success: true,
+      bulkPart,
+      serializedPart: newSerializedPart,
+      auditRecord
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Edit Part Post-Intake
+  // -------------------------------------------------------------------------
+  public editPart(
+    partId: string,
+    updates: Partial<InventoryPart>,
+    actor: { id: string; name: string }
+  ): InventoryPart {
+    const part = this.parts.get(partId)
+    if (!part) {
+      throw new Error(`Part with ID "${partId}" was not found.`)
+    }
+
+    const previousState = { ...part }
+
+    if (updates.name) part.name = updates.name.trim()
+    if (updates.displayName !== undefined) part.displayName = updates.displayName
+    if (updates.location) part.location = updates.location.trim()
+    if (updates.priceEur !== undefined) part.priceEur = Number(updates.priceEur)
+    if (updates.wearDepreciationPercentage !== undefined) {
+      part.wearDepreciationPercentage = Number(updates.wearDepreciationPercentage)
+      part.estimatedResellPriceEur = part.resellPriceOverrideEur !== undefined
+        ? part.resellPriceOverrideEur
+        : Math.round(part.priceEur * (1 - (part.wearDepreciationPercentage / 100)) * 100) / 100
+    }
+    if (updates.resellPriceOverrideEur !== undefined) {
+      part.resellPriceOverrideEur = updates.resellPriceOverrideEur
+      part.estimatedResellPriceEur = Number(updates.resellPriceOverrideEur)
+    }
+    if (updates.condition) part.condition = updates.condition
+    if (updates.operationalState) part.operationalState = updates.operationalState
+    if (updates.tags && Array.isArray(updates.tags)) part.tags = updates.tags
+    if (updates.serialNumber) part.serialNumber = updates.serialNumber
+    if (updates.minQuantity !== undefined) part.minQuantity = Number(updates.minQuantity)
+    if (updates.minQuantityScalar !== undefined) {
+      part.minQuantityScalar = Number(updates.minQuantityScalar)
+      part.effectiveMinQuantity = Math.round(part.minQuantity * part.minQuantityScalar * 100) / 100
+    }
+
+    part.updatedAt = new Date().toISOString()
+    this.parts.set(part.id, part)
+    this.rebuildTemplateInstances()
+
+    this.auditLog.unshift({
+      id: `aud-${randomUUID().substring(0, 8)}`,
+      partId: part.id,
+      partIdentifier: part.customIdentifier,
+      partName: part.name,
+      action: 'relocate',
+      timestamp: new Date().toISOString(),
+      actorId: actor.id,
+      actorName: actor.name,
+      previousState,
+      newState: { ...part },
+      notes: `Edited part post-intake by ${actor.name}`
+    })
+
+    return part
+  }
+
+  // -------------------------------------------------------------------------
+  // Part Lifecycle State Machine Transitions
+  // Take in > use up > in-machine > state change > removed from machine > decommission > donor or scrap
+  // -------------------------------------------------------------------------
+  public transitionLifecycle(
+    partId: string,
+    toState: 'in_machine' | 'removed_from_machine' | 'decommissioned' | 'donor' | 'scrap',
+    options: {
+      machineId?: string
+      machineName?: string
+      justification?: string
+      notes?: string
+    },
+    actor: { id: string; name: string }
+  ): { part: InventoryPart; auditRecord: PartAuditRecord } {
+    const part = this.parts.get(partId)
+    if (!part) {
+      throw new Error(`Part with ID "${partId}" was not found.`)
+    }
+
+    const previousState = {
+      isMachineLinked: part.isMachineLinked,
+      linkedMachineId: part.linkedMachineId,
+      condition: part.condition,
+      operationalState: part.operationalState,
+      location: part.location,
+      quantity: part.quantity
+    }
+
+    switch (toState) {
+      case 'in_machine': {
+        const hasMachine = Boolean(options.machineId && options.machineId.trim())
+        const hasJustification = Boolean(options.justification && options.justification.trim())
+        if (!hasMachine && !hasJustification) {
+          throw new Error('Mandatory linkage required: select an installed machine OR provide a documented text justification.')
+        }
+        part.isMachineLinked = hasMachine
+        part.linkedMachineId = options.machineId
+        part.linkedMachineName = options.machineName
+        part.condition = 'used'
+        part.operationalState = 'working'
+        part.location = hasMachine ? `Installed: ${options.machineName || options.machineId}` : `Field: ${options.justification}`
+        break
+      }
+      case 'removed_from_machine': {
+        part.isMachineLinked = false
+        part.linkedMachineId = undefined
+        part.linkedMachineName = undefined
+        part.operationalState = 'evaluation'
+        part.location = 'Warehouse Evaluation & Staging Bay'
+        break
+      }
+      case 'decommissioned': {
+        part.isMachineLinked = false
+        part.linkedMachineId = undefined
+        part.linkedMachineName = undefined
+        part.condition = 'obsolete'
+        part.operationalState = 'evaluation'
+        part.location = 'Decommissioning Buffer Area'
+        break
+      }
+      case 'donor': {
+        part.isMachineLinked = false
+        part.linkedMachineId = undefined
+        part.linkedMachineName = undefined
+        part.condition = 'donor'
+        part.operationalState = 'evaluation'
+        part.location = 'Spare Donor Salvage Cabinet'
+        break
+      }
+      case 'scrap': {
+        part.isMachineLinked = false
+        part.linkedMachineId = undefined
+        part.linkedMachineName = undefined
+        part.condition = 'scrap'
+        part.operationalState = 'broken'
+        part.quantity = 0
+        part.stockAlertStatus = 'out_of_stock'
+        part.location = 'Scrap & Recycling Quarantine'
+        break
+      }
+    }
+
+    part.updatedAt = new Date().toISOString()
+    this.parts.set(part.id, part)
+    this.rebuildTemplateInstances()
+
+    const auditRecord: PartAuditRecord = {
+      id: `aud-${randomUUID().substring(0, 8)}`,
+      partId: part.id,
+      partIdentifier: part.customIdentifier,
+      partName: part.name,
+      action: toState === 'scrap' ? 'scrap' : 'condition_update',
+      timestamp: new Date().toISOString(),
+      actorId: actor.id,
+      actorName: actor.name,
+      previousState,
+      newState: {
+        toState,
+        isMachineLinked: part.isMachineLinked,
+        condition: part.condition,
+        operationalState: part.operationalState,
+        location: part.location,
+        quantity: part.quantity
+      },
+      notes: options.notes || `Lifecycle transition to "${toState}" by ${actor.name}`
+    }
+
+    this.auditLog.unshift(auditRecord)
+    return { part, auditRecord }
+  }
+
+  // -------------------------------------------------------------------------
+  // Field Indexing (Auto-complete for manufacturer, supplier, categories, locations)
+  // -------------------------------------------------------------------------
+  public getIndexedFields(): {
+    manufacturers: string[]
+    suppliers: string[]
+    categories: string[]
+    locations: string[]
+    costCenters: string[]
+    machines: Array<{ id: string; name: string }>
+  } {
+    const manufacturers = new Set<string>()
+    const suppliers = new Set<string>()
+    const categories = new Set<string>()
+    const locations = new Set<string>()
+    const costCenters = new Set<string>()
+    const machineMap = new Map<string, string>()
+
+    for (const p of this.parts.values()) {
+      if (p.manufacturer?.name) manufacturers.add(p.manufacturer.name)
+      if (p.supplier?.name) suppliers.add(p.supplier.name)
+      if (p.category) categories.add(p.category)
+      if (p.subCategory) categories.add(p.subCategory)
+      if (p.location) locations.add(p.location)
+      if (p.linkedMachineId && p.linkedMachineName) {
+        machineMap.set(p.linkedMachineId, p.linkedMachineName)
+      }
+    }
+
+    for (const t of this.templates.values()) {
+      if (t.fixedFields?.manufacturer) manufacturers.add(t.fixedFields.manufacturer)
+      if (t.fixedFields?.supplier) suppliers.add(t.fixedFields.supplier)
+      if (t.fixedFields?.category) categories.add(t.fixedFields.category)
+    }
+
+    for (const sp of this.spareParts.values()) {
+      if (sp.machineId && sp.machineName) {
+        machineMap.set(sp.machineId, sp.machineName)
+      }
+    }
+
+    for (const a of this.auditLog) {
+      if (a.costCenter?.prodLine) costCenters.add(a.costCenter.prodLine)
+      if (a.costCenter?.project) costCenters.add(a.costCenter.project)
+      if (a.costCenter?.department) costCenters.add(a.costCenter.department)
+    }
+
+    return {
+      manufacturers: Array.from(manufacturers).sort(),
+      suppliers: Array.from(suppliers).sort(),
+      categories: Array.from(categories).sort(),
+      locations: Array.from(locations).sort(),
+      costCenters: Array.from(costCenters).sort(),
+      machines: Array.from(machineMap.entries()).map(([id, name]) => ({ id, name }))
+    }
   }
 
   // -------------------------------------------------------------------------

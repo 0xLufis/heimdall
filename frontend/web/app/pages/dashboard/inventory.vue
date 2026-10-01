@@ -31,6 +31,7 @@ import DashboardInventoryAddModal from '~/components/dashboard/InventoryAddModal
 import DashboardInventoryTable from '~/components/dashboard/InventoryTable.vue'
 import PartsInventoryList from '~/components/inventory/PartsInventoryList.vue'
 import UsePartModal from '~/components/inventory/UsePartModal.vue'
+import EditPartModal from '~/components/inventory/EditPartModal.vue'
 import LogPartModal from '~/components/inventory/LogPartModal.vue'
 import BulkPartIntakeModal from '~/components/inventory/BulkPartIntakeModal.vue'
 import AssetTemplatesManager from '~/components/inventory/AssetTemplatesManager.vue'
@@ -327,6 +328,8 @@ const {
   logPart: handleLogPart,
   bulkLogParts: handleBulkLogParts,
   usePart: handleUsePartAction,
+  serializeOnUse,
+  editPart,
   fetchTemplates,
   fetchSpareParts,
   fetchAuditLogs
@@ -334,6 +337,8 @@ const {
 
 const showUsePartModal = ref(false)
 const selectedPartForUse = ref<InventoryPart | null>(null)
+const showEditPartModal = ref(false)
+const selectedPartForEdit = ref<InventoryPart | null>(null)
 const showLogPartModal = ref(false)
 const showBulkIntakeModal = ref(false)
 const showMachineImportModal = ref(false)
@@ -346,13 +351,36 @@ const handleOpenUsePart = (part: InventoryPart) => {
   showUsePartModal.value = true
 }
 
+const handleOpenEditPart = (part: InventoryPart) => {
+  selectedPartForEdit.value = part
+  showEditPartModal.value = true
+}
+
+const onPartUpdated = async () => {
+  await fetchParts()
+  await fetchMasterInventory()
+  await fetchAuditLogs()
+  await fetchTemplates()
+}
+
 const openProvisioningForPart = (part: InventoryPart) => {
   provisioningPreselectedId.value = part.id
   activeSection.value = 'provisioning'
 }
 
-const onConfirmUsePart = async (data: { partId: string; costCenter: PartUsageCostCenter; quantity: number }) => {
-  await handleUsePartAction(data.partId, data.costCenter, data.quantity)
+const onConfirmUsePart = async (data: any) => {
+  if (data.isSerializeOnUse) {
+    await serializeOnUse(data.partId, {
+      machineId: data.machineId,
+      machineName: data.machineName,
+      serialNumber: data.serialNumber,
+      justification: data.justification,
+      costCenter: data.costCenter,
+      wbsElement: data.wbsElement
+    })
+  } else {
+    await handleUsePartAction(data.partId, data.costCenter, data.quantity)
+  }
   await fetchParts()
   await fetchMasterInventory()
 }
@@ -967,6 +995,7 @@ onInventoryUpdate(() => {
         :loading="partsLoading"
         :kpis="partsKpis"
         @usePart="openProvisioningForPart"
+        @editPart="handleOpenEditPart"
         @logPart="showLogPartModal = true"
         @bulkIntake="showBulkIntakeModal = true"
         @scanCode="showCodeScannerModal = true"
@@ -1066,6 +1095,14 @@ onInventoryUpdate(() => {
       :part="selectedPartForUse"
       @update:open="showUsePartModal = $event"
       @used="onConfirmUsePart"
+    />
+
+    <!-- Edit Part Modal Overlay (Post-Intake Metadata & Lifecycle Transitions) -->
+    <EditPartModal
+      :open="showEditPartModal"
+      :part="selectedPartForEdit"
+      @update:open="showEditPartModal = $event"
+      @updated="onPartUpdated"
     />
 
     <!-- Log Part Modal Overlay -->

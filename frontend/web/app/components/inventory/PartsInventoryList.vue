@@ -16,7 +16,8 @@ import {
   Building,
   User,
   ShieldAlert,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Edit3
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,6 +39,7 @@ const emit = defineEmits<{
   (e: 'logPart'): void
   (e: 'bulkIntake'): void
   (e: 'usePart', part: InventoryPart): void
+  (e: 'editPart', part: InventoryPart): void
   (e: 'scanCode'): void
   (e: 'viewAudit', partId?: string): void
   (e: 'filterChange', filters: any): void
@@ -347,24 +349,35 @@ const onFilterClick = (type: 'tracking' | 'condition' | 'operational' | 'alert',
 
               <!-- Actions -->
               <td class="p-3 text-right">
-                <Button
-                  v-if="part.quantity > 0 && part.condition !== 'scrap' && canUsePart"
-                  size="sm"
-                  @click="emit('usePart', part)"
-                  class="h-7 px-2.5 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1 cursor-pointer"
-                >
-                  <Send class="size-3" />
-                  <span>Use</span>
-                </Button>
-                <Button
-                  v-else
-                  variant="ghost"
-                  size="sm"
-                  @click="emit('viewAudit', part.id)"
-                  class="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  Audit
-                </Button>
+                <div class="flex items-center justify-end gap-1.5">
+                  <Button
+                    v-if="part.quantity > 0 && part.condition !== 'scrap' && canUsePart"
+                    size="sm"
+                    @click="emit('usePart', part)"
+                    class="h-7 px-2.5 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1 cursor-pointer"
+                  >
+                    <Send class="size-3" />
+                    <span>Use</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    @click="emit('editPart', part)"
+                    class="h-7 px-2 text-xs text-foreground hover:bg-muted gap-1 cursor-pointer"
+                    title="Edit part metadata & lifecycle"
+                  >
+                    <Edit3 class="size-3 text-muted-foreground" />
+                    <span>Edit</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    @click="emit('viewAudit', part.id)"
+                    class="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Audit
+                  </Button>
+                </div>
               </td>
             </tr>
           </tbody>

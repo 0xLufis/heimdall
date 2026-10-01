@@ -65,9 +65,9 @@ This document outlines the architecture, completed capabilities, and active engi
 
 ---
 
-## 6. Serialize on Use Functionality
+## 6. Serialize on Use Functionality (Completed)
 
-- [ ] **Dynamic Serialization Workflow**:
+- [x] **Dynamic Serialization Workflow**:
   - Support converting bulk inventory items (e.g. pneumatic cylinders, cables, relays) into uniquely tracked serialized assets upon assignment to a machine.
   - Automatically generate serial numbers according to template identifier patterns or prompt for physical barcode scan.
   - Decrement bulk quantity in warehouse storage and instantiate a new serialized part record assigned to the target machine.
@@ -75,25 +75,25 @@ This document outlines the architecture, completed capabilities, and active engi
 
 ---
 
-## 7. Enhanced Asset Template & Intake UI
+## 7. Enhanced Asset Template & Intake UI (Completed)
 
-- [ ] **Autocomplete & Dynamic Field Indexing**:
+- [x] **Autocomplete & Dynamic Field Indexing**:
   - Implement indexed suggestion dropdowns for key fields (`manufacturer`, `supplier`, `category`, `storage location`, `cost center`).
   - Allow users to either select an existing indexed value from the database or enter a new cleartext entry that auto-indexes for future use.
-- [ ] **Post-Intake Part Editing**:
+- [x] **Post-Intake Part Editing**:
   - Provide a dedicated edit modal / drawer allowing authorized inventory managers to update part metadata (wear level, storage bin, notes, resell value) post-intake.
   - Maintain an audit trail of modified fields.
-- [ ] **Specification Fields Rendering on Intake**:
+- [x] **Specification Fields Rendering on Intake**:
   - Dynamically render template-specific specification fields (`specFields`) directly inside the intake dialog when a template is selected.
   - Validate required specification attributes before completing part intake.
 
 ---
 
-## 8. Part Lifecycle & IO Validation Pipeline
+## 8. Part Lifecycle & IO Validation Pipeline (Completed)
 
-- [ ] **End-to-End Lifecycle State Machine**:
+- [x] **End-to-End Lifecycle State Machine**:
   - Enforce formal transitions: `Intake` -> `Warehouse Stock` -> `In-Machine` -> `State Change (Maintenance/Degraded)` -> `Removed from Machine` -> `Decommissioned` -> `Donor` or `Scrap`.
   - Validate state prerequisites (e.g. parts must be removed from a machine before being decommissioned or scrapped).
-- [ ] **Strict Machine Linkage & Allocation Justification**:
+- [x] **Strict Machine Linkage & Allocation Justification**:
   - Require either a mandatory indexed machine selection OR a documented cleartext justification when a part is marked as used.
   - Enforce optional WBS (Work Breakdown Structure) element and cost center allocation for financial auditing.
