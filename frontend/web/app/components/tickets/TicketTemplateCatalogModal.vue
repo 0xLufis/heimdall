@@ -2,7 +2,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import {
   FileText, Search, Plus, Filter, Tag, Cpu, Activity,
-  Check, ArrowRight, ShieldAlert, Sparkles, Wrench, X, RefreshCw
+  Check, ArrowRight, ShieldAlert, Sparkles, Wrench, X, RefreshCw,
+  Download, ExternalLink
 } from 'lucide-vue-next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog'
 import { Button } from '~/components/ui/button'
@@ -10,7 +11,8 @@ import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
 import {
   ERROR_TEMPLATES, CATEGORIES, MACHINE_TYPES,
-  type ErrorTemplate
+  type ErrorTemplate,
+  exportTwinCatDutXml
 } from '~/utils/errorTemplateEngine'
 
 const props = defineProps<{
@@ -186,6 +188,23 @@ function getCategoryColor(cat: string): string {
     default: return 'text-muted-foreground bg-muted border-border'
   }
 }
+
+function triggerDownloadDut() {
+  try {
+    const xml = exportTwinCatDutXml(templates.value)
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'E_HeimdallErrorCode.TcDUT'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('Failed to export TwinCAT DUT', e)
+  }
+}
 </script>
 
 <template>
@@ -207,15 +226,38 @@ function getCategoryColor(cat: string): string {
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            @click="showCreateForm = !showCreateForm"
-            class="h-8 text-xs gap-1.5"
-          >
-            <component :is="showCreateForm ? X : Plus" class="size-3.5" />
-            <span>{{ showCreateForm ? 'View Catalog' : 'New Template' }}</span>
-          </Button>
+          <div class="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              @click="triggerDownloadDut"
+              class="h-8 text-xs gap-1.5 border-border bg-card"
+              title="Export Beckhoff TwinCAT 3 .TcDUT IEC 61131-3 error enum file"
+            >
+              <Download class="size-3.5 text-indigo-500" />
+              <span class="hidden sm:inline">Export TwinCAT DUT</span>
+            </Button>
+            <NuxtLink to="/dashboard/tickets/templates" @click="emit('close')">
+              <Button
+                size="sm"
+                variant="outline"
+                class="h-8 text-xs gap-1.5 border-border bg-card"
+                title="Open Dedicated Full Page Catalog"
+              >
+                <ExternalLink class="size-3.5 text-indigo-500" />
+                <span class="hidden sm:inline">Full Page</span>
+              </Button>
+            </NuxtLink>
+            <Button
+              size="sm"
+              variant="outline"
+              @click="showCreateForm = !showCreateForm"
+              class="h-8 text-xs gap-1.5"
+            >
+              <component :is="showCreateForm ? X : Plus" class="size-3.5" />
+              <span>{{ showCreateForm ? 'View Catalog' : 'New Template' }}</span>
+            </Button>
+          </div>
         </div>
 
         <!-- Filter Toolbar (Hidden when creating template) -->

@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   Plus, Camera, RefreshCw, WifiOff, LayoutList, Columns,
   Activity, QrCode, Users, FolderTree, History, CheckCircle2, Wrench,
-  Filter, X, FileText
+  Filter, X, FileText, Tv
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -52,6 +52,7 @@ const {
 
 // ── View Modes ─────────────────────────────────────────────────────────────
 const activeViewMode = ref<'list' | 'kanban' | 'resolved'>('list')
+const fillMode = ref<'outline' | 'semi-filled' | 'filled'>('semi-filled')
 
 // ── Feature Flags ──────────────────────────────────────────────────────────
 const { enableSimulation } = useFeatureFlags()
@@ -401,27 +402,57 @@ async function onResumeTicket(ticketId: string) {
           <span>Action QR</span>
         </Button>
 
-        <Button
-          v-if="enableSimulation"
-          variant="outline"
-          size="sm"
-          @click="showSimulatorModal = true"
-          class="border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20 rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-        >
-          <Activity class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Fleet Sim</span>
-        </Button>
+        <NuxtLink to="/dashboard/tickets/monitor">
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            title="Open shopfloor TV display monitor"
+          >
+            <Tv class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>TV Monitor</span>
+          </Button>
+        </NuxtLink>
 
-        <Button
-          variant="outline"
-          size="sm"
-          @click="showTemplateCatalogModal = true"
-          class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-          title="Browse standardized 4-tier failure profiles and telemetry signatures"
-        >
-          <FileText class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Templates</span>
-        </Button>
+        <NuxtLink to="/dashboard/tickets/templates">
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            title="Browse and edit standardized 4-tier failure profiles and export TwinCAT DUT"
+          >
+            <FileText class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Templates</span>
+          </Button>
+        </NuxtLink>
+
+        <!-- Fill-Mode Style Toggle -->
+        <div class="flex items-center border border-border rounded-lg bg-card p-0.5" title="Ticket card fill style: Outline, Semi-filled, or Solid">
+          <button
+            type="button"
+            @click="fillMode = 'outline'"
+            :class="fillMode === 'outline' ? 'bg-primary text-primary-foreground font-bold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2 py-0.5 h-6 text-[10px] rounded-md transition-colors font-medium cursor-pointer"
+          >
+            Outline
+          </button>
+          <button
+            type="button"
+            @click="fillMode = 'semi-filled'"
+            :class="fillMode === 'semi-filled' ? 'bg-primary text-primary-foreground font-bold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2 py-0.5 h-6 text-[10px] rounded-md transition-colors font-medium cursor-pointer"
+          >
+            Semi
+          </button>
+          <button
+            type="button"
+            @click="fillMode = 'filled'"
+            :class="fillMode === 'filled' ? 'bg-primary text-primary-foreground font-bold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2 py-0.5 h-6 text-[10px] rounded-md transition-colors font-medium cursor-pointer"
+          >
+            Solid
+          </button>
+        </div>
 
         <Button
           variant="outline"
@@ -497,6 +528,7 @@ async function onResumeTicket(ticketId: string) {
       <TicketList
         :tickets="displayedTickets"
         :loading="isLoading"
+        :fill-mode="fillMode"
         @selectTicket="onSelectTicket"
         @reserveTicket="onReserveTicket"
         @filterChange="fetchTickets"
@@ -506,6 +538,7 @@ async function onResumeTicket(ticketId: string) {
     <template v-else-if="activeViewMode === 'kanban'">
       <TicketKanbanBoard
         :tickets="displayedTickets"
+        :fill-mode="fillMode"
         @selectTicket="onSelectTicket"
         @moveStatus="onMoveStatus"
         @setPending="onSetPending"

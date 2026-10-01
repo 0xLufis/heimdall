@@ -17,9 +17,12 @@ import {
   type AndonColorType
 } from '~/utils/andonColors'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   tickets: MaintenanceTicket[]
-}>()
+  fillMode?: 'outline' | 'semi-filled' | 'filled'
+}>(), {
+  fillMode: 'semi-filled'
+})
 
 const emit = defineEmits<{
   (e: 'selectTicket', ticket: MaintenanceTicket): void
@@ -309,7 +312,11 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
             class="relative rounded-2xl border transition-all duration-200 cursor-grab active:cursor-grabbing shadow-xs hover:shadow-md group flex flex-col justify-between gap-3 select-none overflow-hidden"
             :class="[
               ticket.isEscalated ? 'border-rose-500/80 ring-2 ring-rose-500/40 bg-rose-500/[0.03]' : ANDON_STYLES[getAndonColorForStatus(ticket.status)].borderClass,
-              ANDON_STYLES[getAndonColorForStatus(ticket.status)].cardBgClass,
+              props.fillMode === 'filled'
+                ? 'bg-muted/80 dark:bg-muted/50 border-primary/30'
+                : props.fillMode === 'outline'
+                  ? 'bg-transparent hover:bg-card/40'
+                  : ANDON_STYLES[getAndonColorForStatus(ticket.status)].cardBgClass,
               draggedTicketId === ticket.id ? 'opacity-40 border-dashed scale-[0.99]' : ''
             ]"
           >

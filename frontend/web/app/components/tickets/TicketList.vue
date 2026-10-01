@@ -31,10 +31,13 @@ import {
   type AndonColorType
 } from '~/utils/andonColors'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   tickets: MaintenanceTicket[]
   loading?: boolean
-}>()
+  fillMode?: 'outline' | 'semi-filled' | 'filled'
+}>(), {
+  fillMode: 'semi-filled'
+})
 
 const emit = defineEmits<{
   (e: 'selectTicket', ticket: MaintenanceTicket): void
@@ -49,8 +52,14 @@ const emit = defineEmits<{
 
 const activeStatusTab = ref<string>('all')
 const activePriorityFilter = ref<string>('all')
+const activeGroupFilter = ref<string>('all')
 const searchQuery = ref<string>('')
 const pendingSubFilter = ref<'All' | PendingReason>('All')
+const sortMode = ref<'timeFirst' | 'priorityFirst'>('timeFirst')
+
+function toggleSortMode() {
+  sortMode.value = sortMode.value === 'timeFirst' ? 'priorityFirst' : 'timeFirst'
+}
 
 // Table sorting state: null = natural lifecycle order, 'asc' = ascending, 'desc' = descending
 type SortDirection = 'asc' | 'desc' | null
@@ -155,10 +164,30 @@ const getStatusBadge = (status: string) => {
 
 const getRowAndonBorderClass = (tkt: MaintenanceTicket) => {
   if (tkt.isLineStop) {
-    return 'border-l-4 border-l-rose-600 bg-rose-500/[0.02]'
+    if (props.fillMode === 'filled') return 'border-l-4 border-l-rose-600 bg-rose-500/15'
+    if (props.fillMode === 'semi-filled') return 'border-l-4 border-l-rose-600 bg-rose-500/[0.04]'
+    return 'border-l-4 border-l-rose-600 bg-transparent'
   }
   const andonType = getAndonColorForStatus(tkt.status)
-  return ANDON_STYLES[andonType].tableBorderClass
+  const baseBorder = ANDON_STYLES[andonType].tableBorderClass
+  if (props.fillMode === 'filled') {
+    switch (andonType) {
+      case 'cyan': return `${baseBorder} bg-cyan-500/10`
+      case 'blue': return `${baseBorder} bg-blue-500/10`
+      case 'yellow': return `${baseBorder} bg-amber-500/10`
+      case 'green': return `${baseBorder} bg-emerald-500/10`
+      default: return `${baseBorder} bg-slate-500/10`
+    }
+  } else if (props.fillMode === 'semi-filled') {
+    switch (andonType) {
+      case 'cyan': return `${baseBorder} bg-cyan-500/[0.03]`
+      case 'blue': return `${baseBorder} bg-blue-500/[0.03]`
+      case 'yellow': return `${baseBorder} bg-amber-500/[0.03]`
+      case 'green': return `${baseBorder} bg-emerald-500/[0.03]`
+      default: return `${baseBorder} bg-slate-500/[0.03]`
+    }
+  }
+  return `${baseBorder} bg-transparent`
 }
 
 const formatSlaDue = (slaDueAt?: string, status?: string) => {
@@ -194,6 +223,15 @@ const lifecycleRank: Record<string, number> = {
   Closed: 5
 }
 
+const availableGroups = computed(() => {
+  const groups = new Set<string>()
+  for (const t of props.tickets) {
+    if (t.groupId) groups.add(t.groupId)
+    if (t.machineType) groups.add(t.machineType)
+  }
+  return Array.from(groups)
+})
+
 const handleSort = (column: string, direction: SortDirection) => {
   activeSortColumn.value = direction ? column : null
   activeSortDirection.value = direction
@@ -213,6 +251,10 @@ const processedTickets = computed(() => {
     list = list.filter(t => t.priority === activePriorityFilter.value)
   }
 
+  if (activeGroupFilter.value !== 'all') {
+    list = list.filter(t => t.groupId === activeGroupFilter.value || t.machineType === activeGroupFilter.value)
+  }
+
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim()
     list = list.filter(t => 
@@ -226,7 +268,7 @@ const processedTickets = computed(() => {
     )
   }
 
-  // Sorting: explicit column sort OR default lifecycle sorting
+  // Sorting: explicit column sort OR dual sorting mode
   if (activeSortColumn.value && activeSortDirection.value) {
     const col = activeSortColumn.value
     const dir = activeSortDirection.value === 'asc' ? 1 : -1
@@ -258,9 +300,18 @@ const processedTickets = computed(() => {
       }
       return 0
     })
+  } else if (sortMode.value === 'priorityFirst') {
+    // Priority first (Critical -> High -> Medium -> Low), then oldest open duration
+    list.sort((a, b) => {
+      const pA = priorityWeight[a.priority] || 0
+      const pB = priorityWeight[b.priority] || 0
+      if (pA !== pB) return pB - pA
+      const timeA = new Date(a.createdAt).getTime()
+      const timeB = new Date(b.createdAt).getTime()
+      return timeA - timeB
+    })
   } else {
-    // Default sorting follows ticket lifecycle (Open -> InProgress -> Pending -> Resolved -> Closed),
-    // and tickets equal in primary sorting are secondarily sorted by time opened (newest first).
+    // Time first (follows lifecycle, then oldest open duration first)
     list.sort((a, b) => {
       const rankA = lifecycleRank[a.status] || 99
       const rankB = lifecycleRank[b.status] || 99
@@ -269,7 +320,7 @@ const processedTickets = computed(() => {
       }
       const timeA = new Date(a.createdAt).getTime()
       const timeB = new Date(b.createdAt).getTime()
-      return timeB - timeA
+      return timeA - timeB
     })
   }
 
@@ -329,6 +380,29 @@ const processedTickets = computed(() => {
           <option value="Medium">Medium</option>
           <option value="Low">Low</option>
         </select>
+
+        <!-- Machine Group & Line Filter -->
+        <select
+          v-if="availableGroups.length > 0"
+          v-model="activeGroupFilter"
+          class="h-9 px-3 text-xs bg-muted/30 border border-border rounded-xl text-foreground focus:outline-hidden"
+          title="Filter by machine group or technology cluster"
+        >
+          <option value="all">All Groups</option>
+          <option v-for="grp in availableGroups" :key="grp" :value="grp">{{ grp }}</option>
+        </select>
+
+        <!-- Dual Sorting Mode Toggle -->
+        <Button
+          variant="outline"
+          size="sm"
+          @click="toggleSortMode"
+          class="h-9 px-2.5 text-xs font-medium border-border bg-card flex items-center gap-1.5"
+          :title="sortMode === 'timeFirst' ? 'Ordering: Time First (Click for Priority First)' : 'Ordering: Priority First (Click for Time First)'"
+        >
+          <ArrowUpDown class="size-3.5 text-indigo-600 dark:text-indigo-400" />
+          <span class="hidden sm:inline">{{ sortMode === 'timeFirst' ? 'Time First' : 'Priority First' }}</span>
+        </Button>
 
         <!-- Column Customizer Toggle -->
         <div class="relative">
