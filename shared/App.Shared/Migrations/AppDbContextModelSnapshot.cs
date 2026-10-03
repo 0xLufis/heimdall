@@ -898,6 +898,10 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("assigned_to");
 
+                    b.Property<string>("ChangeHistory")
+                        .HasColumnType("text")
+                        .HasColumnName("change_history");
+
                     b.Property<Guid?>("ClientPcId")
                         .HasColumnType("uuid")
                         .HasColumnName("client_pc_id");
@@ -934,13 +938,47 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("escalation_closed_by");
 
+                    b.Property<string>("EscalationHandoverState")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("escalation_handover_state");
+
                     b.Property<string>("EscalationReason")
                         .HasColumnType("text")
                         .HasColumnName("escalation_reason");
 
+                    b.Property<string>("EscalationTarget")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("escalation_target");
+
+                    b.Property<string>("ExternalOperatorId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("external_operator_id");
+
+                    b.Property<string>("ExternalOperatorName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("external_operator_name");
+
                     b.Property<bool>("IsEscalated")
                         .HasColumnType("boolean")
                         .HasColumnName("is_escalated");
+
+                    b.Property<bool>("IsLineStop")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_line_stop");
+
+                    b.Property<string>("IssueType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("issue_type");
+
+                    b.Property<double?>("LineStopDurationMinutes")
+                        .HasColumnType("double precision")
+                        .HasColumnName("line_stop_duration_minutes");
 
                     b.Property<Guid?>("MachineId")
                         .HasColumnType("uuid")
@@ -954,6 +992,12 @@ namespace App.Shared.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("organization_id");
+
+                    b.Property<string>("OriginatorType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("originator_type");
 
                     b.Property<string>("PendingDetails")
                         .HasColumnType("text")
@@ -969,14 +1013,44 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("priority");
 
+                    b.Property<DateTimeOffset?>("QrScannedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("qr_scanned_at");
+
+                    b.Property<double?>("ReactionTimeMinutes")
+                        .HasColumnType("double precision")
+                        .HasColumnName("reaction_time_minutes");
+
+                    b.Property<string>("ReservedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("reserved_by");
+
                     b.Property<DateTimeOffset?>("ResolvedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("resolved_at");
+
+                    b.Property<string>("ResponsibleDepartment")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("responsible_department");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("status");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("text")
+                        .HasColumnName("tags");
+
+                    b.Property<string>("TelemetrySnapshot")
+                        .HasColumnType("text")
+                        .HasColumnName("telemetry_snapshot");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -1002,6 +1076,9 @@ namespace App.Shared.Migrations
                     b.HasIndex("IsEscalated")
                         .HasDatabaseName("ix_maintenance_tickets_is_escalated");
 
+                    b.HasIndex("IsLineStop")
+                        .HasDatabaseName("ix_maintenance_tickets_is_line_stop");
+
                     b.HasIndex("MachineId")
                         .HasDatabaseName("ix_maintenance_tickets_machine_id");
 
@@ -1015,6 +1092,9 @@ namespace App.Shared.Migrations
 
                     b.HasIndex("Priority")
                         .HasDatabaseName("ix_maintenance_tickets_priority");
+
+                    b.HasIndex("ResponsibleDepartment")
+                        .HasDatabaseName("ix_maintenance_tickets_responsible_department");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_maintenance_tickets_status");
@@ -1744,6 +1824,19 @@ namespace App.Shared.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("custom_identifier");
 
+                    b.Property<DateTimeOffset?>("DecommissionDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decommission_date");
+
+                    b.Property<string>("DecommissionDisposition")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("decommission_disposition");
+
+                    b.Property<string>("DecommissionReason")
+                        .HasColumnType("text")
+                        .HasColumnName("decommission_reason");
+
                     b.Property<string>("GroupId")
                         .HasColumnType("text")
                         .HasColumnName("group_id");
@@ -1763,6 +1856,12 @@ namespace App.Shared.Migrations
                     b.Property<string>("PreferredTechnicianName")
                         .HasColumnType("text")
                         .HasColumnName("preferred_technician_name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("status");
 
                     b.ToTable("stations", "backend");
                 });
