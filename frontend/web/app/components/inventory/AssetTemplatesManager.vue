@@ -36,7 +36,7 @@ const emit = defineEmits<{
 const { formatCurrency, activeCurrency, updateResellPrice, deleteTemplate, canManageInventory } = usePartsInventory()
 
 const activeCategory = ref<'all' | 'Hardware' | 'Software'>('all')
-const expandedTemplates = ref<Set<string>>(new Set(['tmpl-ipc-controller', 'tmpl-vision-sensor']))
+const expandedTemplates = ref<Set<string>>(new Set())
 const editingInstance = ref<InventoryPart | null>(null)
 const editWearPercent = ref<number>(0)
 const editResellOverride = ref<number | undefined>(undefined)
@@ -109,6 +109,11 @@ const saveEditResell = async () => {
   })
   editingInstance.value = null
   emit('refresh')
+}
+
+const getValidSpecs = (specs?: Record<string, any>) => {
+  if (!specs) return []
+  return Object.entries(specs).filter(([k, v]) => Boolean(k && String(k).trim().length > 0 && v !== undefined && v !== ''))
 }
 </script>
 
@@ -214,6 +219,17 @@ const saveEditResell = async () => {
                 <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
                   ID: {{ tmpl.identifierPattern }}
                 </span>
+
+                <!-- Template Tags -->
+                <template v-if="tmpl.tags && tmpl.tags.length">
+                  <span
+                    v-for="tag in tmpl.tags"
+                    :key="tag"
+                    class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                  >
+                    #{{ tag }}
+                  </span>
+                </template>
               </div>
 
               <p class="text-xs text-muted-foreground leading-relaxed">
@@ -275,16 +291,22 @@ const saveEditResell = async () => {
             <div>
               <span class="font-semibold text-primary">Fixed Template Specs:</span>
               <div class="mt-1 flex flex-wrap gap-2 text-[11px] font-mono text-muted-foreground">
-                <span v-for="(v, k) in tmpl.fixedFields.specs" :key="k" class="px-1.5 py-0.5 rounded bg-muted border border-border">
-                  {{ k }}: {{ v }}
+                <span v-for="[k, v] in getValidSpecs(tmpl.fixedFields?.specs)" :key="k" class="px-1.5 py-0.5 rounded bg-muted border border-border">
+                  <span class="text-foreground font-medium">{{ k }}:</span> {{ v }}
+                </span>
+                <span v-if="!getValidSpecs(tmpl.fixedFields?.specs).length" class="text-xs italic text-muted-foreground">
+                  No fixed specs defined
                 </span>
               </div>
             </div>
             <div>
               <span class="font-semibold text-primary">Instance-Specific Schema Fields:</span>
               <div class="mt-1 flex flex-wrap gap-2 text-[11px] font-mono text-muted-foreground">
-                <span v-for="field in tmpl.instanceSpecificFieldsSchema" :key="field.key" class="px-1.5 py-0.5 rounded bg-muted border border-border">
-                  {{ field.label }} ({{ field.type }})
+                <span v-for="field in (tmpl.instanceSpecificFieldsSchema || []).filter(f => Boolean(f?.key))" :key="field.key" class="px-1.5 py-0.5 rounded bg-muted border border-border">
+                  {{ field.label || field.key }} ({{ field.type }})
+                </span>
+                <span v-if="!(tmpl.instanceSpecificFieldsSchema || []).filter(f => Boolean(f?.key)).length" class="text-xs italic text-muted-foreground">
+                  No dynamic instance fields defined
                 </span>
               </div>
             </div>

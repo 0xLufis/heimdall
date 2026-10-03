@@ -11,6 +11,28 @@ export interface Supplier {
   website?: string
   contactPerson?: string
   email?: string
+  phoneNumber?: string
+  leadTimeDays?: number
+  address?: string
+  notes?: string
+}
+
+export interface KnownTag {
+  id: string
+  key: string
+  value: string
+  category?: string
+  usageCount: number
+  createdAt?: string
+}
+
+export interface InventoryItemTag {
+  id: string
+  itemId: string
+  tagId: string
+  tagKey: string
+  tagValue: string
+  createdAt?: string
 }
 
 export interface ComponentTopLevelFlags {
@@ -115,6 +137,7 @@ export interface InventoryPart {
   category: 'Hardware' | 'Software'
   subCategory?: string
   trackingType: PartTrackingType // 'bulk' | 'serialized'
+  serializeOnUse?: boolean // Item property TRUE or FALSE
   condition: PartLifecycleCondition // 'new' | 'used' | 'donor' | 'obsolete' | 'scrap'
   operationalState?: PartOperationalState // 'working' | 'in_service' | 'evaluation' | 'broken'
   manufacturer: {

@@ -96,6 +96,22 @@ export const defaultUsersSource: SearchSource = {
   linkGenerator: (item) => `/dashboard/users?userId=${item.id}`
 }
 
+export const defaultTemplatesSource: SearchSource = {
+  id: 'templates',
+  name: 'Asset Blueprints & Templates',
+  entityType: 'AssetTemplate',
+  indicatorLabel: 'TMPL',
+  indicatorColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  data: [
+    { id: 'tmpl-1', name: 'Industrial IPC Standard', manufacturer: 'Siemens', topLevelCategory: 'Hardware', identifierPattern: 'IPC-{number}', tag: 'ipc' },
+    { id: 'tmpl-2', name: 'Servo Drive Pack', manufacturer: 'Beckhoff', topLevelCategory: 'Hardware', identifierPattern: 'SRV-{number}', tag: 'motor' },
+    { id: 'tmpl-3', name: 'Cognex Vision Sensor Blueprint', manufacturer: 'Cognex', topLevelCategory: 'Hardware', identifierPattern: 'VIS-{number}', tag: 'camera' }
+  ],
+  indexedKey: 'id',
+  columns: ['name', 'manufacturer', 'topLevelCategory', 'identifierPattern', 'tag'],
+  linkGenerator: (item) => `/dashboard/inventory?templateId=${item.id}`
+}
+
 export const GLOBAL_SEARCH_CONTEXT: SearchContext = {
   id: 'global-plant',
   title: 'Global Plant Search',
@@ -104,6 +120,7 @@ export const GLOBAL_SEARCH_CONTEXT: SearchContext = {
     defaultClientPcsSource,
     defaultTicketsSource,
     defaultInventorySource,
+    defaultTemplatesSource,
     defaultUsersSource
   ]
 }
@@ -123,6 +140,8 @@ export const INVENTORY_SEARCH_CONTEXT: SearchContext = {
   title: 'Warehouse & Asset Inventory',
   sources: [
     defaultInventorySource,
+    defaultTemplatesSource,
     defaultMachinesSource
   ]
 }
+

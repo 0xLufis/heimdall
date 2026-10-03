@@ -11,7 +11,10 @@ import type {
   SparePartsReportingSummary,
   MachineDocumentImportPayload,
   MachineDocumentImportResult,
-  MachineDocumentImportItem
+  MachineDocumentImportItem,
+  Supplier,
+  KnownTag,
+  InventoryItemTag
 } from '../../app/types/inventory'
 import {
   getCanonicalInventoryTemplates,
@@ -42,6 +45,9 @@ class PartsInventoryStore {
   private parts: Map<string, InventoryPart> = new Map()
   private templates: Map<string, AssetTemplateDefinition> = new Map()
   private spareParts: Map<string, MachineSparePartItem> = new Map()
+  private suppliers: Map<string, Supplier> = new Map()
+  private knownTags: Map<string, KnownTag> = new Map()
+  private itemTags: Map<string, InventoryItemTag[]> = new Map()
   private auditLog: PartAuditRecord[] = []
 
   constructor() {
@@ -52,7 +58,76 @@ class PartsInventoryStore {
     this.parts.clear()
     this.templates.clear()
     this.spareParts.clear()
+    this.suppliers.clear()
+    this.knownTags.clear()
+    this.itemTags.clear()
     this.auditLog = [...getCanonicalInventoryAuditLogs()]
+
+    const initialSuppliers: Supplier[] = [
+      {
+        id: 'supp-siemens',
+        name: 'Siemens Industry AG',
+        website: 'https://siemens.com',
+        contactPerson: 'Klaus Meyer',
+        email: 'klaus.meyer@siemens.com',
+        phoneNumber: '+49 89 636 00',
+        leadTimeDays: 5,
+        address: 'Werner-von-Siemens-Straße 1, 80333 Munich, Germany',
+        notes: 'Strategic tier-1 automation supplier for S7-1500 and Sinamics drives.'
+      },
+      {
+        id: 'supp-beckhoff',
+        name: 'Beckhoff Automation GmbH & Co. KG',
+        website: 'https://beckhoff.com',
+        contactPerson: 'Hans Richter',
+        email: 'sales@beckhoff.de',
+        phoneNumber: '+49 5246 71 0',
+        leadTimeDays: 7,
+        address: 'Hülshorstweg 20, 33415 Verl, Germany',
+        notes: 'Preferred supplier for EtherCAT fieldbus I/O modules and CX IPCs.'
+      },
+      {
+        id: 'supp-kuka',
+        name: 'KUKA Roboter GmbH',
+        website: 'https://kuka.com',
+        contactPerson: 'Martin Bauer',
+        email: 'robotics-support@kuka.com',
+        phoneNumber: '+49 821 797 0',
+        leadTimeDays: 14,
+        address: 'Zugspitzstraße 140, 86165 Augsburg, Germany',
+        notes: 'Robotics spare parts and servo wrist assemblies.'
+      },
+      {
+        id: 'supp-festo',
+        name: 'Festo SE & Co. KG',
+        website: 'https://festo.com',
+        contactPerson: 'Eva Klein',
+        email: 'pneumatics@festo.com',
+        phoneNumber: '+49 711 347 0',
+        leadTimeDays: 4,
+        address: 'Ruiter Straße 82, 73734 Esslingen am Neckar, Germany',
+        notes: 'Pneumatic valves, cylinders, and proportional pressure regulators.'
+      }
+    ]
+
+    for (const s of initialSuppliers) {
+      this.suppliers.set(s.id, s)
+    }
+
+    const initialTags: KnownTag[] = [
+      { id: 'tag-1', key: 'manufacturer', value: 'Siemens', category: 'oem', usageCount: 14 },
+      { id: 'tag-2', key: 'manufacturer', value: 'Beckhoff', category: 'oem', usageCount: 18 },
+      { id: 'tag-3', key: 'manufacturer', value: 'KUKA', category: 'oem', usageCount: 8 },
+      { id: 'tag-4', key: 'manufacturer', value: 'Festo', category: 'oem', usageCount: 12 },
+      { id: 'tag-5', key: 'category', value: 'PLC', category: 'taxonomy', usageCount: 22 },
+      { id: 'tag-6', key: 'category', value: 'IPC', category: 'taxonomy', usageCount: 15 },
+      { id: 'tag-7', key: 'category', value: 'Robot', category: 'taxonomy', usageCount: 9 },
+      { id: 'tag-8', key: 'category', value: 'Valve', category: 'taxonomy', usageCount: 11 }
+    ]
+
+    for (const t of initialTags) {
+      this.knownTags.set(t.id, t)
+    }
 
     for (const t of getCanonicalInventoryTemplates()) {
       this.templates.set(t.id, { ...t, instances: [] })
@@ -1355,6 +1430,95 @@ class PartsInventoryStore {
       return this.auditLog.filter(a => a.partId === partId)
     }
     return this.auditLog
+  }
+
+  // -------------------------------------------------------------------------
+  // Suppliers Management
+  // -------------------------------------------------------------------------
+  public getSuppliers(): Supplier[] {
+    return Array.from(this.suppliers.values())
+  }
+
+  public getSupplierById(id: string): Supplier | undefined {
+    return this.suppliers.get(id)
+  }
+
+  public createSupplier(payload: Partial<Supplier>): Supplier {
+    if (!payload.name) throw new Error('Supplier name is required.')
+    const id = payload.id || `supp-${randomUUID().substring(0, 8)}`
+    const supplier: Supplier = {
+      id,
+      name: payload.name.trim(),
+      website: payload.website?.trim(),
+      contactPerson: payload.contactPerson?.trim(),
+      email: payload.email?.trim(),
+      phoneNumber: payload.phoneNumber?.trim(),
+      leadTimeDays: payload.leadTimeDays ?? 7,
+      address: payload.address?.trim(),
+      notes: payload.notes?.trim()
+    }
+    this.suppliers.set(id, supplier)
+    return supplier
+  }
+
+  public updateSupplier(id: string, updates: Partial<Supplier>): Supplier {
+    const existing = this.suppliers.get(id)
+    if (!existing) throw new Error(`Supplier "${id}" not found.`)
+    const updated: Supplier = {
+      ...existing,
+      ...updates
+    }
+    this.suppliers.set(id, updated)
+    return updated
+  }
+
+  public deleteSupplier(id: string): boolean {
+    return this.suppliers.delete(id)
+  }
+
+  // -------------------------------------------------------------------------
+  // Relational Tags Management (avoiding slow JSONB scans)
+  // -------------------------------------------------------------------------
+  public getKnownTags(): KnownTag[] {
+    return Array.from(this.knownTags.values())
+  }
+
+  public getItemTags(itemId: string): InventoryItemTag[] {
+    return this.itemTags.get(itemId) || []
+  }
+
+  public assignTagToItem(itemId: string, key: string, value: string): InventoryItemTag {
+    const normKey = key.trim().toLowerCase()
+    const normVal = value.trim()
+    let tag = Array.from(this.knownTags.values()).find(t => t.key.toLowerCase() === normKey && t.value.toLowerCase() === normVal.toLowerCase())
+    if (!tag) {
+      tag = {
+        id: `tag-${randomUUID().substring(0, 8)}`,
+        key: normKey,
+        value: normVal,
+        category: 'custom',
+        usageCount: 1,
+        createdAt: new Date().toISOString()
+      }
+      this.knownTags.set(tag.id, tag)
+    } else {
+      tag.usageCount++
+    }
+
+    const itemTag: InventoryItemTag = {
+      id: `itg-${randomUUID().substring(0, 8)}`,
+      itemId,
+      tagId: tag.id,
+      tagKey: normKey,
+      tagValue: normVal,
+      createdAt: new Date().toISOString()
+    }
+
+    const current = this.itemTags.get(itemId) || []
+    current.push(itemTag)
+    this.itemTags.set(itemId, current)
+
+    return itemTag
   }
 }
 

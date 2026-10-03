@@ -218,7 +218,7 @@ describe('Parts Inventory UI & Component Integration Tests', () => {
   // AssetTemplatesManager Tests
   // -------------------------------------------------------------------------
   describe('AssetTemplatesManager.vue', () => {
-    it('renders template inheritance, fixed specs, and instance tree view', () => {
+    it('renders template inheritance, fixed specs, and instance tree view upon expansion', async () => {
       const wrapper = mount(AssetTemplatesManager, {
         props: {
           templates: [mockBaseTemplate, mockTemplate]
@@ -229,6 +229,14 @@ describe('Parts Inventory UI & Component Integration Tests', () => {
       expect(wrapper.text()).toContain('Hardware')
       expect(wrapper.text()).toContain('Inherits: Base Industrial Hardware')
       expect(wrapper.text()).toContain('IPC-{number}')
+      // Collapsed by default
+      expect(wrapper.text()).not.toContain('IPC-1001')
+
+      // Click template header to expand instances tree
+      const headers = wrapper.findAll('.cursor-pointer')
+      const ipcHeader = headers.find(h => h.text().includes('Industrial PC Controller'))
+      await ipcHeader?.trigger('click')
+
       expect(wrapper.text()).toContain('IPC-1001')
     })
   })

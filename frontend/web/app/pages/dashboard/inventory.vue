@@ -25,6 +25,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
+import TagContextSearch from '~/components/search/TagContextSearch.vue'
 import DashboardInventoryEditModal from '~/components/dashboard/InventoryEditModal.vue'
 import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
 import DashboardInventoryAddModal from '~/components/dashboard/InventoryAddModal.vue'
@@ -43,6 +44,7 @@ import PartProvisioningStation from '~/components/inventory/PartProvisioningStat
 import CreateEditTemplateModal from '~/components/inventory/CreateEditTemplateModal.vue'
 import { useInventoryLive } from '~/composables/useInventoryLive'
 import { usePartsInventory } from '~/composables/usePartsInventory'
+import { INVENTORY_SEARCH_CONTEXT } from '~/utils/search/defaultContexts'
 import type { SearchInstanceConfig } from '~/types/search'
 import type { InventoryPart, PartUsageCostCenter } from '~/types/inventory'
 
@@ -53,8 +55,20 @@ definePageMeta({
 const { isLiveConnected, lastSyncedAt, onInventoryUpdate } = useInventoryLive()
 
 // Dual orthogonal dimensions: Classification (Hardware vs Software) x Tracking (Serialized Parts vs Bulk Stock)
+// Non-serialized stock view is the default as specified in inventory TODO
 const classification = ref<'all' | 'hardware' | 'software'>('all')
-const tracking = ref<'all' | 'serialized' | 'stock'>('all')
+const tracking = ref<'all' | 'serialized' | 'stock'>('stock')
+const searchEngineMode = ref<'omni' | 'classic'>('omni')
+
+const handleOmniSelect = (res: any) => {
+  if (res?.sourceId === 'templates') {
+    activeSection.value = 'templates'
+  } else if (res?.sourceId === 'inventory') {
+    currentQuery.value = res.item?.name || res.item?.serialNumber || ''
+  } else if (res?.sourceId === 'machines') {
+    activeSection.value = 'assets'
+  }
+}
 
 const activeTab = computed<'all' | 'hardware' | 'software' | 'parts' | 'stock'>({
   get() {
@@ -867,13 +881,45 @@ onInventoryUpdate(() => {
       </div>
     </div>
 
-    <!-- HeimdallSearch Bar -->
-    <div class="max-w-4xl mx-auto w-full">
-      <HeimdallSearchBar 
-        :config="inventorySearchConfig"
-        :immediate="true"
-        @search="onSearch"
-      />
+    <!-- Inventory Search: OmniSearch (Context/Tag-Driven) vs Classic Search -->
+    <div class="max-w-4xl mx-auto w-full space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search Engine</span>
+        <div class="flex items-center gap-1 p-0.5 bg-muted/60 rounded-lg border border-border">
+          <button
+            type="button"
+            @click="searchEngineMode = 'omni'"
+            class="px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer"
+            :class="searchEngineMode === 'omni' ? 'bg-primary text-primary-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            OmniSearch (Tag & Context)
+          </button>
+          <button
+            type="button"
+            @click="searchEngineMode = 'classic'"
+            class="px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer"
+            :class="searchEngineMode === 'classic' ? 'bg-primary text-primary-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'"
+          >
+            Standard Search
+          </button>
+        </div>
+      </div>
+
+      <div v-if="searchEngineMode === 'omni'">
+        <TagContextSearch
+          mode="docked"
+          :context="INVENTORY_SEARCH_CONTEXT"
+          placeholder="OmniSearch parts, blueprints, tags (e.g. tag:ipc, manufacturer:Siemens, !status:broken)..."
+          @select="handleOmniSelect"
+        />
+      </div>
+      <div v-else>
+        <HeimdallSearchBar 
+          :config="inventorySearchConfig"
+          :immediate="true"
+          @search="onSearch"
+        />
+      </div>
     </div>
 
     <!-- Repository Content Table -->

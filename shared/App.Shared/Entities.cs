@@ -654,13 +654,12 @@ public partial class Manufacturer
     public string? SupportContact { get; set; }
 }
 
-/// <summary>
-/// Represents a business partner that supplies assets.
-/// </summary>
+[Table("suppliers", Schema = "backend")]
 public partial class Supplier
 {
     /// <summary>Unique identifier for the supplier.</summary>
-    public Guid Id { get; set; }
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
     /// <summary>The name of the supplier company.</summary>
     [Required, MaxLength(255)]
     public string Name { get; set; } = string.Empty;
@@ -670,6 +669,54 @@ public partial class Supplier
     public string? ContactPerson { get; set; }
     /// <summary>Contact email address.</summary>
     public string? Email { get; set; }
+    /// <summary>Direct telephone or support line.</summary>
+    [MaxLength(64)]
+    public string? PhoneNumber { get; set; }
+    /// <summary>Average component delivery lead time in calendar days.</summary>
+    public int LeadTimeDays { get; set; } = 7;
+    /// <summary>Physical headquarters or distribution warehouse address.</summary>
+    public string? Address { get; set; }
+    /// <summary>Procurement notes or vendor tier comments.</summary>
+    public string? Notes { get; set; }
+    /// <summary>Record creation timestamp.</summary>
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Relational tag definition to avoid slow JSONB table scans.
+/// </summary>
+[Table("known_tags", Schema = "backend")]
+public class KnownTag
+{
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+    [Required, MaxLength(128)]
+    public string Key { get; set; } = string.Empty;
+    [Required, MaxLength(255)]
+    public string Value { get; set; } = string.Empty;
+    [MaxLength(64)]
+    public string Category { get; set; } = "custom";
+    public int UsageCount { get; set; } = 0;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Secondary relational junction table linking inventory items to known tags.
+/// </summary>
+[Table("inventory_item_tags", Schema = "backend")]
+public class InventoryItemTag
+{
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ItemId { get; set; }
+    public Guid TagId { get; set; }
+    [Required, MaxLength(128)]
+    public string TagKey { get; set; } = string.Empty;
+    [Required, MaxLength(255)]
+    public string TagValue { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public KnownTag? Tag { get; set; }
 }
 
 // --- LAYOUT & VISUALS ---
