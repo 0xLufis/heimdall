@@ -598,3 +598,14 @@ test-seed:
 test-smoke:
     @echo ">> Running Fleet Simulator Smoke Test..."
     @python3 simulators/fleet/fleet_simulator.py --smoke-test --count 5 || echo "Note: Smoke test requires active local gRPC service on port 5001."
+
+# Build mobile PWA production assets
+mobile-build:
+    @echo ">> Building Mobile PWA Production Assets..."
+    @(cd frontend/web && npm run build)
+
+# Package release Android APK via containerized build environment
+mobile-apk:
+    @echo ">> Packaging Android APK via Containerized Build..."
+    @docker build -t heimdall-android-builder -f deployment/android/Dockerfile.android-build .
+
