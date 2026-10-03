@@ -1,0 +1,20 @@
+[Unit]
+Description=Heimdall Industrial Edge Client Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/heimdall/agent
+ExecStart=/opt/heimdall/agent/heimdall-agent
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+SyslogIdentifier=heimdall-agent
+
+# Limit process memory according to edge device policy
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

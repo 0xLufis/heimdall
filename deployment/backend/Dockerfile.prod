@@ -1,0 +1,32 @@
+# Production Multi-Stage Dockerfile for Heimdall Backend Server (.NET 10)
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy project files for caching restore layer
+COPY shared/App.Contracts/App.Contracts.csproj shared/App.Contracts/
+COPY shared/App.Shared/App.Shared.csproj shared/App.Shared/
+COPY backend/App.Infrastructure/App.Infrastructure.csproj backend/App.Infrastructure/
+COPY backend/App.Backend.Api/App.Backend.Api.csproj backend/App.Backend.Api/
+
+RUN dotnet restore backend/App.Backend.Api/App.Backend.Api.csproj
+
+# Copy full source and publish release
+COPY shared/ shared/
+COPY backend/ backend/
+RUN dotnet publish backend/App.Backend.Api/App.Backend.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+# Production runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-jammy-chiseled AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Standardized Linux config path
+VOLUME /etc/heimdall
+
+EXPOSE 5001
+EXPOSE 5099
+
+ENV ASPNETCORE_URLS=http://+:5001;http://+:5099
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "heimdall-backend.dll"]

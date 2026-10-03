@@ -1,0 +1,29 @@
+[Unit]
+Description=Heimdall Enterprise Industrial IoT Backend Server
+After=network.target postgresql.service
+Wants=network.target
+
+[Service]
+Type=notify
+User=heimdall
+Group=heimdall
+WorkingDirectory=/opt/heimdall/backend
+ExecStart=/opt/heimdall/backend/heimdall-backend
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=heimdall-backend
+
+# Security Sandboxing
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Environment & Config
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+EnvironmentFile=-/etc/heimdall/backend.env
+
+[Install]
+WantedBy=multi-user.target
