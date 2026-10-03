@@ -13,9 +13,14 @@ import {
   RotateCcwIcon,
   SparklesIcon,
   ShieldCheckIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  PuzzleIcon,
+  CpuIcon,
+  DatabaseIcon,
+  PlusIcon
 } from 'lucide-vue-next'
 import { useFeatureFlags } from '~/composables/useFeatureFlags'
+import { usePlugins, type HeimdallPlugin } from '~/composables/usePlugins'
 import { PLATFORM_MODULE_MANIFESTS, type PlatformModuleId } from '~/types/modules'
 import { useAppI18n } from '~/composables/useAppI18n'
 
@@ -28,6 +33,14 @@ const {
   setModuleEnabled,
   resetModulesToDefault
 } = useFeatureFlags()
+
+const {
+  plugins,
+  enabledPlugins,
+  togglePlugin,
+  isPluginEnabled,
+  resetPluginsToDefault
+} = usePlugins()
 
 const { t } = useAppI18n()
 const notification = ref<string | null>(null)
@@ -374,6 +387,82 @@ function handleReset() {
         </CardContent>
       </Card>
     </div>
+
+    <!-- Plugin Registry & Dynamic Addons -->
+    <Card class="border-border/80 shadow-xs" data-testid="plugin-registry-card">
+      <CardHeader>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <CardTitle class="text-base flex items-center gap-2">
+              <PuzzleIcon class="h-4.5 w-4.5 text-indigo-500" />
+              <span>Plugin System & Dynamic Feature Addons</span>
+            </CardTitle>
+            <CardDescription class="text-xs">
+              Extensible plugin architecture for Heimdall. Registered plugins can be independently mounted, hot-toggled, and configured with custom lifecycle hooks.
+            </CardDescription>
+          </div>
+          <div class="flex items-center gap-2">
+            <Badge variant="outline" class="font-mono text-xs">
+              {{ enabledPlugins.length }} / {{ plugins.length }} Active
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            v-for="p in plugins"
+            :key="p.id"
+            class="p-4 rounded-xl border border-border bg-card/60 space-y-3 flex flex-col justify-between"
+            :data-testid="`plugin-card-${p.id}`"
+          >
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 font-semibold text-sm">
+                  <span>{{ p.name }}</span>
+                </div>
+                <Badge
+                  :variant="p.enabled ? 'default' : 'outline'"
+                  class="text-[10px] uppercase font-mono px-2 py-0.5"
+                  :class="p.enabled ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'"
+                >
+                  {{ p.category }}
+                </Badge>
+              </div>
+              <p class="text-xs text-muted-foreground line-clamp-2">
+                {{ p.description }}
+              </p>
+              <div class="text-[11px] text-muted-foreground flex items-center gap-2 font-mono">
+                <span>v{{ p.version }}</span>
+                <span>•</span>
+                <span>{{ p.author || 'Internal' }}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-border/60">
+              <span class="text-xs font-medium" :class="p.enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'">
+                {{ p.isRequired ? 'Core Engine (Fixed)' : (p.enabled ? 'Active' : 'Disabled') }}
+              </span>
+              <button
+                v-if="!p.isRequired"
+                type="button"
+                role="switch"
+                :class="p.enabled ? 'bg-emerald-600' : 'bg-muted'"
+                :aria-checked="p.enabled"
+                :data-testid="`toggle-plugin-${p.id}`"
+                @click="togglePlugin(p.id)"
+                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden"
+              >
+                <span
+                  class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
+                  :class="p.enabled ? 'translate-x-5' : 'translate-x-0'"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
     <!-- Decoupling Contracts & Dependency Graph Summary -->
     <Card class="border-border/80">
