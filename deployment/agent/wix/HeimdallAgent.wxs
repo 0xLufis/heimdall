@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Heimdall Edge Agent"
+           Manufacturer="Heimdall Industrial IoT"
+           Version="1.0.0.0"
+           UpgradeCode="4C7A8E1D-9B2F-4C5A-8E3D-1A2B3C4D5E6F"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Heimdall Edge Agent is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Public MSI properties for silent MDM deployment -->
+    <Property Id="SERVER_URL" Value="http://localhost:5001" Secure="yes" />
+    <Property Id="ENROLLMENT_TOKEN" Value="" Secure="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Heimdall Agent">
+        <Component Id="AgentExecutable" Guid="5B8C9D0E-1F2A-3B4C-5D6E-7F8A9B0C1D2E">
+          <File Id="HeimdallAgentExe" Source="dist\agent-msi\publish\heimdall-agent.exe" KeyPath="yes" />
+
+          <ServiceInstall Id="AgentServiceInstaller"
+                          Type="ownProcess"
+                          Name="HeimdallAgent"
+                          DisplayName="Heimdall Industrial Edge Agent"
+                          Description="Gathers OT PLC telemetry, system invariants, and communicates with Heimdall Backend."
+                          Start="auto"
+                          Account="LocalSystem"
+                          ErrorControl="normal" />
+
+          <ServiceControl Id="StartAgentService"
+                          Start="install"
+                          Stop="both"
+                          Remove="uninstall"
+                          Name="HeimdallAgent"
+                          Wait="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="Heimdall Edge Agent" Level="1">
+      <ComponentRef Id="AgentExecutable" />
+    </Feature>
+  </Package>
+</Wix>

@@ -1,0 +1,17 @@
+# Maintainer: Heimdall Industrial IoT Team <eng@heimdall-iot.org>
+pkgname=heimdall-agent-bin
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Heimdall Industrial Edge Client Daemon for OT Telemetry and PLC Diagnostics"
+arch=('x86_64')
+url="https://github.com/heimdall-iot"
+license=('Proprietary')
+depends=('glibc' 'openssl' 'icu')
+source=("$pkgname-$pkgver.tar.gz::dist/heimdall-agent-linux-x64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    install -Dm755 "${srcdir}/heimdall-agent" "${pkgdir}/usr/bin/heimdall-agent"
+    install -Dm644 "${srcdir}/deployment/agent/heimdall-agent.service" "${pkgdir}/usr/lib/systemd/system/heimdall-agent.service"
+    install -dm755 "${pkgdir}/etc/heimdall"
+}

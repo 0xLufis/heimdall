@@ -219,3 +219,44 @@ export function syncOuCertificates(): { syncedCount: number; message: string } {
     message: `Synchronized certificates across active OU rules. ${synced} certificates provisioned.`,
   }
 }
+
+export function issueClientCertificate(payload: {
+  commonName: string
+  validityDays?: number
+  keyAlgorithm?: string
+  clientPcId?: string
+}): ClientCertificateEntry {
+  const thumbprint = createHash('sha1').update(`cert-${payload.commonName}-${Date.now()}`).digest('hex').toUpperCase()
+  const cert: ClientCertificateEntry = {
+    id: `cert-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+    clientPcId: payload.clientPcId,
+    commonName: payload.commonName,
+    thumbprint,
+    validFrom: new Date().toISOString(),
+    validTo: new Date(Date.now() + (payload.validityDays || 365) * 24 * 3600 * 1000).toISOString(),
+    status: 'Active',
+    createdAt: new Date().toISOString(),
+    issuer: activeRootCert.commonName,
+    keyAlgorithm: payload.keyAlgorithm || 'RSA-2048',
+    serialNumber: `SN-${Date.now().toString(16).toUpperCase()}`,
+    rawPem: `-----BEGIN CERTIFICATE-----\nMIIC...${thumbprint}\n-----END CERTIFICATE-----`
+  }
+  clientCertificatesList.unshift(cert)
+  return cert
+}
+
+export const addCertificate = issueClientCertificate
+
+export const pkiStore = {
+  getRootCertificate,
+  getRootCa: getRootCertificate,
+  importRootCertificate,
+  getOuRules,
+  saveOuRule,
+  deleteOuRule,
+  getAllCertificates,
+  revokeCertificate,
+  syncOuCertificates,
+  issueClientCertificate,
+  addCertificate
+}
