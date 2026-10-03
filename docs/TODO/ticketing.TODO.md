@@ -16,7 +16,8 @@ This document outlines UI cleanups, operational workflow refinements, and advanc
     - Optimize ticket lists, status badges, and action menus for touch interactions and narrow mobile viewports.
 - [x] **Border & Rounding Geometry Polish**:
     - Unify outline borders and corner radiuses (`rounded-xl` / `rounded-2xl`) across ticket cards, filters, and modals to eliminate visual clipping.
-- [ ] **Compact settings into a settings menu, not just floating buttons**
+- [x] **Compact settings into a settings menu, not just floating buttons**:
+    - Consolidated floating toolbar navigation buttons (Machine Groups, Delegations, TV Monitor, Templates, Action QR) and card fill mode switcher into a unified Settings & Views menu.
 
 ---
 

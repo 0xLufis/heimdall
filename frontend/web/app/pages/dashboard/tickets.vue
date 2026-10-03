@@ -4,10 +4,23 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   Plus, Camera, RefreshCw, WifiOff, LayoutList, Columns,
   Activity, QrCode, Users, FolderTree, History, CheckCircle2, Wrench,
-  Filter, X, FileText, Tv
+  Filter, X, FileText, Tv, SlidersHorizontal, Palette
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem
+} from '~/components/ui/dropdown-menu'
 import TicketPersonalHeader from '~/components/tickets/TicketPersonalHeader.vue'
 import TicketMetricsOverview from '~/components/tickets/TicketMetricsOverview.vue'
 import TicketList from '~/components/tickets/TicketList.vue'
@@ -366,93 +379,87 @@ async function onResumeTicket(ticketId: string) {
           </Button>
         </div>
 
-        <!-- Management Navigation Buttons -->
-        <NuxtLink to="/dashboard/machine-groups">
-          <Button
-            variant="outline"
-            size="sm"
-            class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-            title="Manage recursive machine groups and technology clusters"
-          >
-            <FolderTree class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Machine Groups</span>
-          </Button>
-        </NuxtLink>
+        <!-- Compact Settings & Tools Menu -->
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="outline"
+              size="sm"
+              class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Ticket view settings, display styles, and governance tools"
+            >
+              <SlidersHorizontal class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Settings & Views</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-64">
+            <DropdownMenuLabel class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+              Display & Card Style
+            </DropdownMenuLabel>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger class="text-xs flex items-center gap-2 cursor-pointer">
+                <Palette class="size-3.5 text-indigo-500" />
+                <span>Card Fill Mode</span>
+                <Badge variant="outline" class="ml-auto text-[10px] py-0 px-1 capitalize">
+                  {{ fillMode }}
+                </Badge>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent class="w-48">
+                <DropdownMenuRadioGroup v-model="fillMode">
+                  <DropdownMenuRadioItem value="outline" class="text-xs cursor-pointer">
+                    <span>Outline (Minimal)</span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="semi-filled" class="text-xs cursor-pointer">
+                    <span>Semi-Filled (Default)</span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="filled" class="text-xs cursor-pointer">
+                    <span>Solid High-Contrast</span>
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
 
-        <NuxtLink to="/dashboard/delegations">
-          <Button
-            variant="outline"
-            size="sm"
-            class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-            title="Manage shift attendance, engineer dedication, and Teams OOO state"
-          >
-            <Users class="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
-            <span>Delegation & Roster</span>
-          </Button>
-        </NuxtLink>
+            <DropdownMenuSeparator />
 
-        <Button
-          variant="outline"
-          size="sm"
-          @click="showQrGeneratorModal = true"
-          class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-          title="Generate Actionable QR Code URIs"
-        >
-          <QrCode class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Action QR</span>
-        </Button>
+            <DropdownMenuLabel class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+              Shopfloor Displays
+            </DropdownMenuLabel>
+            <DropdownMenuItem as-child>
+              <NuxtLink to="/dashboard/tickets/monitor" class="text-xs flex items-center gap-2 cursor-pointer w-full">
+                <Tv class="size-3.5 text-indigo-500" />
+                <span>TV Monitor Display</span>
+              </NuxtLink>
+            </DropdownMenuItem>
+            <DropdownMenuItem @select="showQrGeneratorModal = true" class="text-xs flex items-center gap-2 cursor-pointer">
+              <QrCode class="size-3.5 text-indigo-500" />
+              <span>Generate Action QR</span>
+            </DropdownMenuItem>
 
-        <NuxtLink to="/dashboard/tickets/monitor">
-          <Button
-            variant="outline"
-            size="sm"
-            class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-            title="Open shopfloor TV display monitor"
-          >
-            <Tv class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>TV Monitor</span>
-          </Button>
-        </NuxtLink>
+            <DropdownMenuSeparator />
 
-        <NuxtLink to="/dashboard/tickets/templates">
-          <Button
-            variant="outline"
-            size="sm"
-            class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
-            title="Browse and edit standardized 4-tier failure profiles and export TwinCAT DUT"
-          >
-            <FileText class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Templates</span>
-          </Button>
-        </NuxtLink>
-
-        <!-- Fill-Mode Style Toggle -->
-        <div class="flex items-center border border-border rounded-lg bg-card p-0.5" title="Ticket card fill style: Outline, Semi-filled, or Solid">
-          <button
-            type="button"
-            @click="fillMode = 'outline'"
-            :class="fillMode === 'outline' ? 'bg-primary text-primary-foreground font-bold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2 py-0.5 h-6 text-[10px] rounded-md transition-colors font-medium cursor-pointer"
-          >
-            Outline
-          </button>
-          <button
-            type="button"
-            @click="fillMode = 'semi-filled'"
-            :class="fillMode === 'semi-filled' ? 'bg-primary text-primary-foreground font-bold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2 py-0.5 h-6 text-[10px] rounded-md transition-colors font-medium cursor-pointer"
-          >
-            Semi
-          </button>
-          <button
-            type="button"
-            @click="fillMode = 'filled'"
-            :class="fillMode === 'filled' ? 'bg-primary text-primary-foreground font-bold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2 py-0.5 h-6 text-[10px] rounded-md transition-colors font-medium cursor-pointer"
-          >
-            Solid
-          </button>
-        </div>
+            <DropdownMenuLabel class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+              Templates & Governance
+            </DropdownMenuLabel>
+            <DropdownMenuItem as-child>
+              <NuxtLink to="/dashboard/tickets/templates" class="text-xs flex items-center gap-2 cursor-pointer w-full">
+                <FileText class="size-3.5 text-indigo-500" />
+                <span>Ticket Templates Catalog</span>
+              </NuxtLink>
+            </DropdownMenuItem>
+            <DropdownMenuItem as-child>
+              <NuxtLink to="/dashboard/machine-groups" class="text-xs flex items-center gap-2 cursor-pointer w-full">
+                <FolderTree class="size-3.5 text-indigo-500" />
+                <span>Machine Groups & Clusters</span>
+              </NuxtLink>
+            </DropdownMenuItem>
+            <DropdownMenuItem as-child>
+              <NuxtLink to="/dashboard/delegations" class="text-xs flex items-center gap-2 cursor-pointer w-full">
+                <Users class="size-3.5 text-cyan-500" />
+                <span>Shift Roster & Delegations</span>
+              </NuxtLink>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           variant="outline"
