@@ -48,7 +48,7 @@ const emit = defineEmits<{
 const { formatCurrency, activeCurrency, canUsePart, canLogPart } = usePartsInventory()
 
 const searchQuery = ref('')
-const filterTracking = ref<string>('all')
+const filterTracking = ref<string>('bulk')
 const filterCondition = ref<string>('all')
 const filterOperational = ref<string>('all')
 const filterAlert = ref<string>('all')

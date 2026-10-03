@@ -42,9 +42,13 @@ const { usePart, serializeOnUse, indexedFields, fetchIndexedFields, formatCurren
 
 // State
 const searchQuery = ref('')
-const selectedTrackingFilter = ref<'all' | 'serialized' | 'bulk'>('all')
+const selectedTrackingFilter = ref<'all' | 'serialized' | 'bulk'>('bulk')
 const selectedPart = ref<InventoryPart | null>(null)
 const quantityToUse = ref(1)
+
+// Pagination State (Scalable Catalog)
+const currentPage = ref(1)
+const pageSize = ref(8)
 
 // Serialize on Use state
 const isSerializeOnUse = ref(false)
@@ -69,7 +73,7 @@ const showSuccessBanner = ref(false)
 const selectPart = (part: InventoryPart) => {
   selectedPart.value = part
   quantityToUse.value = 1
-  isSerializeOnUse.value = false
+  isSerializeOnUse.value = Boolean(part.serializeOnUse)
   targetMachineId.value = part.linkedMachineId || ''
   justification.value = ''
   serialNumber.value = `SN-${Math.floor(100000 + Math.random() * 900000)}`
@@ -79,6 +83,11 @@ const selectPart = (part: InventoryPart) => {
   lastAuditRecord.value = null
   fetchIndexedFields()
 }
+
+// Reset page when search or tracking filter changes
+watch([searchQuery, selectedTrackingFilter], () => {
+  currentPage.value = 1
+})
 
 // Initialize or react to preselectedPartId
 watch(() => props.preselectedPartId, (id) => {
@@ -109,6 +118,13 @@ const filteredCatalog = computed(() => {
   }
 
   return list
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredCatalog.value.length / pageSize.value)))
+
+const paginatedCatalog = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredCatalog.value.slice(start, start + pageSize.value)
 })
 
 // Cost center OR condition check
@@ -306,16 +322,17 @@ const resetWorkstation = () => {
           </div>
         </div>
 
-        <!-- Catalog List -->
-        <div class="space-y-2 max-h-[640px] overflow-y-auto custom-scrollbar pr-1">
+        <!-- Catalog List (Paginated & Scalable) -->
+        <div class="space-y-2 max-h-[580px] overflow-y-auto custom-scrollbar pr-1">
           <div
-            v-for="part in filteredCatalog"
+            v-for="part in paginatedCatalog"
             :key="part.id"
             @click="selectPart(part)"
             class="p-3 rounded-xl border transition-all cursor-pointer select-none space-y-2"
             :class="selectedPart?.id === part.id 
               ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-xs' 
               : 'border-border bg-card hover:bg-muted/30'"
+            data-testid="provisioning-part-item"
           >
             <div class="flex items-start justify-between gap-2">
               <div class="space-y-0.5">
@@ -326,6 +343,13 @@ const resetWorkstation = () => {
                     :class="part.trackingType === 'serialized' ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'"
                   >
                     {{ part.trackingType }}
+                  </span>
+                  <span
+                    v-if="part.serializeOnUse"
+                    class="px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                    title="Auto-serializes into discrete asset on machine install"
+                  >
+                    Serialize-On-Use
                   </span>
                   <span
                     v-if="part.stockAlertStatus === 'low_stock'"
@@ -363,6 +387,31 @@ const resetWorkstation = () => {
           <div v-if="filteredCatalog.length === 0" class="p-8 text-center border border-dashed border-border rounded-xl bg-card text-muted-foreground text-xs">
             No matching inventory items found in warehouse stock.
           </div>
+        </div>
+
+        <!-- Catalog Pagination Controls -->
+        <div v-if="totalPages > 1" class="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            :disabled="currentPage <= 1"
+            @click="currentPage--"
+            class="h-7 text-xs px-2.5 cursor-pointer"
+          >
+            Previous
+          </Button>
+          <span class="text-muted-foreground text-[11px]">
+            Page <strong class="text-foreground">{{ currentPage }}</strong> of {{ totalPages }}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            :disabled="currentPage >= totalPages"
+            @click="currentPage++"
+            class="h-7 text-xs px-2.5 cursor-pointer"
+          >
+            Next
+          </Button>
         </div>
       </div>
 

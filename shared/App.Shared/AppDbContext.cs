@@ -147,6 +147,8 @@ public class AppDbContext : DbContext
     public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<Manufacturer> Manufacturers { get; set; }
     public DbSet<Supplier> Suppliers { get; set; }
+    public DbSet<KnownTag> KnownTags { get; set; }
+    public DbSet<InventoryItemTag> InventoryItemTags { get; set; }
     public DbSet<QueuedAgentCommand> QueuedAgentCommands { get; set; }
     public DbSet<AgentEvent> AgentEvents { get; set; }
     public DbSet<MachineGroup> MachineGroups { get; set; }
