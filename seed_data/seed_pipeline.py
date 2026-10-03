@@ -722,6 +722,12 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE, pc_station_links=None)
         "CREATE SCHEMA IF NOT EXISTS backend;",
         "CREATE SCHEMA IF NOT EXISTS auth;",
         "",
+        "-- Ensure Station columns exist for decommission and status",
+        "ALTER TABLE backend.stations ADD COLUMN IF NOT EXISTS status character varying(64) DEFAULT 'active';",
+        "ALTER TABLE backend.stations ADD COLUMN IF NOT EXISTS decommission_reason text;",
+        "ALTER TABLE backend.stations ADD COLUMN IF NOT EXISTS decommission_date timestamp with time zone;",
+        "ALTER TABLE backend.stations ADD COLUMN IF NOT EXISTS decommission_disposition character varying(64);",
+        "",
         "-- PURGE / NUKE ALL PREVIOUS DATA",
         "TRUNCATE TABLE backend.inventory_items CASCADE;",
         "TRUNCATE TABLE backend.client_pcs CASCADE;",
@@ -863,9 +869,9 @@ def generate_sql(csv_path=CSV_FILE, output_path=SQL_FILE, pc_station_links=None)
             m_type = f"'{mt}'" if mt else "NULL"
             gid = row.get('GroupId', '').replace("'", "''") if row.get('GroupId') else None
             grp_id = f"'{gid}'" if gid else "NULL"
-            sql.append(f"INSERT INTO backend.stations (id, custom_identifier, pinned_object_handle, machine_type, group_id) "
-                       f"VALUES ('{item_id}', '{row['StationIdentifier'] or row['Name']}', {pin_handle}, {m_type}, {grp_id}) "
-                       f"ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, machine_type = EXCLUDED.machine_type, group_id = EXCLUDED.group_id;")
+            sql.append(f"INSERT INTO backend.stations (id, custom_identifier, pinned_object_handle, machine_type, group_id, status) "
+                       f"VALUES ('{item_id}', '{row['StationIdentifier'] or row['Name']}', {pin_handle}, {m_type}, {grp_id}, 'active') "
+                       f"ON CONFLICT (id) DO UPDATE SET pinned_object_handle = EXCLUDED.pinned_object_handle, machine_type = EXCLUDED.machine_type, group_id = EXCLUDED.group_id, status = COALESCE(backend.stations.status, 'active');")
 
             if row.get('ResponsibleTeam'):
                 for t in row['ResponsibleTeam'].split(';'):
