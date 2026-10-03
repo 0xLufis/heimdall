@@ -1,5 +1,5 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
-import { machinesStore } from '../../../../utils/machinesStore'
+import { machinesStore } from '../../../utils/machinesStore'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')

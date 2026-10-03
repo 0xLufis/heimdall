@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery, getRouterParam, getHeader, createError } from 'h3'
-import { machinesStore } from '../../../../server/utils/machinesStore'
-import { ticketsStore } from '../../../../server/utils/ticketsStore'
+import { machinesStore } from '../../../utils/machinesStore'
+import { ticketsStore } from '../../../utils/ticketsStore'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
