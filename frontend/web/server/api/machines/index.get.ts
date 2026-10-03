@@ -1,5 +1,5 @@
 import { defineEventHandler, getQuery } from 'h3'
-import { machinesStore } from '../../../utils/machinesStore'
+import { machinesStore } from '../../utils/machinesStore'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)

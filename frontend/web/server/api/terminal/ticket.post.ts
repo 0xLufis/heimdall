@@ -1,6 +1,6 @@
 import { defineEventHandler, readBody, getHeader, createError } from 'h3'
-import { addTicketToStore, MaintenanceTicket } from '../../../../server/utils/ticketsStore'
-import { machinesStore } from '../../../../server/utils/machinesStore'
+import { addTicketToStore, MaintenanceTicket } from '../../utils/ticketsStore'
+import { machinesStore } from '../../utils/machinesStore'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)

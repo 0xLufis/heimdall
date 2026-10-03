@@ -353,7 +353,7 @@ const INITIAL_DEMO_TICKETS: MaintenanceTicket[] = [
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
-let ticketsStore: MaintenanceTicket[] = [...INITIAL_DEMO_TICKETS]
+let ticketsInMemoryList: MaintenanceTicket[] = [...INITIAL_DEMO_TICKETS]
 
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
@@ -380,7 +380,7 @@ export function updateTicketSettings(updates: Partial<TicketSettings>): TicketSe
 // ─── Store Functions ──────────────────────────────────────────────────────────
 
 export function getTicketsStore(): MaintenanceTicket[] {
-  return ticketsStore
+  return ticketsInMemoryList
 }
 
 export const getTickets = getTicketsStore
@@ -399,12 +399,12 @@ export function addTicketToStore(ticket: MaintenanceTicket): MaintenanceTicket {
       role: 'technician'
     }).catch(() => {})
   }
-  ticketsStore.unshift(ticket)
+  ticketsInMemoryList.unshift(ticket)
   return ticket
 }
 
 export function findTicketById(id: string): MaintenanceTicket | undefined {
-  return ticketsStore.find(t => t.id === id || t.ticketNumber === id)
+  return ticketsInMemoryList.find(t => t.id === id || t.ticketNumber === id)
 }
 
 export function updateTicketInStore(
@@ -646,5 +646,18 @@ export function getStoppageStatsFromStore() {
     departmentBreakdown,
     topWorstMachines
   }
+}
+
+export const ticketsStore = {
+  getTickets: getTicketsStore,
+  getAllTickets: getTicketsStore,
+  getTicketsStore,
+  addTicketToStore,
+  findTicketById,
+  updateTicketInStore,
+  updateTicketStatus,
+  addCommentToTicket,
+  addAttachmentToTicket,
+  getStoppageStatsFromStore
 }
 
