@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { useAppI18n, SUPPORTED_LOCALES } from '~/composables/useAppI18n'
 import { useFeatureFlags, getAppFeatureFlags } from '~/composables/useFeatureFlags'
+import { usePlugins } from '~/composables/usePlugins'
 import { PLATFORM_MODULE_MANIFESTS } from '~/types/modules'
 import { assertModuleEnabled, getFeatureFlags } from '~~/server/utils/featureFlags'
 import LanguageSwitcher from '~/components/common/LanguageSwitcher.vue'
@@ -267,4 +268,96 @@ describe('Modular Features Architecture & Frontend i18n Suite', () => {
       resetModulesToDefault()
     })
   })
+
+  describe('Plugin Architecture & Addon System (usePlugins)', () => {
+    it('initializes with built-in native plugins and reports status', () => {
+      const { plugins, enabledPlugins, isPluginEnabled, getPlugin } = usePlugins()
+      expect(plugins.value.length).toBeGreaterThanOrEqual(5)
+      expect(isPluginEnabled('core-platform')).toBe(true)
+      expect(isPluginEnabled('maintenance-ticketing')).toBe(true)
+      expect(isPluginEnabled('inventory-assets')).toBe(true)
+      expect(isPluginEnabled('industrial-telemetry')).toBe(true)
+
+      const corePlugin = getPlugin('core-platform')
+      expect(corePlugin).toBeDefined()
+      expect(corePlugin?.isRequired).toBe(true)
+    })
+
+    it('enables, disables, and toggles plugins', async () => {
+      const { isPluginEnabled, disablePlugin, enablePlugin, togglePlugin } = usePlugins()
+      
+      // Disable sap-pm-bridge if enabled, or toggle it
+      expect(isPluginEnabled('sap-pm-bridge')).toBe(false)
+      const enabled = await enablePlugin('sap-pm-bridge')
+      expect(enabled).toBe(true)
+      expect(isPluginEnabled('sap-pm-bridge')).toBe(true)
+
+      await togglePlugin('sap-pm-bridge')
+      expect(isPluginEnabled('sap-pm-bridge')).toBe(false)
+    })
+
+    it('prevents disabling required core plugin', async () => {
+      const { disablePlugin, isPluginEnabled } = usePlugins()
+      const result = await disablePlugin('core-platform')
+      expect(result).toBe(false)
+      expect(isPluginEnabled('core-platform')).toBe(true)
+    })
+
+    it('registers and unregisters custom third-party plugins with lifecycle hooks', () => {
+      const { registerPlugin, unregisterPlugin, getPlugin, isPluginEnabled } = usePlugins()
+      let installCalled = false
+      let uninstallCalled = false
+
+      registerPlugin({
+        id: 'custom-scada-bridge',
+        name: 'SCADA Bridge',
+        version: '1.0.0',
+        description: 'OPC-UA and MQTT integration connector',
+        category: 'integration',
+        enabled: true,
+        hooks: {
+          onInstall: () => { installCalled = true },
+          onUninstall: () => { uninstallCalled = true }
+        }
+      })
+
+      expect(installCalled).toBe(true)
+      expect(isPluginEnabled('custom-scada-bridge')).toBe(true)
+      expect(getPlugin('custom-scada-bridge')?.name).toBe('SCADA Bridge')
+
+      const removed = unregisterPlugin('custom-scada-bridge')
+      expect(removed).toBe(true)
+      expect(uninstallCalled).toBe(true)
+      expect(isPluginEnabled('custom-scada-bridge')).toBe(false)
+    })
+  })
+
+  describe('Language Hot-Swap & Event Synchronization', () => {
+    it('dispatches custom locale-changed event and updates DOM document language', () => {
+      const { setLocale, locale } = useAppI18n()
+      let eventDispatched = false
+      let dispatchedLocale = ''
+
+      const listener = (event: any) => {
+        eventDispatched = true
+        dispatchedLocale = event.detail?.locale
+      }
+
+      window.addEventListener('heimdall:locale-changed', listener)
+
+      setLocale('hu')
+      expect(locale.value).toBe('hu')
+      expect(eventDispatched).toBe(true)
+      expect(dispatchedLocale).toBe('hu')
+      expect(document.documentElement.lang).toBe('hu')
+
+      setLocale('en')
+      expect(locale.value).toBe('en')
+      expect(dispatchedLocale).toBe('en')
+      expect(document.documentElement.lang).toBe('en')
+
+      window.removeEventListener('heimdall:locale-changed', listener)
+    })
+  })
 })
+

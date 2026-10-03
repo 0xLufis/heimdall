@@ -62,8 +62,21 @@ export function useAppI18n() {
       try {
         window.localStorage?.setItem('heimdall_locale', locale)
         document.cookie = `heimdall_locale=${locale}; path=/; max-age=31536000; SameSite=Lax`
+        if (typeof document !== 'undefined' && document.documentElement) {
+          document.documentElement.lang = locale === 'hu' ? 'hu' : 'en'
+        }
+        window.dispatchEvent(new CustomEvent('heimdall:locale-changed', { detail: { locale } }))
       } catch {
         // Safe fallback in test contexts
+      }
+
+      try {
+        const nuxt = (window as any).__NUXT__
+        if (nuxt && typeof (window as any).$nuxt?.i18n?.setLocale === 'function') {
+          (window as any).$nuxt.i18n.setLocale(locale)
+        }
+      } catch {
+        // Safe fallback outside Nuxt runtime context
       }
     }
   }

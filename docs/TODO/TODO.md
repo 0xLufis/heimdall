@@ -25,7 +25,8 @@ This document tracks general cross-cutting architectural enhancements, developer
 - [x] **Hungarian Language Support (`hu`)**:
     - Complete Hungarian translations for industrial terminology (machines, production lines, maintenance tickets, telemetry alarms, spare parts inventory).
     - Ensure datetime, currency (EUR / HUF), and numeric formatting adhere to Hungarian and European industrial standards.
-- [ ] Make it so that I can actually hot-swap languages
+- [x] **Make it so that I can actually hot-swap languages**:
+    - Implemented reactive language hot-swapping via `useAppI18n`, `i18n-hotswap.client.ts` plugin, DOM `lang` attribute updates, and `heimdall:locale-changed` event dispatching.
 
 ---
 
@@ -38,7 +39,8 @@ This document tracks general cross-cutting architectural enhancements, developer
 - [x] **System Settings Feature Management**:
     - Expose feature activation toggles in `/dashboard/admin/system-settings` under System Governance.
     - Dynamically disable or hide navigation items and API routes based on enabled system modules.
-- [ ] **Make a plugin system for this**
+- [x] **Make a plugin system for this**:
+    - Architected and implemented extensible Heimdall Plugin System (`usePlugins`, `HeimdallPlugin`), supporting native and third-party plugins with lifecycle hooks (`onInstall`, `onEnable`, `onDisable`, `onUninstall`), category classification, dependency verification, and visual registry management.
 
 ---
 
