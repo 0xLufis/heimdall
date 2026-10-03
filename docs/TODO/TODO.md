@@ -7,42 +7,44 @@ This document tracks general cross-cutting architectural enhancements, developer
 ## 1. Developer Tooling & Environment Automation
 
 - [x] **One-Command Dev Setup (`just dev-setup`)**:
-  - Automate prerequisite checks (.NET 10 SDK, Bun, Docker, Python 3.12, PostgreSQL client tools).
-  - Automate database initialization, migrations, and enterprise plant seeding via a single command.
-  - Provide interactive diagnostic checks for local ports (`3000`, `5000`, `5001`, `5432`, `6379`).
+    - Automate prerequisite checks (.NET 10 SDK, Bun, Docker, Python 3.12, PostgreSQL client tools).
+    - Automate database initialization, migrations, and enterprise plant seeding via a single command.
+    - Provide interactive diagnostic checks for local ports (`3000`, `5000`, `5001`, `5432`, `6379`).
 - [x] **Optional Dev pgAdmin Profile**:
-  - Add optional `pgadmin` service profile to `docker-compose.yml` (`docker compose --profile pgadmin up`).
-  - Configure default connection bindings and credentials targeting the local Heimdall development PostgreSQL instance.
+    - Add optional `pgadmin` service profile to `docker-compose.yml` (`docker compose --profile pgadmin up`).
+    - Configure default connection bindings and credentials targeting the local Heimdall development PostgreSQL instance.
 
 ---
 
 ## 2. Localization & Multi-Language Support (i18n)
 
 - [x] **Frontend Internationalization Framework**:
-  - Integrate `@nuxtjs/i18n` with lightweight translation loaders.
-  - Establish standardized locale bundle structure under `locales/` (`en.json`, `hu.json`).
-  - Add language switcher toggle in the navigation header and user preferences.
+    - Integrate `@nuxtjs/i18n` with lightweight translation loaders.
+    - Establish standardized locale bundle structure under `locales/` (`en.json`, `hu.json`).
+    - Add language switcher toggle in the navigation header and user preferences.
 - [x] **Hungarian Language Support (`hu`)**:
-  - Complete Hungarian translations for industrial terminology (machines, production lines, maintenance tickets, telemetry alarms, spare parts inventory).
-  - Ensure datetime, currency (EUR / HUF), and numeric formatting adhere to Hungarian and European industrial standards.
+    - Complete Hungarian translations for industrial terminology (machines, production lines, maintenance tickets, telemetry alarms, spare parts inventory).
+    - Ensure datetime, currency (EUR / HUF), and numeric formatting adhere to Hungarian and European industrial standards.
+- [ ] Make it so that I can actually hot-swap languages
 
 ---
 
 ## 3. Modular Feature Architecture & Dependency Decoupling
 
 - [x] **Feature Addon Decoupling**:
-  - Establish clean dependency boundaries between `Core Platform`, `Maintenance Ticketing`, `Inventory & Asset Provisioning`, and `Industrial Telemetry`.
-  - Introduce feature manifest interfaces allowing deployments to run in minimal mode (e.g. Telemetry + Ticketing without Parts Inventory).
-  - Document the dependency graph and module interaction contracts.
+    - Establish clean dependency boundaries between `Core Platform`, `Maintenance Ticketing`, `Inventory & Asset Provisioning`, and `Industrial Telemetry`.
+    - Introduce feature manifest interfaces allowing deployments to run in minimal mode (e.g. Telemetry + Ticketing without Parts Inventory).
+    - Document the dependency graph and module interaction contracts.
 - [x] **System Settings Feature Management**:
-  - Expose feature activation toggles in `/dashboard/admin/system-settings` under System Governance.
-  - Dynamically disable or hide navigation items and API routes based on enabled system modules.
+    - Expose feature activation toggles in `/dashboard/admin/system-settings` under System Governance.
+    - Dynamically disable or hide navigation items and API routes based on enabled system modules.
+- [ ] **Make a plugin system for this**
 
 ---
 
 ## 4. UI Layout & Component Polish
 
 - [x] **Component Tree Flattening & Layout Responsiveness**:
-  - Streamline nested container hierarchies across dashboard manager views (`MachineGroupManager.vue`, `AssetTemplatesManager.vue`).
-  - Eliminate excessive DOM wrapper layers to prevent deep component nesting and layout overflow.
-  - Ensure right-hand configuration drawers adapt smoothly to diverse viewport widths (from mobile screens to ultra-wide displays).
+    - Streamline nested container hierarchies across dashboard manager views (`MachineGroupManager.vue`, `AssetTemplatesManager.vue`).
+    - Eliminate excessive DOM wrapper layers to prevent deep component nesting and layout overflow.
+    - Ensure right-hand configuration drawers adapt smoothly to diverse viewport widths (from mobile screens to ultra-wide displays).
