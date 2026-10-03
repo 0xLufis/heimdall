@@ -24,8 +24,21 @@ import {
   TerminalIcon,
   TicketIcon,
   CodeIcon,
-  ExternalLinkIcon
+  ExternalLinkIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  MoreHorizontalIcon,
+  FolderIcon,
+  FolderOpenIcon
 } from 'lucide-vue-next'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
+} from '@/components/ui/dropdown-menu'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -162,6 +175,40 @@ interface AdOuItem {
 const ousList = ref<AdOuItem[]>([])
 const loadingOus = ref(false)
 const approvingOuPath = ref<string | null>(null)
+
+// OU Folding & Row Expansion State
+const isOuCardFolded = ref(false)
+const expandedOus = ref<Record<string, boolean>>({})
+const copiedOuPath = ref<string | null>(null)
+
+function toggleOuFold(ouPath: string) {
+  expandedOus.value[ouPath] = !expandedOus.value[ouPath]
+}
+
+const allOusExpanded = computed(() => {
+  return ousList.value.length > 0 && ousList.value.every(ou => expandedOus.value[ou.ouPath])
+})
+
+function toggleAllOusFold() {
+  const targetState = !allOusExpanded.value
+  const newMap: Record<string, boolean> = {}
+  for (const ou of ousList.value) {
+    newMap[ou.ouPath] = targetState
+  }
+  expandedOus.value = newMap
+}
+
+function handleCopyOuPath(ouPath: string) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(ouPath)
+    copiedOuPath.value = ouPath
+    setTimeout(() => {
+      if (copiedOuPath.value === ouPath) {
+        copiedOuPath.value = null
+      }
+    }, 2000)
+  }
+}
 
 const rolesList = [
   'system_admin',
@@ -817,10 +864,19 @@ onMounted(() => {
               <RefreshCwIcon class="h-3.5 w-3.5 mr-1.5" :class="{ 'animate-spin': loadingOus }" />
               Sync OUs
             </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              class="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+              :title="isOuCardFolded ? 'Expand OU Governance section' : 'Fold OU Governance section'"
+              @click="isOuCardFolded = !isOuCardFolded"
+            >
+              <ChevronDownIcon class="h-4 w-4 transition-transform duration-200" :class="{ '-rotate-90': isOuCardFolded }" />
+            </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent class="space-y-4">
+      <CardContent v-show="!isOuCardFolded" class="space-y-4">
         <div v-if="!canApproveOus" class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-center gap-2">
           <AlertCircleIcon class="h-4 w-4 shrink-0" />
           <span>Restricted Access: Organizational Unit approval actions require IT Administrator (it_admin) or System Administrator (system_admin) privileges.</span>
@@ -830,6 +886,17 @@ onMounted(() => {
           <table class="w-full text-sm text-left">
             <thead class="bg-muted/50 text-muted-foreground text-xs uppercase border-b border-border">
               <tr>
+                <th class="w-10 px-3 py-3 text-center">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    class="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer"
+                    :title="allOusExpanded ? 'Fold all OUs' : 'Unfold all OUs'"
+                    @click="toggleAllOusFold"
+                  >
+                    <ChevronRightIcon class="h-3.5 w-3.5 transition-transform duration-200" :class="{ 'rotate-90 text-cyan-400': allOusExpanded }" />
+                  </Button>
+                </th>
                 <th class="px-4 py-3">Discovered OU & Path</th>
                 <th class="px-4 py-3">Network & Subnet</th>
                 <th class="px-4 py-3 text-center">Discovered Hosts</th>
@@ -839,92 +906,244 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
-              <tr v-for="ou in ousList" :key="ou.ouPath" class="hover:bg-muted/30 transition-colors">
-                <td class="px-4 py-3">
-                  <div class="font-semibold text-foreground text-xs">{{ ou.name || ou.ouPath }}</div>
-                  <div class="font-mono text-[11px] text-muted-foreground break-all">{{ ou.ouPath }}</div>
-                  <div v-if="ou.purpose" class="text-[11px] text-muted-foreground mt-0.5">Role: {{ ou.purpose }}</div>
-                </td>
-                <td class="px-4 py-3">
-                  <div class="text-xs font-medium">{{ ou.vlanName }}</div>
-                  <div class="font-mono text-[11px] text-muted-foreground">{{ ou.subnet }}</div>
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <Badge variant="secondary" class="font-mono text-xs">
-                    {{ ou.hostCount }} {{ ou.hostCount === 1 ? 'host' : 'hosts' }}
-                  </Badge>
-                </td>
-                <td class="px-4 py-3">
-                  <Badge 
-                    v-if="ou.accessLevel === 'read_write' && ou.isApproved"
-                    variant="outline" 
-                    class="bg-emerald-500/15 text-emerald-400 border-emerald-500/40 text-[10px] font-bold uppercase tracking-wider"
-                  >
-                    Read / Write Approved
-                  </Badge>
-                  <Badge 
-                    v-else-if="ou.accessLevel === 'read_only' && ou.isApproved"
-                    variant="outline" 
-                    class="bg-amber-500/15 text-amber-400 border-amber-500/40 text-[10px] font-bold uppercase tracking-wider"
-                  >
-                    Read-Only (Discovery)
-                  </Badge>
-                  <Badge 
-                    v-else 
-                    variant="outline" 
-                    class="bg-rose-500/15 text-rose-400 border-rose-500/40 text-[10px] font-bold uppercase tracking-wider"
-                  >
-                    Unapproved / Blocked
-                  </Badge>
-                </td>
-                <td class="px-4 py-3 text-xs text-muted-foreground">
-                  <div v-if="ou.isApproved">
-                    <div>By: <span class="font-semibold text-foreground">{{ ou.approvedBy || 'it_admin' }}</span></div>
-                    <div v-if="ou.approvedAt" class="text-[10px]">{{ new Date(ou.approvedAt).toLocaleString() }}</div>
-                  </div>
-                  <div v-else class="italic text-[11px]">Pending IT Approval</div>
-                </td>
-                <td class="px-4 py-3 text-right">
-                  <div class="inline-flex items-center gap-1.5">
-                    <RbacButton 
-                      size="sm" 
-                      variant="outline" 
-                      class="h-7 text-[11px] hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-500/50"
-                      :has-permission="canApproveOus"
-                      :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
-                      :disabled="approvingOuPath === ou.ouPath || (ou.accessLevel === 'read_write' && ou.isApproved)"
-                      @click="handleSetOuGovernance(ou.ouPath, 'read_write')"
-                    >
-                      <CheckCircle2Icon class="h-3.5 w-3.5 mr-1 text-emerald-400" />
-                      Approve R/W
-                    </RbacButton>
-                    <RbacButton 
-                      size="sm" 
-                      variant="outline" 
-                      class="h-7 text-[11px] hover:bg-amber-500/20 hover:text-amber-400 hover:border-amber-500/50"
-                      :has-permission="canApproveOus"
-                      :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
-                      :disabled="approvingOuPath === ou.ouPath || (ou.accessLevel === 'read_only' && ou.isApproved)"
-                      @click="handleSetOuGovernance(ou.ouPath, 'read_only')"
-                    >
-                      Read-Only
-                    </RbacButton>
-                    <RbacButton 
-                      size="sm" 
+              <template v-for="ou in ousList" :key="ou.ouPath">
+                <tr class="hover:bg-muted/30 transition-colors cursor-pointer" @click="toggleOuFold(ou.ouPath)">
+                  <!-- Row Fold Toggle -->
+                  <td class="px-3 py-3 text-center" @click.stop="toggleOuFold(ou.ouPath)">
+                    <Button 
                       variant="ghost" 
-                      class="h-7 text-[11px] text-destructive hover:text-destructive"
-                      :has-permission="canApproveOus"
-                      :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
-                      :disabled="approvingOuPath === ou.ouPath || (!ou.isApproved && ou.accessLevel === 'unapproved')"
-                      @click="handleSetOuGovernance(ou.ouPath, 'unapproved')"
+                      size="icon" 
+                      class="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer"
+                      :title="expandedOus[ou.ouPath] ? 'Fold OU details' : 'Unfold OU details and candidate hosts'"
                     >
-                      Revoke
-                    </RbacButton>
-                  </div>
-                </td>
-              </tr>
+                      <ChevronRightIcon class="h-3.5 w-3.5 transition-transform duration-200" :class="{ 'rotate-90 text-cyan-400': expandedOus[ou.ouPath] }" />
+                    </Button>
+                  </td>
+
+                  <!-- OU info -->
+                  <td class="px-4 py-3">
+                    <div class="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                      <FolderOpenIcon v-if="expandedOus[ou.ouPath]" class="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                      <FolderIcon v-else class="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span>{{ ou.name || ou.ouPath }}</span>
+                    </div>
+                    <div class="font-mono text-[11px] text-muted-foreground break-all mt-0.5">{{ ou.ouPath }}</div>
+                    <div v-if="ou.purpose" class="text-[11px] text-muted-foreground mt-0.5">Role: {{ ou.purpose }}</div>
+                  </td>
+
+                  <!-- Network & Subnet -->
+                  <td class="px-4 py-3">
+                    <div class="text-xs font-medium">{{ ou.vlanName }}</div>
+                    <div class="font-mono text-[11px] text-muted-foreground">{{ ou.subnet }}</div>
+                  </td>
+
+                  <!-- Discovered Hosts badge (click toggles fold) -->
+                  <td class="px-4 py-3 text-center">
+                    <Badge 
+                      variant="secondary" 
+                      class="font-mono text-xs cursor-pointer hover:bg-secondary/80 select-none gap-1"
+                      @click.stop="toggleOuFold(ou.ouPath)"
+                      :title="expandedOus[ou.ouPath] ? 'Fold hosts list' : 'Unfold hosts list'"
+                    >
+                      <span>{{ ou.hostCount }} {{ ou.hostCount === 1 ? 'host' : 'hosts' }}</span>
+                      <ChevronDownIcon v-if="expandedOus[ou.ouPath]" class="h-3 w-3 text-cyan-400" />
+                      <ChevronRightIcon v-else class="h-3 w-3 text-muted-foreground" />
+                    </Badge>
+                  </td>
+
+                  <!-- Governance Status -->
+                  <td class="px-4 py-3">
+                    <Badge 
+                      v-if="ou.accessLevel === 'read_write' && ou.isApproved"
+                      variant="outline" 
+                      class="bg-emerald-500/15 text-emerald-400 border-emerald-500/40 text-[10px] font-bold uppercase tracking-wider"
+                    >
+                      Read / Write Approved
+                    </Badge>
+                    <Badge 
+                      v-else-if="ou.accessLevel === 'read_only' && ou.isApproved"
+                      variant="outline" 
+                      class="bg-amber-500/15 text-amber-400 border-amber-500/40 text-[10px] font-bold uppercase tracking-wider"
+                    >
+                      Read-Only (Discovery)
+                    </Badge>
+                    <Badge 
+                      v-else 
+                      variant="outline" 
+                      class="bg-rose-500/15 text-rose-400 border-rose-500/40 text-[10px] font-bold uppercase tracking-wider"
+                    >
+                      Unapproved / Blocked
+                    </Badge>
+                  </td>
+
+                  <!-- Approval Details -->
+                  <td class="px-4 py-3 text-xs text-muted-foreground">
+                    <div v-if="ou.isApproved">
+                      <div>By: <span class="font-semibold text-foreground">{{ ou.approvedBy || 'it_admin' }}</span></div>
+                      <div v-if="ou.approvedAt" class="text-[10px]">{{ new Date(ou.approvedAt).toLocaleString() }}</div>
+                    </div>
+                    <div v-else class="italic text-[11px]">Pending IT Approval</div>
+                  </td>
+
+                  <!-- IT Approval Action: Contextual primary button + Folded Actions Dropdown -->
+                  <td class="px-4 py-3 text-right" @click.stop>
+                    <div class="inline-flex items-center gap-1.5 justify-end">
+                      <!-- Contextual primary action: only rendered when valid/not already in that state -->
+                      <RbacButton 
+                        v-if="!(ou.accessLevel === 'read_write' && ou.isApproved)"
+                        size="sm" 
+                        variant="outline" 
+                        class="h-7 text-[11px] hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-500/50"
+                        :has-permission="canApproveOus"
+                        :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
+                        :disabled="approvingOuPath === ou.ouPath"
+                        @click="handleSetOuGovernance(ou.ouPath, 'read_write')"
+                      >
+                        <CheckCircle2Icon class="h-3.5 w-3.5 mr-1 text-emerald-400" />
+                        {{ ou.accessLevel === 'read_only' && ou.isApproved ? 'Upgrade R/W' : 'Approve R/W' }}
+                      </RbacButton>
+
+                      <RbacButton 
+                        v-else-if="ou.accessLevel === 'read_write' && ou.isApproved"
+                        size="sm" 
+                        variant="outline" 
+                        class="h-7 text-[11px] hover:bg-amber-500/20 hover:text-amber-400 hover:border-amber-500/50"
+                        :has-permission="canApproveOus"
+                        :tooltip="RBAC_TOOLTIPS.IT_ADMIN"
+                        :disabled="approvingOuPath === ou.ouPath"
+                        @click="handleSetOuGovernance(ou.ouPath, 'read_only')"
+                      >
+                        Downgrade R/O
+                      </RbacButton>
+
+                      <!-- Folded Dropdown Menu for secondary/all actions -->
+                      <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            class="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                            title="More OU Governance Actions"
+                          >
+                            <MoreHorizontalIcon class="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-54">
+                          <DropdownMenuLabel class="text-xs text-muted-foreground">OU Governance</DropdownMenuLabel>
+                          
+                          <DropdownMenuItem 
+                            v-if="!(ou.accessLevel === 'read_write' && ou.isApproved)"
+                            :disabled="!canApproveOus || approvingOuPath === ou.ouPath"
+                            @click="handleSetOuGovernance(ou.ouPath, 'read_write')"
+                            class="cursor-pointer"
+                          >
+                            <CheckCircle2Icon class="h-3.5 w-3.5 mr-2 text-emerald-400" />
+                            <span>{{ ou.accessLevel === 'read_only' && ou.isApproved ? 'Upgrade to Read/Write' : 'Approve Read/Write' }}</span>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem 
+                            v-if="!(ou.accessLevel === 'read_only' && ou.isApproved)"
+                            :disabled="!canApproveOus || approvingOuPath === ou.ouPath"
+                            @click="handleSetOuGovernance(ou.ouPath, 'read_only')"
+                            class="cursor-pointer"
+                          >
+                            <ServerIcon class="h-3.5 w-3.5 mr-2 text-amber-400" />
+                            <span>{{ ou.accessLevel === 'read_write' && ou.isApproved ? 'Downgrade to Read-Only' : 'Approve Read-Only' }}</span>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem 
+                            v-if="ou.isApproved"
+                            :disabled="!canApproveOus || approvingOuPath === ou.ouPath"
+                            @click="handleSetOuGovernance(ou.ouPath, 'unapproved')"
+                            class="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            <AlertCircleIcon class="h-3.5 w-3.5 mr-2" />
+                            <span>Revoke / Block Ingestion</span>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuSeparator />
+
+                          <DropdownMenuItem 
+                            @click="toggleOuFold(ou.ouPath)"
+                            class="cursor-pointer"
+                          >
+                            <FolderOpenIcon v-if="!expandedOus[ou.ouPath]" class="h-3.5 w-3.5 mr-2 text-cyan-400" />
+                            <FolderIcon v-else class="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                            <span>{{ expandedOus[ou.ouPath] ? 'Fold Host Details' : 'Unfold Host Details' }}</span>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem 
+                            @click="handleCopyOuPath(ou.ouPath)"
+                            class="cursor-pointer"
+                          >
+                            <CheckIcon v-if="copiedOuPath === ou.ouPath" class="h-3.5 w-3.5 mr-2 text-emerald-400" />
+                            <CopyIcon v-else class="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                            <span>{{ copiedOuPath === ou.ouPath ? 'Copied Path!' : 'Copy OU Path' }}</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Folded Sub-Row: Discovered Candidate Hosts -->
+                <tr v-if="expandedOus[ou.ouPath]" class="bg-muted/15 border-b border-border/80">
+                  <td colspan="7" class="p-4 pl-12 bg-muted/20">
+                    <div class="space-y-3">
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div class="flex items-center gap-2">
+                          <ServerIcon class="h-4 w-4 text-cyan-400" />
+                          <span class="font-semibold text-foreground">Discovered Hosts in {{ ou.name || ou.ouPath }}</span>
+                          <Badge variant="outline" class="font-mono text-[10px]">
+                            {{ ou.candidateHosts?.length || 0 }} {{ (ou.candidateHosts?.length === 1) ? 'host' : 'hosts' }}
+                          </Badge>
+                        </div>
+                        <div class="flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
+                          <span>Subnet: <strong class="text-foreground">{{ ou.subnet }}</strong></span>
+                          <span>VLAN: <strong class="text-foreground">{{ ou.vlanName }}</strong> (ID: {{ ou.vlanId }})</span>
+                          <span v-if="ou.location">Location: <strong class="text-foreground">{{ ou.location }}</strong></span>
+                        </div>
+                      </div>
+
+                      <div v-if="ou.candidateHosts && ou.candidateHosts.length > 0" class="overflow-x-auto rounded-md border border-border/60 bg-card/60">
+                        <table class="w-full text-xs text-left">
+                          <thead class="bg-muted/50 text-muted-foreground uppercase font-mono text-[10px] border-b border-border/40">
+                            <tr>
+                              <th class="px-3 py-2">Hostname</th>
+                              <th class="px-3 py-2">IPC / Machine Name</th>
+                              <th class="px-3 py-2">IP Address</th>
+                              <th class="px-3 py-2">MAC Address</th>
+                              <th class="px-3 py-2">Operating System</th>
+                              <th class="px-3 py-2">Hardware Identifier</th>
+                              <th class="px-3 py-2 text-right">Enrollment</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-border/40 font-mono text-[11px]">
+                            <tr v-for="host in ou.candidateHosts" :key="host.hostname" class="hover:bg-muted/30 transition-colors">
+                              <td class="px-3 py-2 font-semibold text-foreground">{{ host.hostname }}</td>
+                              <td class="px-3 py-2 font-sans text-xs text-muted-foreground truncate max-w-[200px]" :title="host.name">{{ host.name }}</td>
+                              <td class="px-3 py-2 text-muted-foreground">{{ host.ipAddress }}</td>
+                              <td class="px-3 py-2 text-muted-foreground">{{ host.macAddress }}</td>
+                              <td class="px-3 py-2 font-sans text-xs text-muted-foreground">{{ host.osVersion }}</td>
+                              <td class="px-3 py-2 text-muted-foreground">{{ host.machineIdentifier }}</td>
+                              <td class="px-3 py-2 text-right">
+                                <Badge :variant="host.alreadyImported ? 'secondary' : 'outline'" class="text-[10px]">
+                                  {{ host.alreadyImported ? 'Enrolled' : 'Discovered' }}
+                                </Badge>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div v-else class="text-xs text-muted-foreground italic py-3 text-center border border-dashed border-border/60 rounded-md">
+                        No active candidate IPC hosts detected in this Organizational Unit.
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
               <tr v-if="ousList.length === 0">
-                <td colspan="6" class="px-4 py-8 text-center text-muted-foreground text-sm">
+                <td colspan="7" class="px-4 py-8 text-center text-muted-foreground text-sm">
                   <div v-if="loadingOus" class="flex items-center justify-center gap-2">
                     <RefreshCwIcon class="h-4 w-4 animate-spin" />
                     <span>Loading Organizational Units...</span>
