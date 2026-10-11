@@ -24,6 +24,7 @@ import {
 } from 'lucide-vue-next'
 import { useAuthSession } from '~/composables/useAuthSession'
 import DigitalTwinSearchBar from '~/components/twin/DigitalTwinSearchBar.vue'
+import AppMobileBottomNav from '~/components/layout/AppMobileBottomNav.vue'
 
 const { user, signOut } = useAuthSession()
 const route = useRoute()
@@ -84,8 +85,8 @@ const handleSignOut = async () => {
 
 <template>
   <div class="min-h-screen bg-[#0c0e12] flex text-zinc-100 font-sans selection:bg-teal-500 selection:text-black">
-    <!-- Sleek Industrial Navigation Rail / Sidebar -->
-    <aside class="w-64 bg-[#0e1116] border-r border-[#232730] flex-shrink-0 flex flex-col justify-between z-30 select-none">
+    <!-- Sleek Industrial Navigation Rail / Sidebar (Hidden on mobile handhelds) -->
+    <aside class="hidden md:flex w-64 bg-[#0e1116] border-r border-[#232730] flex-shrink-0 flex-col justify-between z-30 select-none">
       <div>
         <!-- Brand Header -->
         <div class="p-5 border-b border-[#232730] flex items-center justify-between bg-[#11141a]">
@@ -328,9 +329,10 @@ const handleSignOut = async () => {
       </header>
 
       <!-- Page Content Viewport -->
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1 overflow-y-auto pb-16 md:pb-0">
         <slot />
       </div>
+      <AppMobileBottomNav />
     </div>
   </div>
 </template>

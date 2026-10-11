@@ -39,9 +39,7 @@ onMounted(async () => {
 
 async function onSubmit(event: Event) {
   event.preventDefault()
-  console.log('[SignIn] onSubmit triggered with:', { email: email.value, hasPassword: !!password.value, passLen: password.value?.length })
   if (!email.value || !password.value) {
-    console.warn('[SignIn] Missing email or password, aborting')
     return
   }
 
@@ -50,7 +48,6 @@ async function onSubmit(event: Event) {
 
   try {
     const isEmail = email.value.includes('@')
-    console.log('[SignIn] Submitting:', { email: email.value, isEmail })
     const res = isEmail 
       ? await authClient.signIn.email({
           email: email.value,
@@ -61,7 +58,6 @@ async function onSubmit(event: Event) {
           password: password.value
         })
     
-    console.log('[SignIn] Response:', res)
     if (res?.error) {
       error.value = res.error.message || 'Failed to sign in'
     } else {
@@ -70,7 +66,6 @@ async function onSubmit(event: Event) {
       await navigateTo('/dashboard')
     }
   } catch (e: any) {
-    console.error('[SignIn] Caught error:', e)
     error.value = 'An unexpected error occurred'
   } finally {
     isLoading.value = false
