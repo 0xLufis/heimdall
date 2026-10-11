@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { DEMO_PERSONAS, useAuthSession } from '../../../frontend/web/app/composables/useAuthSession'
-import { useHeimdallSearch } from '../../../frontend/web/app/composables/useHeimdallSearch'
-import filterHandler from '../../../frontend/web/server/api/inventory/filter'
+import { DEMO_PERSONAS, useAuthSession } from '../../../src/frontend/web/app/composables/useAuthSession'
+import { useHeimdallSearch } from '../../../src/frontend/web/app/composables/useHeimdallSearch'
+import filterHandler from '../../../src/frontend/web/server/api/inventory/filter'
 
 describe('Enterprise Engineering Org, Machines Views & OmniSearch Suite', () => {
   describe('Engineering Department Titles & Outside Approver Hierarchy', () => {
@@ -201,4 +201,91 @@ describe('Enterprise Engineering Org, Machines Views & OmniSearch Suite', () => 
       expect(activePendingKey.value).toBe('tech')
     })
   })
+
+  describe('Lines and Technologies Header Folding', () => {
+    it('toggles line folding and child visibility state correctly', () => {
+      const foldedLines: Record<string, boolean> = {}
+      const toggleLineFold = (lineKey: string) => {
+        foldedLines[lineKey] = !foldedLines[lineKey]
+      }
+
+      const lineId = 'Line 1'
+      // Initially unfolded (false/falsy)
+      expect(Boolean(foldedLines[lineId])).toBe(false)
+
+      // Header click toggles folding -> folded (children hidden)
+      toggleLineFold(lineId)
+      expect(foldedLines[lineId]).toBe(true)
+
+      // Next header click unfolds -> unfolded (children visible)
+      toggleLineFold(lineId)
+      expect(foldedLines[lineId]).toBe(false)
+    })
+
+    it('toggles technology folding and child visibility state correctly', () => {
+      const foldedTechnologies: Record<string, boolean> = {}
+      const toggleTechnologyFold = (techKey: string) => {
+        foldedTechnologies[techKey] = !foldedTechnologies[techKey]
+      }
+
+      const tech = 'Assembly'
+      // Initially unfolded (false/falsy)
+      expect(Boolean(foldedTechnologies[tech])).toBe(false)
+
+      // Header click toggles folding -> folded (children hidden)
+      toggleTechnologyFold(tech)
+      expect(foldedTechnologies[tech]).toBe(true)
+
+      // Next header click unfolds -> unfolded (children visible)
+      toggleTechnologyFold(tech)
+      expect(foldedTechnologies[tech]).toBe(false)
+    })
+
+    it('evaluates allLinesFolded and batch toggles all lines', () => {
+      const lines = [{ lineId: 'Line 1' }, { lineId: 'Line 2' }]
+      const foldedLines: Record<string, boolean> = {}
+      const allLinesFolded = () => lines.every(l => foldedLines[l.lineId])
+      const toggleAllLinesFold = () => {
+        const target = !allLinesFolded()
+        for (const l of lines) {
+          foldedLines[l.lineId] = target
+        }
+      }
+
+      expect(allLinesFolded()).toBe(false)
+      toggleAllLinesFold()
+      expect(allLinesFolded()).toBe(true)
+      expect(foldedLines['Line 1']).toBe(true)
+      expect(foldedLines['Line 2']).toBe(true)
+
+      toggleAllLinesFold()
+      expect(allLinesFolded()).toBe(false)
+      expect(foldedLines['Line 1']).toBe(false)
+      expect(foldedLines['Line 2']).toBe(false)
+    })
+
+    it('evaluates allTechnologiesFolded and batch toggles all technologies', () => {
+      const techs = [{ technology: 'Assembly' }, { technology: 'Welding' }]
+      const foldedTechnologies: Record<string, boolean> = {}
+      const allTechnologiesFolded = () => techs.every(t => foldedTechnologies[t.technology])
+      const toggleAllTechnologiesFold = () => {
+        const target = !allTechnologiesFolded()
+        for (const t of techs) {
+          foldedTechnologies[t.technology] = target
+        }
+      }
+
+      expect(allTechnologiesFolded()).toBe(false)
+      toggleAllTechnologiesFold()
+      expect(allTechnologiesFolded()).toBe(true)
+      expect(foldedTechnologies['Assembly']).toBe(true)
+      expect(foldedTechnologies['Welding']).toBe(true)
+
+      toggleAllTechnologiesFold()
+      expect(allTechnologiesFolded()).toBe(false)
+      expect(foldedTechnologies['Assembly']).toBe(false)
+      expect(foldedTechnologies['Welding']).toBe(false)
+    })
+  })
 })
+

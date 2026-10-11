@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import FleetAnalyticsSummary from '../../../frontend/web/app/components/analytics/FleetAnalyticsSummary.vue'
-import KpiGraphBuilder from '../../../frontend/web/app/components/analytics/KpiGraphBuilder.vue'
-import { navMenu } from '../../../frontend/web/app/constants/menus'
+import FleetAnalyticsSummary from '../../../src/frontend/web/app/components/analytics/FleetAnalyticsSummary.vue'
+import KpiGraphBuilder from '../../../src/frontend/web/app/components/analytics/KpiGraphBuilder.vue'
+import { navMenu } from '../../../src/frontend/web/app/constants/menus'
 
 const mockSummary = {
   totalMachineHours: 2316,

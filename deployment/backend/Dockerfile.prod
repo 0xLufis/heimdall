@@ -3,17 +3,17 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy project files for caching restore layer
-COPY shared/App.Contracts/App.Contracts.csproj shared/App.Contracts/
-COPY shared/App.Shared/App.Shared.csproj shared/App.Shared/
-COPY backend/App.Infrastructure/App.Infrastructure.csproj backend/App.Infrastructure/
-COPY backend/App.Backend.Api/App.Backend.Api.csproj backend/App.Backend.Api/
+COPY src/shared/App.Contracts/App.Contracts.csproj src/shared/App.Contracts/
+COPY src/shared/App.Shared/App.Shared.csproj src/shared/App.Shared/
+COPY src/backend/App.Infrastructure/App.Infrastructure.csproj src/backend/App.Infrastructure/
+COPY src/backend/App.Backend.Api/App.Backend.Api.csproj src/backend/App.Backend.Api/
 
-RUN dotnet restore backend/App.Backend.Api/App.Backend.Api.csproj
+RUN dotnet restore src/backend/App.Backend.Api/App.Backend.Api.csproj
 
 # Copy full source and publish release
-COPY shared/ shared/
-COPY backend/ backend/
-RUN dotnet publish backend/App.Backend.Api/App.Backend.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+COPY src/shared/ src/shared/
+COPY src/backend/ src/backend/
+RUN dotnet publish src/backend/App.Backend.Api/App.Backend.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # Production runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-jammy-chiseled AS runtime

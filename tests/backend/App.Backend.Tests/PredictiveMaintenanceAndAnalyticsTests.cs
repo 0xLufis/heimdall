@@ -35,6 +35,7 @@ public class FakeAssetRepository : IAssetRepository
     public Task<List<BaseInventoryItem>> GetStockAsync() => Task.FromResult(Items.ToList());
     public Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId) => Task.FromResult<StationComponentTreeDto?>(null);
     public Task<InventoryFilterResultDto> FilterInventoryAsync(InventoryFilterRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new InventoryFilterResultDto());
+    public Task<BaseInventoryItem?> UpdateAsync(BaseInventoryItem item) => Task.FromResult<BaseInventoryItem?>(item);
 }
 
 public class FakeMaintenanceTicketRepository : IMaintenanceTicketRepository
@@ -53,10 +54,13 @@ public class FakeMaintenanceTicketRepository : IMaintenanceTicketRepository
     public Task<MaintenanceTicket?> SetPendingAsync(Guid id, App.Contracts.Enums.PendingReason reason, string? details) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<MaintenanceTicket?> ReserveAsync(Guid id, string technician) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<MaintenanceTicket?> QrPickupAsync(Guid id, string technician) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> AutoCloseAsync(Guid id, string actor, string reason, string? resolutionNotes = null) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> RetractAsync(Guid id, string retractedBy, string reason) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<bool> DeleteAsync(Guid id) => Task.FromResult(true);
     public Task<int> GetPendingAlertsCountAsync(TimeSpan timeSpan) => Task.FromResult(Tickets.Count(t => t.Status == "Open"));
     public Task<List<AgentEvent>> GetRecentAgentEventsAsync(int count) => Task.FromResult(new List<AgentEvent>());
 }
+
 
 public class FakeMemoryCacheService : ICacheService
 {

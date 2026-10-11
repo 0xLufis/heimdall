@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import healthHandler from '../../../frontend/web/server/api/health.get'
-import readyHandler from '../../../frontend/web/server/api/ready.get'
-import enrollDeviceHandler from '../../../frontend/web/server/api/pki/enroll-device.post'
+import healthHandler from '../../../src/frontend/web/server/api/health.get'
+import readyHandler from '../../../src/frontend/web/server/api/ready.get'
+import enrollDeviceHandler from '../../../src/frontend/web/server/api/pki/enroll-device.post'
 
 describe('Packaging, Distribution & Deployment Automation', () => {
 

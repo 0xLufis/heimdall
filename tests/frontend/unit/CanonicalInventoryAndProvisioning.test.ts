@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { partsInventoryStore } from '../../../frontend/web/server/utils/partsInventoryStore'
+import { partsInventoryStore } from '../../../src/frontend/web/server/utils/partsInventoryStore'
 import {
   getCanonicalInventoryTemplates,
   getCanonicalInventoryParts,
   getCanonicalMachineSpareParts,
   getCanonicalInventoryAuditLogs
-} from '../../../frontend/web/server/utils/datasetLoader'
-import PartProvisioningStation from '../../../frontend/web/app/components/inventory/PartProvisioningStation.vue'
-import AssetTemplatesManager from '../../../frontend/web/app/components/inventory/AssetTemplatesManager.vue'
-import CreateEditTemplateModal from '../../../frontend/web/app/components/inventory/CreateEditTemplateModal.vue'
-import type { InventoryPart, AssetTemplateDefinition } from '../../../frontend/web/app/types/inventory'
+} from '../../../src/frontend/web/server/utils/datasetLoader'
+import PartProvisioningStation from '../../../src/frontend/web/app/components/inventory/PartProvisioningStation.vue'
+import AssetTemplatesManager from '../../../src/frontend/web/app/components/inventory/AssetTemplatesManager.vue'
+import CreateEditTemplateModal from '../../../src/frontend/web/app/components/inventory/CreateEditTemplateModal.vue'
+import type { InventoryPart, AssetTemplateDefinition } from '../../../src/frontend/web/app/types/inventory'
 
 const mockActor = { id: 'usr-eng-1', name: 'Elena Rostova' }
 

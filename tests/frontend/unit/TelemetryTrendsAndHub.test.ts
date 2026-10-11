@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useTelemetryMetrics } from '../../../frontend/web/app/composables/useTelemetryMetrics'
+import { useTelemetryMetrics } from '../../../src/frontend/web/app/composables/useTelemetryMetrics'
 import {
   getTelemetryDataPointCatalog,
   getAllTelemetryMetrics,
   findTelemetryMetricByKey,
   BUILTIN_METRICS
-} from '../../../frontend/web/server/utils/telemetryCacheStore'
+} from '../../../src/frontend/web/server/utils/telemetryCacheStore'
 
 describe('Telemetry Trends & Hub Suite', () => {
   const storageMap = new Map<string, string>()

@@ -91,9 +91,13 @@ describe('Enterprise 100 Machines, CAD Topology & Synthetic Dataset Suite', () =
 
   describe('Control Topologies (1-1, 1-n, m-n, n-1)', () => {
     it('verifies all 8 production lines implement the 4 control topologies in production_topology.json', () => {
-      const topologyPath = path.resolve(process.cwd(), '../../seed_data/production_topology.json')
-      const altPath = path.resolve(process.cwd(), 'seed_data/production_topology.json')
-      const targetPath = fs.existsSync(topologyPath) ? topologyPath : altPath
+      const candidates = [
+        path.resolve(process.cwd(), '../../../seed_data/production_topology.json'),
+        path.resolve(process.cwd(), '../../seed_data/production_topology.json'),
+        path.resolve(process.cwd(), 'seed_data/production_topology.json'),
+        path.resolve(__dirname, '../../../../seed_data/production_topology.json')
+      ]
+      const targetPath = candidates.find(c => fs.existsSync(c)) || candidates[0]
 
       expect(fs.existsSync(targetPath)).toBe(true)
       const topologyData = JSON.parse(fs.readFileSync(targetPath, 'utf-8'))
@@ -135,9 +139,13 @@ describe('Enterprise 100 Machines, CAD Topology & Synthetic Dataset Suite', () =
 
   describe('Inventory Seed Dataset (100 Machines, 550 Spares & Bulk Consumables)', () => {
     it('validates inventory_seed.csv rows and classification counts', () => {
-      const csvPath = path.resolve(process.cwd(), '../../seed_data/inventory_seed.csv')
-      const altPath = path.resolve(process.cwd(), 'seed_data/inventory_seed.csv')
-      const targetPath = fs.existsSync(csvPath) ? csvPath : altPath
+      const candidates = [
+        path.resolve(process.cwd(), '../../../seed_data/inventory_seed.csv'),
+        path.resolve(process.cwd(), '../../seed_data/inventory_seed.csv'),
+        path.resolve(process.cwd(), 'seed_data/inventory_seed.csv'),
+        path.resolve(__dirname, '../../../../seed_data/inventory_seed.csv')
+      ]
+      const targetPath = candidates.find(c => fs.existsSync(c)) || candidates[0]
 
       expect(fs.existsSync(targetPath)).toBe(true)
       const lines = fs.readFileSync(targetPath, 'utf-8').trim().split('\n')

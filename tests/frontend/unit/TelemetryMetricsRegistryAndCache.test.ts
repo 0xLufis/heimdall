@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { useTelemetryMetrics } from '../../../frontend/web/app/composables/useTelemetryMetrics'
+import { useTelemetryMetrics } from '../../../src/frontend/web/app/composables/useTelemetryMetrics'
 import {
   getAllTelemetryMetrics,
   findTelemetryMetricByKey,
@@ -9,9 +9,9 @@ import {
   getCachedTelemetryDatapoints,
   recordCachedTelemetryDatapoint,
   BUILTIN_METRICS
-} from '../../../frontend/web/server/utils/telemetryCacheStore'
-import AlertRulesManager from '../../../frontend/web/app/components/analytics/AlertRulesManager.vue'
-import TelemetryTrendVisualizer from '../../../frontend/web/app/components/analytics/TelemetryTrendVisualizer.vue'
+} from '../../../src/frontend/web/server/utils/telemetryCacheStore'
+import AlertRulesManager from '../../../src/frontend/web/app/components/analytics/AlertRulesManager.vue'
+import TelemetryTrendVisualizer from '../../../src/frontend/web/app/components/analytics/TelemetryTrendVisualizer.vue'
 
 // Mock $fetch globally for composable and component requests
 globalThis.$fetch = vi.fn(async (url: string, opts?: any) => {

@@ -131,7 +131,7 @@ def run_tests():
         return False
 
     print("\n>>> 3. Running Frontend Test Suite (Vitest, 275 tests)...")
-    res = subprocess.run(["bun", "run", "test"], cwd=os.path.join(ROOT_DIR, "frontend", "web"))
+    res = subprocess.run(["bun", "run", "test"], cwd=os.path.join(ROOT_DIR, "src", "frontend", "web"))
     if res.returncode != 0:
         print("❌ Frontend tests failed.")
         return False

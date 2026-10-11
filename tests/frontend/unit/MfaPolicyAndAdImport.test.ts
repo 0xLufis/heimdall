@@ -3,14 +3,14 @@ import {
   getMfaPolicy,
   updateMfaPolicy,
   evaluateMfa,
-} from '../../../frontend/web/server/utils/mfaPolicyStore'
+} from '../../../src/frontend/web/server/utils/mfaPolicyStore'
 import {
   getActiveDirectoryOus,
   resolvePattern,
   previewAdImport,
   commitImportedHosts,
   setOuGovernance,
-} from '../../../frontend/web/server/utils/activeDirectoryStore'
+} from '../../../src/frontend/web/server/utils/activeDirectoryStore'
 import {
   getRootCertificate,
   importRootCertificate,
@@ -18,7 +18,7 @@ import {
   saveOuRule,
   deleteOuRule,
   syncOuCertificates,
-} from '../../../frontend/web/server/utils/pkiStore'
+} from '../../../src/frontend/web/server/utils/pkiStore'
 
 describe('MFA Policy Governance & Timeout Thresholds', () => {
   it('should evaluate SysAdmin role requiring MFA on every sign-in (always)', () => {

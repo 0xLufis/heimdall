@@ -83,7 +83,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile.dev
+      dockerfile: src/backend/Dockerfile.dev
     container_name: heimdall_backend
     hostname: backend
     ports:
@@ -100,16 +100,16 @@ services:
       - MQTT_EMBEDDED_PORT=1883
       - HEIMDALL_AGENT_KEY=heimdall-dev-agent-key
     volumes:
-      - ./shared:/workspace/shared
-      - ./backend:/workspace/backend
-      - /workspace/shared/App.Contracts/obj
-      - /workspace/shared/App.Contracts/bin
-      - /workspace/shared/App.Shared/obj
-      - /workspace/shared/App.Shared/bin
-      - /workspace/backend/App.Infrastructure/obj
-      - /workspace/backend/App.Infrastructure/bin
-      - /workspace/backend/App.Backend.Api/obj
-      - /workspace/backend/App.Backend.Api/bin
+      - ./src/shared:/workspace/src/shared
+      - ./src/backend:/workspace/src/backend
+      - /workspace/src/shared/App.Contracts/obj
+      - /workspace/src/shared/App.Contracts/bin
+      - /workspace/src/shared/App.Shared/obj
+      - /workspace/src/shared/App.Shared/bin
+      - /workspace/src/backend/App.Infrastructure/obj
+      - /workspace/src/backend/App.Infrastructure/bin
+      - /workspace/src/backend/App.Backend.Api/obj
+      - /workspace/src/backend/App.Backend.Api/bin
     depends_on:
       postgres:
         condition: service_healthy
@@ -122,7 +122,7 @@ services:
   # 5. Nuxt 4 Web Frontend & Nitro BFF (Vite HMR)
   frontend:
     build:
-      context: ./frontend/web
+      context: ./src/frontend/web
       dockerfile: Dockerfile.dev
     container_name: heimdall_frontend
     hostname: frontend
@@ -139,7 +139,7 @@ services:
       - BETTER_AUTH_SECRET=heimdall-dev-secret-key-32-chars-min-security
       - ENABLE_DEV_HTTP_SEED=true
     volumes:
-      - ./frontend/web:/app
+      - ./src/frontend/web:/app
       - /app/node_modules
       - /app/.nuxt
     depends_on:
@@ -154,7 +154,7 @@ services:
   agent:
     build:
       context: .
-      dockerfile: agent/Dockerfile.dev
+      dockerfile: src/agent/Dockerfile.dev
     container_name: heimdall_agent
     hostname: EDGE-AGENT-LOCAL
     environment:
@@ -164,12 +164,12 @@ services:
       - MQTT_BROKER_PORT=1883
       - HEIMDALL_AGENT_KEY=heimdall-dev-agent-key
     volumes:
-      - ./shared:/workspace/shared
-      - ./agent:/workspace/agent
-      - /workspace/shared/App.Contracts/obj
-      - /workspace/shared/App.Contracts/bin
-      - /workspace/agent/App.Agent.Daemon/obj
-      - /workspace/agent/App.Agent.Daemon/bin
+      - ./src/shared:/workspace/src/shared
+      - ./src/agent:/workspace/src/agent
+      - /workspace/src/shared/App.Contracts/obj
+      - /workspace/src/shared/App.Contracts/bin
+      - /workspace/src/agent/App.Agent.Daemon/obj
+      - /workspace/src/agent/App.Agent.Daemon/bin
     depends_on:
       - backend
     networks:

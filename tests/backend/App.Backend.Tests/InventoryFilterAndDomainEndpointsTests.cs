@@ -261,4 +261,120 @@ public class InventoryFilterAndDomainEndpointsTests
         Assert.True(candidates[0].IsOutOfOffice);
         Assert.Equal(1, candidates[0].AssignedRulesCount);
     }
+
+    [Fact]
+    public async Task InventoryGetItem_ReturnsItem_WhenExists()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = CreateInMemoryDbContext(dbName);
+
+        var itemId = Guid.NewGuid();
+        var item = new HardwareComponent
+        {
+            Id = itemId,
+            Name = "TEST-SPINDLE",
+            DisplayName = "Test Spindle Motor",
+            StockQuantity = 10,
+            SerialNumber = "SN-12345",
+            Technology = "Robotics"
+        };
+        context.InventoryItems.Add(item);
+        await context.SaveChangesAsync();
+
+        var assetRepo = new AssetRepository(context);
+        var controllerRepo = new ControllerRepository(context);
+        var cache = CreateCacheService();
+        var factory = new TestDbContextFactory(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(dbName).Options);
+
+        var controller = new InventoryController(assetRepo, controllerRepo, cache, factory);
+
+        // Act
+        var result = await controller.GetItem(itemId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedItem = Assert.IsAssignableFrom<BaseInventoryItem>(okResult.Value);
+        Assert.Equal(itemId, returnedItem.Id);
+        Assert.Equal("TEST-SPINDLE", returnedItem.Name);
+        Assert.Equal("Test Spindle Motor", returnedItem.DisplayName);
+    }
+
+    [Fact]
+    public async Task InventoryGetItem_ReturnsNotFound_WhenDoesNotExist()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = CreateInMemoryDbContext(dbName);
+
+        var assetRepo = new AssetRepository(context);
+        var controllerRepo = new ControllerRepository(context);
+        var cache = CreateCacheService();
+        var factory = new TestDbContextFactory(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(dbName).Options);
+
+        var controller = new InventoryController(assetRepo, controllerRepo, cache, factory);
+
+        // Act
+        var result = await controller.GetItem(Guid.NewGuid());
+
+        // Assert
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task InventoryUpdateItem_UpdatesProperties_AndPersists()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using var context = CreateInMemoryDbContext(dbName);
+
+        var itemId = Guid.NewGuid();
+        var item = new HardwareComponent
+        {
+            Id = itemId,
+            Name = "TEST-ORIGINAL",
+            DisplayName = "Original Name",
+            StockQuantity = 5,
+            StorageLocation = "Bin A",
+            SerialNumber = "SN-001",
+            Technology = "Controls"
+        };
+        context.InventoryItems.Add(item);
+        await context.SaveChangesAsync();
+
+        var assetRepo = new AssetRepository(context);
+        var controllerRepo = new ControllerRepository(context);
+        var cache = CreateCacheService();
+        var factory = new TestDbContextFactory(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(dbName).Options);
+
+        var controller = new InventoryController(assetRepo, controllerRepo, cache, factory);
+
+        // Act
+        var payloadJson = System.Text.Json.JsonDocument.Parse("""
+        {
+            "name": "TEST-UPDATED",
+            "displayName": "Updated Name",
+            "quantity": 25,
+            "storageLocation": "Bin B-99",
+            "serialNumber": "SN-002-MOD",
+            "technology": "Robotics"
+        }
+        """).RootElement;
+
+        var result = await controller.UpdateItem(itemId, payloadJson);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var updatedItem = Assert.IsAssignableFrom<BaseInventoryItem>(okResult.Value);
+        Assert.Equal("TEST-UPDATED", updatedItem.Name);
+        Assert.Equal("Updated Name", updatedItem.DisplayName);
+        Assert.Equal(25, updatedItem.StockQuantity);
+        Assert.Equal("Bin B-99", updatedItem.StorageLocation);
+        Assert.Equal("SN-002-MOD", updatedItem.SerialNumber);
+        Assert.Equal("Robotics", updatedItem.Technology);
+
+        // Check DB persistence directly
+        using var verifyContext = CreateInMemoryDbContext(dbName);
+        var fromDb = await verifyContext.InventoryItems.FindAsync(itemId);
+        Assert.NotNull(fromDb);
+        Assert.Equal("TEST-UPDATED", fromDb.Name);
+        Assert.Equal(25, fromDb.StockQuantity);
+    }
 }

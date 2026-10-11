@@ -1,0 +1,56 @@
+<script setup lang="ts">
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { Button } from '~/components/ui/button'
+
+interface SecurityEvent {
+  title: string
+  description: string
+  time: string
+  severity?: 'low' | 'medium' | 'high'
+}
+
+defineProps<{
+  events: SecurityEvent[]
+}>()
+const emit = defineEmits<{
+  (e: 'openAuditLogs'): void
+}>()
+</script>
+
+<template>
+  <Card class="bg-card border-border shadow-sm rounded-xl">
+    <CardHeader class="p-6 pb-4 flex flex-row items-center justify-between space-y-0">
+      <CardTitle class="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+        <span class="w-2 h-2 bg-primary rounded-full"></span>
+        {{ $t('dashboard.auditEvents', 'Audit & Security Events') }}
+      </CardTitle>
+    </CardHeader>
+    
+    <CardContent class="p-6 pt-0">
+      <div v-if="events && events.length > 0" class="space-y-6 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border">
+        <div v-for="(event, index) in events" :key="index" class="flex gap-4 relative group">
+          <div class="w-3.5 h-3.5 rounded-full bg-background border-2 border-border group-hover:border-primary transition-colors z-10 flex-shrink-0 mt-1"></div>
+          <div>
+            <p class="text-xs font-bold text-foreground">{{ event.title }}</p>
+            <p class="text-xs text-muted-foreground mt-0.5 leading-relaxed">{{ event.description }}</p>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="text-[10px] text-muted-foreground font-mono uppercase">{{ event.time }}</span>
+              <span v-if="event.severity === 'high'" class="px-1.5 py-0.5 rounded text-[8px] font-mono uppercase bg-destructive/10 text-destructive border border-destructive/20">{{ $t('common.critical', 'Critical') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else class="py-8 text-center text-xs text-muted-foreground">
+        No recent audit or security events recorded
+      </div>
+
+      <Button
+        variant="outline"
+        @click="emit('openAuditLogs')"
+        class="w-full mt-6 h-10 border border-dashed border-border bg-transparent rounded-lg text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:border-primary hover:text-foreground transition-colors flex items-center justify-center gap-2 cursor-pointer"
+      >
+        {{ $t('dashboard.fullAuditLogs', 'Full Audit Logs') }}
+      </Button>
+    </CardContent>
+  </Card>
+</template>

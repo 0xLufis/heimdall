@@ -1,0 +1,36 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+WORKDIR /workspace
+
+# Create non-root user and setup directories
+RUN groupadd -g 10001 appuser && \
+    useradd -u 10001 -g appuser -m -s /bin/bash appuser && \
+    chown -R appuser:appuser /workspace /home/appuser
+
+# Copy Directory.Build.props and project files for layer caching
+COPY Directory.Build.props ./
+COPY src/shared/App.Contracts/App.Contracts.csproj ./src/shared/App.Contracts/
+COPY src/shared/App.Shared/App.Shared.csproj ./src/shared/App.Shared/
+COPY src/backend/App.Infrastructure/App.Infrastructure.csproj ./src/backend/App.Infrastructure/
+COPY src/backend/App.Backend.Api/App.Backend.Api.csproj ./src/backend/App.Backend.Api/
+
+# Restore dependencies
+RUN dotnet restore src/backend/App.Backend.Api/App.Backend.Api.csproj
+
+# Copy source code
+COPY src/shared/ ./src/shared/
+COPY src/backend/ ./src/backend/
+
+RUN chown -R appuser:appuser /workspace
+
+USER appuser
+
+WORKDIR /workspace/src/backend/App.Backend.Api
+
+EXPOSE 5099 5001
+
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:5099;http://+:5001
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1
+
+ENTRYPOINT ["dotnet", "watch", "run", "--non-interactive"]

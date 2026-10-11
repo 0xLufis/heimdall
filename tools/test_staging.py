@@ -138,7 +138,7 @@ def test_staging_feature_flags_guards():
     print("   • Running Frontend Feature Flags & Dev Gating tests with Vitest...")
     vitest_res = subprocess.run(
         ["bun", "x", "vitest", "run", "tests/frontend/unit/FeatureFlagsAndDevGating.test.ts"],
-        cwd=os.path.join(ROOT_DIR, "frontend", "web"), capture_output=True, text=True
+        cwd=os.path.join(ROOT_DIR, "src", "frontend", "web"), capture_output=True, text=True
     )
     assert vitest_res.returncode == 0, f"Frontend feature flag tests failed:\n{vitest_res.stdout}\n{vitest_res.stderr}"
     print("   ✓ Frontend composables and BFF correctly disable dev bypass and enable debug inspection.")
@@ -162,7 +162,7 @@ def test_staging_suites():
 
     # 3. Complete Frontend test suite (333 tests)
     print("   • Running full Frontend Test Suite (Vitest)...")
-    res_fe = subprocess.run(["bun", "run", "test"], cwd=os.path.join(ROOT_DIR, "frontend", "web"), capture_output=True, text=True)
+    res_fe = subprocess.run(["bun", "run", "test"], cwd=os.path.join(ROOT_DIR, "src", "frontend", "web"), capture_output=True, text=True)
     assert res_fe.returncode == 0, f"Frontend test suite failed:\n{res_fe.stdout}\n{res_fe.stderr}"
     print("   ✓ All 333 Frontend tests PASSED.")
 

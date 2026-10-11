@@ -6,20 +6,20 @@ import {
   getTemplatesByGroup,
   getTemplateById,
   applyTemplate
-} from '../../../frontend/web/app/utils/errorTemplateEngine'
+} from '../../../src/frontend/web/app/utils/errorTemplateEngine'
 import {
   resolvePreferredTechnician
-} from '../../../frontend/web/app/utils/technicianInheritance'
+} from '../../../src/frontend/web/app/utils/technicianInheritance'
 import {
   generateQrUri,
   parseQrUri
-} from '../../../frontend/web/app/utils/qrActionGenerator'
+} from '../../../src/frontend/web/app/utils/qrActionGenerator'
 import {
   getAllGroups,
   getAllMachineIdsInGroup,
   createGroup,
   deleteGroup
-} from '../../../frontend/web/server/utils/machineGroupsStore'
+} from '../../../src/frontend/web/server/utils/machineGroupsStore'
 import {
   getAllRules,
   createRule,
@@ -29,13 +29,13 @@ import {
   getTeamsOooStatuses,
   toggleSimulatedOoo,
   isPersonAvailable
-} from '../../../frontend/web/server/utils/technicianRulesStore'
+} from '../../../src/frontend/web/server/utils/technicianRulesStore'
 import {
   updateTicketStatus,
   addAttachmentToTicket,
   findTicketById,
   addTicketToStore
-} from '../../../frontend/web/server/utils/ticketsStore'
+} from '../../../src/frontend/web/server/utils/ticketsStore'
 
 describe('Maintenance Full Incident Lifecycle Suite', () => {
 

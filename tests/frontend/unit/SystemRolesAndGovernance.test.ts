@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { DEMO_PERSONAS } from '../../../frontend/web/app/composables/useAuthSession'
+import { DEMO_PERSONAS } from '../../../src/frontend/web/app/composables/useAuthSession'
 import {
   getActiveDirectoryOus,
   setOuGovernance,
   getOuGovernances,
   commitImportedHosts
-} from '../../../frontend/web/server/utils/activeDirectoryStore'
+} from '../../../src/frontend/web/server/utils/activeDirectoryStore'
 
 describe('System Role Expansion & Governance Taxonomy Suite', () => {
   it('defines the 4 specialized system admin personas and separates engineering admin from line management', () => {

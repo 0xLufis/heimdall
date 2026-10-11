@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, computed } from 'vue'
-import { useRbacPermission, RBAC_TOOLTIPS } from '../../../frontend/web/app/composables/useRbacPermission'
-import RbacButton from '../../../frontend/web/app/components/common/RbacButton.vue'
-import RbacTooltip from '../../../frontend/web/app/components/common/RbacTooltip.vue'
-import { navMenu, navMenuBottom } from '../../../frontend/web/app/constants/menus'
+import { useRbacPermission, RBAC_TOOLTIPS } from '../../../src/frontend/web/app/composables/useRbacPermission'
+import RbacButton from '../../../src/frontend/web/app/components/common/RbacButton.vue'
+import RbacTooltip from '../../../src/frontend/web/app/components/common/RbacTooltip.vue'
+import { navMenu, navMenuBottom } from '../../../src/frontend/web/app/constants/menus'
 
 // Mock useAuthSession with reactive computed capability matrix
 const mockCurrentRole = ref('engineer')
 
-vi.mock('../../../frontend/web/app/composables/useAuthSession', () => {
+vi.mock('../../../src/frontend/web/app/composables/useAuthSession', () => {
   return {
     useAuthSession: () => {
       const userRole = computed(() => mockCurrentRole.value)

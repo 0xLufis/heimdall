@@ -8,25 +8,26 @@ This guide provides practical instructions for setting up, developing, testing, 
 
 ```
 heimdall/
-├── agent/                   # Industrial Edge Agent daemon
-│   └── App.Agent.Daemon/    # Worker service (gRPC telemetry, spooler, protocol drivers)
-├── backend/                 # Backend API and services
-│   ├── App.Backend.Api/     # ASP.NET Core API controllers, gRPC collector, SignalR hubs
-│   └── App.Infrastructure/  # Repositories, Redis/Memory caching, external integrations
+├── src/
+│   ├── agent/                   # Industrial Edge Agent daemon
+│   │   └── App.Agent.Daemon/    # Worker service (gRPC telemetry, spooler, protocol drivers)
+│   ├── backend/                 # Backend API and services
+│   │   ├── App.Backend.Api/     # ASP.NET Core API controllers, gRPC collector, SignalR hubs
+│   │   └── App.Infrastructure/  # Repositories, Redis/Memory caching, external integrations
+│   ├── frontend/
+│   │   └── web/                 # Nuxt 4 web dashboard & Nitro BFF proxy
+│   └── shared/                  # Shared libraries
+│       ├── App.Contracts/       # Protobuf definitions, DTOs, PLC type sanitizer (No DB dependency)
+│       └── App.Shared/          # Domain entities, AppDbContext, EF Core migrations
 ├── fixtures/                # Canonical enterprise plant dataset (JSON)
-├── shared/                  # Shared libraries
-│   ├── App.Contracts/       # Protobuf definitions, DTOs, PLC type sanitizer (No DB dependency)
-│   └── App.Shared/          # Domain entities, AppDbContext, EF Core migrations
-├── frontend/
-│   └── web/                 # Nuxt 4 web dashboard & Nitro BFF proxy
 ├── simulators/
 │   ├── active_directory/    # Standalone mock Active Directory / Graph server (port 5088)
 │   └── fleet/               # Edge fleet simulator, mock CMI runner & simulated PC Docker containers
 ├── infra/
 │   └── database/            # PostgreSQL 18, Redis 7.4, SSL certs, and seed data
 ├── tests/
-│   ├── backend/             # xUnit backend integration tests (215 tests)
-│   ├── frontend/unit/       # Vitest unit test suites (43 suites, 348 tests)
+│   ├── backend/             # xUnit backend integration tests (229 tests)
+│   ├── frontend/unit/       # Vitest unit test suites (58 suites, 565 tests)
 │   └── e2e/                 # Playwright browser end-to-end tests
 ├── docker-compose.yml       # Full stack local development compose file
 └── justfile                 # Modern command runner for dev, staging, testing, and production
@@ -57,24 +58,24 @@ docker compose ps
 ```
 
 ### 3.2 Applying Database Migrations
-Migrations are stored in `shared/App.Shared/Migrations`:
+Migrations are stored in `src/shared/App.Shared/Migrations`:
 ```bash
 dotnet ef database update \
-  --project shared/App.Shared \
-  --startup-project backend/App.Backend.Api
+  --project src/shared/App.Shared \
+  --startup-project src/backend/App.Backend.Api
 ```
 
 To create a new migration after modifying domain models:
 ```bash
 dotnet ef migrations add <MigrationName> \
-  --project shared/App.Shared \
-  --startup-project backend/App.Backend.Api \
+  --project src/shared/App.Shared \
+  --startup-project src/backend/App.Backend.Api \
   --output-dir Migrations
 ```
 
 ### 3.3 Running the Backend API
 ```bash
-cd backend/App.Backend.Api
+cd src/backend/App.Backend.Api
 dotnet run
 ```
 * **REST API & Swagger UI**: `http://localhost:5099/swagger` (also redirects from `/api-docs` and `/`)
@@ -84,7 +85,7 @@ dotnet run
 
 ### 3.4 Running the Frontend Dashboard
 ```bash
-cd frontend/web
+cd src/frontend/web
 bun install
 bun run dev
 ```
@@ -112,13 +113,13 @@ python3 simulators/fleet/fleet_simulator.py --client ROBOT-CELL-01 --count 100
   * `PendingReason`: Strongly typed to `None | Parts | ExternalOk | Action`, mapping directly to the backend enum.
   * Orthogonal Escalation: Escalation is decoupled from ticket status (`isEscalated`, `escalationReason`, `escalatedAt`, `escalatedBy`, `escalationClosedAt`, `escalationClosedBy`). A ticket can be escalated or resolved in any status.
 * **Modular Settings Architecture**:
-  * Tabbed subcomponents located in `frontend/web/app/components/settings/` (`SettingsProfileTab`, `SettingsRolesTab`, `SettingsSecurityTab`, `SettingsAppearanceTab`, `SettingsPersonasTab`).
+  * Tabbed subcomponents located in `src/frontend/web/app/components/settings/` (`SettingsProfileTab`, `SettingsRolesTab`, `SettingsSecurityTab`, `SettingsAppearanceTab`, `SettingsPersonasTab`).
 * **Drag-and-Drop Reordering (`reorderList.ts`)**:
   * `reorderAndPrioritize<T>(items, fromIndex, toIndex, options)`: Moves items between indices and recalculates sequential 1-based priority fields (`priority: 1, 2, 3...`).
   * `setDragImageAtClickPoint(event, element)`: Ensures HTML5 drag ghost images stay anchored to the exact cursor click point. Incorporates global `pointerdown` tracking to work around the Linux Chromium bug where `DragEvent.clientX/Y` reports `0` during `dragstart`, rendering temporary clones to force Blink to honor custom offsets.
 * **Database Migrations vs. SQL Dumps**:
   * `.gitignore` excludes all `*.sql` database dumps to avoid committing large seed files.
-  * Schema migrations in `shared/App.Shared/Migrations/` (EF Core) and `frontend/web/server/db/migrations/` (Drizzle) are strictly whitelisted and tracked in git.
+  * Schema migrations in `src/shared/App.Shared/Migrations/` (EF Core) and `src/frontend/web/server/db/migrations/` (Drizzle) are strictly whitelisted and tracked in git.
 
 ---
 
@@ -174,10 +175,10 @@ Executes 215 tests covering multi-tenancy global query filters, MFA policy rules
 
 ### 5.2 Frontend Unit Tests (Vitest)
 ```bash
-cd frontend/web
+cd src/frontend/web
 bun run test
 ```
-Executes 43 test suites (348 tests) covering rule reordering with drag-and-drop point-of-click anchoring, HeimdallSearch keyboard shortcuts, 5-state ticket lifecycle and orthogonal escalation, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, remote controller modal quick view, predictive maintenance metrics, feature flag gating, and all page routing.
+Executes 58 test suites (565 tests) covering rule reordering with drag-and-drop point-of-click anchoring, HeimdallSearch keyboard shortcuts, 5-state ticket lifecycle and orthogonal escalation, error template catalog, technician delegation inheritance, zero-dependency SVG QR generation, Better-Auth security group org mapping, remote controller modal quick view, predictive maintenance metrics, feature flag gating, and all page routing.
 
 ### 5.3 Python Fleet Simulator & Mock CMI Tests
 ```bash
@@ -187,7 +188,7 @@ Executes 9 unit tests verifying `MockCmiEngine` queries (`wmic`, `Get-CimInstanc
 
 ### 5.4 End-to-End Browser Tests (Playwright)
 ```bash
-cd frontend/web
+cd src/frontend/web
 bun x playwright test
 ```
 Executes end-to-end browser automation validating MFA policy enforcement, Active Directory host discovery, and security group organization provisioning.

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import DelegationsManager from '../../../frontend/web/app/components/tickets/DelegationsManager.vue'
-import MachineGroupManager from '../../../frontend/web/app/components/tickets/MachineGroupManager.vue'
-import { navMenu } from '../../../frontend/web/app/constants/menus'
+import DelegationsManager from '../../../src/frontend/web/app/components/tickets/DelegationsManager.vue'
+import MachineGroupManager from '../../../src/frontend/web/app/components/tickets/MachineGroupManager.vue'
+import { navMenu } from '../../../src/frontend/web/app/constants/menus'
 
 vi.stubGlobal('useAuthSession', () => ({
   user: { value: { id: 'usr-1', name: 'Plant Admin', email: 'admin@heimdall.dev' } },
@@ -94,7 +94,7 @@ describe('Frontend Reorganization: Delegations and Machine Groups', () => {
     expect(wrapper.text()).toContain('Machine Group Clusters')
   })
 
-  it('renders MachineGroupManager with hierarchy and cluster tags', async () => {
+  it('renders MachineGroupManager with Tag Store, Groups/Machines toggle, and manual overrides', async () => {
     const wrapper = mount(MachineGroupManager, {
       props: { isModal: false },
       global: {
@@ -106,14 +106,14 @@ describe('Frontend Reorganization: Delegations and Machine Groups', () => {
 
     await new Promise(r => setTimeout(r, 10))
 
-    // Assert page stats bar
-    expect(wrapper.text()).toContain('Total Groups')
-    expect(wrapper.text()).toContain('Root Plants')
-    expect(wrapper.text()).toContain('Sub-Lines & Cells')
+    // Assert page stats bar & Tag Store
+    expect(wrapper.text()).toContain('Total Tags')
+    expect(wrapper.text()).toContain('Tag Store & Palette')
+    expect(wrapper.text()).toContain('Manual Overrides')
 
-    // Assert hierarchy and form buttons
-    expect(wrapper.text()).toContain('Group Structure Hierarchy')
-    expect(wrapper.text()).toContain('Add Root Group')
+    // Assert toggle buttons
+    expect(wrapper.text()).toContain('Machines')
+    expect(wrapper.text()).toContain('Groups')
   })
 
   it('allows editing a machine group cluster in DelegationsManager clusters tab', async () => {

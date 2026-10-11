@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { partsInventoryStore, convertCurrency, LIVE_EXCHANGE_RATES } from '../../../frontend/web/server/utils/partsInventoryStore'
-import type { PartUsageCostCenter } from '../../../frontend/web/app/types/inventory'
+import { partsInventoryStore, convertCurrency, LIVE_EXCHANGE_RATES } from '../../../src/frontend/web/server/utils/partsInventoryStore'
+import type { PartUsageCostCenter } from '../../../src/frontend/web/app/types/inventory'
 
 describe('Parts Inventory and Asset Split (docs/TODO/inventory.TODO.md)', () => {
   beforeEach(() => {

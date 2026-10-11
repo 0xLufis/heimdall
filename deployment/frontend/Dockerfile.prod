@@ -6,11 +6,11 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
-COPY frontend/web/package*.json ./
+COPY src/frontend/web/package*.json ./
 RUN npm ci --ignore-scripts
 
 # Copy frontend source
-COPY frontend/web/ ./
+COPY src/frontend/web/ ./
 RUN npm run build
 
 # Stage 2: Minimal Unprivileged Runtime

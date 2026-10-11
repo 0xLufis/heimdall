@@ -39,7 +39,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: src/backend/Dockerfile
     container_name: heimdall_prod_backend
     restart: unless-stopped
     ports:
@@ -65,7 +65,7 @@ services:
   # 4. Nuxt 4 Web Frontend & Nitro BFF
   frontend:
     build:
-      context: ./frontend/web
+      context: ./src/frontend/web
       dockerfile: Dockerfile
     container_name: heimdall_prod_frontend
     restart: unless-stopped
@@ -91,7 +91,7 @@ services:
   agent:
     build:
       context: .
-      dockerfile: agent/Dockerfile
+      dockerfile: src/agent/Dockerfile
     container_name: heimdall_prod_agent
     restart: unless-stopped
     profiles:

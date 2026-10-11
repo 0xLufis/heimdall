@@ -1,0 +1,1247 @@
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
+import { 
+  Factory, 
+  Layers, 
+  Cpu, 
+  Search, 
+  Monitor, 
+  Zap, 
+  FolderTree, 
+  AlertOctagon, 
+  CheckCircle2, 
+  Clock, 
+  ExternalLink,
+  ChevronRight,
+  ChevronDown,
+  ShieldAlert,
+  SlidersHorizontal,
+  Plus,
+  Archive,
+  Wrench,
+  Trash2
+} from 'lucide-vue-next'
+import { Button } from '~/components/ui/button'
+import RbacButton from '~/components/common/RbacButton.vue'
+import { Badge } from '~/components/ui/badge'
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '~/components/ui/card'
+import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
+import DashboardInventoryStationComponentTreeModal from '~/components/dashboard/inventory/StationComponentTreeModal.vue'
+import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
+import DecommissionMachineModal from '~/components/machines/DecommissionMachineModal.vue'
+import DataDisplayWrapper, { type DisplayColumn, type DisplayAction } from '~/components/common/DataDisplayWrapper.vue'
+import MachinePictogram from '~/components/machines/MachinePictogram.vue'
+import { getGroupColor } from '~/utils/machineGroupColors'
+import { useAuthSession } from '~/composables/useAuthSession'
+import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
+import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
+import { useRoute, useRouter } from 'vue-router'
+import type { SearchInstanceConfig } from '~/types/search'
+
+definePageMeta({
+  layout: 'shadcn-dashboard'
+})
+
+const route = useRoute()
+const router = useRouter()
+const { user, canApproveLineStops, isOperativePlanner, isEngineer, isAdmin } = useAuthSession()
+const { openContextMenu } = useGlobalContextMenu()
+
+// Switchable view states
+const activeView = ref<'machines' | 'lines' | 'technologies'>('machines')
+const statusFilter = ref<'active_floor' | 'active' | 'inactive' | 'maintenance' | 'decommissioned' | 'dismantled' | 'all'>('active_floor')
+const isDecommissionModalOpen = ref(false)
+const selectedMachineToDecommission = ref<any>(null)
+const loading = ref(false)
+const searchQuery = ref('')
+
+const openDecommissionModal = (m: any) => {
+  selectedMachineToDecommission.value = m
+  isDecommissionModalOpen.value = true
+}
+
+const onMachineDecommissioned = () => {
+  fetchData()
+}
+
+const resetMachinesView = () => {
+  searchQuery.value = ''
+  activeView.value = 'machines'
+  router.push('/dashboard/machines')
+  fetchData()
+}
+
+const handleMachineContextMenu = (m: any, e: MouseEvent) => {
+  const pref = resolvePreferredTechnician(m.id, m.machineType, m.groupId, [], [])
+  openContextMenu(e, {
+    entityType: 'machine',
+    entityId: m.id,
+    entityName: m.displayName || m.name || m.customIdentifier,
+    handle: m.pinnedObjectHandle || undefined,
+    machineId: m.id,
+    machineName: m.name || m.customIdentifier,
+    controllerId: m.controllers?.[0]?.id,
+    controllerHostname: m.controllers?.[0]?.hostname,
+    ownerTeam: m.responsibleTeams?.[0] ? { name: m.responsibleTeams[0].name } : undefined,
+    ownerPerson: (m as any).preferredTechnicianName ? { name: (m as any).preferredTechnicianName } : (pref?.technicianName ? { name: pref.technicianName } : undefined)
+  })
+}
+
+watch(() => route.query, (q) => {
+  if (q.id) {
+    searchQuery.value = (q.search as string) || (q.query as string) || (q.id as string)
+    activeView.value = 'machines'
+  } else if (q.search) {
+    searchQuery.value = q.search as string
+    activeView.value = 'machines'
+  } else if (q.query) {
+    searchQuery.value = q.query as string
+    activeView.value = 'machines'
+  }
+  if (q.tree) {
+    openTreeForStation(q.tree as string)
+  }
+  if (q.decommission) {
+    const target = machines.value.find(m => m.id === q.decommission || m.customIdentifier === q.decommission)
+    if (target) {
+      openDecommissionModal(target)
+    }
+  }
+}, { immediate: true })
+
+// Raw data states
+const machines = ref<any[]>([])
+const lines = ref<any[]>([])
+const technologies = ref<any[]>([])
+const lineKpis = ref<Record<string, any>>({})
+
+// Modal state
+const selectedTreeStationId = ref<string>('')
+const isTreeModalOpen = ref(false)
+
+const isQuickViewModalOpen = ref(false)
+const quickViewTargetController = ref<any>(null)
+
+const openQuickView = (ctrl: any) => {
+  quickViewTargetController.value = {
+    id: ctrl.id || ctrl.hostname,
+    name: ctrl.name || ctrl.hostname,
+    hostname: ctrl.hostname,
+    ipAddress: ctrl.ipAddress || '192.168.1.100',
+    isOnline: ctrl.isOnline ?? true,
+    macAddress: ctrl.macAddress || '00:00:00:00:00:00',
+    vlanId: ctrl.vlanId || 100,
+    machineType: 'IndustrialController'
+  }
+  isQuickViewModalOpen.value = true
+}
+
+const openTreeForStation = (stationId: string) => {
+  selectedTreeStationId.value = stationId
+  isTreeModalOpen.value = true
+}
+
+const machinesSearchConfig: SearchInstanceConfig = {
+  instanceId: 'machines',
+  placeholder: 'Search: Type station ID, line:Line-1, tech:Assembly, or status:online...',
+  enableAutoTagging: true,
+  allowedTagKeys: ['station', 'line', 'tech', 'status', 'mfr']
+}
+
+const machineColumns: DisplayColumn[] = [
+  { key: 'name', label: 'Machine / Station', sortable: true },
+  { key: 'pictogram', label: 'Type / Pictogram', sortable: true },
+  { key: 'status', label: 'Status', sortable: true },
+  { key: 'groupId', label: 'Line / Group', sortable: true },
+  { key: 'controllers', label: 'IPCs / Controllers' },
+  { key: 'technician', label: 'Preferred Tech' }
+]
+
+const machineActions: DisplayAction[] = [
+  {
+    id: 'details',
+    label: 'Open Details',
+    icon: ExternalLink,
+    onClick: (m) => router.push(`/dashboard/machines/${m.id}`)
+  },
+  {
+    id: 'tree',
+    label: 'Station Tree',
+    icon: FolderTree,
+    onClick: (m) => openTreeForStation(m.id)
+  },
+  {
+    id: 'quickView',
+    label: 'Remote IPC (VNC)',
+    icon: Monitor,
+    hidden: (m) => !m.controllers || m.controllers.length === 0,
+    onClick: (m) => m.controllers?.[0] && openQuickView(m.controllers[0])
+  },
+  {
+    id: 'parts',
+    label: 'Inventory Parts',
+    icon: ChevronRight,
+    onClick: (m) => router.push(`/dashboard/inventory?query=station:${encodeURIComponent(m.name)}`)
+  },
+  {
+    id: 'decommission',
+    label: 'Decommission Machine',
+    icon: Trash2,
+    variant: 'destructive',
+    hidden: (m) => m.status === 'decommissioned' || m.status === 'dismantled',
+    onClick: (m) => openDecommissionModal(m)
+  }
+]
+
+// Fetch all machine views
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const [machRes, lineRes, techRes, kpiRes] = await Promise.allSettled([
+      $fetch<any[]>('/api/machines?includeDecommissioned=true').catch(() => $fetch<any[]>('/api/proxy/v1/machine')),
+      $fetch<any[]>('/api/proxy/v1/machine/by-line'),
+      $fetch<any[]>('/api/proxy/v1/machine/by-technology'),
+      $fetch<any[]>('/api/analytics/kpis')
+    ])
+
+    if (kpiRes.status === 'fulfilled' && Array.isArray(kpiRes.value)) {
+      const map: Record<string, any> = {}
+      for (const k of kpiRes.value) {
+        map[k.lineName] = k
+        map[k.lineId] = k
+      }
+      lineKpis.value = map
+    }
+
+    if (machRes.status === 'fulfilled' && Array.isArray(machRes.value)) {
+      machines.value = machRes.value
+    } else {
+      machines.value = [
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'OP10-Load',
+          displayName: 'Automatic Raw Material Infeed',
+          customIdentifier: 'LINE1-OP10',
+          machineType: 'Assembly',
+          groupId: 'Line 1',
+          status: 'active',
+          controllers: [{ id: 'c-1', hostname: 'IPC-L1-01', ipAddress: '192.168.1.110', isOnline: true }],
+          responsibleTeams: [{ name: 'Mechanical Maintenance' }]
+        },
+        {
+          id: '22222222-2222-2222-2222-222222222222',
+          name: 'OP20-Weld',
+          displayName: 'Laser Robotic Welding Cell',
+          customIdentifier: 'LINE1-OP20',
+          machineType: 'Welding',
+          groupId: 'Line 1',
+          status: 'active',
+          controllers: [{ id: 'c-2', hostname: 'IPC-L1-02', ipAddress: '192.168.1.111', isOnline: true }],
+          responsibleTeams: [{ name: 'Electrical Engineering' }]
+        },
+        {
+          id: '33333333-3333-3333-3333-333333333333',
+          name: 'OP30-Vision',
+          displayName: 'Cognex AI Inspection Chamber',
+          customIdentifier: 'LINE2-OP30',
+          machineType: 'Test',
+          groupId: 'Line 2',
+          status: 'maintenance',
+          controllers: [{ id: 'c-3', hostname: 'IPC-L2-03', ipAddress: '192.168.1.120', isOnline: true }],
+          responsibleTeams: [{ name: 'Quality Automation' }]
+        },
+        {
+          id: '44444444-4444-4444-4444-444444444444',
+          name: 'OP40-Fasten',
+          displayName: 'Multi-Spindle Screw Fastening Station',
+          customIdentifier: 'LINE1-OP40',
+          machineType: 'Fastening',
+          groupId: 'Line 1',
+          status: 'active',
+          controllers: [{ id: 'c-4', hostname: 'IPC-L1-04', ipAddress: '192.168.1.114', isOnline: true }],
+          responsibleTeams: [{ name: 'Assembly Engineering' }]
+        },
+        {
+          id: '55555555-5555-5555-5555-555555555555',
+          name: 'OP50-Dispense',
+          displayName: 'Precision Adhesive Gasket Dispenser',
+          customIdentifier: 'LINE2-OP50',
+          machineType: 'Dispensing',
+          groupId: 'Line 2',
+          status: 'inactive',
+          controllers: [{ id: 'c-5', hostname: 'IPC-L2-05', ipAddress: '192.168.1.125', isOnline: true }],
+          responsibleTeams: [{ name: 'Chemical & Dispensing' }]
+        },
+        {
+          id: '66666666-6666-6666-6666-666666666666',
+          name: 'OP60-Robot',
+          displayName: '6-Axis KUKA Palletizing Robot',
+          customIdentifier: 'LINE2-OP60',
+          machineType: 'Robotics',
+          groupId: 'Line 2',
+          status: 'active',
+          controllers: [{ id: 'c-6', hostname: 'IPC-L2-06', ipAddress: '192.168.1.128', isOnline: true }],
+          responsibleTeams: [{ name: 'Robotics Engineering' }]
+        },
+        {
+          id: '77777777-7777-7777-7777-777777777777',
+          name: 'OP70-LegacyPress',
+          displayName: 'Legacy Hydraulic Stamping Press #3',
+          customIdentifier: 'LINE1-OP70',
+          machineType: 'Pressing',
+          groupId: 'Line 1',
+          status: 'decommissioned',
+          decommissionReason: 'Replaced by High-Speed Servo Stamping Cell',
+          decommissionDate: '2026-08-15T10:00:00.000Z',
+          decommissionDisposition: 'retain',
+          controllers: [],
+          responsibleTeams: [{ name: 'Mechanical Maintenance' }]
+        }
+      ]
+    }
+
+    if (lineRes.status === 'fulfilled' && Array.isArray(lineRes.value)) {
+      lines.value = lineRes.value
+    } else {
+      // Reconstruct lines from machines
+      const lineMap: Record<string, any> = {}
+      for (const m of machines.value) {
+        const lName = m.groupId || 'Default Line'
+        if (!lineMap[lName]) {
+          lineMap[lName] = {
+            lineId: lName,
+            lineName: lName,
+            machineCount: 0,
+            controllersCount: 0,
+            machines: []
+          }
+        }
+        lineMap[lName].machineCount++
+        lineMap[lName].controllersCount += (m.controllers?.length || 0)
+        lineMap[lName].machines.push(m)
+      }
+      lines.value = Object.values(lineMap)
+    }
+
+    if (techRes.status === 'fulfilled' && Array.isArray(techRes.value)) {
+      technologies.value = techRes.value
+    } else {
+      // Reconstruct technologies from machines
+      const techMap: Record<string, any> = {}
+      for (const m of machines.value) {
+        const tName = m.machineType || 'General Assembly'
+        if (!techMap[tName]) {
+          techMap[tName] = {
+            technology: tName,
+            machineCount: 0,
+            machines: []
+          }
+        }
+        techMap[tName].machineCount++
+        techMap[tName].machines.push(m)
+      }
+      technologies.value = Object.values(techMap)
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+const onSearch = (q: string) => {
+  searchQuery.value = q
+}
+
+// Machine counts grouped by operational lifecycle status
+const machineCounts = computed(() => {
+  const all = machines.value || []
+  return {
+    total: all.length,
+    active_floor: all.filter(m => m.status !== 'decommissioned' && m.status !== 'dismantled').length,
+    active: all.filter(m => m.status === 'active' || (!m.status && m.status !== 'inactive' && m.status !== 'maintenance' && m.status !== 'decommissioned' && m.status !== 'dismantled')).length,
+    inactive: all.filter(m => m.status === 'inactive').length,
+    maintenance: all.filter(m => m.status === 'maintenance').length,
+    decommissioned: all.filter(m => m.status === 'decommissioned').length,
+    dismantled: all.filter(m => m.status === 'dismantled').length
+  }
+})
+
+// Filter machines by status and search query
+const filteredMachines = computed(() => {
+  let list = machines.value || []
+
+  // Status Filter
+  if (statusFilter.value === 'active_floor') {
+    list = list.filter(m => m.status !== 'decommissioned' && m.status !== 'dismantled')
+  } else if (statusFilter.value === 'active') {
+    list = list.filter(m => m.status === 'active' || (!m.status && m.status !== 'inactive' && m.status !== 'maintenance' && m.status !== 'decommissioned' && m.status !== 'dismantled'))
+  } else if (statusFilter.value !== 'all') {
+    list = list.filter(m => m.status === statusFilter.value)
+  }
+
+  const q = searchQuery.value.toLowerCase().trim()
+  if (!q) return list
+
+  const tagMatches: Record<string, string> = {}
+  const tagRegex = /(\w+):"([^"]+)"|(\w+):(\S+)/g
+  let match
+  while ((match = tagRegex.exec(q)) !== null) {
+    const key = match[1] || match[3]
+    const val = match[2] || match[4]
+    tagMatches[key.toLowerCase()] = val.toLowerCase()
+  }
+  const cleanText = q.replace(tagRegex, '').trim()
+
+  return list.filter(m => {
+    for (const [tagKey, tagVal] of Object.entries(tagMatches)) {
+      if (tagKey === 'station' && !m.name?.toLowerCase().includes(tagVal) && !m.customIdentifier?.toLowerCase().includes(tagVal)) return false
+      if (tagKey === 'line' && !m.groupId?.toLowerCase().includes(tagVal)) return false
+      if (tagKey === 'tech' && !m.machineType?.toLowerCase().includes(tagVal)) return false
+      if (tagKey === 'status' && !m.status?.toLowerCase().includes(tagVal)) return false
+    }
+
+    if (route.query.id && m.id && m.id.toLowerCase() === (route.query.id as string).toLowerCase()) {
+      return true
+    }
+
+    if (cleanText) {
+      const idMatch = m.id && (m.id.toLowerCase() === cleanText || m.id.toLowerCase().includes(cleanText))
+      const nameMatch = (m.name || '').toLowerCase().includes(cleanText)
+      const dispMatch = (m.displayName || '').toLowerCase().includes(cleanText)
+      const identMatch = (m.customIdentifier || '').toLowerCase().includes(cleanText)
+      const typeMatch = (m.machineType || '').toLowerCase().includes(cleanText)
+      const lineMatch = (m.groupId || '').toLowerCase().includes(cleanText)
+      const statusMatch = (m.status || '').toLowerCase().includes(cleanText)
+      const ctrlMatch = (m.controllers || []).some((c: any) => (c.hostname || '').toLowerCase().includes(cleanText) || (c.ipAddress || '').toLowerCase().includes(cleanText))
+      return idMatch || nameMatch || dispMatch || identMatch || typeMatch || lineMatch || statusMatch || ctrlMatch
+    }
+
+    return true
+  })
+})
+
+// Filtered lines with nested matching machines
+const filteredLines = computed(() => {
+  const machIds = new Set(filteredMachines.value.map(m => m.id))
+  return lines.value.map(l => {
+    const matched = (l.machines || []).filter((m: any) => machIds.has(m.id))
+    return {
+      ...l,
+      machineCount: matched.length,
+      machines: matched
+    }
+  }).filter(l => l.machineCount > 0)
+})
+
+// Filtered technologies with nested matching machines
+const filteredTechnologies = computed(() => {
+  const machIds = new Set(filteredMachines.value.map(m => m.id))
+  return technologies.value.map(t => {
+    const matched = (t.machines || []).filter((m: any) => machIds.has(m.id))
+    return {
+      ...t,
+      machineCount: matched.length,
+      machines: matched
+    }
+  }).filter(t => t.machineCount > 0)
+})
+
+// Quick line stop request handler (simulation)
+const lineStopRequested = ref<Record<string, boolean>>({})
+const requestLineStop = (lineName: string) => {
+  lineStopRequested.value[lineName] = !lineStopRequested.value[lineName]
+}
+
+// Foldable state for Lines and Technologies
+const foldedLines = ref<Record<string, boolean>>({})
+const foldedTechnologies = ref<Record<string, boolean>>({})
+
+const toggleLineFold = (lineKey: string) => {
+  foldedLines.value[lineKey] = !foldedLines.value[lineKey]
+}
+
+const allLinesFolded = computed(() => {
+  if (!filteredLines.value.length) return false
+  return filteredLines.value.every(l => foldedLines.value[l.lineId || l.lineName])
+})
+
+const toggleAllLinesFold = () => {
+  const target = !allLinesFolded.value
+  for (const l of filteredLines.value) {
+    foldedLines.value[l.lineId || l.lineName] = target
+  }
+}
+
+const toggleTechnologyFold = (techKey: string) => {
+  foldedTechnologies.value[techKey] = !foldedTechnologies.value[techKey]
+}
+
+const allTechnologiesFolded = computed(() => {
+  if (!filteredTechnologies.value.length) return false
+  return filteredTechnologies.value.every(t => foldedTechnologies.value[t.technology])
+})
+
+const toggleAllTechnologiesFold = () => {
+  const target = !allTechnologiesFolded.value
+  for (const t of filteredTechnologies.value) {
+    foldedTechnologies.value[t.technology] = target
+  }
+}
+
+onMounted(() => {
+  fetchData()
+})
+</script>
+
+<template>
+  <div class="space-y-6 animate-in fade-in duration-300">
+    <!-- Header Area with View Mode Switchers -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-border">
+      <div>
+        <div
+          role="button"
+          tabindex="0"
+          @click="resetMachinesView"
+          @keydown.enter="resetMachinesView"
+          class="flex items-center gap-3 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-muted/50"
+          title="Click to reset filters and refresh production machinery"
+        >
+          <div class="p-2.5 rounded-xl bg-muted border border-border text-foreground group-hover:scale-105 group-hover:bg-accent transition-all">
+            <Factory class="h-6 w-6" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
+              {{ $t('machines.pageTitle', 'Production Machinery & Lines') }}
+            </h1>
+            <p class="text-sm text-muted-foreground mt-0.5 transition-colors">
+              {{ $t('machines.pageDescription', 'Stations, manufacturing cells, production lines, and engineering discipline technologies') }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Global Summary Badges -->
+        <div class="flex flex-wrap items-center gap-2 mt-4">
+          <button
+            type="button"
+            @click="activeView = 'machines'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'machines' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+            :title="$t('machines.switchToMachines', 'Switch to Machines view')"
+          >
+            <Factory class="w-3.5 h-3.5" />
+            <span>{{ $t('machines.stations', 'Stations') }}:</span>
+            <span class="font-mono font-semibold">{{ machines.length }}</span>
+          </button>
+          <button
+            type="button"
+            @click="activeView = 'lines'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'lines' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+            :title="$t('machines.switchToLines', 'Switch to Lines view')"
+          >
+            <Layers class="w-3.5 h-3.5" />
+            <span>{{ $t('machines.lines', 'Lines') }}:</span>
+            <span class="font-mono font-semibold">{{ lines.length }}</span>
+          </button>
+          <button
+            type="button"
+            @click="activeView = 'technologies'"
+            class="flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+            :class="activeView === 'technologies' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+            :title="$t('machines.switchToTechnologies', 'Switch to Technologies view')"
+          >
+            <Cpu class="w-3.5 h-3.5" />
+            <span>{{ $t('machines.technologies', 'Technologies') }}:</span>
+            <span class="font-mono font-semibold">{{ technologies.length }}</span>
+          </button>
+          <div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <span class="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>
+              {{ $t('machines.topologyLiveSync', 'Topology Live Sync Active') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 View Mode Switcher -->
+      <div class="flex flex-wrap items-center gap-2 shrink-0">
+        <div class="bg-muted/80 p-1 rounded-lg border border-border shadow-xs flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="activeView = 'machines'"
+            :class="activeView === 'machines' ? 'bg-background text-foreground shadow-xs border border-border/60' : 'text-muted-foreground hover:text-foreground'"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
+          >
+            <Factory class="w-3.5 h-3.5" />
+            <span>{{ $t('nav.machines', 'Machines') }}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="activeView = 'lines'"
+            :class="activeView === 'lines' ? 'bg-background text-foreground shadow-xs border border-border/60' : 'text-muted-foreground hover:text-foreground'"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
+          >
+            <Layers class="w-3.5 h-3.5" />
+            <span>{{ $t('machines.lines', 'Lines') }}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="activeView = 'technologies'"
+            :class="activeView === 'technologies' ? 'bg-background text-foreground shadow-xs border border-border/60' : 'text-muted-foreground hover:text-foreground'"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition-all h-8 flex items-center gap-1.5"
+          >
+            <Cpu class="w-3.5 h-3.5" />
+            <span>{{ $t('machines.technologies', 'Technologies') }}</span>
+          </Button>
+        </div>
+
+        <NuxtLink to="/dashboard/machine-groups">
+          <Button
+            variant="outline"
+            size="sm"
+            class="border-border bg-card hover:bg-accent text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
+            title="Manage Machine Groups and Factory Hierarchy"
+          >
+            <FolderTree class="w-3.5 h-3.5 text-primary" />
+            <span>Machine Groups</span>
+          </Button>
+        </NuxtLink>
+      </div>
+    </div>
+
+    <!-- Unified HeimdallSearch Bar across all 3 views -->
+    <div class="max-w-5xl mx-auto w-full space-y-3">
+      <HeimdallSearchBar
+        :config="machinesSearchConfig"
+        :immediate="true"
+        @search="onSearch"
+      />
+
+      <!-- Operational Status Filter Bar (active floor vs decommissioned/all) -->
+      <div v-if="activeView === 'machines'" class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+        <button
+          type="button"
+          @click="statusFilter = 'active_floor'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'active_floor' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span>Active Floor</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'active_floor' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.active_floor }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'active'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'active' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span class="size-1.5 rounded-full bg-emerald-500" />
+          <span>Active</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'active' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.active }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'inactive'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'inactive' ? 'bg-zinc-700 text-white border-zinc-700 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span class="size-1.5 rounded-full bg-zinc-400" />
+          <span>Inactive</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'inactive' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.inactive }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'maintenance'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'maintenance' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span class="size-1.5 rounded-full bg-amber-400" />
+          <span>Maintenance</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'maintenance' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.maintenance }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'decommissioned'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'decommissioned' ? 'bg-rose-700 text-white border-rose-700 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <Archive class="size-3 text-rose-400" />
+          <span>Decommissioned</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'decommissioned' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.decommissioned }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'dismantled'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'dismantled' ? 'bg-purple-700 text-white border-purple-700 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <Wrench class="size-3 text-purple-400" />
+          <span>Dismantled</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'dismantled' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.dismantled }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          @click="statusFilter = 'all'"
+          class="px-3 py-1.5 rounded-lg border font-medium transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+          :class="statusFilter === 'all' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'"
+        >
+          <span>All</span>
+          <span class="px-1.5 py-0.2 rounded-full font-mono text-[10px]" :class="statusFilter === 'all' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'">
+            {{ machineCounts.total }}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- VIEW 1: Machinery Inventory with DataDisplayWrapper -->
+    <div v-if="activeView === 'machines'" class="space-y-4">
+      <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+        <span>Station Machinery Inventory ({{ filteredMachines.length }})</span>
+      </div>
+
+      <DataDisplayWrapper
+        :items="filteredMachines"
+        :columns="machineColumns"
+        :actions="machineActions"
+        default-action-label="Details"
+        :get-item-id="(m) => m.id"
+        card-grid-class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        @item-click="(m) => router.push(`/dashboard/machines/${m.id}`)"
+        @default-action="(m) => router.push(`/dashboard/machines/${m.id}`)"
+      >
+        <!-- Card View Slot -->
+        <template #card="{ item: mach }">
+          <div
+            @contextmenu="handleMachineContextMenu(mach, $event)"
+            class="space-y-3 cursor-pointer"
+          >
+            <!-- Card Header with Machine Pictogram and Group Color Coding -->
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <div
+                  class="p-2 rounded-xl border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+                  :style="{
+                    backgroundColor: getGroupColor(mach.groupId).bg,
+                    borderColor: getGroupColor(mach.groupId).border,
+                    color: getGroupColor(mach.groupId).text
+                  }"
+                >
+                  <MachinePictogram :type="mach.machineType" class="w-6 h-6" />
+                </div>
+                <div class="min-w-0">
+                  <h4 class="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                    {{ mach.name }}
+                  </h4>
+                  <p class="text-xs text-muted-foreground font-mono truncate">
+                    {{ mach.customIdentifier || 'CELL-ID' }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex flex-col items-end gap-1 shrink-0">
+                <Badge
+                  variant="outline"
+                  class="text-[10px] font-medium font-mono uppercase tracking-wider px-1.5 py-0.2 rounded"
+                  :class="{
+                    'text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10': mach.status === 'active' || (!mach.status && mach.status !== 'inactive' && mach.status !== 'maintenance' && mach.status !== 'decommissioned' && mach.status !== 'dismantled'),
+                    'text-zinc-500 dark:text-zinc-400 border-zinc-500/30 bg-zinc-500/10': mach.status === 'inactive',
+                    'text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10': mach.status === 'maintenance',
+                    'text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10': mach.status === 'decommissioned',
+                    'text-purple-600 dark:text-purple-400 border-purple-500/30 bg-purple-500/10': mach.status === 'dismantled'
+                  }"
+                >
+                  {{ mach.status || 'active' }}
+                </Badge>
+                <span
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border"
+                  :style="{
+                    borderColor: getGroupColor(mach.groupId).border,
+                    color: getGroupColor(mach.groupId).text,
+                    backgroundColor: getGroupColor(mach.groupId).bg
+                  }"
+                >
+                  <span class="size-1 rounded-full" :style="{ backgroundColor: getGroupColor(mach.groupId).border }" />
+                  {{ mach.groupId || 'Default Line' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Display Name & Type -->
+            <div class="text-xs text-muted-foreground font-medium">
+              {{ mach.displayName || mach.machineType || 'Industrial Automation Station' }}
+            </div>
+
+            <!-- Controller PCs associated -->
+            <div class="space-y-1">
+              <div class="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                <Monitor class="w-3 h-3" />
+                <span>Host Controller IPCs ({{ mach.controllers?.length || 0 }})</span>
+              </div>
+
+              <div v-if="mach.controllers && mach.controllers.length > 0" class="flex flex-wrap gap-1.5">
+                <div
+                  v-for="c in mach.controllers"
+                  :key="c.id || c.hostname"
+                  @click.stop="openQuickView(c)"
+                  class="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-[11px] font-mono text-foreground flex items-center gap-1.5 cursor-pointer hover:border-primary/50 hover:bg-muted transition-all shadow-xs"
+                  title="Click to launch Remote Quick View (VNC / DameWare)"
+                >
+                  <span class="size-1.5 rounded-full bg-emerald-500" />
+                  <span>{{ c.hostname }}</span>
+                  <Monitor class="w-3 h-3 text-muted-foreground hover:text-emerald-500 ml-0.5" />
+                </div>
+              </div>
+              <div v-else class="text-[11px] text-muted-foreground italic">
+                No dedicated IPC assigned
+              </div>
+            </div>
+
+            <!-- Technologies Badges -->
+            <div v-if="mach.technologies && mach.technologies.length > 0" class="flex flex-wrap gap-1 pt-1">
+              <Badge
+                v-for="t in mach.technologies"
+                :key="t"
+                variant="outline"
+                class="text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+              >
+                {{ t }}
+              </Badge>
+            </div>
+
+            <!-- Four Quadrants Quick Snapshot -->
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border/50 text-[11px]">
+              <div class="flex items-center gap-1.5 text-muted-foreground">
+                <Cpu class="size-3.5 text-blue-500" />
+                <span>Hardware Slots:</span>
+                <span class="font-bold text-foreground font-mono">{{ mach.name.includes('OP20') ? 4 : (mach.name.includes('OP10') ? 3 : 2) }}</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-muted-foreground">
+                <Layers class="size-3.5 text-purple-500" />
+                <span>SW Assets:</span>
+                <span class="font-bold text-foreground font-mono">2</span>
+              </div>
+            </div>
+
+            <!-- Inspect Four Quadrants Action -->
+            <div class="pt-2 flex items-center justify-between">
+              <NuxtLink :to="`/dashboard/machines/${mach.id}`" class="w-full">
+                <Button variant="outline" size="sm" class="w-full h-7 text-xs font-bold border-border bg-card hover:bg-muted text-foreground cursor-pointer flex items-center justify-center gap-1.5">
+                  <span>Inspect Four Quadrants</span>
+                  <ExternalLink class="size-3 text-primary" />
+                </Button>
+              </NuxtLink>
+            </div>
+          </div>
+        </template>
+
+        <!-- Table View Columns Custom Rendering -->
+        <template #cell-name="{ item: mach }">
+          <div class="flex items-center gap-2">
+            <div
+              class="p-1.5 rounded-lg border flex items-center justify-center shrink-0"
+              :style="{
+                backgroundColor: getGroupColor(mach.groupId).bg,
+                borderColor: getGroupColor(mach.groupId).border,
+                color: getGroupColor(mach.groupId).text
+              }"
+            >
+              <MachinePictogram :type="mach.machineType" class="size-4" />
+            </div>
+            <div>
+              <div class="font-bold text-foreground">{{ mach.name }}</div>
+              <div class="text-[10px] text-muted-foreground font-mono">{{ mach.customIdentifier || mach.id }}</div>
+            </div>
+          </div>
+        </template>
+
+        <template #cell-pictogram="{ item: mach }">
+          <div class="flex items-center gap-1.5">
+            <MachinePictogram :type="mach.machineType" class="size-4 text-primary shrink-0" />
+            <span class="text-xs font-medium text-foreground">{{ mach.machineType || 'General Assembly' }}</span>
+          </div>
+        </template>
+
+        <template #cell-status="{ item: mach }">
+          <Badge
+            variant="outline"
+            class="text-[10px] font-medium font-mono uppercase tracking-wider px-1.5 py-0.2 rounded"
+            :class="{
+              'text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10': mach.status === 'active' || (!mach.status && mach.status !== 'inactive' && mach.status !== 'maintenance' && mach.status !== 'decommissioned' && mach.status !== 'dismantled'),
+              'text-zinc-500 dark:text-zinc-400 border-zinc-500/30 bg-zinc-500/10': mach.status === 'inactive',
+              'text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10': mach.status === 'maintenance',
+              'text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10': mach.status === 'decommissioned',
+              'text-purple-600 dark:text-purple-400 border-purple-500/30 bg-purple-500/10': mach.status === 'dismantled'
+            }"
+          >
+            {{ mach.status || 'active' }}
+          </Badge>
+        </template>
+
+        <template #cell-groupId="{ item: mach }">
+          <span
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border"
+            :style="{
+              borderColor: getGroupColor(mach.groupId).border,
+              color: getGroupColor(mach.groupId).text,
+              backgroundColor: getGroupColor(mach.groupId).bg
+            }"
+          >
+            <span class="size-1.5 rounded-full" :style="{ backgroundColor: getGroupColor(mach.groupId).border }" />
+            {{ mach.groupId || 'Unassigned' }}
+          </span>
+        </template>
+
+        <template #cell-controllers="{ item: mach }">
+          <div class="flex flex-wrap gap-1">
+            <span
+              v-for="c in (mach.controllers || [])"
+              :key="c.hostname"
+              class="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono border border-border"
+            >
+              {{ c.hostname }}
+            </span>
+            <span v-if="!mach.controllers || mach.controllers.length === 0" class="text-muted-foreground text-[10px] italic">None</span>
+          </div>
+        </template>
+
+        <template #cell-technician="{ item: mach }">
+          <span class="text-xs text-muted-foreground">
+            {{ mach.preferredTechnicianName || resolvePreferredTechnician(mach.id, mach.machineType, mach.groupId, [], [])?.technicianName || '—' }}
+          </span>
+        </template>
+      </DataDisplayWrapper>
+    </div>
+
+    <!-- VIEW 2: Cards of Lines (with nested table inside) -->
+    <div v-if="activeView === 'lines'" class="space-y-6">
+      <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+        <span>Production Lines Topology ({{ filteredLines.length }})</span>
+        <button
+          type="button"
+          @click="toggleAllLinesFold"
+          class="text-xs font-normal normal-case text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
+        >
+          <ChevronDown
+            class="w-3.5 h-3.5 transition-transform duration-200"
+            :class="{ '-rotate-90': allLinesFolded }"
+          />
+          <span>{{ allLinesFolded ? 'Expand all' : 'Fold all' }}</span>
+        </button>
+      </div>
+
+      <div v-for="line in filteredLines" :key="line.lineId || line.lineName" class="space-y-3">
+        <Card class="bg-card border-border rounded-xl shadow-xs overflow-hidden">
+          <CardHeader
+            role="button"
+            :aria-expanded="!foldedLines[line.lineId || line.lineName]"
+            tabindex="0"
+            class="p-4 sm:p-5 bg-muted/30 cursor-pointer select-none transition-colors hover:bg-muted/50"
+            :class="{ 'border-b border-border': !foldedLines[line.lineId || line.lineName] }"
+            @click="toggleLineFold(line.lineId || line.lineName)"
+            @keydown.enter.prevent="toggleLineFold(line.lineId || line.lineName)"
+            @keydown.space.prevent="toggleLineFold(line.lineId || line.lineName)"
+          >
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <div class="p-2 rounded-lg bg-muted text-foreground border border-border">
+                  <Layers class="w-5 h-5" />
+                </div>
+                <div>
+                  <CardTitle class="text-base font-semibold text-foreground flex items-center gap-2">
+                    <span>{{ line.lineName }}</span>
+                    <Badge variant="outline" class="text-xs font-mono font-medium text-muted-foreground border-border bg-muted/60 px-2 py-0.5 rounded-md">
+                      Manufacturing Line
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription class="text-xs text-muted-foreground mt-0.5">
+                    {{ line.machineCount }} Stations Deployed • {{ line.controllersCount || 0 }} Industrial PCs
+                  </CardDescription>
+
+                  <!-- Operational KPI Row (PM-003) -->
+                  <div v-if="lineKpis[line.lineName] || lineKpis[line.id]" class="mt-2.5 flex flex-wrap items-center gap-2 text-xs font-mono">
+                    <span class="px-2 py-0.5 rounded bg-muted/60 border border-border text-foreground">
+                      OEE: <strong class="text-emerald-600 dark:text-emerald-400">{{ (lineKpis[line.lineName] || lineKpis[line.id]).oee }}%</strong>
+                    </span>
+                    <span class="px-2 py-0.5 rounded bg-muted/60 border border-border text-foreground">
+                      Avail: <strong class="text-emerald-600 dark:text-emerald-400">{{ (lineKpis[line.lineName] || lineKpis[line.id]).availability }}%</strong>
+                    </span>
+                    <span class="px-2 py-0.5 rounded bg-muted/60 border border-border text-foreground">
+                      MTBF: <strong class="text-foreground">{{ (lineKpis[line.lineName] || lineKpis[line.id]).mtbfHours }}h</strong>
+                    </span>
+                    <span class="px-2 py-0.5 rounded bg-muted/60 border border-border text-foreground">
+                      MTTR: <strong class="text-foreground">{{ (lineKpis[line.lineName] || lineKpis[line.id]).mttrMinutes }}m</strong>
+                    </span>
+                    <NuxtLink
+                      to="/dashboard/analytics"
+                      @click.stop
+                      @keydown.stop
+                      class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-1"
+                    >
+                      <span>Analytics Hub</span>
+                      <ChevronRight class="w-3.5 h-3.5" />
+                    </NuxtLink>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Operative Planner Line Stop Action -->
+              <div class="flex items-center gap-2">
+                <RbacButton
+                  :has-permission="canApproveLineStops || isOperativePlanner"
+                  :tooltip="'Requires Operative Planner, Plant Director, or Plant Engineering Manager privilege to initiate line stops.'"
+                  variant="outline"
+                  size="sm"
+                  @click.stop="requestLineStop(line.lineName)"
+                  @keydown.stop
+                  :class="lineStopRequested[line.lineName] ? 'border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-500/10' : 'border-border text-muted-foreground hover:text-rose-600 hover:border-rose-500/50'"
+                  class="h-8 px-3 text-xs font-medium rounded-lg gap-1.5"
+                >
+                  <AlertOctagon class="w-3.5 h-3.5" />
+                  <span>{{ lineStopRequested[line.lineName] ? 'Line Stop Pending' : 'Request Line Stop' }}</span>
+                </RbacButton>
+
+                <div
+                  class="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  :title="foldedLines[line.lineId || line.lineName] ? 'Unfold stations list' : 'Fold stations list'"
+                >
+                  <ChevronDown
+                    class="w-4 h-4 transition-transform duration-200"
+                    :class="{ '-rotate-90': foldedLines[line.lineId || line.lineName] }"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+
+          <!-- Nested Table of Machines on this Line -->
+          <CardContent v-show="!foldedLines[line.lineId || line.lineName]" class="p-0">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-muted/50 border-b border-border">
+                  <tr>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Station Identity</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Technology</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Host Controllers</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                  <tr
+                    v-for="mach in line.machines"
+                    :key="mach.id"
+                    class="hover:bg-muted/40 transition-colors"
+                  >
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2.5">
+                        <div class="size-2 rounded-full bg-emerald-500" />
+                        <div>
+                          <div class="text-xs font-semibold text-foreground">
+                            {{ mach.name }}
+                          </div>
+                          <div class="text-xs text-muted-foreground mt-0.5">
+                            {{ mach.displayName || mach.customIdentifier }}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td class="px-4 py-3">
+                      <Badge variant="outline" class="text-xs font-mono font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                        {{ mach.machineType || 'Assembly' }}
+                      </Badge>
+                    </td>
+
+                    <td class="px-4 py-3">
+                      <div class="flex flex-wrap gap-1">
+                        <span
+                          v-for="c in mach.controllers"
+                          :key="c.id || c.hostname"
+                          @click="openQuickView(c)"
+                          class="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-xs font-mono text-foreground cursor-pointer hover:border-primary/50 hover:bg-muted transition-all shadow-xs flex items-center gap-1"
+                          title="Click to launch Remote Quick View"
+                        >
+                          <span class="size-1.5 rounded-full bg-emerald-500" />
+                          <span>{{ c.hostname }}</span>
+                        </span>
+                        <span v-if="!mach.controllers?.length" class="text-xs font-mono text-muted-foreground italic">
+                          None
+                        </span>
+                      </div>
+                    </td>
+
+                    <td class="px-4 py-3 text-right">
+                      <div class="flex items-center justify-end gap-1.5">
+                        <Button
+                          v-if="mach.controllers?.length"
+                          variant="ghost"
+                          size="sm"
+                          @click="openQuickView(mach.controllers[0])"
+                          class="h-7 px-2 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-xs font-medium rounded-md gap-1"
+                          title="Launch Remote Quick View"
+                        >
+                          <Monitor class="w-3.5 h-3.5" />
+                          <span>Quick View</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          @click="openTreeForStation(mach.id)"
+                          class="h-7 px-2 text-muted-foreground hover:text-foreground text-xs font-medium rounded-md gap-1"
+                        >
+                          <FolderTree class="w-3.5 h-3.5" />
+                          <span>Tree</span>
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+
+    <!-- VIEW 3: Technologies Grouping -->
+    <div v-if="activeView === 'technologies'" class="space-y-6">
+      <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+        <span>Discipline & Technology Groupings ({{ filteredTechnologies.length }})</span>
+        <button
+          type="button"
+          @click="toggleAllTechnologiesFold"
+          class="text-xs font-normal normal-case text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
+        >
+          <ChevronDown
+            class="w-3.5 h-3.5 transition-transform duration-200"
+            :class="{ '-rotate-90': allTechnologiesFolded }"
+          />
+          <span>{{ allTechnologiesFolded ? 'Expand all' : 'Fold all' }}</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <Card
+          v-for="tech in filteredTechnologies"
+          :key="tech.technology"
+          class="bg-card border-border rounded-xl shadow-xs overflow-hidden flex flex-col"
+        >
+          <CardHeader
+            role="button"
+            :aria-expanded="!foldedTechnologies[tech.technology]"
+            tabindex="0"
+            class="p-4 sm:p-5 bg-muted/30 cursor-pointer select-none transition-colors hover:bg-muted/50"
+            :class="{ 'border-b border-border': !foldedTechnologies[tech.technology] }"
+            @click="toggleTechnologyFold(tech.technology)"
+            @keydown.enter.prevent="toggleTechnologyFold(tech.technology)"
+            @keydown.space.prevent="toggleTechnologyFold(tech.technology)"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                  <Cpu class="w-5 h-5" />
+                </div>
+                <div>
+                  <CardTitle class="text-base font-semibold text-foreground">
+                    {{ tech.technology }}
+                  </CardTitle>
+                  <CardDescription class="text-xs text-muted-foreground mt-0.5">
+                    {{ tech.machineCount }} Stations in this engineering discipline
+                  </CardDescription>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <Badge variant="outline" class="text-xs font-mono px-2 py-0.5 rounded-md text-teal-700 dark:text-teal-300 border-teal-500/30 bg-teal-500/10 font-medium">
+                  {{ tech.machineCount }} Units
+                </Badge>
+
+                <div
+                  class="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  :title="foldedTechnologies[tech.technology] ? 'Unfold stations list' : 'Fold stations list'"
+                >
+                  <ChevronDown
+                    class="w-4 h-4 transition-transform duration-200"
+                    :class="{ '-rotate-90': foldedTechnologies[tech.technology] }"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent v-show="!foldedTechnologies[tech.technology]" class="p-3 sm:p-4 space-y-2">
+            <div
+              v-for="mach in tech.machines"
+              :key="mach.id"
+              class="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 border border-border hover:border-primary/40 transition-colors"
+            >
+              <div class="flex items-center gap-2.5">
+                <div class="size-2 rounded-full bg-emerald-500" />
+                <div>
+                  <div class="text-xs font-semibold text-foreground">
+                    {{ mach.name }}
+                  </div>
+                  <div class="text-xs text-muted-foreground">
+                    {{ mach.displayName || mach.customIdentifier }} • Line: {{ mach.groupId || 'Line 1' }}
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                @click="openTreeForStation(mach.id)"
+                class="h-7 px-2.5 border-border bg-card text-foreground hover:bg-accent text-xs font-medium rounded-md gap-1 shadow-xs"
+              >
+                <FolderTree class="w-3.5 h-3.5" />
+                <span>Tree</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+
+    <!-- On-Demand Station Component Tree Visualizer Modal -->
+    <DashboardInventoryStationComponentTreeModal
+      :open="isTreeModalOpen"
+      :station-id="selectedTreeStationId"
+      @update:open="isTreeModalOpen = $event"
+    />
+
+    <!-- Remote Quick View Modal (VNC / DameWare MRC / RDP) -->
+    <RemoteQuickViewModal
+      :controller="quickViewTargetController"
+      :open="isQuickViewModalOpen"
+      @update:open="isQuickViewModalOpen = $event"
+    />
+
+    <!-- Decommission Machine Modal -->
+    <DecommissionMachineModal
+      :open="isDecommissionModalOpen"
+      :machine="selectedMachineToDecommission"
+      @update:open="isDecommissionModalOpen = $event"
+      @decommissioned="onMachineDecommissioned"
+    />
+  </div>
+</template>

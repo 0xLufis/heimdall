@@ -286,14 +286,14 @@ describe('Modular Features Architecture & Frontend i18n Suite', () => {
     it('enables, disables, and toggles plugins', async () => {
       const { isPluginEnabled, disablePlugin, enablePlugin, togglePlugin } = usePlugins()
       
-      // Disable sap-pm-bridge if enabled, or toggle it
-      expect(isPluginEnabled('sap-pm-bridge')).toBe(false)
-      const enabled = await enablePlugin('sap-pm-bridge')
+      // Disable opc-ua-gateway if enabled, or toggle it
+      expect(isPluginEnabled('opc-ua-gateway')).toBe(false)
+      const enabled = await enablePlugin('opc-ua-gateway')
       expect(enabled).toBe(true)
-      expect(isPluginEnabled('sap-pm-bridge')).toBe(true)
+      expect(isPluginEnabled('opc-ua-gateway')).toBe(true)
 
-      await togglePlugin('sap-pm-bridge')
-      expect(isPluginEnabled('sap-pm-bridge')).toBe(false)
+      await togglePlugin('opc-ua-gateway')
+      expect(isPluginEnabled('opc-ua-gateway')).toBe(false)
     })
 
     it('prevents disabling required core plugin', async () => {

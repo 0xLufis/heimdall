@@ -176,7 +176,7 @@ start-service TARGET:
             just db-up
             if ! [ -f {{PID_DIR}}/backend.pid ] || ! kill -0 $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null; then
                 echo ">> Starting Backend REST API & gRPC Ingestion..."
-                setsid dotnet watch --project backend/App.Backend.Api run </dev/null > {{LOG_DIR}}/backend.log 2>&1 &
+                setsid dotnet watch --project src/backend/App.Backend.Api run </dev/null > {{LOG_DIR}}/backend.log 2>&1 &
                 echo $! > {{PID_DIR}}/backend.pid
                 ln -sf {{LOG_DIR}}/backend.log /tmp/heimdall-backend.log 2>/dev/null || true
             fi
@@ -184,7 +184,7 @@ start-service TARGET:
         frontend)
             if ! [ -f {{PID_DIR}}/frontend.pid ] || ! kill -0 $(cat {{PID_DIR}}/frontend.pid 2>/dev/null) 2>/dev/null; then
                 echo ">> Starting Nuxt 4 Web Frontend on http://localhost:3000..."
-                setsid bun run --cwd frontend/web dev </dev/null > {{LOG_DIR}}/frontend.log 2>&1 &
+                setsid bun run --cwd src/frontend/web dev </dev/null > {{LOG_DIR}}/frontend.log 2>&1 &
                 echo $! > {{PID_DIR}}/frontend.pid
                 ln -sf {{LOG_DIR}}/frontend.log /tmp/heimdall-nuxt.log 2>/dev/null || true
             fi
@@ -192,7 +192,7 @@ start-service TARGET:
         agent)
             if ! [ -f {{PID_DIR}}/agent.pid ] || ! kill -0 $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null; then
                 echo ">> Starting Host Linux Edge Agent Daemon..."
-                setsid dotnet watch --project agent/App.Agent.Daemon run </dev/null > {{LOG_DIR}}/agent.log 2>&1 &
+                setsid dotnet watch --project src/agent/App.Agent.Daemon run </dev/null > {{LOG_DIR}}/agent.log 2>&1 &
                 echo $! > {{PID_DIR}}/agent.pid
                 ln -sf {{LOG_DIR}}/agent.log /tmp/heimdall-agent.log 2>/dev/null || true
             fi
@@ -243,6 +243,7 @@ stop-service TARGET:
                 kill $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null || true
                 rm -f {{PID_DIR}}/backend.pid
             fi
+            pkill -f "dotnet watch.*src/backend/App.Backend.Api" 2>/dev/null || true
             pkill -f "dotnet watch.*backend/App.Backend.Api" 2>/dev/null || true
             pkill -f "App.Backend.Api" 2>/dev/null || true
             if command -v fuser >/dev/null 2>&1; then
@@ -268,6 +269,7 @@ stop-service TARGET:
                 kill $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null || true
                 rm -f {{PID_DIR}}/agent.pid
             fi
+            pkill -f "dotnet watch.*src/agent/App.Agent.Daemon" 2>/dev/null || true
             pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
             pkill -f "App.Agent.Daemon" 2>/dev/null || true
             if command -v fuser >/dev/null 2>&1; then
@@ -383,7 +385,7 @@ windows-build:
     set -euo pipefail
     echo ">> Publishing Windows Agent binary (win-x64, self-contained)..."
     mkdir -p {{SHARED_WIN_AGENT_DIR}}
-    dotnet publish agent/App.Agent.Daemon/App.Agent.Daemon.csproj \
+    dotnet publish src/agent/App.Agent.Daemon/App.Agent.Daemon.csproj \
         -r win-x64 \
         -c Release \
         --self-contained true \
@@ -587,7 +589,7 @@ test-backend:
 # Run frontend unit tests (Vitest)
 test-frontend:
     @echo ">> Running Frontend Test Suite (Vitest)..."
-    @(cd frontend/web && bun run test)
+    @(cd src/frontend/web && bun run test)
 
 # Validate seed data pipeline and referential integrity
 test-seed:
@@ -602,7 +604,7 @@ test-smoke:
 # Build mobile PWA production assets
 mobile-build:
     @echo ">> Building Mobile PWA Production Assets..."
-    @(cd frontend/web && npm run build)
+    @(cd src/frontend/web && npm run build)
 
 # Package release Android APK via containerized build environment
 mobile-apk:

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { autoTagEngine } from '../../../frontend/web/app/utils/search/AutoTagEngine'
-import { useHeimdallSearch } from '../../../frontend/web/app/composables/useHeimdallSearch'
-import { useGlobalContextMenu } from '../../../frontend/web/app/composables/useGlobalContextMenu'
+import { autoTagEngine } from '../../../src/frontend/web/app/utils/search/AutoTagEngine'
+import { useHeimdallSearch } from '../../../src/frontend/web/app/composables/useHeimdallSearch'
+import { useGlobalContextMenu } from '../../../src/frontend/web/app/composables/useGlobalContextMenu'
 import { mount } from '@vue/test-utils'
-import AutoTagSuggestionDropdown from '../../../frontend/web/app/components/search/AutoTagSuggestionDropdown.vue'
+import AutoTagSuggestionDropdown from '../../../src/frontend/web/app/components/search/AutoTagSuggestionDropdown.vue'
 
 describe('OmniSearch Architecture & UI Refinements (docs/TODO/search.TODO.md & docs/TODO/UI.TODO.md)', () => {
   // -------------------------------------------------------------------------

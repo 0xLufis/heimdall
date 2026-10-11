@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { useActionQr } from '../../../frontend/web/app/composables/useActionQr'
-import SearchableTargetCombobox from '../../../frontend/web/app/components/common/SearchableTargetCombobox.vue'
+import { useActionQr } from '../../../src/frontend/web/app/composables/useActionQr'
+import SearchableTargetCombobox from '../../../src/frontend/web/app/components/common/SearchableTargetCombobox.vue'
 import {
   validateDedicationGovernance,
   createRule,
   SEEDED_CANDIDATES,
   findCandidateByNameOrId
-} from '../../../frontend/web/server/utils/technicianRulesStore'
+} from '../../../src/frontend/web/server/utils/technicianRulesStore'
 
 describe('Action QR Composable & Role Dedication Governance Suite', () => {
 

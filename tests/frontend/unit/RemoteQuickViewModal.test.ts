@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, computed } from 'vue'
-import RemoteQuickViewModal from '../../../frontend/web/app/components/controllers/RemoteQuickViewModal.vue'
+import RemoteQuickViewModal from '../../../src/frontend/web/app/components/controllers/RemoteQuickViewModal.vue'
 
 // Mock useAuthSession
 const mockCurrentRole = ref('engineer')
@@ -14,7 +14,7 @@ if (typeof global !== 'undefined' && !global.ResizeObserver) {
     disconnect() {}
   } as any
 }
-vi.mock('../../../frontend/web/app/composables/useAuthSession', () => {
+vi.mock('../../../src/frontend/web/app/composables/useAuthSession', () => {
   return {
     useAuthSession: () => {
       const userRole = computed(() => mockCurrentRole.value)
@@ -66,7 +66,7 @@ class MockRFB {
   })
 }
 
-vi.mock('../../../frontend/web/app/composables/useRfbClient', () => {
+vi.mock('../../../src/frontend/web/app/composables/useRfbClient', () => {
   return {
     createRfbClient: async (target: any, url: string, options: any) => {
       return new MockRFB(target, url, options)

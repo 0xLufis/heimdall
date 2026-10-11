@@ -5,21 +5,21 @@ import {
   categorizePlcFile,
   normalizeXaePath,
   TWINCAT_GITIGNORE_PATTERNS
-} from '../../../frontend/web/server/utils/plcConfigExtractor'
+} from '../../../src/frontend/web/server/utils/plcConfigExtractor'
 import {
   commitControllerRuntime,
   getControllerBranchName,
   getControllerCommits,
   clearControllerCommits,
   type ControllerMetadata
-} from '../../../frontend/web/server/utils/controllerBranchTracker'
+} from '../../../src/frontend/web/server/utils/controllerBranchTracker'
 import {
   stagePendingCopiaSync,
   authorizeCopiaPush,
   getAllPendingCopiaSyncs,
   clearPendingCopiaSyncs
-} from '../../../frontend/web/server/utils/copiaSyncNotifier'
-import { setUserCopiaKey, clearUserCopiaKey } from '../../../frontend/web/server/utils/copiaUserKeyStore'
+} from '../../../src/frontend/web/server/utils/copiaSyncNotifier'
+import { setUserCopiaKey, clearUserCopiaKey } from '../../../src/frontend/web/server/utils/copiaUserKeyStore'
 
 describe('Automated PLC Project Extraction & Version Control Sync', () => {
 

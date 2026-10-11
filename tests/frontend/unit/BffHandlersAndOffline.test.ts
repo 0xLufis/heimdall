@@ -5,6 +5,8 @@ import {
   findTicketById,
   updateTicketInStore,
   addCommentToTicket,
+  ensureTicketInStore,
+  upsertTicketInStore,
   type MaintenanceTicket
 } from '~~/server/utils/ticketsStore'
 
@@ -88,5 +90,36 @@ describe('Nitro BFF Handlers & Ticket Store Logic', () => {
     expect(comment).toBeDefined()
     const tkt = findTicketById('tkt-001')
     expect(tkt?.comments.some(c => c.id === 'c-test-1')).toBe(true)
+  })
+
+  it('upserts tickets into store and ensures remote backend GUID tickets exist without 404', () => {
+    const backendGuid = '19b0059d-0a3e-5ab7-b623-4e9011f1ae90'
+    const ensured = ensureTicketInStore(backendGuid, {
+      title: 'PLC Fault on Cell 4',
+      status: 'Open',
+      stationId: 'STATION-04'
+    })
+
+    expect(ensured).toBeDefined()
+    expect(ensured.id).toBe(backendGuid)
+    expect(ensured.ticketNumber).toContain('19B0059D')
+
+    const found = findTicketById(backendGuid)
+    expect(found).toBeDefined()
+    expect(found?.title).toBe('PLC Fault on Cell 4')
+
+    // Test updating escalation with HandedOffToField
+    const updated = updateTicketInStore(backendGuid, {
+      isEscalated: true,
+      escalationReason: 'Handing off to field engineer',
+      escalationTarget: 'Gábor Varga (Engineer)',
+      escalationHandoverState: 'HandedOffToField',
+      assignedTechnicianName: 'Gábor Varga'
+    })
+
+    expect(updated?.isEscalated).toBe(true)
+    expect(updated?.escalationHandoverState).toBe('HandedOffToField')
+    expect(updated?.escalationTarget).toBe('Gábor Varga (Engineer)')
+    expect(updated?.assignedTechnicianName).toBe('Gábor Varga')
   })
 })

@@ -183,8 +183,98 @@ Updates status, priority, or technician assignment.
 * **Request Body**:
 ```json
 {
-  "status": "In_Progress",
-  "assignedTo": "user_2ab48a53"
+  "status": "InProgress",
+  "assignedTo": "Gábor Varga"
+}
+```
+
+#### `POST /api/v1/tickets/{id}/escalate`
+Escalates an incident orthogonally without modifying its Kanban status.
+* **Request Body**:
+```json
+{
+  "reason": "Spindle harmonic resonance critical risk — OEM specialist notified",
+  "escalatedBy": "Gábor Varga (Lead Tech)",
+  "handoverState": "Notification",
+  "target": "DedicatedEngineer"
+}
+```
+
+#### `POST /api/v1/tickets/{id}/de-escalate` (or `/deescalate`)
+Closes an escalation independently of the ticket lifecycle.
+* **Request Body**:
+```json
+{
+  "resolvedBy": "Senior Plant Manager",
+  "resolutionNotes": "OEM specialist reviewed telemetry. Clearance granted."
+}
+```
+
+#### `PATCH /api/v1/tickets/{id}/pending`
+Transitions ticket into `Pending` status with typed sub-reasons (`Parts`, `ExternalOk`, `Action`).
+* **Request Body**:
+```json
+{
+  "pendingReason": "Parts",
+  "pendingDetails": "Requisition PO #88219 ordered for replacement servo amplifier."
+}
+```
+
+#### `POST /api/v1/tickets/{id}/reserve`
+Reserves a ticket for a technician before commencing physical work.
+* **Request Body**:
+```json
+{
+  "technician": "Gábor Varga"
+}
+```
+
+#### `POST /api/v1/tickets/{id}/qr-pickup`
+Directly picks up a ticket at the physical machine via action QR scan, timestamping reaction time.
+* **Request Body**:
+```json
+{
+  "technician": "Gábor Varga"
+}
+```
+
+#### `POST /api/v1/tickets/{id}/auto-close`
+Automatically transitions an active ticket to `Closed` when a machine PLC or watchdog condition clears.
+* **Request Body**:
+```json
+{
+  "machineId": "STATION-OP10-01",
+  "controllerId": "ctrl-101",
+  "clearedReason": "Vibration harmonic envelope normalized (< 1.8 mm/s RMS)",
+  "resolutionNotes": "Self-cleared by edge daemon watchdog rule."
+}
+```
+
+#### `POST /api/v1/tickets/{id}/retract`
+Retracts a ticket directly from the workstation kiosk view.
+* **Request Body**:
+```json
+{
+  "retractedBy": "Kiosk Operator OP10",
+  "reason": "False alarm; workpiece realignment cleared sensor fault"
+}
+```
+
+#### `GET /api/v1/tickets/stoppage-stats`
+Aggregates weekly line stoppage downtime, departmental stoppage minutes, and top worst downtime machines.
+* **Response `200 OK`**:
+```json
+{
+  "totalStoppageMinutesThisWeek": 720.0,
+  "totalLineStopIncidents": 4,
+  "departmentBreakdown": [
+    { "department": "Motion & Drive", "stoppageMinutes": 360.0, "incidentCount": 2 },
+    { "department": "Mechanical", "stoppageMinutes": 240.0, "incidentCount": 1 },
+    { "department": "Robotics", "stoppageMinutes": 120.0, "incidentCount": 1 }
+  ],
+  "topWorstMachines": [
+    { "machineName": "Line 05 – Powertrain Sub-Assembly", "totalStoppageMinutes": 360.0, "incidentCount": 1 }
+  ]
 }
 ```
 
@@ -196,6 +286,7 @@ Appends a technician note or resolution observation.
   "content": "Lubrication replenished. Thermographic camera shows temperature drop to 54C."
 }
 ```
+
 
 ---
 
@@ -765,4 +856,94 @@ Installs and signs a plugin package bundle for edge distribution. Validates and 
   "status": "SignedAndQueued"
 }
 ```
+
+---
+
+## 7. Enterprise Notifications & Unified Audit Logging API
+
+The notification subsystem provides real-time in-app alerts, browser notifications, optimistic state rollback records, and comprehensive multi-entity audit event tracking.
+
+### 7.1 Notification Endpoints (`/api/notifications`)
+
+#### `GET /api/notifications`
+Retrieves in-app notifications for the active user session or system broadcast events.
+* **Query Parameters**:
+  * `unreadOnly` (`boolean`, default: `false`): Filter only unread notifications.
+  * `limit` (`int`, default: `50`, max: `100`): Maximum entries returned.
+* **Response `200 OK`**:
+```json
+{
+  "notifications": [
+    {
+      "id": "notif-001",
+      "title": "Spindle Vibration Harmonic Warning",
+      "message": "Machine STATION-OP10-01 exceeded harmonic vibration envelope threshold (4.5 mm/s RMS).",
+      "type": "critical",
+      "timestamp": "2026-10-04T19:45:00Z",
+      "read": false,
+      "source": "machine",
+      "link": "/dashboard/machines"
+    }
+  ],
+  "total": 1,
+  "unreadCount": 1
+}
+```
+
+#### `POST /api/notifications`
+Dispatches a new notification to the active user or system broadcast channel.
+* **Request Body**:
+```json
+{
+  "title": "Ticket Escalated to Field",
+  "message": "Ticket TKT-20260928-0001 escalated to Gábor Varga for toolholder inspection.",
+  "type": "warning",
+  "source": "ticket",
+  "link": "/dashboard/tickets"
+}
+```
+* **Response `200 OK`**: `{"success": true, "notification": { ... }}`
+
+#### `PATCH /api/notifications/{id}/read`
+Marks an individual notification as read.
+* **Response `200 OK`**: `{"success": true, "notification": { ... }}`
+
+#### `POST /api/notifications/mark-all-read`
+Marks all notifications as read for the active user.
+* **Response `200 OK`**: `{"success": true, "count": 3}`
+
+### 7.2 Unified Audit Trail (`/api/analytics/audit-logs`)
+
+#### `GET /api/analytics/audit-logs`
+Returns the consolidated cryptographic audit trail of all administrative and machine operations across the plant floor.
+* **Query Parameters**:
+  * `entityType` (`string`, default: `'all'`): Filter by entity (`Ticket`, `Machine`, `InventoryItem`, `SystemPolicy`, `SecurityGroup`, `ClientPc`).
+  * `query` (`string`, optional): Case-insensitive search query across summary, actor, entity ID, and action.
+  * `limit` (`int`, default: `50`, max: `100`): Maximum entries returned.
+* **Response `200 OK`**:
+```json
+{
+  "total": 42,
+  "entries": [
+    {
+      "id": "aud-esc-tkt-001",
+      "timestamp": "2026-10-04T19:30:00Z",
+      "action": "ESCALATION",
+      "entityType": "Ticket",
+      "entityId": "tkt-001",
+      "entityName": "TKT-20260928-0001",
+      "userId": "usr-tech-01",
+      "userName": "Gábor Varga (Lead Tech)",
+      "summary": "Escalated ticket TKT-20260928-0001 to DedicatedEngineer (HandOff): Spindle harmonic resonance critical risk",
+      "severity": "warning",
+      "details": {
+        "handoverState": "HandOff",
+        "target": "DedicatedEngineer",
+        "reason": "Spindle harmonic resonance critical risk"
+      }
+    }
+  ]
+}
+```
+
 

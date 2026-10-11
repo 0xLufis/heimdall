@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { machinesStore } from '../../../frontend/web/server/utils/machinesStore'
-import { partsInventoryStore } from '../../../frontend/web/server/utils/partsInventoryStore'
+import { machinesStore } from '../../../src/frontend/web/server/utils/machinesStore'
+import { partsInventoryStore } from '../../../src/frontend/web/server/utils/partsInventoryStore'
 
 describe('Machine Operational Status & Decommissioning (docs/TODO/machines.TODO.md)', () => {
   const actor = {

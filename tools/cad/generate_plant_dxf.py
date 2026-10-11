@@ -180,7 +180,7 @@ def build_dxf():
             rack_ref.dxf.handle = f"RACK-{chr(65 + rack_row)}-{rack_col + 1}"
 
     # Ensure output directory exists
-    out_dir = 'frontend/web/public/sample'
+    out_dir = 'src/frontend/web/public/sample'
     os.makedirs(out_dir, exist_ok=True)
     
     assembly_path = os.path.join(out_dir, 'assembly_line.dxf')

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useMobileFieldWorkflows } from '../../../frontend/web/app/composables/useMobileFieldWorkflows'
-import { parseAssetQrCode, useAssetLookup } from '../../../frontend/web/app/composables/useAssetLookup'
-import { useMobileMetrics } from '../../../frontend/web/app/composables/useMobileMetrics'
-import { useQrScanner } from '../../../frontend/web/app/composables/useQrScanner'
-import { useOfflineCache } from '../../../frontend/web/app/composables/useOfflineCache'
+import { useMobileFieldWorkflows } from '../../../src/frontend/web/app/composables/useMobileFieldWorkflows'
+import { parseAssetQrCode, useAssetLookup } from '../../../src/frontend/web/app/composables/useAssetLookup'
+import { useMobileMetrics } from '../../../src/frontend/web/app/composables/useMobileMetrics'
+import { useQrScanner } from '../../../src/frontend/web/app/composables/useQrScanner'
+import { useOfflineCache } from '../../../src/frontend/web/app/composables/useOfflineCache'
 
 describe('Mobile Application, PWA & Field Hardware Support', () => {
 

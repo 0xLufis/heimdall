@@ -346,4 +346,51 @@ Dedicated workspace for managing production envelopes:
 * **Engineering Ownership**: Dedicated lead engineer metadata, operational descriptions, and line capacity notes.
 * **Full CRUD Lifecycle**: Integrated with `/api/machine-groups` REST endpoints for real-time creation, editing, and reparenting.
 
+---
+
+## 12. Universal Tag-Context Omnisearch Engine
+
+The platform incorporates an omnipresent, tag-contextual fuzzy search architecture accessible via `Cmd+K` / `Ctrl+K` across all views:
+
+### 12.1 Scoping Syntaxes & Auto-Tagging
+* **Prefix Scoping Symbols**:
+  * `@station` or `@machine`: Scopes search strictly to machines and automated workstations (`[MCH]`).
+  * `#ticket`: Scopes to maintenance and incident tickets (`[TCK]`).
+  * `!controller` or `!host`: Scopes to IPC edge nodes and Soft-PLCs (`[IPC]`).
+  * `*part` or `*inventory`: Scopes to discrete spare parts and consumable stock (`[PRT]`).
+  * `%alarm`: Scopes to machines and tickets in warning, alarm, or line stop status.
+* **Key-Value Expressions**:
+  * Supports exact, negated, and multi-value tag syntax: `mfr:Siemens`, `tech:Robotics,Assembly`, `-status:offline`, `line:Line01`.
+* **Fuzzy Token Matching**:
+  * Powered by FZF-inspired Damerau-Levenshtein distance and N-gram scoring.
+  * Dynamically harvests known metadata keys and values across registered provider schemas via `searchRegistry.ts`.
+  * Suggests autocomplete chips with colored entity indicators (`[MCH]`, `[IPC]`, `[TCK]`, `[PRT]`, `[USR]`).
+
+### 12.2 Search Registry & Provider Extensibility (`searchRegistry.ts`)
+* Implements a decoupled provider architecture (`SearchProvider<T>`) registering data tables, search columns, metadata extractors, and routing links.
+* Defaults include `machines`, `client_pcs`, `tickets`, `inventory`, `users`, `templates`, and `telemetry`.
+* Supports cross-table search ranking: primary workspace items are scored with high relevance, while correlated secondary items appear in the "Cross-Domain Results" section.
+
+---
+
+## 13. Enterprise Notification Center, Optimistic UI & Unified Audit Trail
+
+### 13.1 Notification Center Popover & Toast Overlay
+* **`NotificationCenterPopover.vue`**: Mounted in the top header, displaying unread badges, multi-source alerts (machine alarms, ticket escalations, Copia Git staging, system policies), and one-click "Mark All as Read" actions.
+* **`NotificationToastOverlay.vue`**: Fixed top-right toast notification manager providing non-blocking visual feedback, duration timeouts, action triggers, and undo capabilities.
+* **Out-of-App Web Notifications**: Subscribes to HTML5 / Android Web Notification API for critical line-stop alarms when the browser tab is backgrounded.
+
+### 13.2 Optimistic Actions with Rollback (`runOptimisticAction`)
+* Industrial operations (e.g. ticket reservation, status change, equipment transfer) update the Vue reactive state immediately.
+* If the asynchronous network request fails or is rejected by backend RBAC:
+  1. Executes the provided `rollbackFn()` to restore previous state.
+  2. Surfaces a high-priority error toast alerting the operator.
+  3. Dispatches a system audit notification detailing the rollback reason.
+
+### 13.3 Unified Audit Log Visualizer (`AuditLogsVisualizer.vue`)
+* Integrated into `/dashboard/analytics` under the "Audit Logs" tab.
+* Ingests and renders unified audit records spanning tickets, machines, inventory stock movements, policy changes, and machine PLC auto-closures.
+* Provides search, entity filtering, severity badges, and an interactive cryptographic diff viewer displaying full JSON payloads.
+
+
 

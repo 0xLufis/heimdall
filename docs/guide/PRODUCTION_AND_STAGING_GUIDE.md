@@ -86,9 +86,11 @@ For bare-metal, systemd, or containerized Linux server installations, Heimdall f
 │       ├── justfile                          # Master command orchestrator
 │       ├── docker-compose.prod.yml           # Production Docker Compose stack
 │       ├── docker-compose.staging.yml        # Staging Docker Compose stack
-│       ├── backend/                          # Backend ASP.NET Core source / compiled binaries
-│       ├── frontend/                         # Nuxt 4 web dashboard build artifacts
-│       ├── agent/                            # Industrial edge agent binaries
+│       ├── src/                              # Application source tree (backend, frontend, agent, shared)
+│       │   ├── backend/                      # Backend ASP.NET Core source
+│       │   ├── frontend/                     # Nuxt 4 web dashboard
+│       │   ├── agent/                        # Industrial edge agent daemon
+│       │   └── shared/                       # Contracts and shared entities
 │       ├── seed_data/                        # Enterprise plant dataset and seed scripts
 │       │   ├── inventory_seed.csv            # 100 machines, 56 PCs, 550 serialized stock parts
 │       │   ├── incremental_seed.sql          # Transactional PostgreSQL database seed script

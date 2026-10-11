@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import UsePartModal from '../../../frontend/web/app/components/inventory/UsePartModal.vue'
-import BulkPartIntakeModal from '../../../frontend/web/app/components/inventory/BulkPartIntakeModal.vue'
-import LogPartModal from '../../../frontend/web/app/components/inventory/LogPartModal.vue'
-import AssetTemplatesManager from '../../../frontend/web/app/components/inventory/AssetTemplatesManager.vue'
-import MachineDocumentImportModal from '../../../frontend/web/app/components/inventory/MachineDocumentImportModal.vue'
-import SparePartsPolicyManager from '../../../frontend/web/app/components/inventory/SparePartsPolicyManager.vue'
-import InventoryCodeScannerModal from '../../../frontend/web/app/components/inventory/InventoryCodeScannerModal.vue'
-import type { InventoryPart, AssetTemplateDefinition, MachineSparePartItem, SparePartsReportingSummary } from '../../../frontend/web/app/types/inventory'
+import UsePartModal from '../../../src/frontend/web/app/components/inventory/UsePartModal.vue'
+import BulkPartIntakeModal from '../../../src/frontend/web/app/components/inventory/BulkPartIntakeModal.vue'
+import LogPartModal from '../../../src/frontend/web/app/components/inventory/LogPartModal.vue'
+import AssetTemplatesManager from '../../../src/frontend/web/app/components/inventory/AssetTemplatesManager.vue'
+import MachineDocumentImportModal from '../../../src/frontend/web/app/components/inventory/MachineDocumentImportModal.vue'
+import SparePartsPolicyManager from '../../../src/frontend/web/app/components/inventory/SparePartsPolicyManager.vue'
+import InventoryCodeScannerModal from '../../../src/frontend/web/app/components/inventory/InventoryCodeScannerModal.vue'
+import type { InventoryPart, AssetTemplateDefinition, MachineSparePartItem, SparePartsReportingSummary } from '../../../src/frontend/web/app/types/inventory'
 
 const mockPart: InventoryPart = {
   id: 'prt-test-1',

@@ -22,7 +22,10 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 - **Client Offloading:** Server-side aggregation, filtering, and caching via Nuxt Nitro BFF (Backend-for-Frontend) routes.
 - **Enterprise Dataset & Simulated AD:** Canonical plant fixtures (`fixtures/enterprise_plant_dataset.json`), mock directory REST endpoints (`/api/ad-mock/v1.0/*`), and RFC 4511 LDAP search engine.
 - **Better-Auth & Directory Security Group Org Governance:** Dynamic tenant organization mapping and auto-provisioning driven by directory claims, with an interactive claims evaluation sandbox.
-- **Industrial Maintenance & Zero-Dependency Action QR:** Canonical 5-state Kanban lifecycle (`Open`, `InProgress`, `Pending`, `Resolved`, `Closed`), orthogonal escalation, typed `PendingReason` flags, error template catalog, SFC serialization, technician delegation hierarchy, and pure SVG Galois Field GF(256) matrix QR generator.
+- **Universal Tag-Context Omnisearch:** FZF-powered fuzzy indexing engine with entity scoping (`@machine`, `#ticket`, `!controller`, `*part`, `%alarm`), auto-tag tokenization, keyboard navigation, and ranked cross-table search.
+- **Enterprise Notification Center & Optimistic UI:** In-app notification popover, sticky toast notifications, browser Web Notifications, and automatic state rollback on server rejection.
+- **Unified Cryptographic Audit Feed:** Complete audit trail tracking entity state changes, security group assignments, decommissioning records, and automated PLC auto-closure.
+- **Industrial Maintenance Lifecycle & Zero-Dependency Action QR:** Canonical 5-state Kanban lifecycle (`Open`, `InProgress`, `Pending`, `Resolved`, `Closed`), machine watchdog auto-closure (`/auto-close`), kiosk retract (`/retract`), orthogonal escalation, typed `PendingReason` flags, technician delegation hierarchy, and pure SVG Galois Field GF(256) matrix QR generator.
 - **OT Integrations:** Git-based PLC version control integration blueprint and native OPC UA Server API (`opc.tcp://`).
 - **Security & Compliance:** TISAX (VDA ISA 6.0 / High Protection) compliance framework, multi-tenant isolation, cryptographic command signing, and mTLS support.
 
@@ -94,23 +97,25 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 
 ```
 heimdall/
-├── agent/                   # .NET 10 Worker Service Daemon (References App.Contracts only)
-├── backend/                 # Backend API and Infrastructure layers
-│   ├── App.Backend.Api/     # ASP.NET Core Web API Controllers & gRPC Endpoints
-│   └── App.Infrastructure/  # Data Repositories & External Service Integrations
+├── src/                     # Core Application Modules
+│   ├── agent/               # .NET 10 Worker Service Daemon (References App.Contracts only)
+│   ├── backend/             # Backend API and Infrastructure layers
+│   │   ├── App.Backend.Api/ # ASP.NET Core Web API Controllers & gRPC Endpoints
+│   │   └── App.Infrastructure/ # Data Repositories & External Service Integrations
+│   ├── frontend/
+│   │   └── web/             # Nuxt 4 Web Dashboard & Nitro BFF
+│   └── shared/
+│       ├── App.Contracts/   # Protobuf definitions, gRPC types, PLC TypeSystem (NO DB)
+│       └── App.Shared/      # Domain Entities, EF Core DbContext, Migrations
 ├── docs/                    # Structured Documentation Hub
 │   ├── architecture/        # System, Agent, Encryption, Compliance, Protocols
 │   ├── api/                 # API Reference, Contracts, Recipe Specification
 │   ├── guide/               # Developer Guide, User Guide
+│   ├── academic/            # Bachelor's Thesis Research Notes & Academic Formulations
 │   └── plc/                 # TwinCAT 3 POU and Interface specifications
 ├── fixtures/                # Canonical enterprise plant dataset (JSON)
-├── frontend/
-│   └── web/                 # Nuxt 4 Web Dashboard & Nitro BFF
 ├── infra/
 │   └── database/            # PostgreSQL 18 Docker Compose, SSL, Init Scripts
-├── shared/
-│   ├── App.Contracts/       # Protobuf definitions, gRPC types, PLC TypeSystem (NO DB)
-│   └── App.Shared/          # Domain Entities, EF Core DbContext, Migrations
 ├── simulators/
 │   ├── active_directory/    # Standalone mock Active Directory / Graph server (port 5088)
 │   └── fleet/               # Edge fleet simulator, mock CMI runner & simulated PC Docker containers
@@ -120,11 +125,12 @@ heimdall/
 │   ├── dev_manager.py       # Unified development service orchestrator & monitor
 │   └── generate_sequence_diagrams.py # Code-to-Mermaid sequence diagram generator
 ├── tests/                   # Unified Verification Suites
-│   ├── backend/             # xUnit integration & unit tests (215 tests)
-│   ├── frontend/unit/       # Vitest unit tests (43 suites, 348 tests)
+│   ├── backend/             # xUnit integration & unit tests (232 tests)
+│   ├── frontend/unit/       # Vitest unit tests (61 suites, 609 tests)
 │   └── e2e/                 # Playwright browser automation tests
 └── justfile                 # Modern command runner for dev, staging, testing, and production
 ```
+
 
 ---
 
@@ -222,12 +228,12 @@ Restore local .NET tools and run database migrations:
 dotnet tool restore
 
 # Run EF Core backend migrations
-dotnet ef database update --project shared/App.Shared --startup-project backend/App.Backend.Api
+dotnet ef database update --project src/shared/App.Shared --startup-project src/backend/App.Backend.Api
 
 # Prepare Nuxt 4 frontend types
-cd frontend/web
+cd src/frontend/web
 bun run postinstall
-cd ../..
+cd ../../..
 ```
 
 ---
@@ -305,11 +311,11 @@ Heimdall includes pre-configured environment templates at the repository root:
 # 0. Run Unified Verification Suite (seed validation, backend, frontend)
 just test
 
-# 1. Run .NET backend unit & integration tests (xUnit, 215 tests)
+# 1. Run .NET backend unit & integration tests (xUnit, 232 tests)
 dotnet test Heimdall.sln
 
-# 2. Run Nuxt frontend unit test suites (Vitest, 43 suites, 348 tests)
-cd frontend/web && bun run test
+# 2. Run Nuxt frontend unit test suites (Vitest, 61 suites, 609 tests)
+cd src/frontend/web && bun run test
 
 # 3. Run Python fleet simulator & mock CMI runner tests (9 tests)
 ./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
@@ -318,8 +324,9 @@ cd frontend/web && bun run test
 python3 tools/generate_sequence_diagrams.py --check
 
 # 5. Run Playwright end-to-end browser tests
-cd frontend/web && bun x playwright test
+cd src/frontend/web && bun x playwright test
 ```
+
 
 ---
 

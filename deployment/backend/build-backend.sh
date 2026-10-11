@@ -9,7 +9,7 @@ DIST_DIR="$(pwd)/dist/backend"
 mkdir -p "${DIST_DIR}"
 
 echo ">> Publishing Standalone Linux Binary (linux-x64)..."
-dotnet publish backend/App.Backend.Api/App.Backend.Api.csproj \
+dotnet publish src/backend/App.Backend.Api/App.Backend.Api.csproj \
     -c Release \
     -r linux-x64 \
     --self-contained true \
@@ -18,7 +18,7 @@ dotnet publish backend/App.Backend.Api/App.Backend.Api.csproj \
     -o "${DIST_DIR}/linux-x64"
 
 echo ">> Publishing Standalone Windows Binary (win-x64)..."
-dotnet publish backend/App.Backend.Api/App.Backend.Api.csproj \
+dotnet publish src/backend/App.Backend.Api/App.Backend.Api.csproj \
     -c Release \
     -r win-x64 \
     --self-contained true \
