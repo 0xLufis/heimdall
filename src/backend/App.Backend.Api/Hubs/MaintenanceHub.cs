@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using App.Contracts.Security;
 using App.Shared.Entities;
 
 namespace App.Backend.Api.Hubs;
@@ -29,7 +30,7 @@ public class MaintenanceHub : Hub<IMaintenanceClient>
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"Ticket_{ticketId}");
     }
 
-    [Authorize(Policy = "MaintenanceOperations")]
+    [Authorize(Policy = AuthorizationPolicies.MaintenanceOperations)]
     public async Task SendTicketUpdate(MaintenanceTicket ticket)
     {
         await Clients.All.TicketUpdated(ticket);

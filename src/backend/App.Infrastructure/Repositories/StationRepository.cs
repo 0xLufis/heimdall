@@ -22,7 +22,6 @@ public class StationRepository : IStationRepository
                 .ThenInclude(c => c.ComponentRecipe)
             .Include(m => m.DelegationBindings)
                 .ThenInclude(b => b.DelegationRecipe)
-            .Include(m => m.LineGroup)
             .ToListAsync();
     }
 
@@ -37,7 +36,6 @@ public class StationRepository : IStationRepository
                 .ThenInclude(c => c.PartHistory)
             .Include(m => m.DelegationBindings)
                 .ThenInclude(b => b.DelegationRecipe)
-            .Include(m => m.LineGroup)
             .FirstOrDefaultAsync(m => m.Id == id);
     }
 

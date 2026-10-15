@@ -165,7 +165,24 @@ builder.Services.AddAuthorization(options =>
 
     // Maintenance operations
     options.AddPolicy(AuthorizationPolicies.MaintenanceOperations, policy =>
-        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.SeniorEngineeringManager, HeimdallRoles.GroupLeader, HeimdallRoles.LeadEngineer, HeimdallRoles.Engineer, HeimdallRoles.Technician, HeimdallRoles.OperativePlanner, HeimdallRoles.Manager, HeimdallRoles.User));
+        policy.RequireRole(
+            HeimdallRoles.SystemAdmin,
+            HeimdallRoles.HeimdallAdmin,
+            HeimdallRoles.Admin,
+            HeimdallRoles.PlantDirector,
+            HeimdallRoles.EngineeringAdmin,
+            HeimdallRoles.PlantEngineeringManager,
+            HeimdallRoles.SeniorEngineeringManager,
+            HeimdallRoles.GroupLeader,
+            HeimdallRoles.ShiftLeader,
+            HeimdallRoles.LeadEngineer,
+            HeimdallRoles.ControlsEngineer,
+            HeimdallRoles.Engineer,
+            HeimdallRoles.Technician,
+            HeimdallRoles.OperativePlanner,
+            HeimdallRoles.Operator,
+            HeimdallRoles.Manager,
+            HeimdallRoles.User));
 
     // Operative line stop requests and scheduling approvals
     options.AddPolicy("LineStopRequest", policy =>
@@ -185,7 +202,7 @@ builder.Services.AddAuthorization(options =>
 
     // Machine component lifecycle & part assignment
     options.AddPolicy(AuthorizationPolicies.ComponentManagement, policy =>
-        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.LeadEngineer, HeimdallRoles.Engineer, HeimdallRoles.Technician));
+        policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.LeadEngineer, HeimdallRoles.ControlsEngineer, HeimdallRoles.Engineer, HeimdallRoles.Technician));
 });
 
 // --- 4. Controllers & SignalR & gRPC & Swagger & CORS & RateLimiting ---
@@ -322,7 +339,7 @@ app.UseAuthorization();
 app.UseWebSockets();
 
 app.MapControllers();
-app.MapHub<MaintenanceHub>("/hubs/maintenance");
+app.MapHub<MaintenanceHub>("/hubs/maintenance").RequireCors("HeimdallCorsPolicy");
 
 if (!featureFlags.EnableDevFeatures)
 {
