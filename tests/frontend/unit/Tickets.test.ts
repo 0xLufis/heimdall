@@ -282,4 +282,28 @@ describe('Maintenance Ticketing UI Components', () => {
     expect(header.classes()).toContain('sticky')
     expect(header.classes()).toContain('top-0')
   })
+
+  it('renders TicketDetailWorkbench in dynamic split panel without modal backdrop', async () => {
+    const { default: TicketDetailWorkbench } = await import('~/components/tickets/TicketDetailWorkbench.vue')
+    const wrapper = mount(TicketDetailWorkbench, {
+      props: { ticket: mockTickets[0] },
+      global: {
+        stubs: {
+          NuxtLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('TKT-2026-0001')
+    expect(wrapper.text()).toContain('Spindle Bearing Overheating')
+    expect(wrapper.text()).toContain('Start Work')
+    expect(wrapper.text()).toContain('Investigation Actions')
+
+    // Verify closing emits close event
+    const closeBtn = wrapper.find('button[title="Close Inspector"]')
+    expect(closeBtn.exists()).toBe(true)
+    await closeBtn.trigger('click')
+    expect(wrapper.emitted('close')).toBeTruthy()
+  })
 })
+

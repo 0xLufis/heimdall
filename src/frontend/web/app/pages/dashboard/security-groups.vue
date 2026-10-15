@@ -39,6 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
+import { toast } from 'vue-sonner'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -281,7 +282,7 @@ async function fetchMappings() {
             groupIdentifier: '9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c',
             displayName: 'OT Plant Administrators',
             mappedRole: 'admin',
-            organizationId: null,
+            organizationId: 'Factory Operations',
             isEnabled: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -292,7 +293,7 @@ async function fetchMappings() {
             groupIdentifier: 'CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp',
             displayName: 'On-Prem Controls Engineers',
             mappedRole: 'engineer',
-            organizationId: 'Production Floor B',
+            organizationId: 'Line 06 – Battery Module Line',
             isEnabled: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -364,14 +365,15 @@ async function toggleMapping(mapping: SecurityGroupMapping) {
 }
 
 async function deleteMapping(id: string) {
-  if (!confirm('Are you sure you want to remove this security group mapping?')) return
   try {
     await $fetch(`/api/security-groups/mappings/${id}`, {
       method: 'DELETE'
     })
     mappings.value = mappings.value.filter(m => m.id !== id)
+    toast.success('Security group mapping removed')
   } catch (err: any) {
     error.value = 'Failed to delete mapping.'
+    toast.error('Failed to delete mapping')
   }
 }
 
@@ -425,15 +427,16 @@ async function handleGenerateKey() {
 }
 
 async function handleRevokeKey(id: string) {
-  if (!confirm('Are you sure you want to revoke this automation API key? External systems using it will be blocked immediately.')) return
   try {
     await $fetch(`/api/security-groups/api-keys/${id}`, {
       method: 'DELETE'
     })
     await fetchApiKeys()
     successMsg.value = 'API Key revoked successfully.'
+    toast.success('API Key revoked successfully')
   } catch (err: any) {
     error.value = 'Failed to revoke API Key.'
+    toast.error('Failed to revoke API Key')
   }
 }
 
@@ -584,7 +587,7 @@ async function runEvaluationTest() {
       resolvedRoles: Array.from(new Set(matched.map(m => m.mappedRole))),
       targetOrganizations: matched.filter(m => m.organizationId).map(m => ({
         name: m.organizationId!,
-        slug: m.organizationId!.toLowerCase().replace(/\s+/g, '-'),
+        slug: m.organizationId!.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, ''),
         role: m.mappedRole.includes('admin') ? 'admin' : 'member'
       })),
       suggestedActiveOrganization: matched.find(m => m.organizationId)?.organizationId || null,

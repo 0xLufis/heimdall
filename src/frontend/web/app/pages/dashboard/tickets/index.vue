@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   Plus, Camera, RefreshCw, WifiOff, LayoutList, Columns,
   Activity, QrCode, Users, FolderTree, History, CheckCircle2, Wrench,
-  Filter, X, FileText, Tv, SlidersHorizontal, Palette
+  Filter, X, FileText, Tv, SlidersHorizontal, Palette, Columns2
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -22,18 +22,14 @@ import {
   DropdownMenuRadioItem
 } from '~/components/ui/dropdown-menu'
 import TicketPersonalHeader from '~/components/tickets/TicketPersonalHeader.vue'
+import LineStopAlarmBanner from '~/components/tickets/LineStopAlarmBanner.vue'
 import TicketMetricsOverview from '~/components/tickets/TicketMetricsOverview.vue'
 import TicketList from '~/components/tickets/TicketList.vue'
 import TicketKanbanBoard from '~/components/tickets/TicketKanbanBoard.vue'
 import TicketResolvedLog from '~/components/tickets/TicketResolvedLog.vue'
 import TagFilterBar from '~/components/tickets/TagFilterBar.vue'
-import TicketCreateModal from '~/components/tickets/TicketCreateModal.vue'
-import TicketDetailDrawer from '~/components/tickets/TicketDetailDrawer.vue'
-import TicketTemplateCatalogModal from '~/components/tickets/TicketTemplateCatalogModal.vue'
-import SimulatorControlModal from '~/components/dashboard/SimulatorControlModal.vue'
+import TicketDetailWorkbench from '~/components/tickets/TicketDetailWorkbench.vue'
 import MachineQrModal from '~/components/tickets/MachineQrModal.vue'
-import PreferredTechniciansModal from '~/components/tickets/PreferredTechniciansModal.vue'
-import MachineGroupManagerModal from '~/components/tickets/MachineGroupManagerModal.vue'
 const QrScanner = defineAsyncComponent(() => import('~/components/ui/qr-scanner/QrScanner.vue'))
 import { useMaintenance } from '~/composables/useMaintenance'
 import { useFeatureFlags } from '~/composables/useFeatureFlags'
@@ -63,28 +59,17 @@ const {
   qrPickup
 } = useMaintenance()
 
-// ── View Modes ─────────────────────────────────────────────────────────────
+// ── View Modes & Layout ────────────────────────────────────────────────────
 const activeViewMode = ref<'list' | 'kanban' | 'resolved'>('list')
 const fillMode = ref<'outline' | 'semi-filled' | 'filled'>('semi-filled')
+const splitView = ref(false)
 
 // ── Feature Flags ──────────────────────────────────────────────────────────
 const { enableSimulation } = useFeatureFlags()
 
-// ── Modals & Drawers ───────────────────────────────────────────────────────
-const showCreateModal = ref(false)
-const showDetailDrawer = ref(false)
+// ── Overlays & Tools (Zero Blocking Overlays) ──────────────────────────────
 const showQrScanner = ref(false)
-const showSimulatorModal = ref(false)
 const showQrGeneratorModal = ref(false)
-const showDelegationModal = ref(false)
-const showGroupManagerModal = ref(false)
-const showTemplateCatalogModal = ref(false)
-
-// ── Prefills for Ticket Creation ───────────────────────────────────────────
-const prefilledStationId = ref('')
-const prefilledMachineType = ref('')
-const prefilledGroupId = ref('')
-const prefilledTemplateId = ref('')
 
 // ── Tag Filtering ──────────────────────────────────────────────────────────
 const selectedTags = ref<string[]>([])
@@ -124,8 +109,8 @@ const clearMetricFilter = () => {
 const resetPageFilters = () => {
   activeMetricFilter.value = null
   selectedTags.value = []
-  prefilledStationId.value = ''
   activeViewMode.value = 'list'
+  selectedTicket.value = null
   router.push('/dashboard/tickets')
   fetchTickets()
 }
@@ -144,15 +129,21 @@ const availableTags = computed(() => {
 
 watch(() => [route.query, tickets.value], () => {
   const q = route.query
-  if (q.stationId) {
-    prefilledStationId.value = q.stationId as string
-  }
   if (q.create === 'true') {
-    showCreateModal.value = true
+    router.push({
+      path: '/dashboard/tickets/new',
+      query: { ...route.query, create: undefined }
+    })
+    return
   }
   if (q.ticketId) {
     const match = tickets.value.find(t => t.id === q.ticketId)
-    if (match) onSelectTicket(match)
+    if (match) {
+      selectedTicket.value = match
+      if (!splitView.value) {
+        router.push(`/dashboard/tickets/${q.ticketId}`)
+      }
+    }
   }
   if (q.team) {
     const teamStr = String(q.team)
@@ -172,15 +163,12 @@ const displayedTickets = computed(() => {
   let list = tickets.value
   const q = route.query
 
-  const filterQuery = (q.search || q.query || q.stationId) as string
-  if (filterQuery && q.create !== 'true') {
-    const target = filterQuery.toLowerCase()
+  if (q.stationId && q.create !== 'true') {
+    const target = (q.stationId as string).toLowerCase()
     list = list.filter(t => 
       t.stationId?.toLowerCase() === target ||
       t.machineId?.toLowerCase() === target ||
-      t.ticketNumber?.toLowerCase().includes(target) ||
       t.title?.toLowerCase().includes(target) ||
-      t.description?.toLowerCase().includes(target) ||
       (t.tags && t.tags.some(tag => tag.toLowerCase() === target))
     )
   }
@@ -229,23 +217,9 @@ const displayedTickets = computed(() => {
 // ── Action Handlers ────────────────────────────────────────────────────────
 function onSelectTicket(tkt: MaintenanceTicket) {
   selectedTicket.value = tkt
-  showDetailDrawer.value = true
-}
-
-function onTicketCreated() {
-  prefilledTemplateId.value = ''
-  fetchTickets()
-}
-
-function onTemplateSelected(tmpl: any) {
-  prefilledTemplateId.value = tmpl.id || tmpl.errorCode
-  showTemplateCatalogModal.value = false
-  showCreateModal.value = true
-}
-
-function openCreateModal() {
-  prefilledTemplateId.value = ''
-  showCreateModal.value = true
+  if (!splitView.value) {
+    router.push(`/dashboard/tickets/${tkt.id}`)
+  }
 }
 
 function onQrScanned(code: string) {
@@ -255,25 +229,26 @@ function onQrScanned(code: string) {
   const actionPayload = parseQrUri(code)
   if (actionPayload) {
     if (actionPayload.action === 'report-incident') {
-      prefilledStationId.value = actionPayload.stationId || ''
-      prefilledMachineType.value = actionPayload.machineType || ''
-      prefilledGroupId.value = actionPayload.groupId || ''
-      showCreateModal.value = true
+      router.push({
+        path: '/dashboard/tickets/new',
+        query: {
+          stationId: actionPayload.stationId || '',
+          machineType: actionPayload.machineType || '',
+          groupId: actionPayload.groupId || ''
+        }
+      })
       return
     } else if (actionPayload.action === 'view-ticket' && actionPayload.ticketId) {
-      const match = tickets.value.find(t => t.id === actionPayload.ticketId)
-      if (match) {
-        onSelectTicket(match)
-        return
-      }
+      router.push(`/dashboard/tickets/${actionPayload.ticketId}`)
+      return
     }
   }
 
   // Fallback: direct station ID
-  prefilledStationId.value = code
-  prefilledMachineType.value = ''
-  prefilledGroupId.value = ''
-  showCreateModal.value = true
+  router.push({
+    path: '/dashboard/tickets/new',
+    query: { stationId: code }
+  })
 }
 
 function onMoveStatus(ticketId: string, status: TicketStatus) {
@@ -313,7 +288,7 @@ async function onResumeTicket(ticketId: string) {
 </script>
 
 <template>
-  <div class="space-y-6 pb-12">
+  <div class="space-y-6 pb-16">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
       <div
@@ -349,36 +324,49 @@ async function onResumeTicket(ticketId: string) {
 
       <!-- Action Toolbar -->
       <div class="flex flex-wrap items-center gap-2">
-        <!-- 3-Way View Switch -->
-        <div class="bg-muted p-0.5 rounded-lg border border-border flex gap-0.5">
+        <!-- 3-Way View Switch + Split Mode Toggle -->
+        <div class="bg-muted p-0.5 rounded-lg border border-border flex items-center gap-0.5">
           <Button
             variant="ghost"
             @click="activeViewMode = 'list'"
-            :class="activeViewMode === 'list' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
+            :class="activeViewMode === 'list' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors cursor-pointer"
           >
             <LayoutList class="w-3.5 h-3.5 mr-1" />
-            {{ $t('tickets.listView', 'List') }}
+            List
           </Button>
 
           <Button
             variant="ghost"
             @click="activeViewMode = 'kanban'"
-            :class="activeViewMode === 'kanban' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
+            :class="activeViewMode === 'kanban' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors cursor-pointer"
           >
             <Columns class="w-3.5 h-3.5 mr-1" />
-            {{ $t('tickets.kanbanView', 'Kanban') }}
+            Kanban
           </Button>
 
           <Button
             variant="ghost"
             @click="activeViewMode = 'resolved'"
-            :class="activeViewMode === 'resolved' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors"
+            :class="activeViewMode === 'resolved' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors cursor-pointer"
           >
             <History class="w-3.5 h-3.5 mr-1" />
-            {{ $t('tickets.resolvedLog', 'Resolved Log') }}
+            Resolved Log
+          </Button>
+
+          <div class="h-4 w-px bg-border mx-0.5" />
+
+          <Button
+            variant="ghost"
+            @click="splitView = !splitView"
+            :class="splitView ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-muted-foreground hover:text-foreground'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium h-7 transition-colors cursor-pointer"
+            title="Toggle split side workbench inspector"
+          >
+            <Columns2 class="w-3.5 h-3.5 mr-1" />
+            Split
           </Button>
         </div>
 
@@ -392,17 +380,17 @@ async function onResumeTicket(ticketId: string) {
               title="Ticket view settings, display styles, and governance tools"
             >
               <SlidersHorizontal class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>{{ $t('tickets.settingsAndViews', 'Settings & Views') }}</span>
+              <span>Settings & Views</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" class="w-64">
             <DropdownMenuLabel class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
-              {{ $t('tickets.displayAndCardStyle', 'Display & Card Style') }}
+              Display & Card Style
             </DropdownMenuLabel>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger class="text-xs flex items-center gap-2 cursor-pointer">
                 <Palette class="size-3.5 text-indigo-500" />
-                <span>{{ $t('tickets.cardFillMode', 'Card Fill Mode') }}</span>
+                <span>Card Fill Mode</span>
                 <Badge variant="outline" class="ml-auto text-[10px] py-0 px-1 capitalize">
                   {{ fillMode }}
                 </Badge>
@@ -410,13 +398,13 @@ async function onResumeTicket(ticketId: string) {
               <DropdownMenuSubContent class="w-48">
                 <DropdownMenuRadioGroup v-model="fillMode">
                   <DropdownMenuRadioItem value="outline" class="text-xs cursor-pointer">
-                    <span>{{ $t('tickets.outlineMinimal', 'Outline (Minimal)') }}</span>
+                    <span>Outline (Minimal)</span>
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="semi-filled" class="text-xs cursor-pointer">
-                    <span>{{ $t('tickets.semiFilledDefault', 'Semi-Filled (Default)') }}</span>
+                    <span>Semi-Filled (Default)</span>
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="filled" class="text-xs cursor-pointer">
-                    <span>{{ $t('tickets.solidHighContrast', 'Solid High-Contrast') }}</span>
+                    <span>Solid High-Contrast</span>
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
@@ -425,28 +413,28 @@ async function onResumeTicket(ticketId: string) {
             <DropdownMenuSeparator />
 
             <DropdownMenuLabel class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
-              {{ $t('tickets.shopfloorDisplays', 'Shopfloor Displays') }}
+              Shopfloor Displays
             </DropdownMenuLabel>
             <DropdownMenuItem as-child>
               <NuxtLink to="/dashboard/tickets/monitor" class="text-xs flex items-center gap-2 cursor-pointer w-full">
                 <Tv class="size-3.5 text-indigo-500" />
-                <span>{{ $t('tickets.tvMonitorDisplay', 'TV Monitor Display') }}</span>
+                <span>TV Monitor Display</span>
               </NuxtLink>
             </DropdownMenuItem>
             <DropdownMenuItem @select="showQrGeneratorModal = true" class="text-xs flex items-center gap-2 cursor-pointer">
               <QrCode class="size-3.5 text-indigo-500" />
-              <span>{{ $t('tickets.generateActionQr', 'Generate Action QR') }}</span>
+              <span>Generate Action QR</span>
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
 
             <DropdownMenuLabel class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
-              {{ $t('tickets.templatesAndGovernance', 'Templates & Governance') }}
+              Templates & Governance
             </DropdownMenuLabel>
             <DropdownMenuItem as-child>
               <NuxtLink to="/dashboard/tickets/templates" class="text-xs flex items-center gap-2 cursor-pointer w-full">
                 <FileText class="size-3.5 text-indigo-500" />
-                <span>{{ $t('tickets.templatesCatalog', 'Ticket Templates Catalog') }}</span>
+                <span>Ticket Templates Catalog</span>
               </NuxtLink>
             </DropdownMenuItem>
             <DropdownMenuItem as-child>
@@ -464,38 +452,59 @@ async function onResumeTicket(ticketId: string) {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <!-- Scan QR Button (Inline Toggle) -->
         <Button
           variant="outline"
           size="sm"
-          @click="showQrScanner = true"
-          class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors"
+          @click="showQrScanner = !showQrScanner"
+          class="border-border bg-card hover:bg-muted text-foreground rounded-lg px-3 h-8 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
         >
           <Camera class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Scan QR</span>
+          <span>{{ showQrScanner ? 'Close Scanner' : 'Scan QR' }}</span>
         </Button>
 
-        <Button
-          size="sm"
-          @click="openCreateModal"
-          class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-3.5 h-8 text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
-        >
-          <Plus class="h-3.5 w-3.5" />
-          <span>Report Incident</span>
-        </Button>
+        <!-- Primary Action: Dedicated New Incident Page -->
+        <NuxtLink to="/dashboard/tickets/new">
+          <Button
+            size="sm"
+            class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-3.5 h-8 text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus class="h-3.5 w-3.5" />
+            <span>Report Incident</span>
+          </Button>
+        </NuxtLink>
       </div>
     </div>
 
-    <!-- QR Scanner Modal Popup -->
-    <div v-if="showQrScanner" class="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-4">
+    <!-- Dynamic In-Page QR Scanner (Zero Blocking Backdrop) -->
+    <div
+      v-if="showQrScanner"
+      class="p-4 bg-card border border-border rounded-2xl shadow-xl relative animate-in fade-in duration-200"
+    >
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-border">
+        <div class="flex items-center gap-2">
+          <Camera class="size-4 text-indigo-500" />
+          <span class="text-xs font-bold text-foreground">Scan Machine or Action QR Code</span>
+        </div>
+        <Button variant="ghost" size="sm" @click="showQrScanner = false" class="size-7 p-0 rounded-lg">
+          <X class="size-4" />
+        </Button>
+      </div>
       <QrScanner @scanned="onQrScanned" @close="showQrScanner = false" />
     </div>
 
-    <!-- Personal Dedicated Header (Hides completely if empty as per specification) -->
+    <!-- Personal Dedicated Header (Hides completely if empty) -->
     <TicketPersonalHeader
       :tickets="tickets"
       @select-ticket="onSelectTicket"
       @pickup-ticket="onPickupTicket"
       @resume-ticket="onResumeTicket"
+    />
+
+    <!-- Persistent Line-Stop Alarm Banner -->
+    <LineStopAlarmBanner
+      :tickets="tickets"
+      @select-ticket="onSelectTicket"
     />
 
     <!-- Metrics Cards Overview -->
@@ -508,7 +517,7 @@ async function onResumeTicket(ticketId: string) {
     <!-- Active Metric Filter Chip Bar -->
     <div
       v-if="activeMetricFilter"
-      class="flex items-center justify-between px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-700 dark:text-indigo-300 animate-in fade-in duration-200 shadow-sm"
+      class="flex items-center justify-between px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-700 dark:text-indigo-300 animate-in fade-in duration-200 shadow-xs"
     >
       <div class="flex items-center gap-2">
         <Filter class="size-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -517,7 +526,7 @@ async function onResumeTicket(ticketId: string) {
       </div>
       <button
         @click="clearMetricFilter"
-        class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-foreground flex items-center gap-1 font-medium px-2 py-0.5 rounded hover:bg-indigo-500/20 transition-colors"
+        class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-foreground flex items-center gap-1 font-medium px-2 py-0.5 rounded hover:bg-indigo-500/20 transition-colors cursor-pointer"
       >
         <X class="size-3.5" />
         <span>Clear Filter</span>
@@ -525,7 +534,7 @@ async function onResumeTicket(ticketId: string) {
     </div>
 
     <!-- Tag Cloud Filter Bar -->
-    <div v-if="availableTags.length > 0" class="p-3 bg-card border border-border rounded-xl shadow-sm">
+    <div v-if="availableTags.length > 0" class="p-3 bg-card border border-border rounded-xl shadow-xs">
       <TagFilterBar
         :available-tags="availableTags"
         :selected-tags="selectedTags"
@@ -533,90 +542,64 @@ async function onResumeTicket(ticketId: string) {
       />
     </div>
 
-    <!-- Main View Switcher -->
-    <template v-if="activeViewMode === 'list'">
-      <TicketList
-        :tickets="displayedTickets"
-        :loading="isLoading"
-        :fill-mode="fillMode"
-        @selectTicket="onSelectTicket"
-        @reserveTicket="onReserveTicket"
-        @filterChange="fetchTickets"
-      />
-    </template>
+    <!-- Master-Detail Dual-Pane Workstation Container -->
+    <div class="grid grid-cols-12 gap-5 items-start">
+      <!-- Master View: List, Kanban, or Resolved Log -->
+      <div
+        class="transition-all duration-200"
+        :class="selectedTicket && splitView ? 'col-span-12 lg:col-span-7 xl:col-span-8' : 'col-span-12'"
+      >
+        <template v-if="activeViewMode === 'list'">
+          <TicketList
+            :tickets="displayedTickets"
+            :loading="isLoading"
+            :fill-mode="fillMode"
+            @selectTicket="onSelectTicket"
+            @reserveTicket="onReserveTicket"
+            @filterChange="fetchTickets"
+          />
+        </template>
 
-    <template v-else-if="activeViewMode === 'kanban'">
-      <TicketKanbanBoard
-        :tickets="displayedTickets"
-        :fill-mode="fillMode"
-        @selectTicket="onSelectTicket"
-        @moveStatus="onMoveStatus"
-        @setPending="onSetPending"
-        @escalateTicket="onEscalateTicket"
-        @resolveEscalation="onResolveEscalation"
-      />
-    </template>
+        <template v-else-if="activeViewMode === 'kanban'">
+          <TicketKanbanBoard
+            :tickets="displayedTickets"
+            :fill-mode="fillMode"
+            @selectTicket="onSelectTicket"
+            @moveStatus="onMoveStatus"
+            @setPending="onSetPending"
+            @escalateTicket="onEscalateTicket"
+            @resolveEscalation="onResolveEscalation"
+          />
+        </template>
 
-    <template v-else-if="activeViewMode === 'resolved'">
-      <TicketResolvedLog
-        :tickets="displayedTickets"
-      />
-    </template>
+        <template v-else-if="activeViewMode === 'resolved'">
+          <TicketResolvedLog
+            :tickets="displayedTickets"
+          />
+        </template>
+      </div>
 
-    <!-- Ticket Creation Modal with 4-Tier Templates & Attachments -->
-    <TicketCreateModal
-      :open="showCreateModal"
-      :prefilled-station="prefilledStationId"
-      :prefilled-machine-type="prefilledMachineType"
-      :prefilled-group-id="prefilledGroupId"
-      :prefilled-template-id="prefilledTemplateId"
-      @update:open="showCreateModal = $event"
-      @created="onTicketCreated"
-    />
-
-    <!-- Ticket Template Catalog Modal -->
-    <TicketTemplateCatalogModal
-      :open="showTemplateCatalogModal"
-      @close="showTemplateCatalogModal = false"
-      @select="onTemplateSelected"
-    />
-
-    <!-- Ticket Detail & Live Comment Drawer with 8 Statuses & Lightbox -->
-    <TicketDetailDrawer
-      :ticket="selectedTicket"
-      :open="showDetailDrawer"
-      @update:open="showDetailDrawer = $event"
-      @updated="fetchTickets"
-    />
+      <!-- Detail Inspector Pane: Split Workbench Inspector (Zero Pop-ups, Zero Overlays) -->
+      <div
+        v-if="selectedTicket && splitView"
+        class="col-span-12 lg:col-span-5 xl:col-span-4 sticky top-4"
+      >
+        <TicketDetailWorkbench
+          :ticket="selectedTicket"
+          @close="selectedTicket = null"
+          @updated="fetchTickets"
+        />
+      </div>
+    </div>
 
     <!-- Actionable Machine QR Code Generator Modal -->
     <MachineQrModal
       :open="showQrGeneratorModal"
-      :station-id="prefilledStationId || 'STATION-OP10-01'"
+      :station-id="'STATION-OP10-01'"
       :station-name="'OP10 Machining Cell'"
       :machine-type="'Milling'"
       :group-id="'grp-line06'"
       @close="showQrGeneratorModal = false"
-    />
-
-    <!-- 3-Tier Delegation & Teams OOO Modal -->
-    <PreferredTechniciansModal
-      :open="showDelegationModal"
-      @close="showDelegationModal = false"
-    />
-
-    <!-- Recursive Machine Group Manager Modal -->
-    <MachineGroupManagerModal
-      :open="showGroupManagerModal"
-      @close="showGroupManagerModal = false"
-      @groupSelected="prefilledGroupId = $event"
-    />
-
-    <!-- Interactive Fleet Simulator & Dev Generator Modal -->
-    <SimulatorControlModal
-      :open="showSimulatorModal"
-      @update:open="showSimulatorModal = $event"
-      @ticketCreated="fetchTickets"
     />
   </div>
 </template>

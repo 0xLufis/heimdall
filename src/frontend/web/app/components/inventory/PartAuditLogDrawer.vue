@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   X,
   History,
@@ -16,21 +16,47 @@ import {
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import type { PartAuditRecord } from '~/types/inventory'
+import { usePartsInventory } from '~/composables/usePartsInventory'
 
-const props = defineProps<{
-  open: boolean
-  auditLogs: PartAuditRecord[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    auditLogs?: PartAuditRecord[]
+    part?: any
+  }>(),
+  {
+    auditLogs: undefined,
+    part: null
+  }
+)
 
 const emit = defineEmits<{
   (e: 'update:open', val: boolean): void
 }>()
 
+const { auditLogs: fetchedLogs, fetchAuditLogs } = usePartsInventory()
+
+watch(
+  () => props.open,
+  async (isOpen) => {
+    if (isOpen && (!props.auditLogs || props.auditLogs.length === 0)) {
+      await fetchAuditLogs(props.part?.id)
+    }
+  },
+  { immediate: true }
+)
+
+const effectiveLogs = computed(() => {
+  if (props.auditLogs && props.auditLogs.length > 0) return props.auditLogs
+  return fetchedLogs.value || []
+})
+
 const filterAction = ref<'all' | 'use_part' | 'log_part' | 'scrap'>('all')
 
 const filteredLogs = computed(() => {
-  if (filterAction.value === 'all') return props.auditLogs
-  return props.auditLogs.filter(l => l.action === filterAction.value)
+  const list = effectiveLogs.value
+  if (filterAction.value === 'all') return list
+  return list.filter(l => l.action === filterAction.value)
 })
 
 const formatDate = (iso: string) => {
@@ -84,7 +110,7 @@ const formatDate = (iso: string) => {
           :class="filterAction === 'all' ? 'bg-primary text-primary-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
           class="h-7 px-2.5 text-xs cursor-pointer"
         >
-          All ({{ auditLogs.length }})
+          All ({{ effectiveLogs.length }})
         </Button>
         <Button
           variant="ghost"

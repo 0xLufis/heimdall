@@ -144,9 +144,9 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 
   // 4. Telescope Filter Drawer: Ctrl+F
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+  if (e.ctrlKey && e.key.toLowerCase() === 'f') {
     e.preventDefault()
-    toggleFilterDrawer()
+    dropdownRef.value?.toggleFilterDrawer()
     return
   }
 
@@ -207,9 +207,6 @@ const handleKeydown = (e: KeyboardEvent) => {
       isMenuExplicitlyClosed.value = true
       isFocused.value = false
       inputRef.value?.blur()
-      if (props.config?.instanceId === 'global' || e.shiftKey) {
-        router.push({ path: '/dashboard/search', query: { q: effectiveQueryString.value || undefined } })
-      }
     }
   } else if (e.key === 'Backspace' && rawInput.value === '' && tags.value.length > 0) {
     removeTag(tags.value[tags.value.length - 1].id)
@@ -260,53 +257,18 @@ const handleValueSelect = (val: string) => {
 }
 
 const handleSelectTagValue = (key: string, value: string) => {
-  const existingIdx = tags.value.findIndex(t => 
-    t.key.toLowerCase() === key.toLowerCase() && 
-    (value === 'all' || t.value.toLowerCase() === value.toLowerCase())
-  )
-
-  if (existingIdx >= 0) {
-    removeTag(tags.value[existingIdx].id)
-  } else {
-    const label = key === 'station' && value === 'all' ? '@machine'
-      : key === 'ticket' && value === 'all' ? '#ticket'
-      : key === 'host' && value === 'all' ? '!controller'
-      : key === 'part' && value === 'all' ? '*part'
-      : key === 'status' && value === 'maintenance' ? '%alarm'
-      : `${key}: ${value}`
-
-    addTag({
-      id: `tag-${key}-${value}`,
-      key,
-      value,
-      label,
-      removable: true
-    })
-  }
-
+  addTag({
+    id: `tag-${key}-${value}`,
+    key,
+    value,
+    removable: true
+  })
   rawInput.value = ''
   emit('search', effectiveQueryString.value)
   isMenuExplicitlyClosed.value = false
   inputRef.value?.focus()
   isFocused.value = true
-  executeSearch()
 }
-
-const toggleFilterDrawer = () => {
-  if (!showDropdown.value) {
-    isFocused.value = true
-    isMenuExplicitlyClosed.value = false
-  }
-  nextTick(() => {
-    dropdownRef.value?.toggleFilterDrawer()
-  })
-}
-
-defineExpose({
-  toggleFilterDrawer,
-  focus: () => inputRef.value?.focus(),
-  select: () => inputRef.value?.select()
-})
 
 const handleClear = () => {
   clearAllTags()
@@ -385,16 +347,6 @@ const handleBlur = (e: FocusEvent) => {
   }, 250)
 }
 
-const handleDropdownEndInteraction = () => {
-  if (typeof window !== 'undefined') {
-    window.setTimeout(() => {
-      isInteractingWithDropdown.value = false
-    }, 200)
-  } else {
-    isInteractingWithDropdown.value = false
-  }
-}
-
 onMounted(() => {
   fetchSearchKeys()
   handleInputChange(rawInput.value)
@@ -435,7 +387,7 @@ onUnmounted(() => {
         ref="inputRef"
         v-model="rawInput"
         type="text"
-        :placeholder="tags.length === 0 ? (props.config?.placeholder || $t('common.searchOrJump', 'Search everything (e.g. Siemens, OP10, 15kW)...')) : $t('search.typeToAddFilters', 'Type to add more filters...')"
+        :placeholder="tags.length === 0 ? (props.config?.placeholder || 'OmniSearch: Search everything (e.g. Siemens, OP10, 15kW)...') : 'Type to add more filters...'"
         class="flex-1 min-w-[160px] bg-transparent border-0 text-sm font-semibold text-foreground placeholder:text-muted-foreground placeholder:font-normal focus:outline-none focus:ring-0 py-1"
         @input="isMenuExplicitlyClosed = false; handleInputChange(($event.target as HTMLInputElement).value)"
         @focus="isFocused = true; isMenuExplicitlyClosed = false"
@@ -450,7 +402,7 @@ onUnmounted(() => {
           type="button"
           @click.stop="handleClear"
           class="p-1 text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
-          :title="$t('search.clearSearch', 'Clear search')"
+          title="Clear search"
         >
           <X class="w-4 h-4" />
         </button>
@@ -471,13 +423,12 @@ onUnmounted(() => {
       v-if="showDropdown"
       class="absolute left-0 right-0 top-full mt-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
       @mousedown="isInteractingWithDropdown = true"
-      @mouseup="handleDropdownEndInteraction"
+      @mouseup="setTimeout(() => { isInteractingWithDropdown = false }, 200)"
       @touchstart="isInteractingWithDropdown = true"
-      @touchend="handleDropdownEndInteraction"
+      @touchend="setTimeout(() => { isInteractingWithDropdown = false }, 200)"
     >
       <AutoTagSuggestionDropdown
         ref="dropdownRef"
-        :active-tags="tags"
         :auto-suggestions="autoSuggestions"
         :results="results"
         :primary-results="primaryResults"

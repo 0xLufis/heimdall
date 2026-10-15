@@ -127,7 +127,7 @@ watch(
       quantity.value = 1
       minQuantity.value = 1
       minQuantityScalar.value = 1.0
-      serialNumber.value = `SN-${Math.floor(100000 + Math.random() * 900000)}`
+      serialNumber.value = `SN-${Date.now().toString().slice(-6)}`
       customIdentifier.value = ''
       specValues.value = {}
 
@@ -214,10 +214,10 @@ const handleSubmit = () => {
           </div>
           <div>
             <h2 class="text-base font-semibold text-foreground">
-              {{ $t('inventory.logPartModalTitle') }}
+              Log Part into Warehouse Stock
             </h2>
             <p class="text-xs text-muted-foreground mt-0.5">
-              {{ $t('inventory.logPartModalSubtitle') }}
+              Intake new, used, or donor parts with dynamic specification validation & auto-indexing
             </p>
           </div>
         </div>
@@ -278,7 +278,7 @@ const handleSubmit = () => {
           >
             <Cpu class="size-5 text-teal-600 dark:text-teal-400" />
             <div>
-              <div class="text-xs font-semibold">{{ $t('inventory.serializedPart') }}</div>
+              <div class="text-xs font-semibold">Serialized Part</div>
               <div class="text-[10px] text-muted-foreground">Individual unit with unique serial (Qty fixed to 1)</div>
             </div>
           </div>
@@ -290,7 +290,7 @@ const handleSubmit = () => {
           >
             <Boxes class="size-5 text-purple-600 dark:text-purple-400" />
             <div>
-              <div class="text-xs font-semibold">{{ $t('inventory.bulkStock') }}</div>
+              <div class="text-xs font-semibold">Bulk Stock</div>
               <div class="text-[10px] text-muted-foreground">Consumable items tracked by quantity count</div>
             </div>
           </div>
@@ -299,12 +299,12 @@ const handleSubmit = () => {
         <!-- Basic Information -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="space-y-1.5 sm:col-span-2">
-            <Label class="text-xs font-semibold text-foreground">{{ $t('inventory.partName') }} *</Label>
+            <Label class="text-xs font-semibold text-foreground">Part Name *</Label>
             <Input v-model="name" placeholder="e.g. Beckhoff CX5140 Embedded PC or Festo Cylinder" required class="h-9 text-xs" />
           </div>
 
           <div class="space-y-1.5">
-            <Label class="text-xs font-semibold text-foreground">{{ $t('inventory.category') }}</Label>
+            <Label class="text-xs font-semibold text-foreground">Top-Level Category</Label>
             <select
               v-model="category"
               class="w-full h-9 px-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
@@ -322,7 +322,7 @@ const handleSubmit = () => {
           <div class="space-y-1.5">
             <Label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <Building class="size-3.5 text-muted-foreground" />
-              <span>{{ $t('inventory.manufacturer') }} *</span>
+              <span>Manufacturer *</span>
             </Label>
             <Input
               v-model="manufacturer"
@@ -336,7 +336,7 @@ const handleSubmit = () => {
           <div class="space-y-1.5">
             <Label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <Building class="size-3.5 text-muted-foreground" />
-              <span>{{ $t('inventory.supplier') }}</span>
+              <span>Supplier (Vendor)</span>
             </Label>
             <Input
               v-model="supplier"
@@ -488,7 +488,7 @@ const handleSubmit = () => {
           @click="emit('update:open', false)"
           class="text-xs h-8 cursor-pointer"
         >
-          {{ $t('common.cancel') }}
+          Cancel
         </Button>
         <Button
           type="button"
@@ -498,7 +498,7 @@ const handleSubmit = () => {
           class="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-8 gap-1.5 cursor-pointer disabled:opacity-50"
         >
           <CheckCircle2 class="size-3.5" />
-          <span>{{ $t('inventory.confirmLogPart') }}</span>
+          <span>Confirm Log Part</span>
         </Button>
       </div>
     </div>

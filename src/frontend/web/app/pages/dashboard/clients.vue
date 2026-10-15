@@ -240,14 +240,9 @@ const handleManualSync = async () => {
 
 onMounted(async () => {
   await Promise.all([fetchControllers(false), fetchStations()])
-})
-
-// Reactively handle route query updates (search, query, selected controller, hostname)
-watch(() => [route.query, controllers.value], () => {
-  const q = route.query
-  if (q.selected || q.hostname) {
-    const targetId = q.selected as string
-    const targetHost = q.hostname as string
+  if (route.query.selected || route.query.hostname) {
+    const targetId = route.query.selected as string
+    const targetHost = route.query.hostname as string
     const match = controllers.value.find(c => c.id === targetId || c.hostname === targetHost)
     if (match) {
       selectedController.value = match
@@ -255,10 +250,7 @@ watch(() => [route.query, controllers.value], () => {
       searchQuery.value = targetHost
     }
   }
-  if (q.search || q.query) {
-    searchQuery.value = (q.search || q.query) as string
-  }
-}, { immediate: true })
+})
 
 // Keep selected controller telemetry updated without auto-reopening if dismissed
 watch(() => controllers.value, (list) => {
@@ -292,11 +284,9 @@ const onSearch = (q: string) => {
           <Monitor class="h-6 w-6" />
         </div>
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
-            {{ $t('clients.title', 'Industrial Controller Fleet') }}
-          </h1>
+          <h1 class="text-2xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">Industrial Controllers Fleet</h1>
           <p class="text-sm text-muted-foreground mt-0.5 group-hover:text-foreground transition-colors">
-            {{ $t('clients.description', 'Edge IPC telemetry, multi-runtime diagnostics, AutoCAD DXF tag linking, and signed commands') }}
+            Edge IPC telemetry, multi-runtime diagnostics, AutoCAD DXF tag linking, and signed commands
           </p>
         </div>
       </div>
@@ -312,7 +302,7 @@ const onSearch = (q: string) => {
             class="h-8 px-3 rounded-md text-xs font-medium transition-all cursor-pointer"
           >
             <Grid class="w-3.5 h-3.5 mr-1.5" />
-            {{ $t('clients.gridView', 'Grid View') }}
+            Grid View
           </Button>
 
           <Button
@@ -323,7 +313,7 @@ const onSearch = (q: string) => {
             class="h-8 px-3 rounded-md text-xs font-medium transition-all cursor-pointer"
           >
             <Map class="w-3.5 h-3.5 mr-1.5" />
-            {{ $t('clients.mapView', 'Map View') }}
+            Plant CAD Map
           </Button>
         </div>
 
@@ -335,7 +325,7 @@ const onSearch = (q: string) => {
           class="h-8 bg-card border-border hover:border-border text-foreground rounded-lg px-3.5 hover:bg-accent text-xs font-medium transition-all shadow-xs cursor-pointer"
         >
           <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5 mr-2 text-muted-foreground" />
-          <span>{{ isLoading ? $t('common.loading', 'Loading...') : $t('common.refresh', 'Sync Telemetry') }}</span>
+          <span>{{ isLoading ? 'Syncing Fleet...' : 'Sync Telemetry' }}</span>
         </Button>
       </div>
     </div>

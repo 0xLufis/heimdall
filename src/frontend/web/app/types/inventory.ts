@@ -66,95 +66,13 @@ export interface InventoryComponent {
   clientPcId?: string
 }
 
-export interface EplanCadReference {
-  deviceTag?: string
-  locationAspect?: string
-  drawingPage?: string
-  functionText?: string
-  cadHandle?: string
-  cadBlockName?: string
-  bomPosition?: string
-  referenceDesignator?: string
-  pdfLocation?: {
-    documentId: string
-    pageNumber: number
-    x: number
-    y: number
-    width: number
-    height: number
-  }
-}
-
-export interface ComponentRecipe {
-  id: string
-  recipeCode: string
-  name: string
-  description?: string
-  category: 'Hardware' | 'SoftwareBinary' | 'SoftwareRuntime' | 'SoftwareConfig' | 'SoftwareProgram' | 'SoftwareRecipe' | 'License' | 'Document' | string
-  extendsRecipeId?: string
-  manufacturer?: string
-  modelNumber?: string
-  baseCostEur?: number
-  specificationSchema?: Record<string, any>
-  autoTags: string[]
-  eplanCadDefaults?: EplanCadReference
-  createdAt?: string
-  updatedAt?: string
-}
-
-export interface ComponentPartHistory {
-  id: string
-  componentId: string
-  machineId: string
-  swappedAt: string
-  swappedByUserId: string
-  swappedByUserName?: string
-  previousPartId?: string
-  previousPartSerialNumber?: string
-  newPartId?: string
-  newPartSerialNumber?: string
-  reason: 'FailureBreakdown' | 'WearDepreciation' | 'ScheduledPM' | 'RetrofitUpgrade' | 'CalibrationSwap' | 'ScheduledReplacement' | 'InitialCommissioning' | string
-  previousPartDisposition: 'Scrapped' | 'SentToRepair' | 'DonorStock' | 'RetainedForInvestigation' | 'SentForRepair' | 'ReturnedToStock' | 'RetainedForAnalysis' | string
-  associatedTicketId?: string
-  notes?: string
-}
-
-export interface MachineComponentSlot {
-  id: string
-  machineId: string
-  name: string
-  functionalSlotIdentifier: string
-  category: 'Hardware' | 'SoftwareBinary' | 'SoftwareRuntime' | 'SoftwareConfig' | 'SoftwareProgram' | 'SoftwareRecipe' | 'License' | 'Document' | string
-  componentRecipeId?: string
-  componentRecipeCode?: string
-  currentPartId?: string
-  currentPartSerialNumber?: string
-  tags: string[]
-  attributes?: Record<string, any>
-  eplanCadRef?: EplanCadReference
-  partHistory?: ComponentPartHistory[]
-  installedAt?: string
-  updatedAt?: string
-}
-
 export interface Machine {
   id: string
-  name: string
   organizationId?: string
   customIdentifier: string
-  status?: string
-  operationalState?: 'Running' | 'Idle' | 'Maintenance' | 'Down' | 'Decommissioned' | string
-  criticality?: 'Tier1_Critical' | 'Tier2_Major' | 'Tier3_Standard' | string
-  technologies?: string[]
-  lineGroupId?: string
-  parentMachineId?: string
   pinnedObjectHandle?: string
-  systemTags?: string[]
-  userTags?: string[]
-  preferredTechnicianId?: string
-  preferredTechnicianName?: string
-  clientPcs?: any[]
-  components?: MachineComponentSlot[] | InventoryComponent[]
+  clientPcs: any[]
+  components: InventoryComponent[]
 }
 
 // --------------------------------------------------------------------------

@@ -70,43 +70,6 @@ const vncHost = ref('')
 const vncPort = ref(8006)
 const vncPath = ref('websockify')
 
-// Dynamic VNC Installation Status
-const vncInstallStatus = ref<{
-  loading: boolean
-  installed: boolean
-  status: string
-  error?: string
-}>({
-  loading: false,
-  installed: true,
-  status: 'running'
-})
-
-const checkVncInstallation = async () => {
-  if (!props.controller) return
-  const id = props.controller.id || props.controller.name || 'default'
-  vncInstallStatus.value.loading = true
-  try {
-    const res = await $fetch<any>(`/api/clients/${encodeURIComponent(id)}/vnc-status`, {
-      params: { hostname: props.controller.hostname || props.controller.name }
-    })
-    if (res) {
-      vncInstallStatus.value = {
-        loading: false,
-        installed: Boolean(res.installed),
-        status: res.status || (res.installed ? 'running' : 'not_installed'),
-        error: res.error
-      }
-    }
-  } catch {
-    vncInstallStatus.value = {
-      loading: false,
-      installed: true,
-      status: 'running'
-    }
-  }
-}
-
 // DOM references
 const vncContainerRef = ref<HTMLDivElement | null>(null)
 const viewportWrapperRef = ref<HTMLDivElement | null>(null)
@@ -428,7 +391,6 @@ const stopLoop = () => {
 watch(() => props.open, (newVal) => {
   if (newVal) {
     initConnectionParams()
-    checkVncInstallation()
     if (activeProvider.value === 'vnc') {
       if (vncMode.value === 'live') {
         connectRfb()
@@ -604,16 +566,6 @@ onUnmounted(() => {
               <div v-else class="flex items-center gap-1.5">
                 <span class="size-2 rounded-full bg-blue-500 dark:bg-blue-400"></span>
                 <span class="font-mono text-blue-600 dark:text-blue-300 text-[11px]">TwinCAT Viewport Simulation</span>
-              </div>
-
-              <!-- VNC Dynamic Installation Badge -->
-              <div class="flex items-center gap-1.5">
-                <span
-                  class="px-2 py-0.5 rounded text-[10px] font-mono font-medium border"
-                  :class="vncInstallStatus.installed ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-500'"
-                >
-                  VNC Service: {{ vncInstallStatus.installed ? 'Installed & Ready' : 'Not Installed' }}
-                </span>
               </div>
 
               <div class="h-3 w-px bg-border hidden sm:block"></div>
@@ -960,7 +912,7 @@ onUnmounted(() => {
           @click="emit('update:open', false)"
           class="border-border bg-card text-muted-foreground hover:text-foreground text-xs cursor-pointer"
         >
-          {{ $t('clients.closeSession') }}
+          Close Session
         </Button>
       </div>
     </DialogContent>

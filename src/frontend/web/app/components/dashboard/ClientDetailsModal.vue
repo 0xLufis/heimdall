@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { HardDrive, Cpu, Package, Settings, ShieldAlert, FileSearch, X } from 'lucide-vue-next'
 import { authClient } from '@/utils/auth-client'
+import { toast } from 'vue-sonner'
 
 const props = defineProps<{
   client: any
@@ -63,10 +64,10 @@ const sendConfigUpdate = async () => {
         config: configUpdate.value
       }
     })
-    alert('Config update queued for admin approval/agent sync')
+    toast.success('Config update queued for admin approval/agent sync')
   } catch (e) {
     console.error(e)
-    alert('Failed to queue config update')
+    toast.error('Failed to queue config update')
   }
 }
 
@@ -77,10 +78,10 @@ const sendFileCheck = async () => {
       body: JSON.stringify(fileCheckPath.value),
       headers: { 'Content-Type': 'application/json' }
     })
-    alert('File check queued')
+    toast.success('File check queued')
   } catch (e) {
     console.error(e)
-    alert('Failed to queue file check')
+    toast.error('Failed to queue file check')
   }
 }
 

@@ -5,8 +5,7 @@ import InteractiveMapCanvas from '~/components/map/InteractiveMapCanvas.vue'
 import MapPinningDialog from '~/components/dashboard/MapPinningDialog.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '~/components/ui/input'
-import { MonitorIcon, MapPinIcon, Cpu, Layers, ChevronDown, Map as MapIcon, Search } from 'lucide-vue-next'
+import { MonitorIcon, MapPinIcon, Cpu, Layers, ChevronDown, Map as MapIcon } from 'lucide-vue-next'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useStations } from '~/composables/useStations'
 import { useControllers } from '~/composables/useControllers'
@@ -17,8 +16,6 @@ import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
-
-const mapSearchQuery = ref('')
 
 const router = useRouter()
 const { stations, fetchStations, updateStationPin } = useStations()
@@ -280,7 +277,7 @@ onMounted(() => {
         </div>
         <div>
           <h1 class="text-2xl font-bold tracking-tight text-foreground transition-colors">
-            Plant Spatial Layout & CAD Mapping
+            Plant Layout & Spatial CAD Mapping
           </h1>
           <p class="text-sm text-muted-foreground mt-0.5 transition-colors">
             Interactive AutoCAD (DXF) floor plan mapping of machines, sensors, and controllers
@@ -289,16 +286,6 @@ onMounted(() => {
       </div>
 
       <div class="flex items-center gap-3">
-        <!-- Spatial Search & Filter Input -->
-        <div class="relative w-64">
-          <Search class="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-          <Input
-            v-model="mapSearchQuery"
-            placeholder="Search map stations / handles..."
-            class="h-8 pl-8 text-xs bg-card"
-          />
-        </div>
-
         <!-- Floor Plan Switcher -->
         <Popover>
           <PopoverTrigger as-child>
@@ -343,8 +330,6 @@ onMounted(() => {
         <InteractiveMapCanvas
           :dxf-url="currentPlan.url"
           :active-pin="activePin"
-          :search-query="mapSearchQuery"
-          :tickets="tickets"
           @object-clicked="handleObjectClick"
           @object-dblclicked="handleObjectDblClick"
           @object-contextmenu="handleObjectContextMenu"

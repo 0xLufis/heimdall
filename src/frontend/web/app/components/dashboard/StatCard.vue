@@ -26,7 +26,7 @@ defineProps<{
          <span :class="trend.startsWith('+') ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-destructive bg-destructive/10 border-destructive/20'" class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border">
            {{ trend }}
          </span>
-         <span class="text-[10px] text-muted-foreground font-medium">{{ $t('dashboard.fromLastCycle', 'from last cycle') }}</span>
+         <span class="text-[10px] text-muted-foreground font-medium">from last cycle</span>
       </div>
     </CardContent>
   </Card>

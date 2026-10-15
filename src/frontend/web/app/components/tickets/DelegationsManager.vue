@@ -18,6 +18,7 @@ import { today, getLocalTimeZone, type DateValue } from '@internationalized/date
 import SearchableTargetCombobox, { type TargetItem } from '~/components/common/SearchableTargetCombobox.vue'
 import RbacTooltip from '~/components/common/RbacTooltip.vue'
 import { useAuthSession, DEMO_PERSONAS, type DemoPersona } from '~/composables/useAuthSession'
+import { toast } from 'vue-sonner'
 
 const props = withDefaults(defineProps<{
   isModal?: boolean
@@ -210,43 +211,10 @@ const allTechnicians = computed(() => {
   return [...knownTechnicians.value, ...extra]
 })
 
-const filterModifiableOnly = ref(false)
-const selectedPersonnelTag = ref('all')
-
-const personnelTags = ref<Record<string, string[]>>({
-  'István Kovács': ['#electrical', '#shift-a'],
-  'Gábor Varga': ['#mechanical', '#shift-a', '#lead'],
-  'Zoltán Németh': ['#electrical', '#shift-b'],
-  'Bence Horváth': ['#controls', '#shift-b'],
-  'Engineer Sally': ['#controls', '#engineer', '#lead'],
-  'Engineer Orwell': ['#robotics', '#engineer'],
-  'Katalin Nagy': ['#vision', '#qa'],
-  'Shift Leader Ferenc': ['#lead', '#shift-a']
-})
-
-function canModifyPersonnel(name: string): boolean {
-  if (dedicationTier.value === 'manager' || userRole.value === 'system_admin' || userRole.value === 'admin') return true
-  if (dedicationTier.value === 'group') return true
-  if (dedicationTier.value === 'shift') {
-    return !name.includes('Engineer') && !name.includes('Manager')
-  }
-  if (dedicationTier.value === 'self') {
-    return name === user.value?.name
-  }
-  return true
-}
-
 const filteredTechnicians = computed(() => {
-  let list = allTechnicians.value
-  if (filterModifiableOnly.value) {
-    list = list.filter(n => canModifyPersonnel(n))
-  }
-  if (selectedPersonnelTag.value !== 'all') {
-    list = list.filter(n => (personnelTags.value[n] || []).includes(selectedPersonnelTag.value))
-  }
-  if (!techSearch.value.trim()) return list
+  if (!techSearch.value.trim()) return allTechnicians.value
   const q = techSearch.value.toLowerCase().trim()
-  return list.filter(n => n.toLowerCase().includes(q))
+  return allTechnicians.value.filter(n => n.toLowerCase().includes(q))
 })
 
 const availableCount = computed(() => {
@@ -321,8 +289,7 @@ const ruleError = ref<string | null>(null)
 const ruleScopeFilter = ref<string>('all')
 
 const ruleForm = reactive({
-  assignmentSourceType: 'person' as 'person' | 'tag_group',
-  scopeType: 'Technology' as 'Technology' | 'Line/Group' | 'Machine' | 'Tag',
+  scopeType: 'Technology' as 'Technology' | 'Line/Group' | 'Machine',
   target: '',
   categoryFilter: '',
   technicianName: '',
@@ -378,15 +345,6 @@ function openAddRule() {
 }
 
 async function queryTechnicians(q: string): Promise<TargetItem[]> {
-  if (ruleForm.assignmentSourceType === 'tag_group') {
-    return [
-      { id: '#electrical-team', label: '#electrical-team', sublabel: 'Electrical maintenance personnel group', badge: 'Personnel Tag', badgeColor: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400' },
-      { id: '#mechanical-team', label: '#mechanical-team', sublabel: 'Mechanical maintenance personnel group', badge: 'Personnel Tag', badgeColor: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
-      { id: '#controls-engineers', label: '#controls-engineers', sublabel: 'PLC & Automation specialists', badge: 'Personnel Tag', badgeColor: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400' },
-      { id: '#shift-a-leads', label: '#shift-a-leads', sublabel: 'Shift A technical leadership group', badge: 'Personnel Tag', badgeColor: 'border-violet-500/30 bg-violet-500/10 text-violet-400' }
-    ]
-  }
-
   try {
     let url = '/api/technicians/candidates'
     if (dedicationTier.value === 'shift') {
@@ -443,15 +401,6 @@ const technologyOptions = computed<TargetItem[]>(() => {
 })
 
 async function queryScopeTargets(q: string): Promise<TargetItem[]> {
-  if (ruleForm.scopeType === 'Tag') {
-    return [
-      { id: '#Line-01', label: '#Line-01', sublabel: 'All Line 1 stations', badge: 'Tag Group', badgeColor: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-400' },
-      { id: '#Line-06', label: '#Line-06', sublabel: 'Audi battery module stations', badge: 'Tag Group', badgeColor: 'border-pink-500/30 bg-pink-500/10 text-pink-400' },
-      { id: '#Critical-Quality', label: '#Critical-Quality', sublabel: 'Precision vision & welding machines', badge: 'Tag Group', badgeColor: 'border-amber-500/30 bg-amber-500/10 text-amber-500' },
-      { id: '#High-Voltage', label: '#High-Voltage', sublabel: 'High voltage safe envelope machines', badge: 'Tag Group', badgeColor: 'border-rose-500/30 bg-rose-500/10 text-rose-400' }
-    ]
-  }
-
   if (ruleForm.scopeType === 'Technology') {
     return technologyOptions.value
   }
@@ -658,7 +607,6 @@ async function saveGroupCluster(groupId: string) {
 }
 
 async function deleteGroupCluster(groupId: string) {
-  if (!confirm('Are you sure you want to delete this machine group cluster?')) return
   groupSubmitting.value = true
   groupError.value = null
   try {
@@ -667,8 +615,11 @@ async function deleteGroupCluster(groupId: string) {
     })
     closeEditGroup()
     await loadGroups()
+    toast.success('Machine group cluster deleted')
   } catch (err: any) {
-    groupError.value = err?.data?.message || 'Failed to delete cluster.'
+    const msg = err?.data?.message || err?.message || 'Failed to delete cluster.'
+    groupError.value = msg
+    toast.error(msg)
   } finally {
     groupSubmitting.value = false
   }
@@ -881,34 +832,6 @@ const scopeColor: Record<string, string> = {
                 placeholder="Search technicians..."
                 class="pl-8 h-8 bg-background border-border text-foreground text-xs rounded-xl"
               />
-            </div>
-
-            <!-- Filter by Modifiable Only & Personnel Tag Filters -->
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                @click="filterModifiableOnly = !filterModifiableOnly"
-                class="px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer"
-                :class="filterModifiableOnly ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'"
-                title="Only show personnel within your modification authority scope"
-              >
-                <Shield class="w-3.5 h-3.5" />
-                <span>Filter by who you can modify</span>
-              </button>
-
-              <div class="flex items-center gap-1">
-                <span class="text-[10px] uppercase font-bold text-muted-foreground">Tag:</span>
-                <select
-                  v-model="selectedPersonnelTag"
-                  class="h-7 text-xs bg-card border border-border rounded-lg px-2 text-foreground font-medium"
-                >
-                  <option value="all">All Personnel</option>
-                  <option value="#electrical">#electrical</option>
-                  <option value="#mechanical">#mechanical</option>
-                  <option value="#controls">#controls</option>
-                  <option value="#lead">#lead</option>
-                </select>
-              </div>
             </div>
 
             <div class="flex items-center gap-2">
@@ -1193,28 +1116,16 @@ const scopeColor: Record<string, string> = {
               <span>{{ ruleError }}</span>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Source Type</label>
-                <select
-                  v-model="ruleForm.assignmentSourceType"
-                  class="w-full h-9 rounded-xl bg-background border border-border text-foreground text-xs px-3 font-medium"
-                >
-                  <option value="person">Specific Person</option>
-                  <option value="tag_group">Group via Tag</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Target Scope</label>
+                <label class="text-[10px] font-black uppercase text-muted-foreground block mb-1">Scope</label>
                 <select
                   v-model="ruleForm.scopeType"
-                  class="w-full h-9 rounded-xl bg-background border border-border text-foreground text-xs px-3 font-medium"
+                  class="w-full h-9 rounded-xl bg-background border border-border text-foreground text-xs px-3"
                 >
-                  <option value="Machine">Specific Machine</option>
-                  <option value="Tag">Machine Group (via Tag)</option>
-                  <option value="Line/Group">Line / Envelope Group</option>
                   <option value="Technology">Technology Cluster</option>
+                  <option value="Line/Group">Line / Envelope Group</option>
+                  <option value="Machine">Specific Machine</option>
                 </select>
               </div>
 

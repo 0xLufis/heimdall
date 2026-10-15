@@ -12,15 +12,15 @@ const colorMode = useColorMode()
       <CardHeader>
         <CardTitle class="text-lg flex items-center gap-2">
           <PaletteIcon class="h-5 w-5 text-purple-400" />
-          <span>{{ $t('settings.appearanceTitle') }}</span>
+          <span>Theme Appearance & Interface Preferences</span>
         </CardTitle>
         <CardDescription>
-          {{ $t('settings.appearanceDesc') }}
+          Select your color mode and layout behavior across the Heimdall dashboard.
         </CardDescription>
       </CardHeader>
       <CardContent class="space-y-6">
         <div>
-          <div class="text-xs font-semibold text-muted-foreground uppercase mb-3">{{ $t('settings.colorScheme') }}</div>
+          <div class="text-xs font-semibold text-muted-foreground uppercase mb-3">Color Scheme</div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <button
               type="button"
@@ -29,7 +29,7 @@ const colorMode = useColorMode()
               :class="colorMode.preference === 'light' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-card hover:bg-muted/40'"
             >
               <SunIcon class="h-8 w-8 text-amber-500" />
-              <div class="font-bold text-sm">{{ $t('settings.lightMode') }}</div>
+              <div class="font-bold text-sm">Light Mode</div>
             </button>
 
             <button
@@ -39,7 +39,7 @@ const colorMode = useColorMode()
               :class="colorMode.preference === 'dark' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-card hover:bg-muted/40'"
             >
               <MoonIcon class="h-8 w-8 text-indigo-500 dark:text-indigo-400" />
-              <div class="font-bold text-sm">{{ $t('settings.darkMode') }}</div>
+              <div class="font-bold text-sm">Dark Mode (Default)</div>
             </button>
 
             <button
@@ -49,7 +49,7 @@ const colorMode = useColorMode()
               :class="colorMode.preference === 'system' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-card hover:bg-muted/40'"
             >
               <MonitorIcon class="h-8 w-8 text-muted-foreground" />
-              <div class="font-bold text-sm">{{ $t('settings.systemDefault') }}</div>
+              <div class="font-bold text-sm">System Default</div>
             </button>
           </div>
         </div>
@@ -57,8 +57,8 @@ const colorMode = useColorMode()
         <div class="border-t border-border/60 pt-6">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <div class="text-xs font-semibold text-muted-foreground uppercase">{{ $t('settings.languageAndLocalization') }}</div>
-              <p class="text-xs text-muted-foreground mt-0.5">{{ $t('settings.languageDesc') }}</p>
+              <div class="text-xs font-semibold text-muted-foreground uppercase">Language &amp; Localization</div>
+              <p class="text-xs text-muted-foreground mt-0.5">Select preferred display language for UI labels, date, and currency standards.</p>
             </div>
             <LanguageSwitcher variant="inline" />
           </div>

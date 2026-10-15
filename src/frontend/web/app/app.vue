@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import GlobalContextMenu from '~/components/common/GlobalContextMenu.vue'
+import Toaster from '~/components/ui/sonner/Sonner.vue'
 
 useHead({
   title: 'Heimdall - Maintenance & Telemetry',
@@ -50,4 +51,6 @@ onMounted(() => {
     <NuxtPage />
   </NuxtLayout>
   <GlobalContextMenu />
+  <Toaster position="top-right" richColors />
 </template>
+

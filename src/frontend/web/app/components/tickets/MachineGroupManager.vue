@@ -1,46 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import {
-  Tag as TagIcon,
-  Plus,
-  Trash2,
-  Edit3,
-  Check,
-  X,
-  Layers,
-  Cpu,
-  Shield,
-  ArrowRight,
-  Sparkles,
-  Building2,
-  Monitor,
-  FolderTree,
-  Wrench,
-  Search,
-  Move,
-  CheckCircle2,
-  AlertTriangle,
-  RotateCcw
+  FolderTree, Plus, Trash2, Edit3, Check, X, ChevronRight,
+  ChevronDown, Layers, Cpu, Shield, ArrowRight, Sparkles, Building2
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import { Input } from '~/components/ui/input'
-import MachinePictogram from '~/components/machines/MachinePictogram.vue'
-import { getGroupColor } from '~/utils/machineGroupColors'
-
-export interface TagEntry {
-  id: string
-  name: string
-  color: string
-  description?: string
-}
-
-export interface MachineTagAssignment {
-  machineId: string
-  tag: string
-  isManualOverride: boolean
-  source: 'manual' | 'security_group'
-}
+import { toast } from 'vue-sonner'
+import type { MachineGroup } from '~/types/maintenance'
 
 const props = withDefaults(defineProps<{
   isModal?: boolean
@@ -53,729 +21,497 @@ const emit = defineEmits<{
   (e: 'groupSelected', groupId: string): void
 }>()
 
-// Active View Toggle: 'machines' vs 'groups'
-const activeToggle = ref<'machines' | 'groups'>('machines')
-const searchQuery = ref('')
+const groups = ref<MachineGroup[]>([])
 const isLoading = ref(false)
+const selectedGroupId = ref<string | null>(null)
+const isCreating = ref(false)
+const isEditing = ref(false)
 
-// Tag Store Palette
-const tagStore = ref<TagEntry[]>([
-  { id: 'tag-line1', name: 'Line-01', color: '#6366f1', description: 'Pre-assembly high throughput line' },
-  { id: 'tag-line2', name: 'Line-02', color: '#10b981', description: 'Robotic welding and fastening line' },
-  { id: 'tag-line6', name: 'Line-06', color: '#ec4899', description: 'Audi battery module assembly cell' },
-  { id: 'tag-cell-a', name: 'Cell-A', color: '#8b5cf6', description: 'Dispensing & adhesive application' },
-  { id: 'tag-critical', name: 'Critical-Quality', color: '#f59e0b', description: 'Vision inspection & high precision' },
-  { id: 'tag-hv', name: 'High-Voltage', color: '#ef4444', description: 'HV battery safety envelope' },
-  { id: 'tag-eol', name: 'EOL-Testing', color: '#06b6d4', description: 'End of line functional validation' }
-])
-
-// Raw Entities
-const machines = ref<any[]>([])
-const groups = ref<any[]>([])
-
-// Tag Assignments per Machine: machineId -> Array of assignments
-// Manual overrides take precedence over security group mappings!
-const machineTagMap = ref<Record<string, MachineTagAssignment[]>>({})
-
-// Group Tag Assignments: groupId -> Array of tag strings
-const groupTagMap = ref<Record<string, string[]>>({})
-
-// Drag and drop state
-const draggedTag = ref<TagEntry | null>(null)
-
-// Modal for clicking a tag to assign to machines / groups
-const isAssignModalOpen = ref(false)
-const selectedTagForModal = ref<TagEntry | null>(null)
-const assignTargetType = ref<'machines' | 'groups'>('machines')
-const assignSelectedIds = ref<string[]>([])
-const assignAsManualOverride = ref(true)
-
-// Create Tag State
-const isCreatingTag = ref(false)
-const newTagName = ref('')
-const newTagColor = ref('#6366f1')
-const newTagDescription = ref('')
-
-const COLOR_PRESETS = [
-  '#6366f1', // Indigo
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#ef4444', // Rose
-  '#8b5cf6', // Violet
-  '#06b6d4', // Cyan
-  '#ec4899', // Pink
-  '#64748b'  // Slate
+const STANDARD_MACHINE_TYPES = [
+  'Automatic Optical Inspection',
+  'Gap Filler',
+  'Screwing Station',
+  'Soldering',
+  'Milling',
+  'Fitting',
+  'Pressing',
+  'Manipulator',
+  'Tester Cell',
+  'Painting'
 ]
 
-async function fetchData() {
+const form = ref<{
+  name: string
+  description: string
+  parentId: string | null
+  machineTypes: string[]
+  color: string
+  leadEngineerName: string
+}>({
+  name: '',
+  description: '',
+  parentId: null,
+  machineTypes: [],
+  color: 'indigo',
+  leadEngineerName: ''
+})
+
+async function fetchGroups() {
   isLoading.value = true
   try {
-    const [machData, grpData] = await Promise.allSettled([
-      $fetch<any[]>('/api/machines?includeDecommissioned=true').catch(() => []),
-      $fetch<any[]>('/api/machine-groups').catch(() => [])
-    ])
-
-    if (machData.status === 'fulfilled' && Array.isArray(machData.value)) {
-      machines.value = machData.value
-    } else {
-      machines.value = [
-        { id: 'STATION-OP10-01', name: 'OP10-Load', customIdentifier: 'LINE1-OP10', machineType: 'Assembly', groupId: 'Line 1', status: 'active' },
-        { id: 'STATION-SC-L06-03', name: 'OP20-Weld', customIdentifier: 'LINE1-OP20', machineType: 'Welding', groupId: 'Line 1', status: 'active' },
-        { id: 'STATION-AOI-L06-02', name: 'OP30-Vision', customIdentifier: 'LINE2-OP30', machineType: 'Test', groupId: 'Line 2', status: 'maintenance' },
-        { id: 'IPC-L09-01', name: 'OP40-Fasten', customIdentifier: 'LINE2-OP40', machineType: 'Assembly', groupId: 'Line 2', status: 'active' }
-      ]
-    }
-
-    if (grpData.status === 'fulfilled' && Array.isArray(grpData.value)) {
-      groups.value = grpData.value
-    } else {
-      groups.value = [
-        { id: 'grp-line06', name: 'Line 06 — Module Assembly', description: 'Automated battery module line', machineIds: ['STATION-OP10-01', 'STATION-SC-L06-03'] },
-        { id: 'grp-cell-a', name: 'Cell A — Dispensing', description: 'Dispensing and screwing sub-cell', machineIds: ['STATION-SC-L06-03'] },
-        { id: 'grp-line09', name: 'Line 09 — Pack Assembly', description: 'Battery pack finishing and test cell', machineIds: ['IPC-L09-01'] }
-      ]
-    }
-
-    // Initialize mock seed tags and assignments
-    initializeAssignments()
+    const data = await $fetch<MachineGroup[]>('/api/machine-groups')
+    groups.value = data
+  } catch (err) {
+    console.error('Failed to load machine groups', err)
   } finally {
     isLoading.value = false
   }
 }
 
-function initializeAssignments() {
-  const map: Record<string, MachineTagAssignment[]> = {}
-  for (const m of machines.value) {
-    const assignments: MachineTagAssignment[] = []
-    
-    // Security group mapped tags (inherited from AD/Security Group)
-    if (m.groupId) {
-      assignments.push({
-        machineId: m.id,
-        tag: m.groupId,
-        isManualOverride: false,
-        source: 'security_group'
-      })
-    }
-
-    // Manual override sample on OP20-Weld or second station
-    if (m.name.includes('Weld') || m.customIdentifier?.includes('OP20')) {
-      assignments.push({
-        machineId: m.id,
-        tag: 'Critical-Quality',
-        isManualOverride: true,
-        source: 'manual'
-      })
-    }
-
-    map[m.id] = assignments
-  }
-  machineTagMap.value = map
-
-  // Groups tags
-  const gMap: Record<string, string[]> = {}
-  for (const g of groups.value) {
-    gMap[g.id] = ['High-Voltage', 'Line-06']
-  }
-  groupTagMap.value = gMap
-}
-
 onMounted(() => {
-  fetchData()
+  fetchGroups()
 })
 
-// Statistics
-const totalTagsCount = computed(() => tagStore.value.length)
-const totalMachinesCount = computed(() => machines.value.length)
-const totalGroupsCount = computed(() => groups.value.length)
-const manualOverridesCount = computed(() => {
-  let count = 0
-  for (const list of Object.values(machineTagMap.value)) {
-    count += list.filter(a => a.isManualOverride).length
-  }
-  return count
-})
+const rootGroups = computed(() => groups.value.filter(g => !g.parentId))
 
-// Drag and drop handlers
-function onDragTagStart(tag: TagEntry, event: DragEvent) {
-  draggedTag.value = tag
-  if (event.dataTransfer) {
-    event.dataTransfer.setData('text/plain', JSON.stringify(tag))
-    event.dataTransfer.effectAllowed = 'copy'
+function getChildGroups(parentId: string): MachineGroup[] {
+  return groups.value.filter(g => g.parentId === parentId)
+}
+
+function startCreate(parentId: string | null = null) {
+  isCreating.value = true
+  isEditing.value = false
+  selectedGroupId.value = null
+  form.value = {
+    name: '',
+    description: '',
+    parentId,
+    machineTypes: [],
+    color: 'indigo',
+    leadEngineerName: ''
   }
 }
 
-function handleDropOnMachine(machine: any, event: DragEvent) {
-  event.preventDefault()
-  if (!draggedTag.value) return
-  assignTagToMachine(machine.id, draggedTag.value.name, true)
-  draggedTag.value = null
-}
-
-function handleDropOnGroup(group: any, event: DragEvent) {
-  event.preventDefault()
-  if (!draggedTag.value) return
-  assignTagToGroup(group.id, draggedTag.value.name)
-  draggedTag.value = null
-}
-
-// Assignment operations
-function assignTagToMachine(machineId: string, tagName: string, isManual: boolean) {
-  if (!machineTagMap.value[machineId]) {
-    machineTagMap.value[machineId] = []
+function startEdit(group: MachineGroup) {
+  isEditing.value = true
+  isCreating.value = false
+  selectedGroupId.value = group.id
+  form.value = {
+    name: group.name,
+    description: group.description || '',
+    parentId: group.parentId || null,
+    machineTypes: group.machineTypes ? [...group.machineTypes] : [],
+    color: group.color || 'indigo',
+    leadEngineerName: group.leadEngineerName || ''
   }
-  const existing = machineTagMap.value[machineId].find(a => a.tag.toLowerCase() === tagName.toLowerCase())
-  if (existing) {
-    // If setting as manual override, it supersedes existing security group mapping
-    if (isManual) {
-      existing.isManualOverride = true
-      existing.source = 'manual'
-    }
+}
+
+function toggleMachineType(type: string) {
+  const idx = form.value.machineTypes.indexOf(type)
+  if (idx === -1) {
+    form.value.machineTypes.push(type)
   } else {
-    machineTagMap.value[machineId].push({
-      machineId,
-      tag: tagName,
-      isManualOverride: isManual,
-      source: isManual ? 'manual' : 'security_group'
-    })
+    form.value.machineTypes.splice(idx, 1)
   }
 }
 
-function removeTagFromMachine(machineId: string, tagName: string) {
-  if (!machineTagMap.value[machineId]) return
-  machineTagMap.value[machineId] = machineTagMap.value[machineId].filter(
-    a => a.tag.toLowerCase() !== tagName.toLowerCase()
-  )
-}
+async function saveGroup() {
+  if (!form.value.name.trim()) return
 
-function toggleManualOverride(machineId: string, tagName: string) {
-  const existing = machineTagMap.value[machineId]?.find(a => a.tag.toLowerCase() === tagName.toLowerCase())
-  if (existing) {
-    existing.isManualOverride = !existing.isManualOverride
-    existing.source = existing.isManualOverride ? 'manual' : 'security_group'
-  }
-}
-
-function assignTagToGroup(groupId: string, tagName: string) {
-  if (!groupTagMap.value[groupId]) {
-    groupTagMap.value[groupId] = []
-  }
-  if (!groupTagMap.value[groupId].includes(tagName)) {
-    groupTagMap.value[groupId].push(tagName)
-  }
-}
-
-function removeTagFromGroup(groupId: string, tagName: string) {
-  if (!groupTagMap.value[groupId]) return
-  groupTagMap.value[groupId] = groupTagMap.value[groupId].filter(t => t !== tagName)
-}
-
-// Tag Selection Pop-up Modal (Clicking on a tag from the Tag Store)
-function openTagAssignmentModal(tag: TagEntry) {
-  selectedTagForModal.value = tag
-  assignSelectedIds.value = []
-  assignAsManualOverride.value = true
-  isAssignModalOpen.value = true
-}
-
-function confirmTagAssignment() {
-  if (!selectedTagForModal.value) return
-  const tag = selectedTagForModal.value
-
-  if (assignTargetType.value === 'machines') {
-    for (const mId of assignSelectedIds.value) {
-      assignTagToMachine(mId, tag.name, assignAsManualOverride.value)
+  try {
+    if (isCreating.value) {
+      await $fetch('/api/machine-groups', {
+        method: 'POST',
+        body: form.value
+      })
+    } else if (isEditing.value && selectedGroupId.value) {
+      await $fetch(`/api/machine-groups/${selectedGroupId.value}`, {
+        method: 'PATCH',
+        body: form.value
+      })
     }
-  } else {
-    for (const gId of assignSelectedIds.value) {
-      assignTagToGroup(gId, tag.name)
-    }
+    await fetchGroups()
+    isCreating.value = false
+    isEditing.value = false
+  } catch (err) {
+    console.error('Failed to save machine group', err)
   }
-
-  isAssignModalOpen.value = false
 }
 
-// New Tag Creation
-function handleCreateTag() {
-  if (!newTagName.value.trim()) return
-  const name = newTagName.value.trim()
-  const exists = tagStore.value.some(t => t.name.toLowerCase() === name.toLowerCase())
-  if (!exists) {
-    tagStore.value.push({
-      id: `tag-${Date.now()}`,
-      name,
-      color: newTagColor.value,
-      description: newTagDescription.value.trim()
-    })
+async function deleteGroup(id: string) {
+  try {
+    await $fetch(`/api/machine-groups/${id}`, { method: 'DELETE' })
+    await fetchGroups()
+    if (selectedGroupId.value === id) selectedGroupId.value = null
+    toast.success('Machine group deleted')
+  } catch (err: any) {
+    console.error('Failed to delete group', err)
+    toast.error(err?.data?.message || err?.message || 'Failed to delete group')
   }
-  newTagName.value = ''
-  newTagDescription.value = ''
-  isCreatingTag.value = false
 }
 
-function deleteTagFromStore(tagId: string) {
-  tagStore.value = tagStore.value.filter(t => t.id !== tagId)
-}
-
-// Filtered Lists
-const filteredMachines = computed(() => {
-  const q = searchQuery.value.toLowerCase().trim()
-  if (!q) return machines.value
-  return machines.value.filter(m => {
-    const nameMatch = (m.name || '').toLowerCase().includes(q)
-    const idMatch = (m.customIdentifier || m.id || '').toLowerCase().includes(q)
-    const typeMatch = (m.machineType || '').toLowerCase().includes(q)
-    const tags = (machineTagMap.value[m.id] || []).map(a => a.tag.toLowerCase())
-    const tagMatch = tags.some(t => t.includes(q))
-    return nameMatch || idMatch || typeMatch || tagMatch
-  })
-})
-
-const filteredGroups = computed(() => {
-  const q = searchQuery.value.toLowerCase().trim()
-  if (!q) return groups.value
-  return groups.value.filter(g => {
-    const nameMatch = (g.name || '').toLowerCase().includes(q)
-    const descMatch = (g.description || '').toLowerCase().includes(q)
-    const tags = (groupTagMap.value[g.id] || []).map(t => t.toLowerCase())
-    const tagMatch = tags.some(t => t.includes(q))
-    return nameMatch || descMatch || tagMatch
-  })
+const totalClustersCount = computed(() => {
+  return groups.value.reduce((acc, g) => acc + (g.machineTypes?.length || 0), 0)
 })
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Top Stats & Metric Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="p-3.5 rounded-xl border border-border bg-card shadow-2xs space-y-1">
-        <span class="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Tags</span>
-        <div class="text-xl font-black text-foreground">{{ totalTagsCount }}</div>
-      </div>
-      <div class="p-3.5 rounded-xl border border-border bg-card shadow-2xs space-y-1">
-        <span class="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Machines in Fleet</span>
-        <div class="text-xl font-black text-foreground">{{ totalMachinesCount }}</div>
-      </div>
-      <div class="p-3.5 rounded-xl border border-border bg-card shadow-2xs space-y-1">
-        <span class="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Machine Groups</span>
-        <div class="text-xl font-black text-foreground">{{ totalGroupsCount }}</div>
-      </div>
-      <div class="p-3.5 rounded-xl border border-border bg-card shadow-2xs space-y-1">
-        <span class="text-[11px] font-medium text-amber-500 uppercase tracking-wider flex items-center gap-1">
-          <Wrench class="size-3" />
-          <span>Manual Overrides</span>
-        </span>
-        <div class="text-xl font-black text-amber-500">{{ manualOverridesCount }}</div>
-      </div>
-    </div>
-
-    <!-- TAG STORE UI & PALETTE -->
-    <div class="p-4 rounded-xl border border-border bg-card shadow-xs space-y-3">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
-        <div class="flex items-center gap-2">
-          <div class="p-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
-            <TagIcon class="size-4" />
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-foreground">Tag Store & Palette</h3>
-            <p class="text-xs text-muted-foreground">Click a tag for the assignment pop-up or drag & drop directly onto machines or groups.</p>
-          </div>
+  <div class="space-y-4">
+    <!-- Header Section (conditional if modal vs page) -->
+    <div v-if="isModal" class="pb-4 border-b border-border flex flex-row items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
+          <FolderTree class="h-6 w-6" />
         </div>
-
+        <div>
+          <h3 class="text-lg font-black uppercase tracking-tight text-foreground">
+            Machine Groups & Envelope Hierarchy
+          </h3>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            Envelop machines in cells, lines, and plants with technology type clusters
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
         <Button
           size="sm"
-          variant="outline"
-          class="h-7 text-xs px-2.5 gap-1.5 cursor-pointer shrink-0"
-          @click="isCreatingTag = !isCreatingTag"
+          class="bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-1.5 cursor-pointer"
+          @click="startCreate(null)"
         >
-          <Plus class="size-3.5" />
-          <span>New Tag</span>
+          <Plus class="h-4 w-4" />
+          Add Root Group
+        </Button>
+        <Button variant="ghost" size="icon" @click="emit('close')" class="text-muted-foreground hover:text-foreground rounded-xl cursor-pointer">
+          <X class="h-5 w-5" />
         </Button>
       </div>
+    </div>
 
-      <!-- Create Tag inline form -->
-      <div v-if="isCreatingTag" class="p-3 rounded-lg border border-primary/30 bg-primary/5 space-y-3">
-        <div class="flex flex-col sm:flex-row items-center gap-3">
-          <Input
-            v-model="newTagName"
-            placeholder="Tag name (e.g. Line-08, Cleanroom-A)..."
-            class="h-8 text-xs flex-1"
-          />
-          <Input
-            v-model="newTagDescription"
-            placeholder="Optional description..."
-            class="h-8 text-xs flex-1"
-          />
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button
-              v-for="c in COLOR_PRESETS"
-              :key="c"
-              type="button"
-              @click="newTagColor = c"
-              class="size-5 rounded-full border transition-transform cursor-pointer"
-              :style="{ backgroundColor: c, borderColor: newTagColor === c ? '#fff' : 'transparent', transform: newTagColor === c ? 'scale(1.2)' : 'scale(1)' }"
-            />
-          </div>
-          <div class="flex items-center gap-2">
-            <Button size="sm" class="h-8 text-xs px-3" @click="handleCreateTag" :disabled="!newTagName.trim()">
-              Create
-            </Button>
-            <Button size="sm" variant="ghost" class="h-8 text-xs px-2" @click="isCreatingTag = false">
-              Cancel
-            </Button>
-          </div>
+    <!-- Quick Stats Bar when rendered on a Page -->
+    <div v-if="!isModal" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
+          <FolderTree class="h-5 w-5" />
+        </div>
+        <div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Total Groups</div>
+          <div class="text-lg font-black text-foreground">{{ groups.length }}</div>
         </div>
       </div>
 
-      <!-- Tag Store Badges (Clickable & Draggable) -->
-      <div class="flex flex-wrap items-center gap-2">
-        <div
-          v-for="tag in tagStore"
-          :key="tag.id"
-          draggable="true"
-          @dragstart="onDragTagStart(tag, $event)"
-          @click="openTagAssignmentModal(tag)"
-          class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-xs font-medium cursor-grab active:cursor-grabbing hover:shadow-xs transition-all select-none group"
-          :style="{
-            borderColor: tag.color + '60',
-            backgroundColor: tag.color + '15',
-            color: tag.color
-          }"
-          :title="`Drag onto a machine/group or click to assign. ${tag.description || ''}`"
-        >
-          <Move class="size-3 opacity-50 group-hover:opacity-100" />
-          <span class="font-bold">#{{ tag.name }}</span>
-          <button
-            type="button"
-            @click.stop="deleteTagFromStore(tag.id)"
-            class="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity cursor-pointer"
-            title="Delete tag from store"
-          >
-            <X class="size-3" />
-          </button>
+      <div class="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+          <Building2 class="h-5 w-5" />
+        </div>
+        <div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Root Plants</div>
+          <div class="text-lg font-black text-foreground">{{ rootGroups.length }}</div>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+          <Layers class="h-5 w-5" />
+        </div>
+        <div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Sub-Lines & Cells</div>
+          <div class="text-lg font-black text-foreground">{{ Math.max(0, groups.length - rootGroups.length) }}</div>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-card border border-border flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+          <Sparkles class="h-5 w-5" />
+        </div>
+        <div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Cluster Tags</div>
+          <div class="text-lg font-black text-foreground">{{ totalClustersCount }}</div>
         </div>
       </div>
     </div>
 
-    <!-- MAIN INTERACTION SECTION: GROUPS / MACHINES TOGGLE -->
-    <div class="space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <!-- 2-way View Toggle -->
-        <div class="flex items-center bg-muted/60 p-1 rounded-xl border border-border w-fit shadow-2xs">
-          <button
-            type="button"
-            @click="activeToggle = 'machines'"
-            class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-            :class="activeToggle === 'machines' ? 'bg-card text-foreground shadow-xs border border-border/80' : 'text-muted-foreground hover:text-foreground'"
-          >
-            <Cpu class="size-3.5" />
-            <span>Machines ({{ machines.length }})</span>
-          </button>
-
-          <button
-            type="button"
-            @click="activeToggle = 'groups'"
-            class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-            :class="activeToggle === 'groups' ? 'bg-card text-foreground shadow-xs border border-border/80' : 'text-muted-foreground hover:text-foreground'"
-          >
-            <Layers class="size-3.5" />
-            <span>Groups ({{ groups.length }})</span>
-          </button>
-        </div>
-
-        <!-- Filter / Search Input -->
-        <div class="relative w-full sm:w-64">
-          <Search class="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-          <Input
-            v-model="searchQuery"
-            :placeholder="`Filter ${activeToggle}...`"
-            class="h-8.5 pl-8 text-xs bg-card"
-          />
-        </div>
-      </div>
-
-      <!-- VIEW A: MACHINES VIEW -->
-      <div v-if="activeToggle === 'machines'" class="space-y-3">
-        <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1 flex items-center justify-between">
-          <span>Machinery Tag Mappings & Manual Overrides</span>
-          <span class="text-[11px] font-normal normal-case text-amber-500 flex items-center gap-1">
-            <Wrench class="size-3" />
-            <span>Manual overrides take precedence over security group rules</span>
-          </span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div
-            v-for="mach in filteredMachines"
-            :key="mach.id"
-            @dragover.prevent
-            @drop="handleDropOnMachine(mach, $event)"
-            class="p-4 rounded-xl border border-border bg-card shadow-2xs hover:border-primary/40 transition-all flex flex-col justify-between gap-3 relative group"
-          >
-            <div class="space-y-2.5">
-              <!-- Machine Header -->
-              <div class="flex items-start justify-between gap-2">
-                <div class="flex items-center gap-2">
-                  <div
-                    class="p-1.5 rounded-lg border flex items-center justify-center shrink-0"
-                    :style="{
-                      backgroundColor: getGroupColor(mach.groupId).bg,
-                      borderColor: getGroupColor(mach.groupId).border,
-                      color: getGroupColor(mach.groupId).text
-                    }"
-                  >
-                    <MachinePictogram :type="mach.machineType" class="size-5" />
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-bold text-foreground">{{ mach.name }}</h4>
-                    <span class="text-[11px] font-mono text-muted-foreground">{{ mach.customIdentifier || mach.id }}</span>
-                  </div>
-                </div>
-
-                <Badge variant="outline" class="text-[10px] uppercase font-mono">
-                  {{ mach.status || 'active' }}
-                </Badge>
-              </div>
-
-              <!-- Assigned Tags and Overrides -->
-              <div class="space-y-1.5 pt-1">
-                <span class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Assigned Tags:</span>
-                <div class="flex flex-wrap items-center gap-1.5 min-h-[28px] p-1.5 rounded-lg border border-dashed border-border/80 bg-muted/20">
-                  <template v-if="(machineTagMap[mach.id] || []).length > 0">
-                    <div
-                      v-for="assign in machineTagMap[mach.id]"
-                      :key="assign.tag"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border shadow-2xs group/tag cursor-pointer"
-                      :class="assign.isManualOverride ? 'bg-amber-500/10 border-amber-500/40 text-amber-500' : 'bg-muted/60 border-border text-foreground'"
-                      :title="assign.isManualOverride ? 'Manual Override (Takes precedence)' : 'Inherited from Security Group'"
-                      @click="toggleManualOverride(mach.id, assign.tag)"
-                    >
-                      <component :is="assign.isManualOverride ? Wrench : Shield" class="size-2.5" />
-                      <span>#{{ assign.tag }}</span>
-                      <span v-if="assign.isManualOverride" class="text-[9px] font-bold px-1 py-0.2 rounded bg-amber-500/20 text-amber-500">
-                        Override
-                      </span>
-                      <button
-                        type="button"
-                        @click.stop="removeTagFromMachine(mach.id, assign.tag)"
-                        class="ml-0.5 opacity-60 hover:opacity-100 hover:text-destructive cursor-pointer"
-                        title="Remove tag"
-                      >
-                        <X class="size-2.5" />
-                      </button>
-                    </div>
-                  </template>
-                  <span v-else class="text-[11px] text-muted-foreground italic px-1">
-                    Drag tag here or drop from store
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Card Footer -->
-            <div class="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
-              <span class="text-[10px] font-mono">Type: {{ mach.machineType || 'General' }}</span>
-              <NuxtLink :to="`/dashboard/machines/${mach.id}`" class="text-primary hover:underline text-[11px] font-medium flex items-center gap-1">
-                <span>View Machine</span>
-                <ArrowRight class="size-3" />
-              </NuxtLink>
-            </div>
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2" :class="isModal ? 'max-h-[70vh] overflow-y-auto pr-1' : ''">
+      <!-- Hierarchy Tree View (7 cols on page, 6 on modal) -->
+      <div :class="isModal ? 'lg:col-span-6 space-y-3' : 'lg:col-span-7 space-y-3'">
+        <div class="flex items-center justify-between pb-2 border-b border-border">
+          <h4 class="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Layers class="w-4 h-4 text-primary" />
+            <span>Group Structure Hierarchy</span>
+          </h4>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-muted-foreground font-mono">{{ groups.length }} groups configured</span>
+            <Button
+              v-if="!isModal"
+              size="sm"
+              class="h-7 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold gap-1 rounded-lg cursor-pointer"
+              @click="startCreate(null)"
+            >
+              <Plus class="h-3.5 w-3.5" />
+              Add Root Group
+            </Button>
           </div>
         </div>
-      </div>
 
-      <!-- VIEW B: GROUPS VIEW -->
-      <div v-else-if="activeToggle === 'groups'" class="space-y-3">
-        <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1 flex items-center justify-between">
-          <span>Factory Groups & Line Clusters</span>
+        <div v-if="isLoading" class="p-12 text-center text-muted-foreground text-xs border border-dashed border-border rounded-2xl">
+          Loading machine group hierarchy...
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div
-            v-for="grp in filteredGroups"
-            :key="grp.id"
-            @dragover.prevent
-            @drop="handleDropOnGroup(grp, $event)"
-            class="p-4 rounded-xl border border-border bg-card shadow-2xs hover:border-primary/40 transition-all flex flex-col justify-between gap-3 relative"
-          >
-            <div class="space-y-2.5">
-              <div class="flex items-start justify-between gap-2">
-                <div class="flex items-center gap-2">
-                  <div class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                    <FolderTree class="size-5" />
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-bold text-foreground">{{ grp.name }}</h4>
-                    <p class="text-[11px] text-muted-foreground line-clamp-1">{{ grp.description || 'Production cluster' }}</p>
-                  </div>
-                </div>
-              </div>
+        <div v-else-if="groups.length === 0" class="p-12 text-center text-muted-foreground text-xs border border-dashed border-border rounded-2xl">
+          No groups configured yet. Click "Add Root Group" to begin defining factory envelopes.
+        </div>
 
-              <!-- Group Tags -->
-              <div class="space-y-1.5 pt-1">
-                <span class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Group Tags:</span>
-                <div class="flex flex-wrap items-center gap-1.5 min-h-[28px] p-1.5 rounded-lg border border-dashed border-border/80 bg-muted/20">
-                  <template v-if="(groupTagMap[grp.id] || []).length > 0">
-                    <div
-                      v-for="t in groupTagMap[grp.id]"
-                      :key="t"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border bg-indigo-500/10 border-indigo-500/30 text-indigo-400 shadow-2xs"
-                    >
-                      <TagIcon class="size-2.5" />
-                      <span>#{{ t }}</span>
-                      <button
-                        type="button"
-                        @click.stop="removeTagFromGroup(grp.id, t)"
-                        class="ml-0.5 opacity-60 hover:opacity-100 hover:text-destructive cursor-pointer"
-                        title="Remove tag"
-                      >
-                        <X class="size-2.5" />
-                      </button>
-                    </div>
-                  </template>
-                  <span v-else class="text-[11px] text-muted-foreground italic px-1">
-                    Drop tags here to assign to group
-                  </span>
-                </div>
-              </div>
+        <div v-for="root in rootGroups" :key="root.id" class="rounded-2xl border border-border bg-card p-4 space-y-2.5 hover:border-primary/40 transition-colors">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-3 h-3 rounded-full bg-blue-500 shadow-xs"></div>
+              <span class="font-bold text-sm text-foreground">{{ root.name }}</span>
+              <Badge variant="outline" class="text-[9px] uppercase font-bold border-blue-500/30 text-blue-700 dark:text-blue-300 bg-blue-500/10">
+                Plant Level
+              </Badge>
             </div>
-
-            <!-- Group Footer -->
-            <div class="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
-              <span class="text-[11px]">Machines: {{ (grp.machineIds || []).length }}</span>
+            <div class="flex items-center gap-1">
               <button
-                type="button"
-                @click="emit('groupSelected', grp.id)"
-                class="text-primary hover:underline text-[11px] font-medium flex items-center gap-1 cursor-pointer"
+                class="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted transition cursor-pointer"
+                title="Add sub-group"
+                @click="startCreate(root.id)"
               >
-                <span>Select Group</span>
-                <ArrowRight class="size-3" />
+                <Plus class="h-3.5 w-3.5" />
+              </button>
+              <button
+                class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
+                title="Edit group"
+                @click="startEdit(root)"
+              >
+                <Edit3 class="h-3.5 w-3.5" />
+              </button>
+              <button
+                class="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                title="Delete group"
+                @click="deleteGroup(root.id)"
+              >
+                <Trash2 class="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
+
+          <p v-if="root.description" class="text-xs text-muted-foreground pl-3 sm:pl-5">{{ root.description }}</p>
+
+          <!-- Nested Subgroups Level 1 (Lines) -->
+          <div
+            v-for="sub in getChildGroups(root.id)"
+            :key="sub.id"
+            class="ml-2 sm:ml-4 pl-2.5 sm:pl-3 border-l-2 border-primary/30 py-1.5 sm:py-2 space-y-1.5"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <div class="w-2.5 h-2.5 rounded-full bg-primary shrink-0"></div>
+                <span class="font-semibold text-xs text-foreground truncate">{{ sub.name }}</span>
+                <Badge v-if="sub.leadEngineerName" variant="outline" class="text-[10px] border-primary/30 text-primary py-0 px-1.5 bg-primary/10 shrink-0">
+                  Lead: {{ sub.leadEngineerName }}
+                </Badge>
+              </div>
+              <div class="flex items-center gap-0.5 sm:gap-1 shrink-0">
+                <button
+                  class="p-1 rounded text-muted-foreground hover:text-primary hover:bg-muted transition cursor-pointer"
+                  title="Add cell sub-group"
+                  @click="startCreate(sub.id)"
+                >
+                  <Plus class="h-3 w-3" />
+                </button>
+                <button
+                  class="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
+                  title="Edit group"
+                  @click="startEdit(sub)"
+                >
+                  <Edit3 class="h-3 w-3" />
+                </button>
+                <button
+                  class="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                  title="Delete group"
+                  @click="deleteGroup(sub.id)"
+                >
+                  <Trash2 class="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Technology cluster tags -->
+            <div v-if="sub.machineTypes && sub.machineTypes.length > 0" class="flex flex-wrap gap-1 pl-2 sm:pl-3">
+              <span
+                v-for="mt in sub.machineTypes"
+                :key="mt"
+                class="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border"
+              >
+                {{ mt }}
+              </span>
+            </div>
+
+            <!-- Nested Subgroups Level 2 (Cells inside Line) -->
+            <div
+              v-for="cell in getChildGroups(sub.id)"
+              :key="cell.id"
+              class="ml-2 sm:ml-3 pl-2 sm:pl-2.5 border-l-2 border-purple-500/30 py-1 space-y-1"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <div class="w-2 h-2 rounded-full bg-purple-500 shrink-0"></div>
+                  <span class="font-medium text-xs text-foreground truncate">{{ cell.name }}</span>
+                </div>
+                <div class="flex items-center gap-0.5 shrink-0">
+                  <button
+                    class="p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
+                    title="Edit group"
+                    @click="startEdit(cell)"
+                  >
+                    <Edit3 class="h-3 w-3" />
+                  </button>
+                  <button
+                    class="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                    title="Delete group"
+                    @click="deleteGroup(cell.id)"
+                  >
+                    <Trash2 class="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+              <div v-if="cell.machineTypes && cell.machineTypes.length > 0" class="flex flex-wrap gap-1 pl-2">
+                <span
+                  v-for="cmt in cell.machineTypes"
+                  :key="cmt"
+                  class="text-[8px] font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20"
+                >
+                  {{ cmt }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- POP-UP ASSIGNMENT MODAL (Triggered when clicking a tag in the store) -->
-    <div
-      v-if="isAssignModalOpen && selectedTagForModal"
-      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
-      @click.self="isAssignModalOpen = false"
-    >
-      <div class="bg-card border border-border rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-border pb-3">
-          <div class="flex items-center gap-2">
-            <div
-              class="size-4 rounded-full"
-              :style="{ backgroundColor: selectedTagForModal.color }"
-            />
-            <h3 class="text-base font-bold text-foreground">
-              Assign Tag: #{{ selectedTagForModal.name }}
-            </h3>
-          </div>
-          <button
-            type="button"
-            @click="isAssignModalOpen = false"
-            class="text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            <X class="size-4" />
-          </button>
-        </div>
-
-        <!-- Target Type Selector -->
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-semibold text-muted-foreground">Assign To:</span>
-          <div class="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border">
-            <button
-              type="button"
-              @click="assignTargetType = 'machines'"
-              class="px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer"
-              :class="assignTargetType === 'machines' ? 'bg-card text-foreground shadow-2xs font-bold' : 'text-muted-foreground'"
-            >
-              Machines
-            </button>
-            <button
-              type="button"
-              @click="assignTargetType = 'groups'"
-              class="px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer"
-              :class="assignTargetType === 'groups' ? 'bg-card text-foreground shadow-2xs font-bold' : 'text-muted-foreground'"
-            >
-              Groups
-            </button>
-          </div>
-        </div>
-
-        <!-- Manual Override Toggle Checkbox -->
-        <label v-if="assignTargetType === 'machines'" class="flex items-center gap-2.5 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 cursor-pointer">
-          <input
-            type="checkbox"
-            v-model="assignAsManualOverride"
-            class="rounded border-amber-500 text-amber-500 focus:ring-amber-500"
-          />
-          <div class="text-xs">
-            <span class="font-bold text-amber-500">Apply as Manual Override</span>
-            <p class="text-[11px] text-muted-foreground">Takes precedence over inherited Active Directory security group rules.</p>
-          </div>
-        </label>
-
-        <!-- Multi-select Items List -->
-        <div class="space-y-2">
-          <span class="text-xs font-semibold text-muted-foreground">Select Target {{ assignTargetType === 'machines' ? 'Machines' : 'Groups' }}:</span>
-          <div class="max-h-60 overflow-y-auto border border-border rounded-xl p-2 space-y-1.5 bg-muted/20">
-            <template v-if="assignTargetType === 'machines'">
-              <label
-                v-for="m in machines"
-                :key="m.id"
-                class="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer text-xs"
+      <!-- Create / Edit Form Panel (5 cols on page, 6 on modal) -->
+      <div id="group-form-panel" :class="isModal ? 'lg:col-span-6' : 'lg:col-span-5'">
+        <div class="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 sticky top-6 shadow-xs">
+          <div class="flex items-center justify-between pb-3 border-b border-border">
+            <h4 class="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-2">
+              <Cpu class="w-4 h-4 text-primary" />
+              <span>{{ isCreating ? 'Create New Envelope Group' : isEditing ? 'Edit Envelope Group' : 'Group Configuration' }}</span>
+            </h4>
+            <div class="flex items-center gap-1.5">
+              <Badge v-if="isCreating || isEditing" variant="outline" class="text-[9px] uppercase font-bold border-primary/40 text-primary bg-primary/10">
+                {{ isCreating ? 'New' : 'Editing' }}
+              </Badge>
+              <button
+                v-if="isCreating || isEditing"
+                type="button"
+                @click="isCreating = false; isEditing = false"
+                class="p-1 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+                title="Dismiss drawer"
               >
-                <div class="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    :value="m.id"
-                    v-model="assignSelectedIds"
-                    class="rounded border-border text-primary"
-                  />
-                  <span class="font-bold text-foreground">{{ m.name }}</span>
-                  <span class="font-mono text-muted-foreground text-[10px]">({{ m.customIdentifier || m.id }})</span>
-                </div>
-                <span class="text-[10px] text-muted-foreground">{{ m.machineType || 'General' }}</span>
-              </label>
-            </template>
-            <template v-else>
-              <label
-                v-for="g in groups"
-                :key="g.id"
-                class="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer text-xs"
-              >
-                <div class="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    :value="g.id"
-                    v-model="assignSelectedIds"
-                    class="rounded border-border text-primary"
-                  />
-                  <span class="font-bold text-foreground">{{ g.name }}</span>
-                </div>
-                <span class="text-[10px] text-muted-foreground">{{ (g.machineIds || []).length }} machines</span>
-              </label>
-            </template>
+                <X class="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        <!-- Dialog Footer Actions -->
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="ghost" size="sm" class="text-xs" @click="isAssignModalOpen = false">
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            class="text-xs px-4"
-            @click="confirmTagAssignment"
-            :disabled="assignSelectedIds.length === 0"
-          >
-            Apply Tag ({{ assignSelectedIds.length }})
-          </Button>
+          <div v-if="!isCreating && !isEditing" class="p-10 text-center text-muted-foreground text-xs space-y-3">
+            <FolderTree class="w-8 h-8 text-muted-foreground/60 mx-auto" />
+            <p>Select a group from the hierarchy tree to inspect or edit its properties, or start a new group.</p>
+            <Button
+              size="sm"
+              class="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs cursor-pointer"
+              @click="startCreate(null)"
+            >
+              <Plus class="h-3.5 w-3.5 mr-1" />
+              Create Root Group
+            </Button>
+          </div>
+
+          <div v-else class="space-y-4">
+            <div class="space-y-1.5">
+              <label class="text-[11px] font-bold text-muted-foreground uppercase">Group Name</label>
+              <Input
+                v-model="form.name"
+                placeholder="e.g. Line 06 — Module Assembly (AUDI)"
+                class="bg-background border-border text-foreground text-xs rounded-xl focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-[11px] font-bold text-muted-foreground uppercase">Parent Envelope Group</label>
+              <select
+                v-model="form.parentId"
+                class="w-full h-9 rounded-xl bg-background border border-border text-foreground text-xs px-3 focus:outline-hidden focus:border-primary"
+              >
+                <option :value="null">None (Root Level Plant)</option>
+                <option v-for="g in groups.filter(item => item.id !== selectedGroupId)" :key="g.id" :value="g.id">
+                  {{ g.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-[11px] font-bold text-muted-foreground uppercase">Lead Engineer / Dedicated Owner</label>
+              <Input
+                v-model="form.leadEngineerName"
+                placeholder="e.g. Engineer Orwell"
+                class="bg-background border-border text-foreground text-xs rounded-xl focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-[11px] font-bold text-muted-foreground uppercase">Description</label>
+              <textarea
+                v-model="form.description"
+                placeholder="Operational purpose, line capacity, or special tooling notes..."
+                class="w-full rounded-xl bg-background border border-border text-foreground text-xs p-3 min-h-[70px] focus:outline-hidden focus:border-primary"
+              ></textarea>
+            </div>
+
+            <!-- Machine Type Clusters A through X -->
+            <div class="space-y-1.5">
+              <label class="text-[11px] font-bold text-muted-foreground uppercase flex items-center justify-between">
+                <span>Dedicated Machine Types (Cluster A through X)</span>
+                <span class="text-[10px] text-primary font-mono">{{ form.machineTypes.length }} selected</span>
+              </label>
+              <div class="grid grid-cols-2 gap-1.5 p-2 rounded-xl bg-muted/30 border border-border max-h-48 overflow-y-auto">
+                <button
+                  v-for="mt in STANDARD_MACHINE_TYPES"
+                  :key="mt"
+                  type="button"
+                  class="flex items-center gap-2 p-1.5 rounded-lg text-left transition-colors text-[11px] cursor-pointer"
+                  :class="form.machineTypes.includes(mt) ? 'bg-primary/10 text-primary border border-primary/30 font-bold' : 'text-muted-foreground hover:bg-muted/80'"
+                  @click="toggleMachineType(mt)"
+                >
+                  <div
+                    class="w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0"
+                    :class="form.machineTypes.includes(mt) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 bg-background'"
+                  >
+                    <Check v-if="form.machineTypes.includes(mt)" class="w-2.5 h-2.5 text-primary-foreground" />
+                  </div>
+                  <span class="truncate">{{ mt }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                class="border-border text-muted-foreground hover:text-foreground hover:bg-accent rounded-xl cursor-pointer"
+                @click="isCreating = false; isEditing = false"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                class="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl cursor-pointer"
+                @click="saveGroup"
+              >
+                {{ isCreating ? 'Create Group' : 'Save Changes' }}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

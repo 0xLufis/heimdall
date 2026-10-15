@@ -186,40 +186,32 @@ export const userTemplate: SearchTemplateDef = {
  */
 export const telemetryTemplate: SearchTemplateDef = {
   name: 'telemetry',
-  searchableFields: ['canonical_key', 'canonicalKey', 'point_id', 'pointId', 'name', 'id', 'category', 'description', 'unit'],
-  defaultTagKeys: ['quality', 'unit', 'key', 'category'],
+  searchableFields: ['canonical_key', 'canonicalKey', 'point_id', 'pointId', 'description'],
+  defaultTagKeys: ['quality', 'unit', 'key'],
   extractSearchItem: (raw: any): SearchResultItem => {
-    const pointId = raw.point_id || raw.pointId || raw.id || 'pt'
-    const key = raw.canonical_key || raw.canonicalKey || raw.name || pointId
+    const pointId = raw.point_id || raw.pointId || 'pt'
+    const key = raw.canonical_key || raw.canonicalKey || pointId
     const unit = raw.type_descriptor?.unit || raw.unit || ''
     const quality = raw.quality !== undefined ? String(raw.quality) : 'QUALITY_GOOD'
-    const cat = raw.category || (raw.type_descriptor?.classifier !== undefined ? String(raw.type_descriptor.classifier) : 'Sensor Point')
-
-    const subtitleParts: string[] = []
-    if (unit) subtitleParts.push(`Unit: ${unit}`)
-    if (raw.category) subtitleParts.push(raw.category)
-    if (raw.quality !== undefined || !raw.category) subtitleParts.push(`Quality: ${quality}`)
-    const subtitle = subtitleParts.join(' • ')
 
     return {
       id: pointId,
       name: key,
-      displayName: raw.type_descriptor?.description || raw.description || raw.name || key,
+      displayName: raw.type_descriptor?.description || key,
       itemType: 'Telemetry',
-      typeLabel: cat,
-      subtitle,
-      status: quality === '0' || quality === 'QUALITY_GOOD' || !raw.quality ? 'online' : 'warning',
+      typeLabel: raw.type_descriptor?.classifier !== undefined ? String(raw.type_descriptor.classifier) : 'Sensor Point',
+      subtitle: unit ? `Unit: ${unit} • Quality: ${quality}` : `Quality: ${quality}`,
+      status: quality === '0' || quality === 'QUALITY_GOOD' ? 'online' : 'warning',
       sourceTable: 'telemetry',
       isCrossTable: false,
-      link: `/dashboard/telemetry?tab=live&metric=${encodeURIComponent(pointId)}`,
+      link: '/dashboard/telemetry',
       metadata: raw
     }
   },
   extractKvFields: (raw: any) => ({
     quality: raw.quality !== undefined ? String(raw.quality) : undefined,
     unit: raw.type_descriptor?.unit || raw.unit,
-    category: raw.category,
-    key: raw.canonical_key || raw.canonicalKey || raw.id
+    key: raw.canonical_key || raw.canonicalKey
   })
 }
 

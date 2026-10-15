@@ -238,7 +238,10 @@ describe('Enterprise 100 Machines, CAD Topology & Synthetic Dataset Suite', () =
 
   describe('CAD Floorplan DXF Station Handle Pre-Linking', () => {
     it('verifies DXF floorplans exist and contain all 100 station block handles', () => {
-      const dxfPath = path.resolve(process.cwd(), 'public/sample/assembly_line.dxf')
+      let dxfPath = path.resolve(process.cwd(), 'public/sample/assembly_line.dxf')
+      if (!fs.existsSync(dxfPath)) {
+        dxfPath = path.resolve(process.cwd(), 'src/frontend/web/public/sample/assembly_line.dxf')
+      }
       expect(fs.existsSync(dxfPath)).toBe(true)
 
       const dxfContent = fs.readFileSync(dxfPath, 'utf-8')

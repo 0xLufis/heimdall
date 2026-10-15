@@ -153,8 +153,8 @@ onMounted(() => {
 
 <template>
   <div
-    class="tag-context-search w-full flex flex-col"
-    :class="mode === 'overlay' ? 'fixed top-8 sm:top-12 left-1/2 -translate-x-1/2 z-50 max-w-2xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden' : 'relative space-y-2'"
+    class="tag-context-search w-full flex flex-col relative"
+    :class="mode === 'overlay' ? 'max-w-2xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden' : 'space-y-2'"
   >
     <!-- Search Bar Input Box -->
     <div class="relative flex items-center px-3.5 py-2.5 bg-muted/30 border border-border rounded-xl transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/40">
@@ -204,9 +204,9 @@ onMounted(() => {
         v-for="(tag, idx) in parsedQuery.tags"
         :key="idx"
         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono border transition-all cursor-default"
-        :class="tag.inverted || tag.modifier === 'NOT' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30' : tag.modifier === 'OR' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' : tag.modifier === 'XOR' ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30'"
+        :class="tag.inverted ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30'"
       >
-        <span class="font-bold">{{ tag.rawModifier || (tag.inverted ? '!' : '') }}{{ tag.key }}{{ tag.separator || ':' }}</span>
+        <span class="font-bold">{{ tag.inverted ? '!' : '' }}{{ tag.key }}:</span>
         <span>{{ tag.value }}</span>
         <button
           type="button"
@@ -219,20 +219,15 @@ onMounted(() => {
       </span>
     </div>
 
-    <!-- Code-Completion Popup for Tag Values (Scoped by Tag Metadata) -->
+    <!-- Code-Completion Popup for Tag Values -->
     <div
       v-if="isCompletionOpen && !simpleMode"
       class="absolute z-50 top-12 left-0 right-0 bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-1 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
       data-testid="tag-completion-popup"
     >
-      <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50 flex items-center justify-between">
-        <div class="flex items-center gap-1.5">
-          <span>Metadata values for</span>
-          <span class="px-1.5 py-0.2 bg-primary/10 text-primary font-mono rounded font-bold">
-            {{ parsedQuery.activeIncompleteTag?.rawModifier }}{{ parsedQuery.activeIncompleteTag?.key }}{{ parsedQuery.activeIncompleteTag?.separator || '#' }}
-          </span>
-        </div>
-        <span class="text-[9px] text-muted-foreground/70">Tab or Enter to select</span>
+      <div class="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50 flex items-center justify-between">
+        <span>Suggested Values for <strong class="text-foreground">{{ parsedQuery.activeIncompleteTag?.key }}</strong></span>
+        <span>Tab or Enter to select</span>
       </div>
       <div
         v-for="(sugg, sIdx) in completionSuggestions"
@@ -241,24 +236,11 @@ onMounted(() => {
         :class="sIdx === activeSuggestionIndex ? 'bg-primary text-primary-foreground font-medium' : 'text-foreground hover:bg-muted'"
         @mousedown.prevent="applyCompletion(sugg)"
       >
-        <div class="flex items-center gap-2 min-w-0">
+        <div class="flex items-center gap-2">
           <Tag class="size-3 shrink-0" />
-          <span class="font-mono truncate">{{ sugg.displayLabel }}</span>
+          <span class="font-mono">{{ sugg.displayLabel }}</span>
         </div>
-        
-        <div class="flex items-center gap-1.5 shrink-0 ml-2">
-          <!-- Entity Type Indicators for Scoped Tag Metadata -->
-          <span
-            v-for="ind in (sugg.indicators || [])"
-            :key="ind.label"
-            class="font-mono text-[9px] px-1 py-0.2 rounded font-bold uppercase border"
-            :class="sIdx === activeSuggestionIndex ? 'border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground' : ind.color"
-            :title="`Entity: ${ind.label}`"
-          >
-            [{{ ind.label }}]
-          </span>
-          <CornerDownLeft class="size-3 opacity-60 ml-1" />
-        </div>
+        <CornerDownLeft class="size-3 opacity-60" />
       </div>
     </div>
 
@@ -272,10 +254,10 @@ onMounted(() => {
         v-for="tKey in availableTags.slice(0, 7)"
         :key="tKey"
         type="button"
-        @click="searchQuery = `${searchQuery ? searchQuery + ' ' : ''}${tKey}#`; if (inputRef) inputRef.focus()"
+        @click="searchQuery = `${searchQuery ? searchQuery + ' ' : ''}${tKey}:`; if (inputRef) inputRef.focus()"
         class="px-1.5 py-0.5 bg-muted/40 hover:bg-muted text-foreground/80 hover:text-foreground rounded border border-border/50 font-mono transition-colors cursor-pointer"
       >
-        {{ tKey }}#
+        {{ tKey }}:
       </button>
     </div>
 

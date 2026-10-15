@@ -92,13 +92,13 @@ const handleSubmit = async () => {
           </div>
           <div>
             <h2 class="text-base font-semibold text-foreground flex items-center gap-2">
-              <span>{{ $t('machines.decommissionModalTitle') }}</span>
+              <span>Decommission Production Machine</span>
               <span class="font-mono text-xs text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
                 {{ machine?.customIdentifier || machine?.name }}
               </span>
             </h2>
             <p class="text-xs text-muted-foreground mt-0.5">
-              {{ $t('machines.decommissionModalSubtitle') }}
+              Permanent retirement, inventory salvage handling, and operational archival
             </p>
           </div>
         </div>
@@ -137,7 +137,7 @@ const handleSubmit = async () => {
 
         <!-- Target Lifecycle Disposition -->
         <div class="space-y-1.5">
-          <Label class="text-xs font-semibold text-foreground">{{ $t('machines.decommissionDisposition') }} *</Label>
+          <Label class="text-xs font-semibold text-foreground">Target Decommission Disposition *</Label>
           <div class="grid grid-cols-2 gap-3">
             <div
               @click="targetDisposition = 'decommissioned'"
@@ -146,7 +146,7 @@ const handleSubmit = async () => {
             >
               <Archive class="size-4 text-destructive" />
               <div>
-                <div class="text-xs font-semibold">{{ $t('machines.statusDecommissioned') }}</div>
+                <div class="text-xs font-semibold">Decommission</div>
                 <div class="text-[10px] text-muted-foreground">Retired & preserved as cold asset</div>
               </div>
             </div>
@@ -158,7 +158,7 @@ const handleSubmit = async () => {
             >
               <Wrench class="size-4 text-purple-600 dark:text-purple-400" />
               <div>
-                <div class="text-xs font-semibold">{{ $t('machines.statusDismantled') }}</div>
+                <div class="text-xs font-semibold">Dismantle</div>
                 <div class="text-[10px] text-muted-foreground">Taken apart & salvaged for parts</div>
               </div>
             </div>
@@ -169,7 +169,7 @@ const handleSubmit = async () => {
         <div class="p-3.5 rounded-lg bg-muted/30 border border-border space-y-2.5">
           <div class="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <Cpu class="size-3.5 text-primary" />
-            <span>{{ $t('machines.partsHandlingTitle') }} *</span>
+            <span>Installed Machine Assets & Parts Handling *</span>
           </div>
 
           <div class="space-y-2">
@@ -179,7 +179,7 @@ const handleSubmit = async () => {
             >
               <input type="radio" v-model="partsHandling" value="salvage_donor" class="mt-0.5 text-primary" />
               <div>
-                <div class="font-semibold text-foreground">{{ $t('machines.salvageParts') }}</div>
+                <div class="font-semibold text-foreground">Salvage to Warehouse (Used / Donor Spares)</div>
                 <div class="text-[11px] text-muted-foreground">Unlink and return serviceable modules to spare parts inventory cabinet</div>
               </div>
             </label>
@@ -190,7 +190,7 @@ const handleSubmit = async () => {
             >
               <input type="radio" v-model="partsHandling" value="scrap" class="mt-0.5 text-destructive" />
               <div>
-                <div class="font-semibold text-foreground">{{ $t('machines.scrapParts') }}</div>
+                <div class="font-semibold text-foreground">Mark Installed Parts as Scrap</div>
                 <div class="text-[11px] text-muted-foreground">Designate non-serviceable assemblies for recycling quarantine</div>
               </div>
             </label>
@@ -201,7 +201,7 @@ const handleSubmit = async () => {
             >
               <input type="radio" v-model="partsHandling" value="retain" class="mt-0.5" />
               <div>
-                <div class="font-semibold text-foreground">{{ $t('machines.retainParts') }}</div>
+                <div class="font-semibold text-foreground">Retain with Machine Assembly</div>
                 <div class="text-[11px] text-muted-foreground">Keep part hierarchy attached to archived machine record for audit</div>
               </div>
             </label>
@@ -212,7 +212,7 @@ const handleSubmit = async () => {
         <div class="space-y-1.5">
           <Label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <Calendar class="size-3.5 text-muted-foreground" />
-            <span>{{ $t('machines.decommissionDate') }} *</span>
+            <span>Effective Decommission Date *</span>
           </Label>
           <Input v-model="decommissionDate" type="date" required class="h-9 text-xs font-mono" />
         </div>
@@ -220,7 +220,7 @@ const handleSubmit = async () => {
         <!-- Reason / Justification -->
         <div class="space-y-1.5">
           <Label class="text-xs font-semibold text-foreground">
-            {{ $t('machines.decommissionReason') }} <span class="text-destructive">*</span>
+            Justification & Engineering Rationale <span class="text-destructive">*</span>
           </Label>
           <textarea
             v-model="reason"
@@ -241,7 +241,7 @@ const handleSubmit = async () => {
           @click="emit('update:open', false)"
           class="text-xs h-8 cursor-pointer"
         >
-          {{ $t('common.cancel') }}
+          Cancel
         </Button>
         <Button
           type="button"
@@ -251,7 +251,7 @@ const handleSubmit = async () => {
           class="bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs h-8 gap-1.5 cursor-pointer disabled:opacity-50"
         >
           <Archive class="size-3.5" />
-          <span>{{ $t('machines.confirmDecommission') }}</span>
+          <span>Confirm Decommission</span>
         </Button>
       </div>
     </div>

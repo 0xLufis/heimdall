@@ -9,9 +9,9 @@ export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical'
  * Describes why a ticket is in the Pending state.
  * Maps to the backend PendingReason enum.
  */
-export type PendingReason = 'None' | 'Parts' | 'ExternalOk' | 'Action' | 'SignOff' | 'External' | 'Custom' | 'Escalated' | 'Retracted' | string
+export type PendingReason = 'None' | 'Parts' | 'ExternalOk' | 'Action' | 'SignOff' | 'External' | 'Custom'
 
-export type EscalationHandoverState = 'None' | 'Notification' | 'HandOff' | 'ParallelWork' | 'HandedOffToField'
+export type EscalationHandoverState = 'None' | 'Notification' | 'HandOff' | 'ParallelWork'
 
 export type TicketOriginatorType = 'MachineAutomatic' | 'ScheduledMaintenance' | 'ManualUser'
 
@@ -116,33 +116,11 @@ export interface ErrorTemplate {
   affectedMachineTypes?: string[]
 }
 
-export interface TelemetryProbePoint {
-  timestamp: string
-  value: number
-}
-
-export interface TicketTelemetryProbe {
-  probeId: string
-  datapointKey: string
-  metricName: string
-  numericValue?: number
-  stringValue?: string
-  unit?: string
-  nominalLow?: number
-  nominalHigh?: number
-  triggerStatus: 'ThresholdExceeded' | 'AlarmBitSet' | 'RateOfChangeSpike' | 'Nominal' | string
-  sampledAt: string
-  probeBuffer?: TelemetryProbePoint[]
-}
-
 export interface MachineGroup {
   id: string
   name: string
   description?: string
   parentId?: string | null
-  groupType?: 'Customer' | 'Line' | 'Technological' | 'Manual'
-  interfaceContract?: string
-  technologyKey?: string
   machineIds: string[]
   machineTypes?: string[]
   color?: string
@@ -237,16 +215,8 @@ export interface MaintenanceTicket {
   sfc?: string
   cameraInspection?: CameraInspectionData
   telemetrySnapshot?: TelemetrySnapshot | Record<string, any>
-  // Component & machine-raised details
-  targetComponentId?: string
-  targetComponentBmk?: string
-  alarmCode?: string
-  controllerSource?: string
-  affectedComponentIds?: string[]
-  telemetryProbes?: TicketTelemetryProbe[]
   // Pending details
   pendingReason?: PendingReason | null
-  pendingReasons?: (PendingReason | string)[]
   pendingDetails?: string | null
   // Escalation (orthogonal to status)
   isEscalated?: boolean
@@ -291,10 +261,6 @@ export interface CreateTicketInput {
   externalOperatorName?: string
   errorGroup?: string
   errorCode?: string
-  targetComponentId?: string
-  targetComponentBmk?: string
-  alarmCode?: string
-  telemetryProbes?: TicketTelemetryProbe[]
   tags?: string[]
   reportedByUserName?: string
   assignedTechnicianName?: string

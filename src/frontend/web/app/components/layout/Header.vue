@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import Search from '~/components/Search.vue'
-import LanguageSwitcher from '~/components/common/LanguageSwitcher.vue'
-import NotificationCenterPopover from '~/components/notifications/NotificationCenterPopover.vue'
-import { useGlobalSearchModal } from '~/composables/useGlobalSearchModal'
-import { useAppI18n } from '~/composables/useAppI18n'
-
 const route = useRoute()
-const { t } = useAppI18n()
 
 /**
  * Dynamically generates breadcrumb links based on the current route.
@@ -15,7 +8,7 @@ const { t } = useAppI18n()
  */
 function setLinks() {
   if (route.fullPath === '/') {
-    return [{ title: t('nav.home', 'Home'), href: '/' }]
+    return [{ title: 'Home', href: '/' }]
   }
 
   const segments = route.fullPath.split('/').filter(item => item !== '')
@@ -33,7 +26,7 @@ function setLinks() {
     }
   })
 
-  return [{ title: t('nav.home', 'Home'), href: '/' }, ...breadcrumbs]
+  return [{ title: 'Home', href: '/' }, ...breadcrumbs]
 }
 
 /**
@@ -50,8 +43,7 @@ watch(() => route.fullPath, (val) => {
     links.value = setLinks()
   }
 })
-
-const { triggerSearch } = useGlobalSearchModal()
+import LanguageSwitcher from '~/components/common/LanguageSwitcher.vue'
 </script>
 
 <template>
@@ -63,18 +55,6 @@ const { triggerSearch } = useGlobalSearchModal()
     </div>
     <div class="ml-auto flex items-center gap-2">
       <slot />
-      <!-- Global Search Floating at the Page Top Header -->
-      <Search class="w-44 sm:w-60 lg:w-72 px-0 py-0 hidden sm:block" />
-      <button
-        type="button"
-        class="sm:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-        :title="t('common.openGlobalSearch', 'Search') + ' (⌘K)'"
-        :aria-label="t('common.openGlobalSearch', 'Open Search')"
-        @click="triggerSearch"
-      >
-        <Icon name="i-lucide-search" class="size-4" />
-      </button>
-      <NotificationCenterPopover />
       <LanguageSwitcher />
     </div>
   </header>

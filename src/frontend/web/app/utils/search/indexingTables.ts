@@ -67,10 +67,7 @@ export const ALL_FILTER_KEYS = [
   { key: 'spec', label: 'spec:', description: 'Engineering parameter (15kW, 400V, 12000RPM)' },
   { key: 'cost', label: 'cost:', description: 'Valuation filter (e.g. >500k)' },
   { key: 'role', label: 'role:', description: 'User / persona organizational role' },
-  { key: 'quality', label: 'quality:', description: 'Telemetry quality indicator' },
-  { key: 'category', label: 'category:', description: 'Telemetry or component category' },
-  { key: 'unit', label: 'unit:', description: 'Measurement engineering unit (RPM, °C, bar, ms)' },
-  { key: 'metric', label: 'metric:', description: 'Telemetry metric or symbol name' }
+  { key: 'quality', label: 'quality:', description: 'Telemetry quality indicator' }
 ]
 
 /**

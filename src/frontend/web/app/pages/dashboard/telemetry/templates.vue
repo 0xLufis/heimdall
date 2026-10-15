@@ -23,6 +23,7 @@ import {
   Code
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { toast } from 'vue-sonner'
 import RbacButton from '~/components/common/RbacButton.vue'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -247,9 +248,10 @@ function handleImportJson(event: Event) {
           name: `${parsed.name} (Imported)`
         })
         loadTemplateIntoEditor(created)
+        toast.success(`Imported template: ${created.name}`)
       }
     } catch (err) {
-      alert('Invalid JSON file')
+      toast.error('Invalid JSON template file. Please check syntax.')
     }
   }
   reader.readAsText(file)
@@ -267,10 +269,10 @@ function handleImportJson(event: Event) {
           </div>
           <div>
             <h1 class="text-2xl font-bold tracking-tight text-foreground">
-              Industrial Telemetry Recipes Studio
+              Agent Telemetry Templating Studio
             </h1>
             <p class="text-sm text-muted-foreground mt-0.5">
-              Declarative data point recipes, sampling schedules, deadband filters, and compiled agent probe configurations
+              Declarative data point recipes, sampling schedules, deadband filters, and live JSON payload preview
             </p>
           </div>
         </div>
@@ -293,19 +295,8 @@ function handleImportJson(event: Event) {
 
         <RbacButton capability="canManageEndpoints" size="sm" @click="handleCreateNew" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium h-8 px-3.5 shadow-sm transition-all border-0">
           <Plus class="size-3.5 mr-1.5" />
-          New Recipe
+          New Template
         </RbacButton>
-      </div>
-    </div>
-
-    <!-- Explanatory Callout Banner: Clarifies purpose of Telemetry Recipes -->
-    <div class="p-3.5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 flex items-start gap-3">
-      <Sparkles class="size-4 text-indigo-500 shrink-0 mt-0.5" />
-      <div class="text-xs text-foreground space-y-0.5">
-        <span class="font-bold">What is a Telemetry Recipe?</span>
-        <p class="text-muted-foreground leading-relaxed">
-          A recipe defines the exact register mappings, Beckhoff ADS symbols, Modbus registers, or OPC-UA nodes sampled by industrial IPCs. It sets polling frequency, deadband noise thresholds, and compiles directly into the agent runtime configuration.
-        </p>
       </div>
     </div>
 

@@ -39,7 +39,9 @@ onMounted(async () => {
 
 async function onSubmit(event: Event) {
   event.preventDefault()
+  console.log('[SignIn] onSubmit triggered with:', { email: email.value, hasPassword: !!password.value, passLen: password.value?.length })
   if (!email.value || !password.value) {
+    console.warn('[SignIn] Missing email or password, aborting')
     return
   }
 
@@ -48,6 +50,7 @@ async function onSubmit(event: Event) {
 
   try {
     const isEmail = email.value.includes('@')
+    console.log('[SignIn] Submitting:', { email: email.value, isEmail })
     const res = isEmail 
       ? await authClient.signIn.email({
           email: email.value,
@@ -58,6 +61,7 @@ async function onSubmit(event: Event) {
           password: password.value
         })
     
+    console.log('[SignIn] Response:', res)
     if (res?.error) {
       error.value = res.error.message || 'Failed to sign in'
     } else {
@@ -66,6 +70,7 @@ async function onSubmit(event: Event) {
       await navigateTo('/dashboard')
     }
   } catch (e: any) {
+    console.error('[SignIn] Caught error:', e)
     error.value = 'An unexpected error occurred'
   } finally {
     isLoading.value = false
@@ -145,7 +150,7 @@ async function handleSocialSignIn(provider: 'github' | 'google') {
             <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
           </svg>
           <div class="text-left">
-            <div class="text-xs font-bold tracking-tight">{{ $t('auth.signInWithMicrosoft') }}</div>
+            <div class="text-xs font-bold tracking-tight">Sign in with Microsoft Entra ID</div>
             <div class="text-[10px] text-muted-foreground font-mono">
               {{ ssoStatus?.isConfigured ? 'Enterprise Azure Cloud SSO' : 'Plant Directory SSO (Sandbox)' }}
             </div>
@@ -195,14 +200,14 @@ async function handleSocialSignIn(provider: 'github' | 'google') {
       </div>
       <div class="relative flex justify-center text-xs uppercase">
         <span class="bg-card px-2.5 text-muted-foreground font-mono text-[10px] tracking-widest font-semibold">
-          {{ $t('auth.orOperatorToken') }}
+          Or with operator token
         </span>
       </div>
     </div>
     
     <div class="grid gap-2">
       <Label for="email" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">
-        {{ $t('auth.identityIdentifier') }}
+        Identity Identifier
       </Label>
       <Input
         id="email"
@@ -219,13 +224,13 @@ async function handleSocialSignIn(provider: 'github' | 'google') {
     <div class="grid gap-2">
       <div class="flex items-center">
         <Label for="password" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">
-          {{ $t('auth.accessToken') }}
+          Access Token
         </Label>
         <NuxtLink
           to="/auth/forgot-password"
           class="ml-auto inline-block text-xs underline underline-offset-4 opacity-70 hover:opacity-100"
         >
-          {{ $t('auth.recovery') }}
+          Recovery?
         </NuxtLink>
       </div>
       <div class="relative">
@@ -270,13 +275,13 @@ async function handleSocialSignIn(provider: 'github' | 'google') {
       :disabled="isLoading"
     >
       <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
-      {{ isLoading ? $t('auth.authenticating') : $t('auth.signInButton') }}
+      {{ isLoading ? 'Authenticating...' : 'Sign In' }}
     </button>
   </form>
   <div class="mt-4 text-center text-sm text-muted-foreground">
-    {{ $t('auth.newOperator') }}
+    New operator?
     <NuxtLink to="/auth/signup" class="underline underline-offset-4 font-bold text-foreground">
-      {{ $t('auth.initializeAccount') }}
+      Initialize Account
     </NuxtLink>
   </div>
 </template>

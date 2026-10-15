@@ -28,12 +28,6 @@ const defaultAppSettings: AppSettings = {
     color: 'default',
     type: 'default',
   },
-  ai: {
-    enableAiImport: false,
-    aiApiToken: '',
-    aiProvider: 'cloud',
-    endpoint: ''
-  }
 }
 
 /**
@@ -44,8 +38,6 @@ const defaultAppSettings: AppSettings = {
  *   - `updateAppSettings`: A function to update application settings.
  *   - `sidebar`: A computed property for sidebar-related settings.
  *   - `theme`: A computed property for theme-related settings.
- *   - `ai`: A computed property for AI-related settings.
- *   - `canUseAiImport`: A computed property checking both flag and non-empty token.
  */
 export function useAppSettings() {
   const { appSettings } = useAppConfig()
@@ -69,11 +61,6 @@ export function useAppSettings() {
     cookieAppSettings.value = customDefu(settings, cookieAppSettings.value)
   }
 
-  const canUseAiImport = computed(() => {
-    const ai = cookieAppSettings.value?.ai
-    return Boolean(ai?.enableAiImport && ai?.aiApiToken && ai.aiApiToken.trim().length > 0)
-  })
-
   return {
     updateAppSettings,
     /**
@@ -86,11 +73,5 @@ export function useAppSettings() {
      * @type {ComputedRef<AppSettings['theme']>}
      */
     theme: computed(() => cookieAppSettings.value.theme),
-    /**
-     * Computed property for AI settings.
-     * @type {ComputedRef<AppSettings['ai']>}
-     */
-    ai: computed(() => cookieAppSettings.value.ai),
-    canUseAiImport
   }
 }

@@ -16,7 +16,6 @@ import {
   PENDING_REASON_CONFIGS,
   type AndonColorType
 } from '~/utils/andonColors'
-import TicketEscalationMatrixModal, { type EscalationMatrixResult } from '~/components/tickets/TicketEscalationMatrixModal.vue'
 
 const props = withDefaults(defineProps<{
   tickets: MaintenanceTicket[]
@@ -90,6 +89,7 @@ const pendingDraftDetails = ref<string>('')
 
 // Modal state for Quick Escalation
 const activeEscalateTicket = ref<MaintenanceTicket | null>(null)
+const escalateDraftReason = ref<string>('')
 
 // ── Filtering ────────────────────────────────────────────────────────────────
 const getTicketsByColumn = (colId: TicketStatus) => {
@@ -196,20 +196,15 @@ function closePendingSelector() {
 function openEscalateModal(event: Event, ticket: MaintenanceTicket) {
   event.stopPropagation()
   activeEscalateTicket.value = ticket
+  escalateDraftReason.value = ''
 }
 
-function handleEscalationFromMatrix(result: EscalationMatrixResult) {
-  if (!activeEscalateTicket.value) return
+function applyEscalation() {
+  if (!activeEscalateTicket.value || !escalateDraftReason.value.trim()) return
   const t = activeEscalateTicket.value
-  const targetDesc = result.targetMode === 'auto_dedicated'
-    ? `${result.targetName} (Dedicated)`
-    : `${result.targetName} (Override)`
-
-  emit('escalateTicket', t.id, result.reason)
+  emit('escalateTicket', t.id, escalateDraftReason.value.trim())
   t.isEscalated = true
-  t.escalationReason = result.reason
-  t.escalationTarget = targetDesc
-  t.escalationHandoverState = result.handoverState as any
+  t.escalationReason = escalateDraftReason.value.trim()
   activeEscalateTicket.value = null
 }
 
@@ -218,8 +213,6 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
   emit('resolveEscalation', ticket.id)
   ticket.isEscalated = false
   ticket.escalationReason = null
-  ticket.escalationTarget = null
-  ticket.escalationHandoverState = null
 }
 </script>
 
@@ -585,13 +578,77 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
       </div>
     </div>
 
-    <!-- ── Interactive Modal: Escalate Ticket Matrix ── -->
-    <TicketEscalationMatrixModal
-      :ticket="activeEscalateTicket"
-      :open="!!activeEscalateTicket"
-      @update:open="activeEscalateTicket = null"
-      @escalate="handleEscalationFromMatrix"
-    />
+    <!-- ── Interactive Modal: Escalate Ticket ── -->
+    <div
+      v-if="activeEscalateTicket"
+      role="dialog"
+      aria-modal="true"
+      class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+      @click.self="activeEscalateTicket = null"
+    >
+      <div class="bg-card border border-rose-500/30 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden text-foreground">
+        <div class="p-5 border-b border-border bg-rose-500/10 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 rounded-xl bg-rose-500/20 text-rose-700 dark:text-rose-300">
+              <ShieldAlert class="size-5" />
+            </div>
+            <div>
+              <h4 class="text-sm font-black uppercase tracking-wider text-foreground">
+                Escalate Ticket
+              </h4>
+              <p class="text-[10px] font-mono text-muted-foreground mt-0.5">
+                {{ activeEscalateTicket.ticketNumber }} &mdash; {{ activeEscalateTicket.stationName }}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+            @click="activeEscalateTicket = null"
+          >
+            <X class="size-4" />
+          </Button>
+        </div>
+
+        <div class="p-5 space-y-4">
+          <p class="text-xs text-muted-foreground leading-relaxed">
+            Escalation flags this incident for priority management and engineering oversight. The ticket remains in its current status (<strong>{{ activeEscalateTicket.status }}</strong>) and can be de-escalated independently.
+          </p>
+
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Escalation Reason *
+            </label>
+            <textarea
+              v-model="escalateDraftReason"
+              rows="3"
+              placeholder="e.g. Critical machine downtime impacting Line 2 production. OEM support specialist required."
+              class="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-rose-500/50 resize-none"
+            />
+          </div>
+        </div>
+
+        <div class="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            class="text-xs border-border cursor-pointer"
+            @click="activeEscalateTicket = null"
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            :disabled="!escalateDraftReason.trim()"
+            class="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-4 cursor-pointer shadow-xs disabled:opacity-50"
+            @click="applyEscalation"
+          >
+            Confirm Escalation
+          </Button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

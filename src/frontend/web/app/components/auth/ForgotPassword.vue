@@ -17,7 +17,7 @@ async function onSubmit(event: Event) {
     <div class="grid gap-4">
       <div class="grid gap-2">
         <Label for="email">
-          {{ $t('auth.email') }}
+          Email
         </Label>
         <Input
           id="email"
@@ -31,7 +31,7 @@ async function onSubmit(event: Event) {
       </div>
       <Button :disabled="isLoading">
         <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
-        {{ isLoading ? $t('common.loading') : $t('common.confirm') }}
+        Submit
       </Button>
     </div>
   </form>

@@ -28,6 +28,7 @@ const emit = defineEmits<{
   (e: 'update:open', val: boolean): void
   (e: 'usePart', part: InventoryPart): void
   (e: 'logPartWithCode', code: string): void
+  (e: 'detected', code: string): void
 }>()
 
 const { lookupCode } = usePartsInventory()
@@ -102,6 +103,7 @@ const handleCodeScan = async (code: string) => {
     const part = await lookupCode(code.trim())
     if (part) {
       scannedPart.value = part
+      emit('detected', code.trim())
       if (activeAction.value === 'use') {
         emit('usePart', part)
         emit('update:open', false)
@@ -169,7 +171,7 @@ const triggerUseScanned = () => {
           :class="activeAction === 'lookup' ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground'"
         >
           <Search class="size-3.5" />
-          <span>{{ $t('common.lookUp') }}</span>
+          <span>Look-up</span>
         </button>
 
         <button
@@ -179,7 +181,7 @@ const triggerUseScanned = () => {
           :class="activeAction === 'use' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground'"
         >
           <Send class="size-3.5" />
-          <span>{{ $t('inventory.useUp') }}</span>
+          <span>Use Up</span>
         </button>
 
         <button
@@ -189,7 +191,7 @@ const triggerUseScanned = () => {
           :class="activeAction === 'log' ? 'bg-teal-600 text-white border-teal-600 shadow-xs' : 'bg-card border-border text-muted-foreground hover:text-foreground'"
         >
           <PackagePlus class="size-3.5" />
-          <span>{{ $t('inventory.logPart') }}</span>
+          <span>Log Part</span>
         </button>
       </div>
 
@@ -245,7 +247,7 @@ const triggerUseScanned = () => {
               @click="handleCodeScan(manualCode)"
               class="h-9 px-3 text-xs shrink-0 cursor-pointer"
             >
-              {{ $t('common.lookup') }}
+              Lookup
             </Button>
           </div>
         </div>
@@ -314,7 +316,7 @@ const triggerUseScanned = () => {
               class="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1.5 cursor-pointer"
             >
               <Send class="size-3" />
-              <span>{{ $t('inventory.usePartCostCenter') }}</span>
+              <span>Use Part (Cost Center)</span>
             </Button>
           </div>
         </div>
@@ -328,7 +330,7 @@ const triggerUseScanned = () => {
           @click="emit('update:open', false)"
           class="h-8 text-xs cursor-pointer"
         >
-          {{ $t('common.closeScanner') }}
+          Close Scanner
         </Button>
       </div>
     </div>

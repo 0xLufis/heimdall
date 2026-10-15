@@ -443,12 +443,12 @@ onMounted(() => {
       </Card>
     </div>
 
-    <!-- Create / Edit Template Drawer / Modal -->
+    <!-- Create / Edit Template Workbench Drawer (Zero Modal Overlays) -->
     <div
       v-if="showForm"
-      class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+      class="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-card border-l border-border shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-200 flex flex-col justify-between"
     >
-      <div class="w-full max-w-xl bg-card border border-border rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div>
         <div class="flex items-center justify-between p-4 border-b border-border bg-muted/40">
           <div class="flex items-center gap-2">
             <FileText class="size-4 text-primary" />

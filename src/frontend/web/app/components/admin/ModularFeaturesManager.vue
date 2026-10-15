@@ -131,11 +131,11 @@ function handleReset() {
             <Button
               variant="outline"
               size="sm"
-              class="h-8 gap-1 text-xs cursor-pointer"
+              class="h-8 gap-1 text-xs"
               @click="handleReset"
             >
               <RotateCcwIcon class="h-3.5 w-3.5" />
-              {{ $t('common.resetDefaults') }}
+              Reset Defaults
             </Button>
           </div>
         </div>
@@ -143,48 +143,48 @@ function handleReset() {
       <CardContent>
         <div class="space-y-4">
           <div>
-            <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{{ $t('modules.quickPresets') }}</div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Quick Deployment Presets</div>
             <div class="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                class="text-xs h-7 cursor-pointer"
+                class="text-xs h-7"
                 :class="{ 'bg-primary/10 border-primary text-primary': !isMinimalMode }"
                 @click="applyPreset('all')"
               >
-                {{ $t('modules.fullMonolith') }}
+                Standard Full Monolith
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                class="text-xs h-7 cursor-pointer"
+                class="text-xs h-7"
                 @click="applyPreset('telemetry-ticketing')"
               >
-                {{ $t('modules.noInventoryPreset') }}
+                Telemetry + Ticketing (No Inventory)
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                class="text-xs h-7 cursor-pointer"
+                class="text-xs h-7"
                 @click="applyPreset('ticketing-only')"
               >
-                {{ $t('modules.presetTicketingOnly') }}
+                Ticketing Only
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                class="text-xs h-7 cursor-pointer"
+                class="text-xs h-7"
                 @click="applyPreset('telemetry-only')"
               >
-                {{ $t('modules.presetTelemetryOnly') }}
+                Telemetry Only
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                class="text-xs h-7 cursor-pointer"
+                class="text-xs h-7"
                 @click="applyPreset('core-only')"
               >
-                {{ $t('modules.presetCoreOnly') }}
+                Strict Lean Core
               </Button>
             </div>
           </div>

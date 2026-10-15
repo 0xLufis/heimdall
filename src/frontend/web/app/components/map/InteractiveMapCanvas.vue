@@ -8,15 +8,11 @@ const props = withDefaults(
     dxfUrl?: string
     highlightedHandles?: string[]
     activePin?: string | null
-    searchQuery?: string
-    tickets?: any[]
   }>(),
   {
     dxfUrl: '/sample/production_hall.dxf',
     highlightedHandles: () => [],
-    activePin: null,
-    searchQuery: '',
-    tickets: () => []
+    activePin: null
   }
 )
 
@@ -32,7 +28,6 @@ const svgContainer = ref<SVGSVGElement | null>(null)
 const { isLoading, error, parsedEntities, viewBox, loadAndParseDxf, zoom, pan } = useDxfMap(props.dxfUrl)
 
 const hoveredEntity = ref<string | null>(null)
-const expandedBubbleStation = ref<string | null>(null)
 
 let isDragging = false
 let startDrag = { x: 0, y: 0 }
@@ -97,38 +92,9 @@ const resetView = () => {
   loadAndParseDxf(props.dxfUrl)
 }
 
-// Search and Filtering State
-const isSearchActive = computed(() => {
-  return Boolean(props.searchQuery?.trim()) || props.highlightedHandles.length > 0
-})
-
-const matchesSearch = (entity: any) => {
-  if (!isSearchActive.value) return true
-  const h = (entity.handle || '').toLowerCase()
-  const b = (entity.block || '').toLowerCase()
-  const n = (entity.name || '').toLowerCase()
-  const t = (entity.text || '').toLowerCase()
-
-  if (props.highlightedHandles.length > 0) {
-    if (props.highlightedHandles.includes(entity.handle) || props.highlightedHandles.includes(entity.name)) {
-      return true
-    }
-  }
-
-  const q = (props.searchQuery || '').toLowerCase().trim()
-  if (!q) return isHighlighted(entity)
-
-  return h.includes(q) || b.includes(q) || n.includes(q) || t.includes(q)
-}
-
-const getEntityOpacity = (entity: any) => {
-  if (!isSearchActive.value) return 1
-  return matchesSearch(entity) ? 1 : 0.2
-}
-
 const isHighlighted = (entity: any) => {
   const h = entity.handle || entity.block || entity.name
-  return props.highlightedHandles.includes(h) || props.activePin === h || (isSearchActive.value && matchesSearch(entity))
+  return props.highlightedHandles.includes(h) || props.activePin === h
 }
 
 const isHovered = (entity: any) => {
@@ -138,28 +104,6 @@ const isHovered = (entity: any) => {
 
 const shouldShowLabel = (entity: any) => {
   return isHovered(entity) || isHighlighted(entity)
-}
-
-// Open Tickets Correlation per Station
-const getStationTickets = (entity: any) => {
-  if (!props.tickets || props.tickets.length === 0) return []
-  const name = (entity.name || entity.block || entity.handle || '').toLowerCase()
-  const handle = (entity.handle || '').toLowerCase()
-  return props.tickets.filter((t: any) => {
-    const st = (t.status || '').toLowerCase()
-    if (st === 'resolved' || st === 'closed') return false
-    const mach = (t.stationName || t.machineId || t.station || '').toLowerCase()
-    return mach && (mach.includes(name) || name.includes(mach) || (t.pinnedObjectHandle && t.pinnedObjectHandle.toLowerCase() === handle))
-  })
-}
-
-const toggleBubble = (stationHandle: string, e: MouseEvent) => {
-  e.stopPropagation()
-  if (expandedBubbleStation.value === stationHandle) {
-    expandedBubbleStation.value = null
-  } else {
-    expandedBubbleStation.value = stationHandle
-  }
 }
 
 const formatPolylinePoints = (vertices: any[] = []) => {
@@ -350,8 +294,7 @@ watch(() => props.dxfUrl, (newUrl) => {
           <g
             v-if="entity.type === 'INSERT' && entity.position"
             :transform="`translate(${entity.position.x}, ${entity.position.y})`"
-            :opacity="getEntityOpacity(entity)"
-            class="cursor-pointer group transition-opacity duration-200"
+            class="cursor-pointer group"
             @mouseenter="hoveredEntity = entity.handle || entity.name"
             @mouseleave="hoveredEntity = null"
             @click="handleEntityClick(entity, $event)"
@@ -427,106 +370,6 @@ watch(() => props.dxfUrl, (newUrl) => {
               >
                 {{ entity.handle || entity.name }}
               </text>
-            </g>
-
-            <!-- Open Tickets Floating Bubble -->
-            <g
-              v-if="getStationTickets(entity).length > 0"
-              :transform="`translate(0, -16)`"
-              class="cursor-pointer"
-              @click="toggleBubble(entity.handle || entity.name, $event)"
-            >
-              <!-- Collapsed Bubble Pill -->
-              <g v-if="expandedBubbleStation !== (entity.handle || entity.name)">
-                <rect
-                  :x="-13"
-                  :y="-6"
-                  width="26"
-                  height="8"
-                  rx="4"
-                  class="fill-rose-600 stroke-white stroke-[0.8] shadow-lg animate-pulse"
-                />
-                <text
-                  x="0"
-                  y="-0.5"
-                  fill="#ffffff"
-                  font-size="4.2"
-                  font-family="monospace"
-                  font-weight="900"
-                  text-anchor="middle"
-                  class="select-none"
-                >
-                  ! {{ getStationTickets(entity).length }}
-                </text>
-              </g>
-
-              <!-- Expanded Bubble Detail Card -->
-              <g v-else class="cursor-default" @click.stop>
-                <rect
-                  :x="-38"
-                  :y="-42"
-                  width="76"
-                  height="38"
-                  rx="4"
-                  fill="#090d16"
-                  stroke="#f43f5e"
-                  stroke-width="1"
-                  class="shadow-2xl"
-                />
-                <!-- Header -->
-                <rect
-                  :x="-38"
-                  :y="-42"
-                  width="76"
-                  height="9"
-                  rx="4"
-                  fill="#f43f5e"
-                />
-                <text
-                  x="-34"
-                  y="-36"
-                  fill="#ffffff"
-                  font-size="3.8"
-                  font-weight="bold"
-                  font-family="sans-serif"
-                >
-                  {{ getStationTickets(entity).length }} Open Ticket(s)
-                </text>
-                <text
-                  x="32"
-                  y="-35.5"
-                  fill="#ffffff"
-                  font-size="4.5"
-                  font-weight="bold"
-                  class="cursor-pointer"
-                  @click="expandedBubbleStation = null"
-                >
-                  ×
-                </text>
-
-                <!-- Ticket Lines -->
-                <template v-for="(tk, tIdx) in getStationTickets(entity).slice(0, 2)" :key="tk.id">
-                  <text
-                    x="-34"
-                    :y="-27 + tIdx * 12"
-                    fill="#fb7185"
-                    font-size="3.2"
-                    font-weight="bold"
-                    font-family="monospace"
-                  >
-                    {{ tk.ticketNumber || 'TICK' }} [{{ tk.priority || 'Normal' }}]
-                  </text>
-                  <text
-                    x="-34"
-                    :y="-22 + tIdx * 12"
-                    fill="#e2e8f0"
-                    font-size="2.8"
-                    font-family="sans-serif"
-                  >
-                    {{ (tk.title || tk.issueDescription || 'Incident report').slice(0, 24) }}
-                  </text>
-                </template>
-              </g>
             </g>
           </g>
         </template>

@@ -29,15 +29,6 @@ import {
   defaultSearchDiagnostics,
   type SearchDiagnosticsRecord 
 } from '~/utils/search/searchDiagnostics'
-import { searchRegistry } from '~/utils/search/searchRegistry'
-import {
-  SAMPLE_MACHINES_DATA,
-  SAMPLE_CLIENT_PCS_DATA,
-  SAMPLE_TICKETS_DATA,
-  SAMPLE_INVENTORY_DATA,
-  SAMPLE_USERS_DATA,
-  defaultTelemetrySource
-} from '~/utils/search/defaultContexts'
 
 /**
  * Heimdall Search composable - tag-aware fuzzy search across all Heimdall entities
@@ -66,7 +57,7 @@ export const useHeimdallSearch = (
   const config: SearchInstanceConfig = {
     ...DEFAULT_CONFIG,
     ...topConfig,
-    instanceId: (optionsOrConfig as any).instanceId || topConfig.instanceId || DEFAULT_CONFIG.instanceId,
+    instanceId: (optionsOrConfig as any).instanceId || topConfig.placeholder || DEFAULT_CONFIG.instanceId,
     placeholder: (optionsOrConfig as any).placeholder || topConfig.placeholder || DEFAULT_CONFIG.placeholder,
     defaultEndpoints: (optionsOrConfig as any).defaultEndpoints || DEFAULT_CONFIG.defaultEndpoints,
     allowedTagKeys: (optionsOrConfig as any).allowedTagKeys || topConfig.allowedTagKeys || DEFAULT_CONFIG.allowedTagKeys,
@@ -119,9 +110,6 @@ export const useHeimdallSearch = (
   const matchingKeys = ref<typeof ALL_FILTER_KEYS>([])
   const valueSuggestions = ref<KeyLookupSuggestion[]>([])
   const activePendingKey = ref<string>('')
-  const activePendingModifier = ref<string>('')
-  const activePendingSeparator = ref<string>(':')
-  const activePendingCompletedValues = ref<string[]>([])
   const searchKeyGroups = ref<SearchGroup[]>(buildDynamicSearchKeyGroups(dynamicKnownKeyValues.value))
   const isLoading = ref(false)
   const isDropdownOpen = ref(false)
@@ -168,90 +156,14 @@ export const useHeimdallSearch = (
     for (const tag of tagFilters) {
       const k = tag.key.toLowerCase()
       const targetVal = tag.value.toLowerCase()
+      const itemVal = kv[k] ?? item[tag.key] ?? item[k]
+      if (itemVal === undefined || itemVal === null) return false
 
-      // 1. Scoping tags with value 'all' (e.g. @machine, #ticket, !controller, *part)
-      if (targetVal === 'all') {
-        if (k === 'station' || k === 'machine') {
-          if (item.itemType === 'Machine' || template.name === 'machine' || item.sourceTable === 'machines') continue
-          return false
-        }
-        if (k === 'ticket' || k === 'tickets') {
-          if (item.itemType === 'Ticket' || item.itemType === 'MaintenanceTicket' || template.name === 'ticket' || item.sourceTable === 'tickets') continue
-          return false
-        }
-        if (k === 'host' || k === 'controller' || k === 'client' || k === 'ipc') {
-          if (item.itemType === 'ClientPc' || item.itemType === 'endpoint' || template.name === 'endpoint' || item.sourceTable === 'nodes' || item.sourceTable === 'client_pcs') continue
-          return false
-        }
-        if (k === 'part' || k === 'inventory' || k === 'stock') {
-          if (item.itemType === 'InventoryItem' || item.sourceTable === 'inventory' || template.name === 'inventory') continue
-          return false
-        }
-        if (k === 'metric' || k === 'telemetry') {
-          if (item.itemType === 'Telemetry' || item.itemType === 'TelemetryMetric' || template.name === 'telemetry' || item.sourceTable === 'telemetry') continue
-          return false
-        }
+      if (Array.isArray(itemVal)) {
+        if (!itemVal.some(v => String(v).toLowerCase() === targetVal)) return false
+      } else {
+        if (String(itemVal).toLowerCase() !== targetVal) return false
       }
-
-      // 2. Entity / Type tag (e.g. type:machine, type:ticket, type:clientpc, type:inventory, type:telemetry)
-      if (k === 'type' || k === 'entity') {
-        const itemTypeLower = (item.itemType || template.name || '').toLowerCase()
-        const typeLabelLower = (item.typeLabel || '').toLowerCase()
-        const sourceTableLower = (item.sourceTable || '').toLowerCase()
-        const matchesType = itemTypeLower.includes(targetVal) || 
-                            typeLabelLower.includes(targetVal) || 
-                            sourceTableLower.includes(targetVal) ||
-                            (targetVal === 'machine' && itemTypeLower === 'machine') ||
-                            (targetVal === 'ticket' && (itemTypeLower.includes('ticket') || sourceTableLower === 'tickets')) ||
-                            ((targetVal === 'client' || targetVal === 'controller' || targetVal === 'ipc') && itemTypeLower.includes('client')) ||
-                            ((targetVal === 'part' || targetVal === 'inventory') && (itemTypeLower.includes('inventory') || sourceTableLower === 'inventory')) ||
-                            ((targetVal === 'metric' || targetVal === 'telemetry') && (itemTypeLower.includes('telemetry') || sourceTableLower === 'telemetry'))
-
-        if (matchesType) continue
-        return false
-      }
-
-      // 3. Status filter (e.g. %alarm or status:maintenance)
-      if (k === 'status' && (targetVal === 'maintenance' || targetVal === 'alarm')) {
-        const statusVal = String(kv.status ?? item.status ?? item.equipmentStatus ?? '').toLowerCase()
-        const priorityVal = String(item.priority ?? '').toLowerCase()
-        const isAlarm = statusVal === 'maintenance' || statusVal === 'warning' || statusVal === 'alarm' || 
-                        statusVal === 'offline' || priorityVal === 'critical' || priorityVal === 'high'
-        if (isAlarm) continue
-        return false
-      }
-
-      // 4. Normal tag filtering with alias resolution
-      const resolveAliases = (key: string): string[] => {
-        if (key === 'mfr' || key === 'manufacturer') return ['mfr', 'manufacturer']
-        if (key === 'ip' || key === 'ipaddress') return ['ip', 'ipAddress', 'ipaddress']
-        if (key === 'mac' || key === 'macaddress') return ['mac', 'macAddress', 'macaddress']
-        if (key === 'serial' || key === 'serialnumber') return ['serial', 'serialNumber', 'serialnumber']
-        if (key === 'ticket' || key === 'ticketnumber') return ['ticket', 'ticketNumber', 'ticketnumber']
-        if (key === 'host' || key === 'hostname') return ['host', 'hostname']
-        if (key === 'metric' || key === 'symbol') return ['metric', 'name', 'canonicalKey', 'id']
-        if (key === 'category' || key === 'cat') return ['category', 'typeLabel']
-        if (key === 'unit') return ['unit']
-        return [key]
-      }
-
-      let matched = false
-      for (const field of resolveAliases(k)) {
-        const itemVal = kv[field] ?? item[field] ?? item[field.toLowerCase()]
-        if (itemVal !== undefined && itemVal !== null) {
-          if (Array.isArray(itemVal)) {
-            if (itemVal.some(v => String(v).toLowerCase() === targetVal)) {
-              matched = true
-              break
-            }
-          } else if (String(itemVal).toLowerCase() === targetVal) {
-            matched = true
-            break
-          }
-        }
-      }
-
-      if (!matched) return false
     }
     return true
   }
@@ -299,14 +211,10 @@ export const useHeimdallSearch = (
     let resolvedDataSourceType: 'uri' | 'dbConnection' | 'redisCache' | 'custom' | 'inMemory' = 'inMemory'
 
     if (!queryStr && tags.value.length === 0) {
-      if (config.instanceId === 'telemetry' || config.instanceId === 'telemetry-workspace' || config.instanceId === 'telemetry-hub') {
-        // Allow telemetry workspace to return baseline items
-      } else {
-        results.value = []
-        primaryResults.value = []
-        crossTableResults.value = []
-        return
-      }
+      results.value = []
+      primaryResults.value = []
+      crossTableResults.value = []
+      return
     }
 
     const cacheKey = `${config.instanceId}:${queryStr}:${tags.value.map(t => `${t.key}=${t.value}`).join(';')}`
@@ -479,164 +387,52 @@ export const useHeimdallSearch = (
               }))
             }
           } catch {}
-        } else if (config.instanceId === 'telemetry' || config.instanceId === 'telemetry-workspace' || config.instanceId === 'telemetry-hub') {
-          resolvedDataSourceType = 'uri'
-          // Stage 1 Primary: Scoped strictly to Telemetry-related search points
-          const rawMetrics: any[] = [...defaultTelemetrySource.data]
-          try {
-            const cat = await $fetch<any[]>('/api/telemetry/catalog')
-            if (Array.isArray(cat) && cat.length > 0) {
-              const existingIds = new Set(rawMetrics.map(m => m.id))
-              for (const c of cat) {
-                if (!existingIds.has(c.id || c.key)) {
-                  rawMetrics.push({
-                    id: c.id || c.key,
-                    name: c.name || c.key,
-                    category: c.category || 'General',
-                    dataType: c.dataType || 'Float64',
-                    unit: c.unit || '',
-                    description: c.description || c.pathOrSymbol || ''
-                  })
-                }
-              }
-            }
-          } catch {}
-
-          const metricItems: SearchResultItem[] = rawMetrics
-            .filter(m => matchItemWithTags(m, tags.value, resolveSearchTemplate('telemetry')))
-            .map(m => resolveSearchTemplate('telemetry').extractSearchItem(m))
-            .filter(item => {
-              if (!cleanQ) return true
-              const nameMatch = (item.name || '').toLowerCase().includes(cleanQ)
-              const dispMatch = (item.displayName || '').toLowerCase().includes(cleanQ)
-              const subMatch = (item.subtitle || '').toLowerCase().includes(cleanQ)
-              const typeMatch = (item.typeLabel || '').toLowerCase().includes(cleanQ)
-              const idMatch = (item.id || '').toLowerCase().includes(cleanQ)
-              const fuzzyMatch = fuzzyConfig.value.enabled && cleanQ.length >= 3 && (
-                isFuzzyMatch(cleanQ, item.name || '', fuzzyConfig.value.threshold) ||
-                isFuzzyMatch(cleanQ, item.displayName || '', fuzzyConfig.value.threshold)
-              )
-              return nameMatch || dispMatch || subMatch || typeMatch || idMatch || fuzzyMatch
-            })
-
-          primary = metricItems
-          cross = []
         } else {
           // Inventory or Global Search
-          resolvedDataSourceType = 'uri'
           const endpoint = typeof rawDataSource === 'string' 
             ? rawDataSource 
             : (rawDataSource?.type === 'uri' ? rawDataSource.url : (config.defaultEndpoints?.[0] || '/api/proxy/inventory/search'))
+          resolvedDataSourceType = 'uri'
           const queryParam = encodeURIComponent(queryStr)
 
-          // Helper to check for active scoping tag
-          const hasScope = (key: string, val: string = 'all') => {
-            return tags.value.some(t => {
-              const k = t.key.toLowerCase()
-              const v = t.value.toLowerCase()
-              if (k === key.toLowerCase() && (val === 'all' || v === val.toLowerCase())) return true
-              if (k === 'type' || k === 'entity') {
-                if (key === 'station' && (v === 'machine' || v === 'station' || v === 'mch')) return true
-                if (key === 'ticket' && (v === 'ticket' || v === 'maintenanceticket' || v === 'tck')) return true
-                if (key === 'host' && (v === 'clientpc' || v === 'controller' || v === 'ipc')) return true
-                if (key === 'part' && (v === 'inventoryitem' || v === 'part' || v === 'inventory' || v === 'prt')) return true
-              }
-              return false
-            })
-          }
-
-          const isStationScoped = hasScope('station', 'all')
-          const isTicketScoped = hasScope('ticket', 'all')
-          const isControllerScoped = hasScope('host', 'all')
-          const isPartScoped = hasScope('part', 'all')
-          const isAlarmScoped = hasScope('status', 'maintenance')
-
-          // 1. Machines
-          let rawMachines: any[] = []
           try {
-            const m = await $fetch<any[]>('/api/proxy/v1/machine')
-            if (Array.isArray(m) && m.length > 0) rawMachines = m
-          } catch {}
-          if (rawMachines.length === 0) rawMachines = SAMPLE_MACHINES_DATA
-
-          const machineItems: SearchResultItem[] = rawMachines
-            .filter(m => matchItemWithTags(m, tags.value, resolveSearchTemplate('machine')))
-            .map(m => resolveSearchTemplate('machine').extractSearchItem(m))
-            .filter(item => !cleanQ || isFuzzyMatch(cleanQ, item.name, 0.7) || (item.displayName && isFuzzyMatch(cleanQ, item.displayName, 0.7)))
-
-          // 2. Client PCs
-          let rawPcs: any[] = []
-          try {
-            const p = await $fetch<any[]>('/api/proxy/v1/ClientPc')
-            if (Array.isArray(p) && p.length > 0) rawPcs = p
-          } catch {}
-          if (rawPcs.length === 0) rawPcs = SAMPLE_CLIENT_PCS_DATA
-
-          const pcItems: SearchResultItem[] = rawPcs
-            .filter(p => matchItemWithTags(p, tags.value, resolveSearchTemplate('endpoint')))
-            .map(p => resolveSearchTemplate('endpoint').extractSearchItem(p))
-            .filter(item => !cleanQ || isFuzzyMatch(cleanQ, item.name, 0.7))
-
-          // 3. Tickets
-          const rawTickets: any[] = SAMPLE_TICKETS_DATA
-          const ticketItems: SearchResultItem[] = rawTickets
-            .filter(t => matchItemWithTags(t, tags.value, resolveSearchTemplate('machine')))
-            .map(t => ({
-              id: t.id || t.ticketNumber,
-              name: t.ticketNumber || t.id,
-              displayName: t.title || t.ticketNumber,
-              itemType: 'Ticket',
-              typeLabel: t.priority ? `${t.priority} Ticket` : 'Ticket',
-              subtitle: `${t.department || 'Maintenance'} • Status: ${t.status} • Station: ${t.stationName || 'N/A'}`,
-              status: t.status === 'Open' ? 'warning' : (t.status === 'InProgress' ? 'maintenance' : 'online'),
-              sourceTable: 'tickets',
-              isCrossTable: false,
-              link: `/dashboard/tickets?ticketId=${encodeURIComponent(t.id || t.ticketNumber)}`
-            }))
-            .filter(item => !cleanQ || (item.displayName && isFuzzyMatch(cleanQ, item.displayName, 0.65)) || isFuzzyMatch(cleanQ, item.name, 0.7))
-
-          // 4. Inventory
-          let rawInv: any[] = []
-          try {
-            const inv = await $fetch<any[]>(`${endpoint}?query=${queryParam}`)
-            if (Array.isArray(inv) && inv.length > 0) rawInv = inv
+            const res = await $fetch<any[]>(`${endpoint}?query=${queryParam}`)
+            primary = (res || []).map((item: any) => resolveSearchTemplate('inventory').extractSearchItem(item))
           } catch {
+            // Fallback to local filter API
             try {
               const res = await $fetch<any>(`/api/inventory/filter?query=${queryParam}`)
-              if (res && Array.isArray(res.items)) rawInv = res.items
+              if (res && Array.isArray(res.items)) {
+                primary = res.items.map((item: any) => resolveSearchTemplate('inventory').extractSearchItem(item))
+              }
+            } catch {
+              primary = []
+            }
+          }
+
+          // Cross-table machines if query matches
+          if (cleanQ.length >= 2) {
+            try {
+              const machines = await $fetch<any[]>('/api/proxy/v1/machine')
+              if (Array.isArray(machines)) {
+                const matchedMachines = machines.filter(m => 
+                  (m.name || '').toLowerCase().includes(cleanQ) || 
+                  (m.groupId || '').toLowerCase().includes(cleanQ) ||
+                  (m.machineType || '').toLowerCase().includes(cleanQ)
+                )
+                cross = matchedMachines.slice(0, 6).map(m => ({
+                  id: m.id,
+                  name: m.name,
+                  displayName: m.displayName,
+                  itemType: 'Machine',
+                  typeLabel: m.machineType || 'Station',
+                  subtitle: `Line: ${m.groupId || 'General'}`,
+                  sourceTable: 'machines',
+                  isCrossTable: true,
+                  link: `/dashboard/machines?id=${encodeURIComponent(m.id)}&search=${encodeURIComponent(m.name)}`
+                }))
+              }
             } catch {}
-          }
-          if (rawInv.length === 0 && (!queryStr || isPartScoped || (!isStationScoped && !isTicketScoped && !isControllerScoped && !isAlarmScoped))) {
-            rawInv = SAMPLE_INVENTORY_DATA
-          }
-
-          const invItems: SearchResultItem[] = rawInv
-            .filter(i => matchItemWithTags(i, tags.value, resolveSearchTemplate('inventory')))
-            .map(i => resolveSearchTemplate('inventory').extractSearchItem(i))
-            .filter(item => !cleanQ || isFuzzyMatch(cleanQ, item.name, 0.7) || (item.displayName && isFuzzyMatch(cleanQ, item.displayName, 0.7)))
-
-          // Route results based on active scope
-          if (isStationScoped) {
-            primary = machineItems
-            cross = []
-          } else if (isTicketScoped) {
-            primary = ticketItems
-            cross = []
-          } else if (isControllerScoped) {
-            primary = pcItems
-            cross = []
-          } else if (isPartScoped) {
-            primary = invItems
-            cross = []
-          } else if (isAlarmScoped) {
-            primary = [...machineItems, ...ticketItems, ...pcItems].filter(i => 
-              i.status === 'maintenance' || i.status === 'warning' || i.status === 'offline' || i.typeLabel?.includes('Critical')
-            )
-            cross = []
-          } else {
-            // Unscoped global search: merge inventory and machines as primary, tickets and PCs as cross
-            primary = [...invItems.slice(0, 10), ...machineItems.slice(0, 5)]
-            cross = [...pcItems.slice(0, 4), ...ticketItems.slice(0, 4)]
           }
         }
       }
@@ -690,22 +486,12 @@ export const useHeimdallSearch = (
 
     const trimmed = value.trim()
 
-    // 1. Check if user is typing `key:` or `{modifier}{key}#{values}`
-    const keyMatch = value.match(/(?:^|\s)(!|-|\+|&|\||\^|NOT|AND|OR|XOR)?([a-zA-Z0-9_-]+)([#:])([^\s]*)$/i)
+    // 1. Check if user is typing `key:` or `key:partial`
+    const keyMatch = value.match(/(?:^|\s)([a-zA-Z0-9_-]+):([^\s]*)$/)
     if (keyMatch) {
-      const rawMod = keyMatch[1] || ''
-      const activeKey = keyMatch[2].toLowerCase()
-      const sep = keyMatch[3]
-      const rawValStr = keyMatch[4] || ''
-
-      const valSegments = rawValStr.split(',')
-      const completed = valSegments.slice(0, -1).map(s => s.trim()).filter(Boolean)
-      const partialVal = (valSegments[valSegments.length - 1] || '').toLowerCase()
-
+      const activeKey = keyMatch[1].toLowerCase()
+      const partialVal = (keyMatch[2] || '').toLowerCase()
       activePendingKey.value = activeKey
-      activePendingModifier.value = rawMod
-      activePendingSeparator.value = sep
-      activePendingCompletedValues.value = completed
 
       // Retrieve suggestions from dynamically harvested known KVs
       const suggestions = getSuggestionsForKey(
@@ -714,27 +500,6 @@ export const useHeimdallSearch = (
         dynamicKnownKeyValues.value, 
         config.instanceId
       )
-
-      // Also harvest from searchRegistry to populate indicators for entity types
-      const registryMetadata = searchRegistry.harvestTagMetadata(activeKey)
-      for (const meta of registryMetadata) {
-        if (!partialVal || meta.value.toLowerCase().includes(partialVal)) {
-          const existing = suggestions.find(s => s.value.toLowerCase() === meta.value.toLowerCase())
-          if (existing) {
-            existing.indicators = meta.indicators.map(i => ({ label: i.label, color: i.color }))
-            if (meta.count) existing.count = meta.count
-          } else {
-            suggestions.push({
-              key: activeKey,
-              value: meta.value,
-              description: meta.entityTypes.join(', '),
-              sourceTable: meta.indicatorLabels[0] || config.instanceId,
-              indicators: meta.indicators.map(i => ({ label: i.label, color: i.color })),
-              count: meta.count
-            })
-          }
-        }
-      }
 
       // If exact partial match has few results, supplement with fuzzy matching on known values
       if (suggestions.length < 3 && partialVal.length >= 2 && fuzzyConfig.value.enabled) {
@@ -763,9 +528,6 @@ export const useHeimdallSearch = (
       matchingKeys.value = []
     } else {
       activePendingKey.value = ''
-      activePendingModifier.value = ''
-      activePendingSeparator.value = ':'
-      activePendingCompletedValues.value = []
       valueSuggestions.value = []
 
       // 2. Stage 2: Filter Key Suggestions matching typed text
@@ -850,18 +612,9 @@ export const useHeimdallSearch = (
 
   const selectValueSuggestion = (val: string) => {
     const key = activePendingKey.value || 'tag'
-    const mod = activePendingModifier.value || ''
-    const sep = activePendingSeparator.value || ':'
-    const completed = activePendingCompletedValues.value || []
-    const allValues = [...completed, val]
-    const label = `${mod}${key}${sep}${allValues.join(',')}`
-
-    addTag({ key, value: allValues.join(','), label })
+    addTag({ key, value: val })
     rawInput.value = ''
     activePendingKey.value = ''
-    activePendingModifier.value = ''
-    activePendingSeparator.value = ':'
-    activePendingCompletedValues.value = []
     valueSuggestions.value = []
   }
 
@@ -930,3 +683,5 @@ export const useHeimdallSearch = (
   }
 }
 
+/**
+ */

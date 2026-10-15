@@ -34,7 +34,7 @@ function navigateToClient(client: Client) {
     <CardHeader class="px-6 py-4 border-b border-border flex flex-row justify-between items-center bg-muted/30 space-y-0">
       <CardTitle class="text-base font-semibold text-foreground flex items-center gap-2.5">
         <Monitor class="w-5 h-5 text-primary" />
-        <span>{{ $t('dashboard.activeControllers', 'Active Edge Controllers') }}</span>
+        <span>Active Edge Controllers</span>
       </CardTitle>
       <NuxtLink to="/dashboard/clients" class="no-underline">
         <Button 
@@ -42,7 +42,7 @@ function navigateToClient(client: Client) {
           size="sm"
           class="flex items-center gap-1.5 rounded-lg border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-all h-8"
         >
-          <span>{{ $t('dashboard.viewFleet', 'View Fleet') }}</span>
+          <span>View Fleet</span>
           <ArrowUpRight class="h-3.5 w-3.5 text-primary" />
         </Button>
       </NuxtLink>
@@ -52,9 +52,9 @@ function navigateToClient(client: Client) {
         <Table>
           <TableHeader class="bg-muted/50">
             <TableRow class="border-b border-border hover:bg-transparent">
-              <TableHead class="px-4 py-3 text-xs text-muted-foreground uppercase tracking-wider font-semibold">{{ $t('dashboard.controllerHost', 'Controller / Host') }}</TableHead>
-              <TableHead class="px-4 py-3 text-xs text-muted-foreground uppercase tracking-wider font-semibold">{{ $t('dashboard.telemetryStatus', 'Telemetry Status') }}</TableHead>
-              <TableHead class="px-4 py-3 text-xs text-muted-foreground uppercase tracking-wider font-semibold text-right">{{ $t('dashboard.heartbeat', 'Heartbeat') }}</TableHead>
+              <TableHead class="px-4 py-3 text-xs text-muted-foreground uppercase tracking-wider font-semibold">Controller / Host</TableHead>
+              <TableHead class="px-4 py-3 text-xs text-muted-foreground uppercase tracking-wider font-semibold">Telemetry Status</TableHead>
+              <TableHead class="px-4 py-3 text-xs text-muted-foreground uppercase tracking-wider font-semibold text-right">Heartbeat</TableHead>
               <TableHead class="w-10"></TableHead>
             </TableRow>
           </TableHeader>
@@ -62,7 +62,7 @@ function navigateToClient(client: Client) {
             <template v-if="clients.length === 0">
               <TableRow>
                 <TableCell colspan="4" class="h-28 text-center text-muted-foreground text-xs">
-                  {{ $t('dashboard.noActiveControllers', 'No edge controllers active at this time.') }}
+                  No edge controllers active at this time.
                 </TableCell>
               </TableRow>
             </template>
@@ -97,14 +97,14 @@ function navigateToClient(client: Client) {
                 <TableCell class="px-4 py-3">
                   <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    {{ $t('common.online', 'Online') }}
+                    Online
                   </span>
                 </TableCell>
 
                 <!-- Last Seen Telemetry -->
                 <TableCell class="px-4 py-3 text-right">
                   <div class="text-xs font-mono text-foreground">{{ client.lastSeen }}</div>
-                  <div class="text-[11px] text-muted-foreground font-mono mt-0.5">{{ $t('dashboard.streamingActive', 'Streaming active') }}</div>
+                  <div class="text-[11px] text-muted-foreground font-mono mt-0.5">Streaming active</div>
                 </TableCell>
 
                 <!-- Action Chevron -->

@@ -154,17 +154,17 @@ const handleQueueCommand = async () => {
         </div>
 
         <div class="flex justify-end gap-3 pt-4 border-t border-border">
-          <Button type="button" variant="ghost" @click="emit('update:open', false)" class="text-muted-foreground hover:text-foreground text-xs font-bold uppercase cursor-pointer">
-            {{ $t('common.cancel') }}
+          <Button type="button" variant="ghost" @click="emit('update:open', false)" class="text-muted-foreground hover:text-foreground text-xs font-bold uppercase">
+            Cancel
           </Button>
           <RbacButton
             type="submit"
             capability="canExecuteRemote"
             :disabled="isSubmitting"
-            class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-bold uppercase tracking-wider px-6 h-11 cursor-pointer"
+            class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-bold uppercase tracking-wider px-6 h-11"
           >
             <Loader2 v-if="isSubmitting" class="w-4 h-4 mr-2 animate-spin" />
-            <span>{{ isSubmitting ? $t('clients.signing') : $t('clients.queueCommand') }}</span>
+            <span>{{ isSubmitting ? 'Signing...' : 'Queue Command' }}</span>
           </RbacButton>
         </div>
       </form>

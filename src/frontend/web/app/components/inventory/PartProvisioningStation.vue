@@ -76,7 +76,7 @@ const selectPart = (part: InventoryPart) => {
   isSerializeOnUse.value = Boolean(part.serializeOnUse)
   targetMachineId.value = part.linkedMachineId || ''
   justification.value = ''
-  serialNumber.value = `SN-${Math.floor(100000 + Math.random() * 900000)}`
+  serialNumber.value = `SN-${Date.now().toString().slice(-6)}`
   wbsElement.value = ''
   errorMessage.value = null
   showSuccessBanner.value = false

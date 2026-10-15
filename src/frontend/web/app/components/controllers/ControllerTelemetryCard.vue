@@ -435,7 +435,7 @@ const getStatusColor = (status?: string) => {
           title="Launch Remote Quick View Session"
         >
           <Eye class="size-3.5" />
-          <span>{{ $t('clients.remoteSession') }}</span>
+          <span>Remote Session</span>
         </Button>
       </div>
     </div>
@@ -469,7 +469,7 @@ const getStatusColor = (status?: string) => {
           class="h-8 rounded-lg bg-primary/10 hover:bg-primary/20 border-primary/30 text-primary text-xs font-medium flex items-center gap-1.5 cursor-pointer"
         >
           <MapPin class="size-3" />
-          <span>{{ $t('clients.locateOnMap') }}</span>
+          <span>Locate on CAD Map</span>
         </Button>
         <Button
           variant="outline"
@@ -478,7 +478,7 @@ const getStatusColor = (status?: string) => {
           class="h-8 rounded-lg bg-card hover:bg-accent border-border text-foreground text-xs font-medium flex items-center gap-1.5 cursor-pointer"
         >
           <Link class="size-3" />
-          <span>{{ controller.pinnedObjectHandle ? $t('clients.editDxfLink') : $t('clients.linkDxfTag') }}</span>
+          <span>{{ controller.pinnedObjectHandle ? 'Edit DXF Link' : '+ Link DXF Tag' }}</span>
         </Button>
       </div>
     </div>
@@ -621,7 +621,7 @@ const getStatusColor = (status?: string) => {
                 :title="isPinned(prop.id) ? 'Unpin from quick metrics' : 'Pin to quick metrics'"
               >
                 <Pin class="w-3 h-3" :class="{ 'fill-primary text-primary': isPinned(prop.id) }" />
-                <span>{{ isPinned(prop.id) ? $t('common.pinned') : $t('common.pin') }}</span>
+                <span>{{ isPinned(prop.id) ? 'Pinned' : 'Pin' }}</span>
               </button>
             </div>
           </div>

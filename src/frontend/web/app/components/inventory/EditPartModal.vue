@@ -32,6 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:open', val: boolean): void
   (e: 'updated', part: InventoryPart): void
+  (e: 'edited', part: InventoryPart): void
 }>()
 
 const { editPart, transitionLifecycle, indexedFields, fetchIndexedFields, formatCurrency, activeCurrency } = usePartsInventory()
@@ -151,7 +152,7 @@ const handleSubmit = async () => {
       condition: condition.value,
       operationalState: operationalState.value,
       wearDepreciationPercentage: wearDepreciation.value,
-      resellPriceOverrideEur: resellPriceOverride.value !== undefined && String(resellPriceOverride.value) !== '' ? Number(resellPriceOverrideEur) : undefined,
+      resellPriceOverrideEur: resellPriceOverride.value !== undefined && String(resellPriceOverride.value) !== '' ? Number(resellPriceOverride.value) : undefined,
       minQuantity: minQuantity.value,
       minQuantityScalar: minQuantityScalar.value,
       tags: parsedTags,
@@ -160,6 +161,7 @@ const handleSubmit = async () => {
 
     successMessage.value = 'Part updated successfully with full audit trail!'
     emit('updated', updated)
+    emit('edited', updated)
     setTimeout(() => {
       emit('update:open', false)
     }, 700)
@@ -182,7 +184,7 @@ const handleSubmit = async () => {
           </div>
           <div>
             <h2 class="text-base font-semibold text-foreground flex items-center gap-2">
-              <span>{{ $t('inventory.editPart') }}</span>
+              <span>Edit Part Post-Intake</span>
               <span class="font-mono text-xs text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
                 {{ part?.customIdentifier }}
               </span>
@@ -394,7 +396,7 @@ const handleSubmit = async () => {
           @click="emit('update:open', false)"
           class="text-xs h-8 cursor-pointer"
         >
-          {{ $t('common.cancel') }}
+          Cancel
         </Button>
         <Button
           type="button"
@@ -404,7 +406,7 @@ const handleSubmit = async () => {
           class="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-8 gap-1.5 cursor-pointer disabled:opacity-50"
         >
           <CheckCircle2 class="size-3.5" />
-          <span>{{ $t('common.save') }}</span>
+          <span>Save Changes</span>
         </Button>
       </div>
     </div>

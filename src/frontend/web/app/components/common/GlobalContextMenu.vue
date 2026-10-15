@@ -138,10 +138,6 @@ const openInNewTab = () => {
     url = `/dashboard/clients?selected=${encodeURIComponent(contextData.value.controllerId || contextData.value.entityId || '')}`
   } else if (contextData.value?.entityType === 'ticket') {
     url = `/dashboard/tickets?ticketId=${encodeURIComponent(contextData.value.entityId || '')}`
-  } else if (contextData.value?.entityType === 'inventory' || contextData.value?.partId) {
-    url = `/dashboard/inventory/${encodeURIComponent(contextData.value.partId || contextData.value.entityId || '')}`
-  } else if (contextData.value?.entityType === 'user' || contextData.value?.userId) {
-    url = `/dashboard/users/${encodeURIComponent(contextData.value.userId || contextData.value.entityId || '')}`
   }
   closeContextMenu()
   if (typeof window !== 'undefined') {

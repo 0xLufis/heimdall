@@ -189,6 +189,81 @@ describe('Modular Features Architecture & Frontend i18n Suite', () => {
       process.env.HEIMDALL_MODULE_TELEMETRY = 'false'
       expect(() => assertModuleEnabled('telemetry')).toThrowError(/Service Unavailable: Module 'telemetry' is currently disabled/)
     })
+
+    it('handles case-insensitive and industrial truthy/falsy values for module flags', () => {
+      process.env.HEIMDALL_MODULE_TICKETING = '0'
+      process.env.HEIMDALL_MODULE_INVENTORY = 'off'
+      process.env.HEIMDALL_MODULE_TELEMETRY = 'disabled'
+
+      const flags = getFeatureFlags()
+      expect(flags.enableTicketing).toBe(false)
+      expect(flags.enableInventory).toBe(false)
+      expect(flags.enableTelemetry).toBe(false)
+
+      process.env.HEIMDALL_MODULE_TICKETING = '1'
+      process.env.HEIMDALL_MODULE_INVENTORY = 'yes'
+      process.env.HEIMDALL_MODULE_TELEMETRY = 'on'
+
+      const flagsOn = getFeatureFlags()
+      expect(flagsOn.enableTicketing).toBe(true)
+      expect(flagsOn.enableInventory).toBe(true)
+      expect(flagsOn.enableTelemetry).toBe(true)
+    })
+
+    it('supports alternative environment variable names for modules', () => {
+      process.env.HEIMDALL_ENABLE_TICKETING = 'false'
+      process.env.ENABLE_INVENTORY = '0'
+      process.env.ENABLE_TELEMETRY = 'no'
+
+      const flags = getFeatureFlags()
+      expect(flags.enableTicketing).toBe(false)
+      expect(flags.enableInventory).toBe(false)
+      expect(flags.enableTelemetry).toBe(false)
+    })
+
+    it('supports deployment presets via HEIMDALL_MODULE_PRESET', () => {
+      process.env.HEIMDALL_MODULE_PRESET = 'telemetry-ticketing'
+      const ttFlags = getFeatureFlags()
+      expect(ttFlags.enableTicketing).toBe(true)
+      expect(ttFlags.enableInventory).toBe(false)
+      expect(ttFlags.enableTelemetry).toBe(true)
+
+      process.env.HEIMDALL_MODULE_PRESET = 'ticketing-only'
+      const toFlags = getFeatureFlags()
+      expect(toFlags.enableTicketing).toBe(true)
+      expect(toFlags.enableInventory).toBe(false)
+      expect(toFlags.enableTelemetry).toBe(false)
+
+      process.env.HEIMDALL_MODULE_PRESET = 'core-only'
+      const coFlags = getFeatureFlags()
+      expect(coFlags.enableTicketing).toBe(false)
+      expect(coFlags.enableInventory).toBe(false)
+      expect(coFlags.enableTelemetry).toBe(false)
+    })
+
+    it('supports HEIMDALL_MODULES inclusion list and HEIMDALL_DISABLED_MODULES exclusion list', () => {
+      process.env.HEIMDALL_MODULES = 'core,ticketing'
+      const incFlags = getFeatureFlags()
+      expect(incFlags.enableTicketing).toBe(true)
+      expect(incFlags.enableInventory).toBe(false)
+      expect(incFlags.enableTelemetry).toBe(false)
+
+      delete process.env.HEIMDALL_MODULES
+      process.env.HEIMDALL_DISABLED_MODULES = 'inventory,telemetry'
+      const excFlags = getFeatureFlags()
+      expect(excFlags.enableTicketing).toBe(true)
+      expect(excFlags.enableInventory).toBe(false)
+      expect(excFlags.enableTelemetry).toBe(false)
+    })
+
+    it('gives explicit individual variables precedence over presets and lists', () => {
+      process.env.HEIMDALL_MODULE_PRESET = 'core-only'
+      process.env.HEIMDALL_MODULE_TELEMETRY = 'true'
+      const flags = getFeatureFlags()
+      expect(flags.enableTicketing).toBe(false)
+      expect(flags.enableInventory).toBe(false)
+      expect(flags.enableTelemetry).toBe(true)
+    })
   })
 
   describe('Navigation Menu Module Tagging', () => {
@@ -286,14 +361,14 @@ describe('Modular Features Architecture & Frontend i18n Suite', () => {
     it('enables, disables, and toggles plugins', async () => {
       const { isPluginEnabled, disablePlugin, enablePlugin, togglePlugin } = usePlugins()
       
-      // Disable opc-ua-gateway if enabled, or toggle it
-      expect(isPluginEnabled('opc-ua-gateway')).toBe(false)
-      const enabled = await enablePlugin('opc-ua-gateway')
+      // Disable sap-pm-bridge if enabled, or toggle it
+      expect(isPluginEnabled('sap-pm-bridge')).toBe(false)
+      const enabled = await enablePlugin('sap-pm-bridge')
       expect(enabled).toBe(true)
-      expect(isPluginEnabled('opc-ua-gateway')).toBe(true)
+      expect(isPluginEnabled('sap-pm-bridge')).toBe(true)
 
-      await togglePlugin('opc-ua-gateway')
-      expect(isPluginEnabled('opc-ua-gateway')).toBe(false)
+      await togglePlugin('sap-pm-bridge')
+      expect(isPluginEnabled('sap-pm-bridge')).toBe(false)
     })
 
     it('prevents disabling required core plugin', async () => {

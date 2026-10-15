@@ -92,7 +92,7 @@ watch(
       isSerializeOnUse.value = false
       selectedMachineId.value = props.part?.linkedMachineId || ''
       justification.value = ''
-      serialNumber.value = `SN-${Math.floor(100000 + Math.random() * 900000)}`
+      serialNumber.value = `SN-${Date.now().toString().slice(-6)}`
       wbsElement.value = ''
       form.value = {
         prodLine: '',
@@ -194,10 +194,10 @@ const handleSubmit = async () => {
           </div>
           <div>
             <h2 class="text-base font-semibold text-foreground">
-              {{ isSerializeOnUse ? $t('inventory.serializeAndDeploy') : $t('inventory.usePartModalTitle') }}
+              {{ isSerializeOnUse ? 'Serialize on Use (Dynamic Conversion)' : 'Use Part / Consume from Stock' }}
             </h2>
             <p class="text-xs text-muted-foreground mt-0.5">
-              {{ $t('inventory.usePartModalSubtitle') }}
+              Requires mandatory cost center tagging and machine linkage validation
             </p>
           </div>
         </div>
@@ -243,7 +243,7 @@ const handleSubmit = async () => {
           <div class="flex items-center gap-2.5">
             <Cpu class="size-4 text-primary" />
             <div>
-              <div class="text-xs font-semibold text-foreground">{{ $t('inventory.serializeOnUse') }}</div>
+              <div class="text-xs font-semibold text-foreground">Serialize on Use</div>
               <div class="text-[11px] text-muted-foreground">Convert 1 bulk unit into a discrete machine-linked asset</div>
             </div>
           </div>
@@ -433,7 +433,7 @@ const handleSubmit = async () => {
           @click="emit('update:open', false)"
           class="text-xs h-8 cursor-pointer"
         >
-          {{ $t('common.cancel') }}
+          Cancel
         </Button>
         <Button
           type="button"
@@ -443,7 +443,7 @@ const handleSubmit = async () => {
           class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 gap-1.5 cursor-pointer disabled:opacity-50"
         >
           <Send class="size-3.5" />
-          <span>{{ isSerializeOnUse ? $t('inventory.serializeAndDeploy') : $t('inventory.confirmUsePart') }}</span>
+          <span>{{ isSerializeOnUse ? 'Serialize & Deploy' : 'Confirm Use Part' }}</span>
         </Button>
       </div>
     </div>

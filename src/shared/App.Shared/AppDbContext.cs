@@ -237,22 +237,6 @@ public class AppDbContext : DbContext
                 .Property(e => e.OuTags)
                 .HasConversion(jsonConverter);
 
-            modelBuilder.Entity<Machine>()
-                .Property(e => e.Metadata)
-                .HasConversion(jsonConverter);
-
-            modelBuilder.Entity<Machine>()
-                .Property(e => e.Technologies)
-                .HasConversion(stringListConverter);
-
-            modelBuilder.Entity<Machine>()
-                .Property(e => e.SystemTags)
-                .HasConversion(stringListConverter);
-
-            modelBuilder.Entity<Machine>()
-                .Property(e => e.UserTags)
-                .HasConversion(stringListConverter);
-
             modelBuilder.Entity<ComponentRecipe>()
                 .Property(e => e.AutoTags)
                 .HasConversion(stringListConverter);
@@ -366,27 +350,10 @@ public class AppDbContext : DbContext
                   .UsingEntity(j => j.ToTable("ItemResponsibilities"));
         });
 
-        // Configure Machine (Standalone Aggregate Root)
+        // Configure Machine (TPT on stations)
         modelBuilder.Entity<Machine>(entity =>
         {
-            entity.ToTable("machines");
-            entity.HasKey(e => e.Id);
-
-            if (!isInMemory)
-            {
-                entity.Property(e => e.Metadata).HasColumnType("jsonb");
-                entity.HasIndex(e => e.Metadata).HasMethod("gin");
-            }
-
-            entity.HasOne(e => e.LineGroup)
-                  .WithMany(g => g.Machines)
-                  .HasForeignKey(e => e.LineGroupId)
-                  .OnDelete(DeleteBehavior.SetNull);
-
-            entity.HasOne(e => e.ParentMachine)
-                  .WithMany()
-                  .HasForeignKey(e => e.ParentMachineId)
-                  .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable("stations");
 
             entity.HasMany(e => e.Components)
                   .WithOne(c => c.Machine)
@@ -407,10 +374,6 @@ public class AppDbContext : DbContext
                   .WithOne(l => l.Machine)
                   .HasForeignKey(l => l.MachineId)
                   .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasMany(e => e.ResponsibleTeams)
-                  .WithMany()
-                  .UsingEntity(j => j.ToTable("StationResponsibilities"));
         });
 
         // Configure ClientPc (Standalone)
@@ -901,11 +864,6 @@ public class AppDbContext : DbContext
             entity.ToTable("machine_groups");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.GroupType).HasConversion<string>();
-
-            entity.HasMany(e => e.Machines)
-                  .WithOne(m => m.LineGroup)
-                  .HasForeignKey(m => m.LineGroupId)
-                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Configure Machine Group Memberships
@@ -928,9 +886,6 @@ public class AppDbContext : DbContext
 
         // Multi-Tenant Global Query Filters
         modelBuilder.Entity<BaseInventoryItem>()
-            .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
-
-        modelBuilder.Entity<Machine>()
             .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
 
         modelBuilder.Entity<ClientPc>()

@@ -88,9 +88,25 @@ Nitro server middleware intercepts all `/api/*` traffic:
 ## 5. Configuration & Governance
 
 ### Environment Variables
-- `HEIMDALL_MODULE_TICKETING`: Set to `false` to disable Maintenance Ticketing at process boot.
-- `HEIMDALL_MODULE_INVENTORY`: Set to `false` to disable Inventory & Spare Parts at process boot.
-- `HEIMDALL_MODULE_TELEMETRY`: Set to `false` to disable Industrial Telemetry at process boot.
+Heimdall supports multiple mechanisms for configuring and toggling modules via environment variables:
+
+1. **Individual Module Flags** (supports truthy `true`, `1`, `yes`, `on`, `enabled` and falsy `false`, `0`, `no`, `off`, `disabled`):
+   - `HEIMDALL_MODULE_TICKETING` / `HEIMDALL_ENABLE_TICKETING` / `ENABLE_TICKETING`: Toggle Maintenance Ticketing.
+   - `HEIMDALL_MODULE_INVENTORY` / `HEIMDALL_ENABLE_INVENTORY` / `ENABLE_INVENTORY`: Toggle Inventory & Spare Parts.
+   - `HEIMDALL_MODULE_TELEMETRY` / `HEIMDALL_ENABLE_TELEMETRY` / `ENABLE_TELEMETRY`: Toggle Industrial Telemetry.
+
+2. **Deployment Profile Presets** (`HEIMDALL_MODULE_PRESET` or `HEIMDALL_PRESET`):
+   - `all` / `full` / `monolith`: Standard Full Monolith (all modules active).
+   - `telemetry-ticketing`: Telemetry + Ticketing active (Inventory disabled).
+   - `ticketing-only` / `dispatch`: Maintenance Ticketing only.
+   - `telemetry-only` / `edge`: Industrial Telemetry only.
+   - `core-only` / `lean` / `minimal`: Core Platform only (all addon modules disabled).
+
+3. **Inclusion and Exclusion Lists**:
+   - `HEIMDALL_MODULES` / `HEIMDALL_ENABLED_MODULES`: Comma-separated list of enabled modules (e.g. `core,ticketing`). Unlisted modules are disabled.
+   - `HEIMDALL_DISABLED_MODULES` / `HEIMDALL_DISABLE_MODULES`: Comma-separated list of disabled modules (e.g. `inventory,telemetry`).
+
+*Note: Explicit individual module flags always take highest precedence over presets and lists.*
 
 ### Runtime Governance UI
 System Administrators can inspect and toggle modules dynamically in `/dashboard/admin/system-settings` under **Modular Feature Governance**. Preconfigured presets allow one-click alignment to target shopfloor deployment profiles.

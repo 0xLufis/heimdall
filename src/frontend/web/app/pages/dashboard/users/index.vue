@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { toast } from 'vue-sonner'
 import { authClient } from "~/utils/auth-client"
-import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import RbacButton from '@/components/common/RbacButton.vue'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,28 +13,12 @@ definePageMeta({
   layout: 'shadcn-dashboard'
 })
 
-const route = useRoute()
-const router = useRouter()
-
 const loading = ref(false)
 const error = ref('')
 const users = ref<any[]>([])
 const searchQuery = ref('')
 const roleFilter = ref('all')
 const statusFilter = ref('all')
-
-watch(() => route.query, (q) => {
-  if (q.userId) {
-    navigateTo(`/dashboard/users/${q.userId}`)
-    return
-  }
-  if (q.search || q.query) {
-    searchQuery.value = (q.search || q.query) as string
-  }
-  if (q.role) {
-    roleFilter.value = q.role as string
-  }
-}, { immediate: true })
 
 const { canManageUsers, isSystemAdmin } = useRbacPermission()
 
@@ -108,47 +92,47 @@ async function handleRoleChange(userId: string, newRole: string) {
       role: newRole
     })
     if (roleError) {
-      alert(roleError.message)
+      toast.error(roleError.message || 'Failed to update role')
     } else {
+      toast.success(`Role updated to ${newRole}`)
       await fetchUsers() 
     }
-  } catch (e) {
-    alert('Failed to update role')
+  } catch (e: any) {
+    toast.error(e?.message || 'Failed to update role')
   }
 }
 
 async function handleBanUser(userId: string) {
-  const reason = prompt('Please provide a reason for the ban:')
-  if (reason === null) return
-  
+  const reason = 'Administrative suspension via User Management Console'
   try {
     const { error: banError } = await authClient.admin.banUser({
       userId,
       banReason: reason
     })
     if (banError) {
-      alert(banError.message)
+      toast.error(banError.message || 'Failed to ban user')
     } else {
+      toast.success('User account has been suspended')
       await fetchUsers()
     }
-  } catch (e) {
-    alert('Failed to ban user')
+  } catch (e: any) {
+    toast.error(e?.message || 'Failed to ban user')
   }
 }
 
 async function handleUnbanUser(userId: string) {
-  if (!confirm('Are you sure you want to unban this user?')) return
   try {
     const { error: unbanError } = await authClient.admin.unbanUser({
       userId
     })
     if (unbanError) {
-      alert(unbanError.message)
+      toast.error(unbanError.message || 'Failed to unban user')
     } else {
+      toast.success('User suspension lifted successfully')
       await fetchUsers()
     }
-  } catch (e) {
-    alert('Failed to unban user')
+  } catch (e: any) {
+    toast.error(e?.message || 'Failed to unban user')
   }
 }
 

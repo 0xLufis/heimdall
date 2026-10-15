@@ -245,7 +245,7 @@ function handleStationSelect(item: TargetItem | { id: string; label: string; isC
             >
               <CheckCheck v-if="qr.isCopied.value" class="w-3.5 h-3.5 text-emerald-500" />
               <Copy v-else class="w-3.5 h-3.5" />
-              <span class="text-xs">{{ qr.isCopied.value ? $t('common.copied') : $t('common.copy') }}</span>
+              <span class="text-xs">{{ qr.isCopied.value ? 'Copied!' : 'Copy' }}</span>
             </Button>
           </div>
         </div>
@@ -256,31 +256,31 @@ function handleStationSelect(item: TargetItem | { id: string; label: string; isC
             <Button
               variant="outline"
               size="sm"
-              class="border-border bg-background hover:bg-muted text-foreground gap-1.5 text-xs font-bold cursor-pointer"
+              class="border-border bg-background hover:bg-muted text-foreground gap-1.5 text-xs font-bold"
               @click="qr.printQr(`Heimdall Action QR - ${qr.stationName.value || qr.stationId.value}`)"
             >
               <Printer class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>{{ $t('tickets.printVoucher') }}</span>
+              <span>Print Voucher</span>
             </Button>
 
             <Button
               variant="outline"
               size="sm"
-              class="border-border bg-background hover:bg-muted text-foreground gap-1.5 text-xs font-bold cursor-pointer"
+              class="border-border bg-background hover:bg-muted text-foreground gap-1.5 text-xs font-bold"
               @click="qr.downloadPng()"
             >
               <Download class="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              <span>{{ $t('tickets.savePng') }}</span>
+              <span>Save PNG</span>
             </Button>
           </div>
 
           <Button
             variant="ghost"
             size="sm"
-            class="text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer"
+            class="text-muted-foreground hover:text-foreground text-xs font-bold"
             @click="emit('close')"
           >
-            {{ $t('common.close') }}
+            Close
           </Button>
         </div>
       </div>

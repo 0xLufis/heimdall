@@ -1,4 +1,5 @@
 import { ref, computed, type ComputedRef } from 'vue'
+import { resolveModuleFlagsFromEnv, parseEnvBoolean } from '~/utils/moduleFlags'
 
 export type PlatformModuleId = 'core' | 'ticketing' | 'inventory' | 'telemetry'
 
@@ -37,9 +38,7 @@ function loadClientModuleOverrides() {
  * - enableDevFeatures: Enabled if HEIMDALL_ENABLE_DEV === 'true' or NODE_ENV !== 'production'. In production, default is false.
  * - enableDebugFeatures: Enabled if HEIMDALL_ENABLE_DEBUG === 'true' or HEIMDALL_DEBUG === 'true'. In production, default is false.
  * - enableSimulation: Enabled if HEIMDALL_ENABLE_SIMULATION === 'true' or (enableDevFeatures && HEIMDALL_ENABLE_SIMULATION !== 'false').
- * - enableTicketing: Enabled unless HEIMDALL_MODULE_TICKETING === 'false'.
- * - enableInventory: Enabled unless HEIMDALL_MODULE_INVENTORY === 'false'.
- * - enableTelemetry: Enabled unless HEIMDALL_MODULE_TELEMETRY === 'false'.
+ * - enableTicketing, enableInventory, enableTelemetry: Resolved from environment variables, presets, or runtime config.
  */
 export function getAppFeatureFlags(): AppFeatureFlags {
   let devFromConfig: boolean | undefined
@@ -78,28 +77,52 @@ export function getAppFeatureFlags(): AppFeatureFlags {
     : false
 
   const enableDev = typeof process !== 'undefined' && process.env.HEIMDALL_ENABLE_DEV !== undefined
-    ? process.env.HEIMDALL_ENABLE_DEV === 'true'
+    ? (parseEnvBoolean(process.env.HEIMDALL_ENABLE_DEV) ?? false)
     : (devFromConfig !== undefined ? devFromConfig : (!isProduction && (typeof process === 'undefined' || process.env.HEIMDALL_ENABLE_DEV !== 'false')))
 
   const enableDebug = typeof process !== 'undefined' && (process.env.HEIMDALL_ENABLE_DEBUG !== undefined || process.env.HEIMDALL_DEBUG !== undefined)
-    ? (process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true')
+    ? (parseEnvBoolean(process.env.HEIMDALL_ENABLE_DEBUG) ?? parseEnvBoolean(process.env.HEIMDALL_DEBUG) ?? false)
     : (debugFromConfig !== undefined ? debugFromConfig : false)
 
   const enableSimulation = typeof process !== 'undefined' && process.env.HEIMDALL_ENABLE_SIMULATION !== undefined
-    ? process.env.HEIMDALL_ENABLE_SIMULATION === 'true'
+    ? (parseEnvBoolean(process.env.HEIMDALL_ENABLE_SIMULATION) ?? false)
     : (simFromConfig !== undefined ? simFromConfig : (enableDev && (typeof process === 'undefined' || process.env.HEIMDALL_ENABLE_SIMULATION !== 'false')))
 
-  const enableTicketing = typeof process !== 'undefined' && process.env.HEIMDALL_MODULE_TICKETING !== undefined
-    ? process.env.HEIMDALL_MODULE_TICKETING !== 'false'
-    : (ticketingFromConfig !== undefined ? ticketingFromConfig : true)
+  const env = typeof process !== 'undefined' ? (process.env as any) : {}
+  const moduleFlags = resolveModuleFlagsFromEnv(env)
 
-  const enableInventory = typeof process !== 'undefined' && process.env.HEIMDALL_MODULE_INVENTORY !== undefined
-    ? process.env.HEIMDALL_MODULE_INVENTORY !== 'false'
-    : (inventoryFromConfig !== undefined ? inventoryFromConfig : true)
+  const hasEnvModuleVars = typeof process !== 'undefined' && (
+    process.env.HEIMDALL_MODULE_TICKETING !== undefined ||
+    process.env.HEIMDALL_ENABLE_TICKETING !== undefined ||
+    process.env.ENABLE_TICKETING !== undefined ||
+    process.env.NUXT_PUBLIC_ENABLE_TICKETING !== undefined ||
+    process.env.HEIMDALL_MODULE_INVENTORY !== undefined ||
+    process.env.HEIMDALL_ENABLE_INVENTORY !== undefined ||
+    process.env.ENABLE_INVENTORY !== undefined ||
+    process.env.NUXT_PUBLIC_ENABLE_INVENTORY !== undefined ||
+    process.env.HEIMDALL_MODULE_TELEMETRY !== undefined ||
+    process.env.HEIMDALL_ENABLE_TELEMETRY !== undefined ||
+    process.env.ENABLE_TELEMETRY !== undefined ||
+    process.env.NUXT_PUBLIC_ENABLE_TELEMETRY !== undefined ||
+    process.env.HEIMDALL_MODULE_PRESET !== undefined ||
+    process.env.HEIMDALL_PRESET !== undefined ||
+    process.env.HEIMDALL_MODULES !== undefined ||
+    process.env.HEIMDALL_ENABLED_MODULES !== undefined ||
+    process.env.HEIMDALL_DISABLED_MODULES !== undefined ||
+    process.env.HEIMDALL_DISABLE_MODULES !== undefined
+  )
 
-  const enableTelemetry = typeof process !== 'undefined' && process.env.HEIMDALL_MODULE_TELEMETRY !== undefined
-    ? process.env.HEIMDALL_MODULE_TELEMETRY !== 'false'
-    : (telemetryFromConfig !== undefined ? telemetryFromConfig : true)
+  const enableTicketing = hasEnvModuleVars
+    ? moduleFlags.enableTicketing
+    : (ticketingFromConfig !== undefined ? ticketingFromConfig : moduleFlags.enableTicketing)
+
+  const enableInventory = hasEnvModuleVars
+    ? moduleFlags.enableInventory
+    : (inventoryFromConfig !== undefined ? inventoryFromConfig : moduleFlags.enableInventory)
+
+  const enableTelemetry = hasEnvModuleVars
+    ? moduleFlags.enableTelemetry
+    : (telemetryFromConfig !== undefined ? telemetryFromConfig : moduleFlags.enableTelemetry)
 
   return {
     enableDevFeatures: enableDev,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, nextTick, watch } from 'vue'
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '~/components/ui/dialog'
+import { Dialog, DialogContent } from '~/components/ui/dialog'
 import HeimdallSearchBar from './HeimdallSearchBar.vue'
 import type { SearchInstanceConfig, SearchResultItem } from '~/types/search'
 import { useRouter } from 'vue-router'
@@ -70,36 +70,20 @@ const handleSubmit = (q: string) => {
     lowerQ.startsWith('i-') ||
     lowerQ.startsWith('etc-')
   ) {
-    router.push(`/dashboard/tickets?search=${encodeURIComponent(cleanQ)}`)
+    router.push(`/dashboard/tickets?stationId=${encodeURIComponent(cleanQ)}`)
     return
   }
 
-  // 4. User / Staff intent
-  if (
-    lowerQ.includes('user:') ||
-    lowerQ.includes('role:') ||
-    lowerQ.includes('email:')
-  ) {
-    router.push(`/dashboard/users?search=${encodeURIComponent(cleanQ)}`)
-    return
-  }
-
-  // 5. Preserve existing page search context if on machines, clients, tickets, or users
+  // 4. Preserve existing page search context if on machines or clients
   if (router.currentRoute.value.path === '/dashboard/machines') {
     router.push(`/dashboard/machines?search=${encodeURIComponent(cleanQ)}`)
     return
   } else if (router.currentRoute.value.path === '/dashboard/clients') {
     router.push(`/dashboard/clients?search=${encodeURIComponent(cleanQ)}`)
     return
-  } else if (router.currentRoute.value.path === '/dashboard/tickets') {
-    router.push(`/dashboard/tickets?search=${encodeURIComponent(cleanQ)}`)
-    return
-  } else if (router.currentRoute.value.path === '/dashboard/users') {
-    router.push(`/dashboard/users?search=${encodeURIComponent(cleanQ)}`)
-    return
   }
 
-  // 6. Default fallback to Inventory
+  // 5. Default fallback to Inventory
   router.push(`/dashboard/inventory?query=${encodeURIComponent(cleanQ)}`)
 }
 
@@ -120,11 +104,6 @@ const handleKeydown = (e: KeyboardEvent) => {
     e.preventDefault()
     e.stopPropagation()
     triggerSearch()
-    return
-  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f' && isOpen.value) {
-    e.preventDefault()
-    e.stopPropagation()
-    omniBarRef.value?.toggleFilterDrawer()
     return
   } else if (e.key === 'Escape' && isOpen.value) {
     e.preventDefault()
@@ -154,32 +133,6 @@ watch([isOpen, focusTriggerSignal], async ([open]) => {
   }
 })
 
-const handlePointerDownOutside = (e: any) => {
-  const rawTarget = e?.detail?.originalEvent?.target || e?.target
-  const target = rawTarget as HTMLElement | null
-  if (typeof document !== 'undefined') {
-    // Prevent close if target is detached (during DOM re-paint) or clicking dropdown
-    if (!target || !document.body.contains(target) || target.closest('[data-omni-dropdown]')) {
-      e.preventDefault()
-    }
-  }
-}
-
-const handleInteractOutside = (e: any) => {
-  const rawTarget = e?.detail?.originalEvent?.target || e?.target
-  const target = rawTarget as HTMLElement | null
-  if (typeof document !== 'undefined') {
-    if (!target || !document.body.contains(target) || target.closest('[data-omni-dropdown]')) {
-      e.preventDefault()
-    }
-  }
-}
-
-const handleFocusOutside = (e: any) => {
-  // Prevent background telemetry / page re-paints from stealing focus and closing search
-  e.preventDefault()
-}
-
 onMounted(() => {
   if (typeof window !== 'undefined') {
     window.addEventListener('keydown', handleKeydown)
@@ -197,30 +150,42 @@ onUnmounted(() => {
   <Dialog :open="isOpen" @update:open="isOpen = $event">
     <DialogContent
       :show-close="false"
-      class="max-w-4xl lg:max-w-5xl w-full bg-card/95 backdrop-blur-xl border-border text-foreground p-5 sm:p-6 rounded-2xl shadow-2xl transition-all duration-200 top-8 sm:top-12 md:top-14 translate-y-0 max-h-[85vh] flex flex-col overflow-visible origin-top data-[state=open]:slide-in-from-top-2"
-      @pointer-down-outside="handlePointerDownOutside"
-      @interact-outside="handleInteractOutside"
-      @focus-outside="handleFocusOutside"
+      class="max-w-4xl lg:max-w-5xl w-full bg-card/95 backdrop-blur-xl border-border text-foreground p-5 sm:p-6 rounded-2xl shadow-2xl transition-all duration-200"
+      @pointer-down-outside="(e) => {
+        const rawTarget = (e as any).detail?.originalEvent?.target || (e as any).target
+        const target = rawTarget as HTMLElement | null
+        // Prevent close if target is detached (during DOM re-paint) or clicking dropdown
+        if (!target || !document.body.contains(target) || target.closest('[data-omni-dropdown]')) {
+          e.preventDefault()
+        }
+      }"
+      @interact-outside="(e) => {
+        const rawTarget = (e as any).detail?.originalEvent?.target || (e as any).target
+        const target = rawTarget as HTMLElement | null
+        if (!target || !document.body.contains(target) || target.closest('[data-omni-dropdown]')) {
+          e.preventDefault()
+        }
+      }"
+      @focus-outside="(e) => {
+        // Prevent background telemetry / page re-paints from stealing focus and closing search
+        e.preventDefault()
+      }"
     >
       <div class="space-y-4">
         <!-- Header -->
         <div class="flex items-center justify-between pb-2 border-b border-border/80">
           <div class="flex items-center gap-2">
-            <DialogTitle class="text-xs font-black uppercase tracking-[0.2em] text-primary">
-              {{ $t('search.title', 'Heimdall Search') }}
-            </DialogTitle>
-            <DialogDescription class="text-[11px] text-muted-foreground font-medium hidden sm:inline">
-              {{ $t('search.subtitle', '— Find My Field Data') }}
-            </DialogDescription>
+            <span class="text-xs font-black uppercase tracking-[0.2em] text-primary">Heimdall Search</span>
+            <span class="text-[11px] text-muted-foreground font-medium hidden sm:inline">— Find My Field Data</span>
           </div>
 
           <div class="flex items-center gap-3">
-            <span class="text-[10px] font-mono text-muted-foreground select-none">{{ $t('search.pressEsc', 'Press ESC to exit') }}</span>
+            <span class="text-[10px] font-mono text-muted-foreground select-none">Press ESC to exit</span>
             <button
               type="button"
               @click="closeModal(true)"
               class="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-              :title="$t('search.closeModal', 'Close search modal (ESC)')"
+              title="Close search modal (ESC)"
             >
               <X class="w-4 h-4" />
             </button>

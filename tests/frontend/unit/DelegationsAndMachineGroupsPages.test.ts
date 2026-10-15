@@ -94,7 +94,7 @@ describe('Frontend Reorganization: Delegations and Machine Groups', () => {
     expect(wrapper.text()).toContain('Machine Group Clusters')
   })
 
-  it('renders MachineGroupManager with Tag Store, Groups/Machines toggle, and manual overrides', async () => {
+  it('renders MachineGroupManager with hierarchy and cluster tags', async () => {
     const wrapper = mount(MachineGroupManager, {
       props: { isModal: false },
       global: {
@@ -106,14 +106,14 @@ describe('Frontend Reorganization: Delegations and Machine Groups', () => {
 
     await new Promise(r => setTimeout(r, 10))
 
-    // Assert page stats bar & Tag Store
-    expect(wrapper.text()).toContain('Total Tags')
-    expect(wrapper.text()).toContain('Tag Store & Palette')
-    expect(wrapper.text()).toContain('Manual Overrides')
+    // Assert page stats bar
+    expect(wrapper.text()).toContain('Total Groups')
+    expect(wrapper.text()).toContain('Root Plants')
+    expect(wrapper.text()).toContain('Sub-Lines & Cells')
 
-    // Assert toggle buttons
-    expect(wrapper.text()).toContain('Machines')
-    expect(wrapper.text()).toContain('Groups')
+    // Assert hierarchy and form buttons
+    expect(wrapper.text()).toContain('Group Structure Hierarchy')
+    expect(wrapper.text()).toContain('Add Root Group')
   })
 
   it('allows editing a machine group cluster in DelegationsManager clusters tab', async () => {

@@ -59,17 +59,15 @@ watch(
 
 const { enableDevFeatures } = useFeatureFlags()
 
-const sampleOus = ref<string[]>(
-  enableDevFeatures.value
-    ? [
-        'OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp',
-        'OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp',
-        'OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp',
-        'OU=Milling,OU=VLAN30-Machining,DC=factory,DC=corp',
-        'OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp',
-      ]
-    : []
-)
+const defaultOus = [
+  'OU=Milling,OU=VLAN30-Machining,DC=factory,DC=corp',
+  'OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp',
+  'OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp',
+  'OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp',
+  'OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp',
+]
+
+const sampleOus = ref<string[]>([...defaultOus])
 
 onMounted(async () => {
   try {
@@ -77,7 +75,7 @@ onMounted(async () => {
     if (Array.isArray(ous) && ous.length > 0) {
       const paths = ous.map((o: any) => o.ouPath || o.path || o.dn).filter(Boolean)
       if (paths.length > 0) {
-        sampleOus.value = paths.slice(0, 8)
+        sampleOus.value = Array.from(new Set([...defaultOus, ...paths])).slice(0, 12)
       }
     }
   } catch {

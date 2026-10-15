@@ -15,6 +15,7 @@ import {
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { toast } from 'vue-sonner'
 import type { MachineSparePartItem, SparePartsReportingSummary } from '~/types/inventory'
 import { usePartsInventory } from '~/composables/usePartsInventory'
 
@@ -49,14 +50,19 @@ const cancelEdit = () => {
 
 const savePolicy = async () => {
   if (!editingPolicy.value) return
-  await updateSparePartPolicy(editingPolicy.value.id, {
-    fractionalRatio: editFractionalRatio.value,
-    upperBoundQuantity: editUpperBoundQty.value,
-    upperBoundCostEur: editUpperBoundCost.value,
-    activeMachinesInProduction: editActiveMachines.value
-  })
-  editingPolicy.value = null
-  emit('refresh')
+  try {
+    await updateSparePartPolicy(editingPolicy.value.id, {
+      fractionalRatio: editFractionalRatio.value,
+      upperBoundQuantity: editUpperBoundQty.value,
+      upperBoundCostEur: editUpperBoundCost.value,
+      activeMachinesInProduction: editActiveMachines.value
+    })
+    toast.success(`Updated spares policy for ${editingPolicy.value.partName}`)
+    editingPolicy.value = null
+    emit('refresh')
+  } catch (err: any) {
+    toast.error(err?.message || 'Failed to update policy')
+  }
 }
 </script>
 
@@ -209,56 +215,57 @@ const savePolicy = async () => {
       </div>
     </div>
 
-    <!-- Tune Policy Modal Overlay -->
-    <div v-if="editingPolicy" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div class="relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl p-6 space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-border">
-          <div>
-            <h4 class="text-sm font-bold text-foreground">Tune Machine Spare Parts Policy</h4>
-            <p class="text-xs text-muted-foreground mt-0.5">
-              {{ editingPolicy.partName }} ({{ editingPolicy.machineName }})
-            </p>
-          </div>
-          <button type="button" @click="cancelEdit" class="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer">
-            <X class="size-4" />
-          </button>
+    <!-- Tune Policy Slide-out Drawer (Zero Blocking Backdrop) -->
+    <div
+      v-if="editingPolicy"
+      class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-card border-l border-border shadow-2xl p-6 space-y-4 overflow-y-auto animate-in slide-in-from-right duration-200 select-none"
+    >
+      <div class="flex items-center justify-between pb-3 border-b border-border">
+        <div>
+          <h4 class="text-sm font-bold text-foreground">Tune Machine Spare Parts Policy</h4>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            {{ editingPolicy.partName }} ({{ editingPolicy.machineName }})
+          </p>
+        </div>
+        <button type="button" @click="cancelEdit" class="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer">
+          <X class="size-4" />
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="space-y-1">
+          <label class="font-semibold text-foreground">Active Machines in Production</label>
+          <Input v-model.number="editActiveMachines" type="number" min="1" class="h-9 text-xs font-mono" />
         </div>
 
-        <div class="space-y-3 text-xs">
-          <div class="space-y-1">
-            <label class="font-semibold text-foreground">Active Machines in Production</label>
-            <Input v-model.number="editActiveMachines" type="number" min="1" class="h-9 text-xs font-mono" />
-          </div>
-
-          <div class="space-y-1">
-            <label class="font-semibold text-foreground">
-              Fractional Minimum Ratio (e.g. 0.333 for 1 spare per 3 machines)
-            </label>
-            <Input v-model.number="editFractionalRatio" type="number" step="0.05" min="0.05" max="2" class="h-9 text-xs font-mono" />
-            <p class="text-[11px] text-muted-foreground">
-              Formula: ceil({{ editActiveMachines }} × {{ editFractionalRatio }}) = {{ Math.ceil(editActiveMachines * editFractionalRatio) }} units
-            </p>
-          </div>
-
-          <div class="space-y-1">
-            <label class="font-semibold text-foreground">Hard Quantity Upper Bound (Override)</label>
-            <Input v-model.number="editUpperBoundQty" type="number" min="1" placeholder="Optional max quantity cap" class="h-9 text-xs font-mono" />
-          </div>
-
-          <div class="space-y-1">
-            <label class="font-semibold text-foreground">Cost Upper Bound Override in EUR</label>
-            <Input v-model.number="editUpperBoundCost" type="number" min="0" placeholder="Optional budget limit cap" class="h-9 text-xs font-mono" />
-          </div>
+        <div class="space-y-1">
+          <label class="font-semibold text-foreground">
+            Fractional Minimum Ratio (e.g. 0.333 for 1 spare per 3 machines)
+          </label>
+          <Input v-model.number="editFractionalRatio" type="number" step="0.05" min="0.05" max="2" class="h-9 text-xs font-mono" />
+          <p class="text-[11px] text-muted-foreground">
+            Formula: ceil({{ editActiveMachines }} × {{ editFractionalRatio }}) = {{ Math.ceil(editActiveMachines * editFractionalRatio) }} units
+          </p>
         </div>
 
-        <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
-          <Button variant="outline" size="sm" @click="cancelEdit" class="h-8 text-xs cursor-pointer">
-            Cancel
-          </Button>
-          <Button size="sm" @click="savePolicy" class="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer">
-            Apply Policy
-          </Button>
+        <div class="space-y-1">
+          <label class="font-semibold text-foreground">Hard Quantity Upper Bound (Override)</label>
+          <Input v-model.number="editUpperBoundQty" type="number" min="1" placeholder="Optional max quantity cap" class="h-9 text-xs font-mono" />
         </div>
+
+        <div class="space-y-1">
+          <label class="font-semibold text-foreground">Cost Upper Bound Override in EUR</label>
+          <Input v-model.number="editUpperBoundCost" type="number" min="0" placeholder="Optional budget limit cap" class="h-9 text-xs font-mono" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+        <Button variant="outline" size="sm" @click="cancelEdit" class="h-8 text-xs cursor-pointer">
+          Cancel
+        </Button>
+        <Button size="sm" @click="savePolicy" class="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer">
+          Apply Policy
+        </Button>
       </div>
     </div>
   </div>

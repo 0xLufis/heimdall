@@ -36,6 +36,17 @@ export interface MachineEntity {
 
 const SEED_MACHINES: MachineEntity[] = [
   {
+    id: 'STATION-OP10-01',
+    name: 'OP10-CNC',
+    displayName: 'OP-10 CNC Machining Cell',
+    customIdentifier: 'STATION-OP10-01',
+    machineType: 'Milling',
+    groupId: 'Line 1',
+    status: 'active',
+    controllers: [{ id: 'c-op10', hostname: 'IPC-EDGE-CONTROLLER', ipAddress: '192.168.1.101', isOnline: true }],
+    responsibleTeams: [{ name: 'Mechanical Maintenance' }]
+  },
+  {
     id: '11111111-1111-1111-1111-111111111111',
     name: 'OP10-Load',
     displayName: 'Automatic Raw Material Infeed',

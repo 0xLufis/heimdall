@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   Boxes,
   Cpu,
@@ -46,14 +45,7 @@ const emit = defineEmits<{
   (e: 'filterChange', filters: any): void
 }>()
 
-const router = useRouter()
 const { formatCurrency, activeCurrency, canUsePart, canLogPart } = usePartsInventory()
-
-const openItemPage = (partId: string) => {
-  if (partId) {
-    router.push(`/dashboard/inventory/${partId}`)
-  }
-}
 
 const searchQuery = ref('')
 const filterTracking = ref<string>('bulk')
@@ -254,12 +246,7 @@ const onFilterClick = (type: 'tracking' | 'condition' | 'operational' | 'alert',
               </td>
             </tr>
 
-            <tr
-              v-for="part in parts"
-              :key="part.id"
-              class="hover:bg-muted/20 transition-colors cursor-pointer group"
-              @click="openItemPage(part.id)"
-            >
+            <tr v-for="part in parts" :key="part.id" class="hover:bg-muted/20 transition-colors">
               <!-- Name & Identifier -->
               <td class="p-3">
                 <div class="flex items-center gap-2">
@@ -366,7 +353,7 @@ const onFilterClick = (type: 'tracking' | 'condition' | 'operational' | 'alert',
                   <Button
                     v-if="part.quantity > 0 && part.condition !== 'scrap' && canUsePart"
                     size="sm"
-                    @click.stop="emit('usePart', part)"
+                    @click="emit('usePart', part)"
                     class="h-7 px-2.5 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1 cursor-pointer"
                   >
                     <Send class="size-3" />
@@ -375,7 +362,7 @@ const onFilterClick = (type: 'tracking' | 'condition' | 'operational' | 'alert',
                   <Button
                     variant="outline"
                     size="sm"
-                    @click.stop="emit('editPart', part)"
+                    @click="emit('editPart', part)"
                     class="h-7 px-2 text-xs text-foreground hover:bg-muted gap-1 cursor-pointer"
                     title="Edit part metadata & lifecycle"
                   >
@@ -385,7 +372,7 @@ const onFilterClick = (type: 'tracking' | 'condition' | 'operational' | 'alert',
                   <Button
                     variant="ghost"
                     size="sm"
-                    @click.stop="emit('viewAudit', part.id)"
+                    @click="emit('viewAudit', part.id)"
                     class="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                   >
                     Audit

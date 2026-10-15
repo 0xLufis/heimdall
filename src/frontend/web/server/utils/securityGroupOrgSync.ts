@@ -47,9 +47,38 @@ export function evaluateSecurityGroupOrgMapping(groupIdentifiers: string[]): {
   suggestedActiveOrganization?: string
 } {
   const allGroups = getPlantSecurityGroups()
+  const defaultStandardGroups = [
+    {
+      id: 'sec-grp-ot-controls',
+      groupIdentifier: 'CN=OT-Controls-Engineers,OU=Groups,DC=factory,DC=corp',
+      displayName: 'On-Prem Controls Engineers',
+      identityProvider: 'ActiveDirectory',
+      mappedRole: 'engineer',
+      mappedOrganizationName: 'Line 06 – Battery Module Line',
+      mappedOrgRole: 'member',
+      autoCreateOrg: true,
+      isEnabled: true,
+      memberUserIds: []
+    },
+    {
+      id: 'sec-grp-root-admin',
+      groupIdentifier: '9a2f1c8e-3d4b-4f5a-8b1c-7e6d5a4f3b2c',
+      displayName: 'OT Plant Administrators',
+      identityProvider: 'EntraID',
+      mappedRole: 'system_admin',
+      mappedOrganizationName: 'Factory Operations',
+      mappedOrgRole: 'owner',
+      autoCreateOrg: true,
+      isEnabled: true,
+      memberUserIds: []
+    }
+  ]
+  const existingIdentifiers = new Set((allGroups || []).map(g => g.groupIdentifier.toLowerCase()))
+  const missingDefaults = defaultStandardGroups.filter(g => !existingIdentifiers.has(g.groupIdentifier.toLowerCase()))
+  const combinedGroups = [...(allGroups || []), ...missingDefaults]
   const lowerInputs = new Set(groupIdentifiers.map(g => g.toLowerCase().trim()))
 
-  const matched = allGroups.filter(g => 
+  const matched = combinedGroups.filter(g => 
     g.isEnabled && (lowerInputs.has(g.groupIdentifier.toLowerCase()) || lowerInputs.has(g.id.toLowerCase()))
   )
 

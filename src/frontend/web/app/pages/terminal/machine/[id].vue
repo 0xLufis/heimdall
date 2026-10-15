@@ -22,6 +22,9 @@ import {
   Check,
   Server
 } from 'lucide-vue-next'
+import VirtualNumpad from '~/components/terminal/VirtualNumpad.vue'
+import TerminalAckModal from '~/components/terminal/TerminalAckModal.vue'
+import { toast } from 'vue-sonner'
 
 definePageMeta({
   layout: false
@@ -52,6 +55,20 @@ const liveTelemetry = ref<any>({
   partDefectCount: 0,
   feedRatePercentage: 0
 })
+import { useTelemetryStream } from '~/composables/useTelemetryStream'
+
+const stream = useTelemetryStream({ targetMachineId: machineId.value })
+
+watch(() => stream.latestValues.value, (newVals) => {
+  if (newVals) {
+    if (newVals.cycleTimeMs) liveTelemetry.value.cycleTimeMs = newVals.cycleTimeMs
+    if (newVals.spindleRpm) liveTelemetry.value.spindleSpeedRpm = newVals.spindleRpm
+    if (newVals.spindleTempC) liveTelemetry.value.spindleTemperatureC = newVals.spindleTempC
+    if (newVals.vibrationMmS) liveTelemetry.value.vibrationEnvelopeMmS = newVals.vibrationMmS
+    if (newVals.plcState) liveTelemetry.value.plcState = newVals.plcState
+  }
+}, { deep: true })
+
 const recentTickets = ref<any[]>([])
 
 // Real-time clock & heartbeat
@@ -144,6 +161,7 @@ const selectedPreset = ref<FaultPreset | null>(null)
 const customNote = ref('')
 const isLineStopOverride = ref<boolean | null>(null)
 const submitting = ref(false)
+const dispatchError = ref('')
 
 // Click 2 Acknowledgment Modal
 const showAckModal = ref(false)
@@ -160,9 +178,9 @@ async function fetchTerminalData() {
   if (!machineId.value) return
 
   try {
-    const effectiveToken = authToken.value || queryToken.value || 'kiosk-token-op10'
+    const effectiveToken = authToken.value || queryToken.value
     const res: any = await $fetch(`/api/terminal/machine/${machineId.value}`, {
-      query: { token: effectiveToken }
+      query: effectiveToken ? { token: effectiveToken } : {}
     })
 
     if (res && res.machine) {
@@ -184,21 +202,6 @@ async function fetchTerminalData() {
   }
 }
 
-async function handleRetractTicket(ticketId: string) {
-  try {
-    await $fetch(`/api/tickets/${ticketId}/retract`, {
-      method: 'POST',
-      body: {
-        retractedBy: 'Kiosk Operator',
-        reason: 'Retracted directly from touchscreen workstation kiosk'
-      }
-    })
-    await fetchTerminalData()
-  } catch (err) {
-    console.error('Error retracting ticket:', err)
-  }
-}
-
 function handlePairTerminal() {
   if (!pairingInput.value.trim()) return
   authToken.value = pairingInput.value.trim()
@@ -214,7 +217,7 @@ async function submitIssue() {
 
   submitting.value = true
   try {
-    const effectiveToken = authToken.value || queryToken.value || 'kiosk-token-op10'
+    const effectiveToken = authToken.value || queryToken.value
     const isLineStop = isLineStopOverride.value ?? selectedPreset.value.isLineStop
 
     const res: any = await $fetch('/api/terminal/ticket', {
@@ -244,7 +247,9 @@ async function submitIssue() {
       isLineStopOverride.value = null
     }
   } catch (err: any) {
-    alert(err?.statusMessage || 'Failed to dispatch ticket. Please inform station lead.')
+    const msg = err?.statusMessage || err?.data?.message || err?.message || 'Failed to dispatch ticket. Please inform station lead.'
+    dispatchError.value = msg
+    toast.error(msg)
   } finally {
     submitting.value = false
   }
@@ -359,7 +364,7 @@ onUnmounted(() => {
 
         <div class="text-left mb-6">
           <label class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">Workstation Token</label>
-          <div class="relative">
+          <div class="relative mb-4">
             <KeyRound class="w-5 h-5 text-slate-500 absolute left-3 top-3.5" />
             <input 
               v-model="pairingInput"
@@ -369,14 +374,23 @@ onUnmounted(() => {
               @keyup.enter="handlePairTerminal"
             />
           </div>
-          <div v-if="authError" class="text-xs text-red-400 mt-2 font-mono">
+
+          <!-- Virtual Numpad for Touchscreen / Glove Ergonomics -->
+          <VirtualNumpad
+            v-model="pairingInput"
+            :max-length="24"
+            @submit="handlePairTerminal"
+            class="mb-3"
+          />
+
+          <div v-if="authError" class="text-xs text-red-400 mt-2 font-mono text-center">
             {{ authError }}
           </div>
         </div>
 
         <button 
           @click="handlePairTerminal"
-          class="w-full py-3.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
+          class="w-full py-3.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
           <Check class="w-5 h-5" />
           <span>Authenticate & Bind Station</span>
@@ -385,10 +399,24 @@ onUnmounted(() => {
     </div>
 
     <!-- MAIN TERMINAL CONTENT (READ-ONLY TELEMETRY + 2-CLICK REPORTING) -->
-    <main v-else class="flex-1 grid grid-cols-12 gap-6 p-6 overflow-hidden">
-      
-      <!-- LEFT COLUMN: READ-ONLY LIVE TELEMETRY (5 COLS) -->
-      <section class="col-span-12 lg:col-span-5 flex flex-col gap-5">
+    <main v-else class="flex-1 flex flex-col p-6 overflow-y-auto">
+      <!-- HIGH-CONTRAST VISUAL ACKNOWLEDGMENT BANNER (IN-PAGE WORKBENCH, ZERO POPUPS) -->
+      <TerminalAckModal
+        :open="showAckModal"
+        :ack-data="ackData"
+        :countdown="ackCountdown"
+        @close="closeAckModal"
+      />
+
+      <!-- In-Page Error Banner if Dispatch Fails -->
+      <div v-if="dispatchError" class="p-4 mb-4 bg-rose-950/80 border border-rose-500/50 rounded-2xl flex items-center justify-between text-rose-300 text-sm">
+        <span>{{ dispatchError }}</span>
+        <button @click="dispatchError = ''" class="text-rose-400 hover:text-white text-xs underline cursor-pointer">Dismiss</button>
+      </div>
+
+      <div class="grid grid-cols-12 gap-6 flex-1">
+        <!-- LEFT COLUMN: READ-ONLY LIVE TELEMETRY (5 COLS) -->
+        <section class="col-span-12 lg:col-span-5 flex flex-col gap-5">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
             <Gauge class="w-4 h-4 text-cyan-400" />
@@ -508,20 +536,9 @@ onUnmounted(() => {
                   {{ t.title }}
                 </div>
               </div>
-              <div class="flex items-center gap-2">
-                <span class="text-[11px] font-mono font-semibold px-2 py-1 rounded bg-slate-800 text-slate-300">
-                  {{ t.status }}
-                </span>
-                <button
-                  v-if="t.status === 'Open' || t.status === 'Pending'"
-                  type="button"
-                  @click="handleRetractTicket(t.id)"
-                  class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 transition-colors cursor-pointer"
-                  title="Retract ticket from kiosk"
-                >
-                  Retract
-                </button>
-              </div>
+              <span class="text-[11px] font-mono font-semibold px-2 py-1 rounded bg-slate-800 text-slate-300">
+                {{ t.status }}
+              </span>
             </div>
           </div>
         </div>
@@ -638,63 +655,7 @@ onUnmounted(() => {
           <span>{{ submitting ? 'DISPATCHING TICKET...' : (selectedPreset ? `CLICK 2: DISPATCH ${selectedPreset.code} TICKET NOW` : 'SELECT PRESET ABOVE TO DISPATCH') }}</span>
         </button>
       </section>
-    </main>
-
-    <!-- HIGH-CONTRAST VISUAL ACKNOWLEDGMENT OVERLAY (MODAL) -->
-    <div 
-      v-if="showAckModal" 
-      class="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-50 flex items-center justify-center p-6 animate-in fade-in duration-200"
-    >
-      <div class="max-w-xl w-full bg-slate-900 border-2 border-emerald-500/60 rounded-3xl p-8 shadow-2xl text-center relative overflow-hidden">
-        <!-- Glow effect -->
-        <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
-
-        <div class="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/30">
-          <CheckCircle2 class="w-12 h-12 stroke-[2.5]" />
-        </div>
-
-        <span class="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/40">
-          TICKET ACKNOWLEDGED & DISPATCHED
-        </span>
-
-        <h2 class="text-3xl font-black text-white mt-3 mb-1">
-          {{ ackData?.ticketNumber || 'TKT-20261002-8412' }}
-        </h2>
-
-        <p class="text-sm text-slate-300 font-medium mb-6">
-          Station: <strong class="text-white">{{ ackData?.stationName || machineData?.name }}</strong> &bull; 
-          Fault: <span class="font-mono text-cyan-400">{{ ackData?.errorCode }}</span>
-        </p>
-
-        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left font-mono text-xs text-slate-300 space-y-2 mb-6">
-          <div class="flex justify-between">
-            <span class="text-slate-500">Dispatch Queue:</span>
-            <span class="text-emerald-400 font-bold">Floor Maintenance Leads</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">Target Priority:</span>
-            <span class="text-red-400 font-bold uppercase">{{ ackData?.priority || 'Critical' }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">Timestamp:</span>
-            <span>{{ ackData?.dispatchedAt ? new Date(ackData.dispatchedAt).toLocaleTimeString() : 'Now' }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">Terminal Mode:</span>
-            <span class="text-cyan-400">Restricted Touchscreen Kiosk</span>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <button 
-            type="button"
-            @click="closeAckModal"
-            class="flex-1 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base rounded-2xl shadow-lg transition-colors cursor-pointer"
-          >
-            Acknowledge & Return ({{ ackCountdown }}s)
-          </button>
-        </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>

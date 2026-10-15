@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   X,
   Clock,
@@ -27,7 +28,8 @@ import {
   Edit3,
   BookmarkCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ExternalLink
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -35,10 +37,8 @@ import { Input } from '~/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog'
 import MachineSearchCombobox from '~/components/tickets/MachineSearchCombobox.vue'
 import ImageAttachmentUploader from '~/components/tickets/ImageAttachmentUploader.vue'
-import TicketTelemetryProbeVisualizer from '~/components/tickets/TicketTelemetryProbeVisualizer.vue'
 import { authClient } from '~/utils/auth-client'
 import { generateQrDataUrl } from '~/utils/qrSvgRenderer'
-import { useHeimdallNotifications } from '~/composables/useHeimdallNotifications'
 import type {
   MaintenanceTicket,
   TicketAttachment,
@@ -69,6 +69,18 @@ const emit = defineEmits<{
   (e: 'updated', ticket: MaintenanceTicket): void
 }>()
 
+function openFullPage() {
+  if (!localTicket.value) return
+  try {
+    const router = useRouter()
+    router?.push(`/dashboard/tickets/${localTicket.value.id}`)
+  } catch {
+    if (typeof window !== 'undefined') {
+      window.location.href = `/dashboard/tickets/${localTicket.value.id}`
+    }
+  }
+}
+
 // ─── Local State ─────────────────────────────────────────────────────────────
 const commentText = ref('')
 const isSubmittingComment = ref(false)
@@ -83,11 +95,8 @@ const STATUSES: { value: TicketStatus; label: string; color: string; dotClass: s
   { value: 'Closed',     label: 'Closed',      color: 'bg-muted text-muted-foreground border-border',                           dotClass: 'bg-slate-400' },
 ]
 
-const { addNotification, showToast, runOptimisticAction } = useHeimdallNotifications()
-
 const selectedStatus = ref<TicketStatus>('Open')
 const selectedPendingReason = ref<PendingReason>('Parts')
-const selectedPendingReasons = ref<string[]>(['Parts'])
 const selectedPendingDetails = ref<string>('')
 const isChangingStatus = ref(false)
 
@@ -96,40 +105,7 @@ const isEscalatingOpen = ref(false)
 const escalationReasonInput = ref('')
 const selectedEscalationTarget = ref<'DedicatedEngineer' | 'Management'>('DedicatedEngineer')
 const selectedHandoverState = ref<EscalationHandoverState>('Notification')
-const selectedFieldPerson = ref('Gábor Varga')
-const customFieldPerson = ref('')
 const isSubmittingEscalation = ref(false)
-
-const FIELD_ENGINEERS = [
-  { id: 'usr-plant-eng-1', name: 'Gábor Varga', role: 'Plant Engineering Manager' },
-  { id: 'usr-senior-eng-1', name: 'Elena Rostova', role: 'Senior Engineering Manager' },
-  { id: 'usr-eng-robotics-1', name: 'Alex Novak', role: 'Robotics & Controls Engineer' },
-  { id: 'usr-sally', name: 'Engineer Sally', role: 'Milling & Machining Engineer' },
-  { id: 'usr-pap', name: 'Orsolya Pap', role: 'Testing & Diagnostics Engineer' },
-  { id: 'tech-03', name: 'Szabó Tamás', role: 'Controls Engineer' },
-  { id: 'usr-tech-welding-1', name: 'István Kovács', role: 'Laser Welding & Mechanical Tech' }
-]
-
-const FIELD_MANAGERS = [
-  { id: 'usr-director-1', name: 'Dr. Henrik Weber', role: 'Plant Director' },
-  { id: 'usr-manager-andras', name: 'András Molnár', role: 'Plant Operations Manager' },
-  { id: 'usr-plant-eng-1', name: 'Gábor Varga', role: 'Plant Engineering Manager' },
-  { id: 'usr-senior-eng-1', name: 'Elena Rostova', role: 'Senior Engineering Manager' },
-  { id: 'usr-gl-assy-1', name: 'Sally Vance', role: 'Group Leader – Fastening & Assembly' },
-  { id: 'usr-ferenc', name: 'Shift Leader Ferenc', role: 'Shift Operations Leader' },
-  { id: 'usr-katalin', name: 'Katalin Nagy', role: 'Quality & Vision AI Leader' },
-  { id: 'usr-orwell', name: 'Engineer Orwell', role: 'Battery Assembly Group Leader' }
-]
-
-const availableFieldPersons = computed(() => {
-  return selectedEscalationTarget.value === 'Management' ? FIELD_MANAGERS : FIELD_ENGINEERS
-})
-
-watch(selectedEscalationTarget, (newTarget) => {
-  const list = newTarget === 'Management' ? FIELD_MANAGERS : FIELD_ENGINEERS
-  selectedFieldPerson.value = list[0]?.name || ''
-  customFieldPerson.value = ''
-})
 
 // QR Pickup state
 const isClaimingQr = ref(false)
@@ -174,18 +150,9 @@ watch(() => props.ticket, (newVal) => {
   escalationReasonInput.value = ''
   selectedEscalationTarget.value = 'DedicatedEngineer'
   selectedHandoverState.value = 'Notification'
-  selectedFieldPerson.value = 'Gábor Varga'
-  customFieldPerson.value = ''
   if (newVal) {
     selectedStatus.value = newVal.status || 'Open'
-    if (Array.isArray(newVal.pendingReasons) && newVal.pendingReasons.length > 0) {
-      selectedPendingReasons.value = [...newVal.pendingReasons]
-    } else if (newVal.pendingReason && newVal.pendingReason !== 'None') {
-      selectedPendingReasons.value = newVal.pendingReason.split(',').map((s: string) => s.trim()).filter(Boolean)
-    } else {
-      selectedPendingReasons.value = ['Parts']
-    }
-    selectedPendingReason.value = (selectedPendingReasons.value[0] as PendingReason) || 'Parts'
+    selectedPendingReason.value = newVal.pendingReason || 'Parts'
     selectedPendingDetails.value = newVal.pendingDetails || ''
   }
   ticketAttachmentsDraft.value = []
@@ -198,18 +165,6 @@ const currentUser = computed(() => {
   const session = (authClient as any).useSession?.()
   return session?.data?.value?.user?.name || 'On-Duty Tech'
 })
-
-function togglePendingReason(key: string) {
-  const idx = selectedPendingReasons.value.indexOf(key)
-  if (idx !== -1) {
-    if (selectedPendingReasons.value.length > 1) {
-      selectedPendingReasons.value.splice(idx, 1)
-    }
-  } else {
-    selectedPendingReasons.value.push(key)
-  }
-  selectedPendingReason.value = (selectedPendingReasons.value[0] as PendingReason) || 'Parts'
-}
 
 const ticketLevelAttachments = computed<TicketAttachment[]>(() => {
   return (localTicket.value?.attachments ?? []).filter(a => !a.commentId)
@@ -225,8 +180,7 @@ const isStatusOrPendingChanged = computed(() => {
   if (!localTicket.value) return false
   if (selectedStatus.value !== localTicket.value.status) return true
   if (selectedStatus.value === 'Pending') {
-    const currentReasons = localTicket.value.pendingReasons || (localTicket.value.pendingReason ? [localTicket.value.pendingReason] : [])
-    if (JSON.stringify(selectedPendingReasons.value.slice().sort()) !== JSON.stringify(currentReasons.slice().sort())) return true
+    if (selectedPendingReason.value !== (localTicket.value.pendingReason || 'None')) return true
     if (selectedPendingDetails.value !== (localTicket.value.pendingDetails || '')) return true
   }
   return false
@@ -270,92 +224,52 @@ async function applyStatusChange() {
   if (!localTicket.value) return
   const oldStatus = localTicket.value.status
   const newStatus = selectedStatus.value
-  const oldPendingReasons = localTicket.value.pendingReasons ? [...localTicket.value.pendingReasons] : []
-  const oldPendingReason = localTicket.value.pendingReason
-  const oldPendingDetails = localTicket.value.pendingDetails
 
   isChangingStatus.value = true
-  const techName = currentUser.value
-
-  const payload: Record<string, any> = { status: newStatus }
-
-  if (newStatus === 'InProgress' && (!localTicket.value.assignedTechnicianName || localTicket.value.assignedTechnicianName === 'Unassigned')) {
-    payload.assignedTechnicianName = techName
-  }
-  if (newStatus === 'Pending') {
-    payload.pendingReasons = selectedPendingReasons.value
-    payload.pendingReason = selectedPendingReasons.value.join(', ')
-    payload.pendingDetails = selectedPendingDetails.value
-  } else {
-    payload.pendingReasons = []
-    payload.pendingReason = 'None'
-    payload.pendingDetails = null
-  }
-
-  // Optimistic update of local ticket
-  localTicket.value.status = newStatus
-  if (newStatus === 'Pending') {
-    localTicket.value.pendingReasons = selectedPendingReasons.value
-    localTicket.value.pendingReason = selectedPendingReasons.value.join(', ')
-    localTicket.value.pendingDetails = selectedPendingDetails.value
-  } else {
-    localTicket.value.pendingReasons = []
-    localTicket.value.pendingReason = 'None'
-    localTicket.value.pendingDetails = null
-  }
-
   try {
-    await runOptimisticAction(
-      async () => {
-        const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value!.id}`, {
-          method: 'PATCH',
-          body: payload
-        })
-        if (res?.success && res.ticket) {
-          localTicket.value = res.ticket
-          emit('updated', res.ticket)
+    const techName = currentUser.value
+    const payload: Record<string, any> = { status: newStatus }
 
-          if (oldStatus !== newStatus) {
-            await $fetch(`/api/tickets/${localTicket.value!.id}/comments`, {
-              method: 'POST',
-              body: {
-                authorName: techName,
-                content: '',
-                transition: {
-                  fromStatus: oldStatus,
-                  toStatus: newStatus,
-                  reason: newStatus === 'Pending' ? `Pending: ${selectedPendingReasons.value.join(', ')}` : undefined,
-                  actor: techName
-                }
-              }
-            }).catch(() => {})
+    if (newStatus === 'InProgress' && (!localTicket.value.assignedTechnicianName || localTicket.value.assignedTechnicianName === 'Unassigned')) {
+      payload.assignedTechnicianName = techName
+    }
+    if (newStatus === 'Pending') {
+      payload.pendingReason = selectedPendingReason.value
+      payload.pendingDetails = selectedPendingDetails.value
+    } else {
+      payload.pendingReason = 'None'
+      payload.pendingDetails = null
+    }
+
+    const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`, {
+      method: 'PATCH',
+      body: payload
+    })
+
+    if (res?.success) {
+      localTicket.value = res.ticket
+      emit('updated', res.ticket)
+
+      if (oldStatus !== newStatus) {
+        await $fetch(`/api/tickets/${localTicket.value.id}/comments`, {
+          method: 'POST',
+          body: {
+            authorName: techName,
+            content: '',
+            transition: {
+              fromStatus: oldStatus,
+              toStatus: newStatus,
+              actor: techName
+            }
           }
-          const fresh = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value!.id}`).catch(() => null)
-          if (fresh?.ticket) {
-            localTicket.value = fresh.ticket
-            emit('updated', fresh.ticket)
-          }
-        }
-      },
-      () => {
-        // Rollback state on error
-        if (localTicket.value) {
-          localTicket.value.status = oldStatus
-          localTicket.value.pendingReasons = oldPendingReasons
-          localTicket.value.pendingReason = oldPendingReason
-          localTicket.value.pendingDetails = oldPendingDetails
-          selectedStatus.value = oldStatus
-          selectedPendingReasons.value = oldPendingReasons.length > 0 ? oldPendingReasons : ['Parts']
-          selectedPendingDetails.value = oldPendingDetails || ''
-        }
-      },
-      {
-        title: 'Ticket Status Transition',
-        failureTitle: 'Status Transition Failed',
-        failureMessage: `Could not transition ticket ${localTicket.value?.ticketNumber || ''} to ${newStatus}.`,
-        successMessage: `Ticket status updated to ${newStatus}`
+        })
       }
-    )
+      const fresh = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`)
+      if (fresh?.ticket) {
+        localTicket.value = fresh.ticket
+        emit('updated', fresh.ticket)
+      }
+    }
   } catch (err) {
     console.error('Error updating ticket status:', err)
   } finally {
@@ -442,169 +356,25 @@ async function confirmEscalate() {
   isSubmittingEscalation.value = true
   try {
     const techName = currentUser.value
-    const targetPerson = selectedFieldPerson.value === 'CUSTOM'
-      ? customFieldPerson.value.trim()
-      : selectedFieldPerson.value
-
-    const targetRoleLabel = selectedEscalationTarget.value === 'Management' ? 'Manager' : 'Engineer'
-    const targetDescription = targetPerson ? `${targetPerson} (${targetRoleLabel})` : selectedEscalationTarget.value
-
-    const payload: Record<string, any> = {
-      isEscalated: true,
-      escalationReason: escalationReasonInput.value.trim(),
-      escalationTarget: targetDescription,
-      escalationHandoverState: selectedHandoverState.value,
-      escalatedBy: techName,
-      escalatedAt: new Date().toISOString()
-    }
-
-    // Escalated but not yet started items go to pending (escalated)
-    if (localTicket.value.status === 'Open') {
-      payload.status = 'Pending'
-      payload.pendingReason = 'Escalated'
-      payload.pendingReasons = ['Escalated']
-      payload.pendingDetails = `Escalated to ${targetDescription}: ${escalationReasonInput.value.trim()}`
-    }
-
-    if (selectedHandoverState.value === 'HandedOffToField' || selectedHandoverState.value === 'HandOff') {
-      if (targetPerson) {
-        payload.assignedTechnicianName = targetPerson
-      }
-    }
-
     const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`, {
       method: 'PATCH',
-      body: payload
+      body: {
+        isEscalated: true,
+        escalationReason: escalationReasonInput.value.trim(),
+        escalationTarget: selectedEscalationTarget.value,
+        escalationHandoverState: selectedHandoverState.value,
+        escalatedBy: techName,
+        escalatedAt: new Date().toISOString()
+      }
     })
-    if (res?.success && res.ticket) {
+    if (res?.success) {
       localTicket.value = res.ticket
-      selectedStatus.value = res.ticket.status
       emit('updated', res.ticket)
       isEscalatingOpen.value = false
       escalationReasonInput.value = ''
-
-      // Add comment for work hand-off
-      await $fetch(`/api/tickets/${localTicket.value.id}/comments`, {
-        method: 'POST',
-        body: {
-          authorName: techName,
-          content: `Work order handed off upon escalation to ${targetDescription}. Handover mode: ${selectedHandoverState.value}. Reason: ${payload.escalationReason}`,
-          transition: {
-            fromStatus: localTicket.value.status,
-            toStatus: res.ticket.status,
-            reason: `Escalation Hand-off: ${payload.escalationReason}`,
-            actor: techName
-          }
-        }
-      }).catch(() => {})
-
-      // Notify the user(s) escalated to
-      await addNotification({
-        title: `Ticket Escalated: ${res.ticket.ticketNumber}`,
-        message: `Ticket "${res.ticket.title}" escalated to ${targetDescription} by ${techName}. Reason: ${payload.escalationReason}`,
-        type: 'warning',
-        source: 'ticket',
-        link: `/dashboard/tickets?selected=${res.ticket.id}`
-      }).catch(() => {})
     }
   } catch (err) {
     console.error('Error escalating ticket:', err)
-  } finally {
-    isSubmittingEscalation.value = false
-  }
-}
-
-async function retractEscalation() {
-  if (!localTicket.value) return
-  isSubmittingEscalation.value = true
-  try {
-    const techName = currentUser.value
-    const payload: Record<string, any> = {
-      isEscalated: false,
-      escalationReason: null,
-      escalationTarget: null,
-      escalationHandoverState: null,
-      escalationClosedBy: techName,
-      escalationClosedAt: new Date().toISOString()
-    }
-    if (localTicket.value.status === 'Pending' && (localTicket.value.pendingReason === 'Escalated' || localTicket.value.pendingReasons?.includes('Escalated'))) {
-      payload.status = 'Open'
-      payload.pendingReason = 'None'
-      payload.pendingReasons = []
-      payload.pendingDetails = null
-    }
-
-    const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`, {
-      method: 'PATCH',
-      body: payload
-    })
-    if (res?.success && res.ticket) {
-      localTicket.value = res.ticket
-      selectedStatus.value = res.ticket.status
-      emit('updated', res.ticket)
-
-      await $fetch(`/api/tickets/${localTicket.value.id}/comments`, {
-        method: 'POST',
-        body: {
-          authorName: techName,
-          content: `Escalation retracted by ${techName}. Ticket returned to open queue.`,
-          transition: {
-            fromStatus: localTicket.value.status,
-            toStatus: res.ticket.status,
-            reason: 'Escalation retracted by escalator',
-            actor: techName
-          }
-        }
-      }).catch(() => {})
-    }
-  } catch (err) {
-    console.error('Error retracting escalation:', err)
-  } finally {
-    isSubmittingEscalation.value = false
-  }
-}
-
-async function pickupEscalatedJob() {
-  if (!localTicket.value) return
-  isSubmittingEscalation.value = true
-  try {
-    const techName = currentUser.value
-    const now = new Date()
-    const payload: Record<string, any> = {
-      status: 'InProgress',
-      assignedTechnicianName: techName,
-      startedAt: now.toISOString(),
-      pendingReason: 'None',
-      pendingReasons: [],
-      pendingDetails: null,
-      escalationHandoverState: 'HandOff'
-    }
-
-    const res = await $fetch<{ success: boolean; ticket: MaintenanceTicket }>(`/api/tickets/${localTicket.value.id}`, {
-      method: 'PATCH',
-      body: payload
-    })
-    if (res?.success && res.ticket) {
-      localTicket.value = res.ticket
-      selectedStatus.value = 'InProgress'
-      emit('updated', res.ticket)
-
-      await $fetch(`/api/tickets/${localTicket.value.id}/comments`, {
-        method: 'POST',
-        body: {
-          authorName: techName,
-          content: `Escalated job accepted and claimed by ${techName}. Work underway.`,
-          transition: {
-            fromStatus: localTicket.value.status,
-            toStatus: 'InProgress',
-            reason: 'Claimed escalated ticket',
-            actor: techName
-          }
-        }
-      }).catch(() => {})
-    }
-  } catch (err) {
-    console.error('Error claiming escalated job:', err)
   } finally {
     isSubmittingEscalation.value = false
   }
@@ -764,14 +534,7 @@ async function addComment() {
 </script>
 
 <template>
-  <!-- Backdrop -->
-  <div
-    v-if="open"
-    class="fixed inset-0 bg-background/80 backdrop-blur-xs z-40 transition-opacity"
-    @click="emit('update:open', false)"
-  />
-
-  <!-- Drawer panel -->
+  <!-- Drawer panel (non-blocking) -->
   <div
     v-if="open && localTicket"
     class="fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden text-foreground animate-in slide-in-from-right duration-200"
@@ -780,9 +543,15 @@ async function addComment() {
     <div class="p-6 border-b border-border bg-muted/20 flex items-center justify-between">
       <div class="space-y-1 min-w-0 pr-4">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">
-            {{ localTicket.ticketNumber }}
-          </span>
+          <button
+            type="button"
+            @click="openFullPage"
+            class="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 px-2 py-0.5 rounded-md border border-indigo-500/20 transition-colors flex items-center gap-1 cursor-pointer"
+            title="Open Dedicated Full Page"
+          >
+            <span>{{ localTicket.ticketNumber }}</span>
+            <ExternalLink class="size-3" />
+          </button>
           <span class="text-xs text-muted-foreground font-mono">
             {{ new Date(localTicket.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
           </span>
@@ -797,19 +566,6 @@ async function addComment() {
             <span>Line Stop ({{ localTicket.lineStopDurationMinutes || 0 }}m)</span>
           </Badge>
 
-          <!-- Pending Reason Badges -->
-          <template v-if="localTicket.status === 'Pending'">
-            <Badge
-              v-for="r in (localTicket.pendingReasons && localTicket.pendingReasons.length > 0 ? localTicket.pendingReasons : [localTicket.pendingReason || 'Pending'])"
-              :key="r"
-              variant="outline"
-              class="text-[9px] bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40 uppercase font-black tracking-wider flex items-center gap-1"
-            >
-              <Package class="size-2.5" />
-              <span>Pending: {{ r }}</span>
-            </Badge>
-          </template>
-
           <!-- Escalation Badge -->
           <Badge
             v-if="localTicket.isEscalated"
@@ -817,19 +573,30 @@ async function addComment() {
             class="text-[9px] bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40 uppercase font-black tracking-wider flex items-center gap-1 animate-pulse"
           >
             <AlertTriangle class="size-2.5" />
-            Escalated {{ localTicket.escalationHandoverState ? `[${localTicket.escalationHandoverState === 'HandedOffToField' ? 'Field Hand-Off' : localTicket.escalationHandoverState}]` : '' }}
+            Escalated {{ localTicket.escalationHandoverState ? `[${localTicket.escalationHandoverState}]` : '' }}
           </Badge>
         </div>
         <h3 class="text-lg font-bold text-foreground truncate">{{ localTicket.title }}</h3>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer shrink-0"
-        @click="emit('update:open', false)"
-      >
-        <X class="h-4 w-4" />
-      </Button>
+      <div class="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+          title="Open Full Page View"
+          @click="openFullPage"
+        >
+          <ExternalLink class="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer shrink-0"
+          @click="emit('update:open', false)"
+        >
+          <X class="h-4 w-4" />
+        </Button>
+      </div>
     </div>
 
     <!-- Scrollable Content -->
@@ -838,52 +605,24 @@ async function addComment() {
       <!-- Active Escalation Banner -->
       <div
         v-if="localTicket.isEscalated"
-        class="p-4 bg-rose-500/10 border-2 border-rose-500/40 rounded-2xl space-y-3 animate-in fade-in"
+        class="p-4 bg-rose-500/10 border-2 border-rose-500/40 rounded-2xl space-y-2 animate-in fade-in"
       >
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="flex items-center justify-between">
           <div class="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-black text-xs uppercase tracking-wider">
             <AlertTriangle class="size-4 shrink-0 text-rose-500" />
             <span>Active Incident Escalation</span>
             <Badge v-if="localTicket.escalationHandoverState" class="bg-rose-600 text-white text-[9px] px-1.5 py-0">
-              State: {{ localTicket.escalationHandoverState === 'HandedOffToField' ? 'Field Hand-Off' : localTicket.escalationHandoverState }}
+              State: {{ localTicket.escalationHandoverState }}
             </Badge>
           </div>
-
-          <div class="flex items-center gap-2 shrink-0">
-            <!-- Retract for Escalator -->
-            <Button
-              size="sm"
-              variant="outline"
-              @click="retractEscalation"
-              :disabled="isSubmittingEscalation"
-              class="border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/15 rounded-xl text-[10px] font-black uppercase h-7 px-2.5 cursor-pointer"
-            >
-              <RotateCcw class="w-3 h-3 mr-1" />
-              {{ $t('tickets.retract') }}
-            </Button>
-
-            <!-- Pick up job for Escalatee -->
-            <Button
-              v-if="localTicket.status === 'Pending' || localTicket.status === 'Open'"
-              size="sm"
-              @click="pickupEscalatedJob"
-              :disabled="isSubmittingEscalation"
-              class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase h-7 px-3 cursor-pointer shadow-xs"
-            >
-              <Play class="w-3 h-3 mr-1" />
-              {{ $t('tickets.pickupJob') }}
-            </Button>
-
-            <!-- Resolve Escalation -->
-            <Button
-              size="sm"
-              @click="resolveEscalation"
-              :disabled="isSubmittingEscalation"
-              class="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black uppercase h-7 px-3 cursor-pointer"
-            >
-              {{ $t('tickets.resolveEscalation') }}
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            @click="resolveEscalation"
+            :disabled="isSubmittingEscalation"
+            class="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black uppercase h-7 px-3 cursor-pointer"
+          >
+            Resolve Escalation
+          </Button>
         </div>
         <div class="text-xs text-rose-800 dark:text-rose-200">
           <strong>Reason:</strong> {{ localTicket.escalationReason || 'Operational priority review' }}
@@ -921,7 +660,7 @@ async function addComment() {
               class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wide h-8 px-3 rounded-xl cursor-pointer"
             >
               <BookmarkCheck class="size-3.5 mr-1" />
-              <span>{{ isClaimingQr ? $t('tickets.claiming') : $t('tickets.scanAndPickup') }}</span>
+              <span>{{ isClaimingQr ? 'Claiming…' : 'Scan & Pickup Ticket' }}</span>
             </Button>
           </div>
         </div>
@@ -1004,18 +743,15 @@ async function addComment() {
               v-for="(cfg, rKey) in PENDING_REASON_CONFIGS"
               :key="rKey"
               type="button"
-              @click="togglePendingReason(rKey)"
+              @click="selectedPendingReason = rKey"
               :class="[
                 'p-2 rounded-lg border text-left transition-all flex flex-col gap-0.5 cursor-pointer',
-                selectedPendingReasons.includes(rKey)
+                selectedPendingReason === rKey
                   ? 'bg-amber-500/20 border-amber-500 text-amber-950 dark:text-amber-100 ring-2 ring-amber-500/50 shadow-xs'
                   : 'bg-background/80 border-border text-foreground hover:bg-muted/80 opacity-80'
               ]"
             >
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-xs">{{ cfg.label }}</span>
-                <span v-if="selectedPendingReasons.includes(rKey)" class="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              </div>
+              <span class="font-bold text-xs">{{ cfg.label }}</span>
               <p class="text-[10px] text-muted-foreground line-clamp-1 leading-tight">{{ cfg.description }}</p>
             </button>
           </div>
@@ -1040,8 +776,8 @@ async function addComment() {
           :disabled="isChangingStatus"
           class="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase tracking-wider h-8 shadow-sm cursor-pointer"
         >
-          <span v-if="!isChangingStatus">{{ $t('tickets.applyStatus') }}</span>
-          <span v-else>{{ $t('common.updating') }}</span>
+          <span v-if="!isChangingStatus">Apply Status Change</span>
+          <span v-else>Updating…</span>
         </Button>
 
         <!-- Quick Workflow Actions -->
@@ -1053,7 +789,7 @@ async function addComment() {
             class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
           >
             <Play class="h-3.5 w-3.5 mr-1" />
-            {{ $t('tickets.startWork') }}
+            Start Work
           </Button>
 
           <Button
@@ -1063,7 +799,7 @@ async function addComment() {
             class="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
           >
             <Package class="h-3.5 w-3.5 mr-1" />
-            {{ $t('tickets.setPending') }}
+            Set Pending
           </Button>
 
           <Button
@@ -1073,7 +809,7 @@ async function addComment() {
             class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
           >
             <Play class="h-3.5 w-3.5 mr-1" />
-            {{ $t('tickets.resumeWork') }}
+            Resume Work
           </Button>
 
           <Button
@@ -1083,7 +819,7 @@ async function addComment() {
             class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
           >
             <CheckCircle2 class="h-3.5 w-3.5 mr-1" />
-            {{ $t('tickets.resolveTicket') }}
+            Mark Resolved
           </Button>
 
           <Button
@@ -1093,7 +829,7 @@ async function addComment() {
             class="bg-muted hover:bg-muted/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
           >
             <Archive class="h-3.5 w-3.5 mr-1" />
-            {{ $t('tickets.closeTicket') }}
+            Close Ticket
           </Button>
 
           <Button
@@ -1103,7 +839,7 @@ async function addComment() {
             class="bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer"
           >
             <RotateCcw class="h-3.5 w-3.5 mr-1" />
-            {{ $t('tickets.reopenTicket') }}
+            Re-Open
           </Button>
 
           <!-- Escalate Action Trigger -->
@@ -1115,7 +851,7 @@ async function addComment() {
             class="border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/10 rounded-xl text-[10px] font-black uppercase tracking-wider h-8 cursor-pointer ml-auto"
           >
             <AlertTriangle class="h-3.5 w-3.5 mr-1 text-rose-500" />
-            {{ $t('tickets.escalate') }}
+            Escalate
           </Button>
         </div>
 
@@ -1148,46 +884,8 @@ async function addComment() {
               >
                 <option value="Notification">Notification (Informational)</option>
                 <option value="HandOff">HandOff (Transfer Work)</option>
-                <option value="HandedOffToField">Handed off to field</option>
                 <option value="ParallelWork">ParallelWork (Joint Work)</option>
               </select>
-            </div>
-
-            <!-- Field Assignee Selection (shown when Handed off to field or HandOff) -->
-            <div
-              v-if="selectedHandoverState === 'HandedOffToField' || selectedHandoverState === 'HandOff'"
-              class="col-span-1 sm:col-span-2 p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-lg space-y-1.5 animate-in fade-in"
-            >
-              <div class="flex items-center justify-between">
-                <label class="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-                  Select Field {{ selectedEscalationTarget === 'Management' ? 'Manager' : 'Engineer' }} to Hand Off *
-                </label>
-                <span class="text-[9px] text-muted-foreground">
-                  Will assign to ticket &amp; log hand-off
-                </span>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <select
-                  v-model="selectedFieldPerson"
-                  class="w-full px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground focus:outline-hidden font-medium"
-                >
-                  <option
-                    v-for="person in availableFieldPersons"
-                    :key="person.id"
-                    :value="person.name"
-                  >
-                    {{ person.name }} ({{ person.role }})
-                  </option>
-                  <option value="CUSTOM">Custom name / Other...</option>
-                </select>
-                <input
-                  v-if="selectedFieldPerson === 'CUSTOM'"
-                  v-model="customFieldPerson"
-                  type="text"
-                  placeholder="Enter engineer or manager name..."
-                  class="w-full px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden"
-                />
-              </div>
             </div>
           </div>
 
@@ -1210,15 +908,15 @@ async function addComment() {
               class="text-xs h-7"
               @click="isEscalatingOpen = false"
             >
-              {{ $t('common.cancel') }}
+              Cancel
             </Button>
             <Button
               size="sm"
-              :disabled="!escalationReasonInput.trim() || isSubmittingEscalation || ((selectedHandoverState === 'HandedOffToField' || selectedHandoverState === 'HandOff') && selectedFieldPerson === 'CUSTOM' && !customFieldPerson.trim())"
+              :disabled="!escalationReasonInput.trim() || isSubmittingEscalation"
               class="bg-rose-600 hover:bg-rose-500 text-white text-xs h-7 font-bold cursor-pointer"
               @click="confirmEscalate"
             >
-              {{ $t('tickets.confirmEscalation') }}
+              Confirm Escalation
             </Button>
           </div>
         </div>
@@ -1235,7 +933,7 @@ async function addComment() {
             @click="isEditingDetails ? (isEditingDetails = false) : openEditDetails()"
           >
             <Edit3 class="size-3 mr-1" />
-            <span>{{ isEditingDetails ? $t('common.cancelEdit') : $t('tickets.editFixTypos') }}</span>
+            <span>{{ isEditingDetails ? 'Cancel Edit' : 'Edit / Fix Typos' }}</span>
           </Button>
         </div>
 
@@ -1301,22 +999,12 @@ async function addComment() {
             <Input v-model="editReasonNote" placeholder="e.g. Fixed typo in alarm description" class="text-xs h-8" />
           </div>
           <div class="flex justify-end gap-2 pt-1">
-            <Button size="sm" variant="outline" class="text-xs h-7 cursor-pointer" @click="isEditingDetails = false">{{ $t('common.cancel') }}</Button>
-            <Button size="sm" class="bg-primary text-primary-foreground text-xs h-7 font-bold cursor-pointer" :disabled="isSavingEdit" @click="saveDetailsEdit">
-              {{ isSavingEdit ? $t('common.saving') : $t('common.saveChanges') }}
+            <Button size="sm" variant="outline" class="text-xs h-7" @click="isEditingDetails = false">Cancel</Button>
+            <Button size="sm" class="bg-primary text-primary-foreground text-xs h-7 font-bold" :disabled="isSavingEdit" @click="saveDetailsEdit">
+              {{ isSavingEdit ? 'Saving…' : 'Save Changes' }}
             </Button>
           </div>
         </div>
-      </div>
-
-      <!-- Machine-Raised Telemetry Probes Visualizer -->
-      <div v-if="localTicket.telemetryProbes && localTicket.telemetryProbes.length > 0" class="space-y-2">
-        <TicketTelemetryProbeVisualizer
-          :probes="localTicket.telemetryProbes"
-          :alarm-code="localTicket.alarmCode"
-          :controller-source="localTicket.controllerSource"
-          :target-component-bmk="localTicket.targetComponentBmk"
-        />
       </div>
 
       <!-- Telemetry Snapshot at Ticket Raise -->
@@ -1422,7 +1110,7 @@ async function addComment() {
             :disabled="!newTagInput.trim() || isUpdatingTags"
             class="rounded-xl text-xs font-bold px-3 h-8 cursor-pointer"
           >
-            {{ $t('common.add') }}
+            Add
           </Button>
         </div>
       </div>

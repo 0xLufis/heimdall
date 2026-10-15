@@ -54,22 +54,22 @@ async function handleSocialSignIn(provider: 'github' | 'google' | 'microsoft') {
   <form class="grid gap-6" @submit="onSubmit">
     <div class="grid grid-cols-2 gap-4">
       <div class="grid gap-2">
-        <Label for="name" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">{{ $t('auth.name') }}</Label>
+        <Label for="name" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">Name</Label>
         <Input id="name" v-model="name" placeholder="John Doe" required :disabled="isLoading" />
       </div>
       <div class="grid gap-2">
-        <Label for="username" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">{{ $t('auth.username') }}</Label>
+        <Label for="username" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">Username</Label>
         <Input id="username" v-model="username" placeholder="jdoe" required :disabled="isLoading" />
       </div>
     </div>
     
     <div class="grid gap-2">
-      <Label for="email" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">{{ $t('auth.email') }}</Label>
+      <Label for="email" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">Email</Label>
       <Input id="email" v-model="email" type="email" placeholder="name@example.com" required :disabled="isLoading" />
     </div>
 
     <div class="grid gap-2">
-      <Label for="password" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">{{ $t('auth.accessToken') }}</Label>
+      <Label for="password" class="text-xs uppercase font-bold tracking-widest text-muted-foreground">Access Token</Label>
       <PasswordInput id="password" v-model="password" required :disabled="isLoading" />
     </div>
 
@@ -79,7 +79,7 @@ async function handleSocialSignIn(provider: 'github' | 'google' | 'microsoft') {
 
     <Button type="submit" class="w-full font-bold uppercase tracking-widest py-6 h-auto" :disabled="isLoading">
       <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
-      {{ isLoading ? $t('auth.provisioning') : $t('auth.initializeAccount') }}
+      {{ isLoading ? 'Provisioning...' : 'Initialize Account' }}
     </Button>
 
     <div class="relative">
@@ -88,7 +88,7 @@ async function handleSocialSignIn(provider: 'github' | 'google' | 'microsoft') {
       </div>
       <div class="relative flex justify-center text-xs uppercase">
         <span class="bg-background px-2 text-muted-foreground font-bold tracking-widest">
-          {{ $t('auth.externalIdentity') }}
+          External Identity
         </span>
       </div>
     </div>
@@ -107,9 +107,9 @@ async function handleSocialSignIn(provider: 'github' | 'google' | 'microsoft') {
   </form>
   
   <div class="mt-4 text-center text-sm text-muted-foreground">
-    {{ $t('auth.alreadyRegistered') }}
+    Already registered?
     <NuxtLink to="/auth/login" class="underline underline-offset-4 font-bold text-foreground">
-      {{ $t('auth.accessTerminal') }}
+      Access Terminal
     </NuxtLink>
   </div>
 </template>

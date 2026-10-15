@@ -18,14 +18,12 @@ defineProps<{
           </AvatarFallback>
         </Avatar>
         <div>
-          <h3 class="text-2xl font-bold tracking-tight text-foreground">
-            {{ $t('dashboard.welcomeBack', 'Welcome back, {name}').replace('{name}', userName || 'Operator') }}
-          </h3>
+          <h3 class="text-2xl font-bold tracking-tight text-foreground">Welcome back, {{ userName }}</h3>
           <div class="flex items-center gap-3 mt-1.5">
             <DashboardRoleBadge :role="userRole" />
             <div class="flex items-center gap-2 px-2.5 py-0.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-xs font-mono text-emerald-600 dark:text-emerald-300">
               <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span class="font-medium text-xs">{{ $t('dashboard.systemNominal', 'System Nominal') }}</span>
+              <span class="font-medium text-xs">System Nominal</span>
             </div>
           </div>
         </div>

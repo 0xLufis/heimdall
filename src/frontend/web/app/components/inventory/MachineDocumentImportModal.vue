@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   X,
   Bot,
@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import type { MachineDocumentImportPayload, MachineDocumentImportResult } from '~/types/inventory'
+import { usePartsInventory } from '~/composables/usePartsInventory'
 
 const props = defineProps<{
   open: boolean
@@ -24,8 +25,7 @@ const emit = defineEmits<{
   (e: 'imported', result: MachineDocumentImportResult): void
 }>()
 
-const targetMachineId = ref('mach-op10-cnc')
-const targetMachineName = ref('Line 1 - OP10 CNC Milling Cell')
+const { indexedFields, fetchIndexedFields } = usePartsInventory()
 
 const MACHINES = [
   { id: 'mach-op10-cnc', name: 'Line 1 - OP10 CNC Milling Cell' },
@@ -33,6 +33,29 @@ const MACHINES = [
   { id: 'mach-op30-vision', name: 'Line 1 - OP30 Optical Inspection Cell' },
   { id: 'mach-op40-pack', name: 'Line 2 - Battery Pack Automation Station' }
 ]
+
+const availableMachines = computed(() => {
+  if (indexedFields.value.machines && indexedFields.value.machines.length > 0) {
+    return indexedFields.value.machines
+  }
+  return MACHINES
+})
+
+const targetMachineId = ref('mach-op10-cnc')
+const targetMachineName = ref('Line 1 - OP10 CNC Milling Cell')
+
+watch(() => props.open, async (isOpen) => {
+  if (isOpen) {
+    await fetchIndexedFields()
+    if (availableMachines.value.length > 0) {
+      const current = availableMachines.value.find(m => m.id === targetMachineId.value)
+      if (!current) {
+        targetMachineId.value = availableMachines.value[0].id
+        targetMachineName.value = availableMachines.value[0].name
+      }
+    }
+  }
+})
 
 const SAMPLE_CHATGPT_RESPONSE = `\`\`\`json
 [
@@ -95,7 +118,7 @@ const errorMessage = ref<string | null>(null)
 
 const onMachineChange = (e: Event) => {
   const sel = (e.target as HTMLSelectElement).value
-  const found = MACHINES.find(m => m.id === sel)
+  const found = availableMachines.value.find(m => m.id === sel)
   if (found) {
     targetMachineId.value = found.id
     targetMachineName.value = found.name
@@ -211,7 +234,7 @@ const handleImport = async () => {
             @change="onMachineChange"
             class="w-full h-9 px-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
           >
-            <option v-for="m in MACHINES" :key="m.id" :value="m.id">
+            <option v-for="m in availableMachines" :key="m.id" :value="m.id">
               {{ m.name }}
             </option>
           </select>

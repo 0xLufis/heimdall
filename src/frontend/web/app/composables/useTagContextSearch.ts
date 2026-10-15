@@ -18,8 +18,6 @@ import {
 } from '~/utils/search/searchIndexer'
 import { fzfMatch, highlightFzfMatches } from '~/utils/search/fzfSearch'
 
-import { searchRegistry } from '~/utils/search/searchRegistry'
-
 export interface TagCompletionItem {
   key: string
   value: string
@@ -27,9 +25,6 @@ export interface TagCompletionItem {
   displayLabel: string
   score: number
   indices: number[]
-  indicatorLabels?: string[]
-  indicators?: Array<{ label: string; color: string }>
-  count?: number
 }
 
 export function useTagContextSearch(initialContext: SearchContext) {
@@ -88,74 +83,31 @@ export function useTagContextSearch(initialContext: SearchContext) {
     return Array.from(keys).sort()
   })
 
-  // Autocomplete code completion suggestions when user types a tag (e.g. 'status#', '!mfr#sie', 'status:online')
+  // Autocomplete code completion suggestions when user types a tag (e.g. 'status:' or '!mfr:sie')
   const completionSuggestions = computed<TagCompletionItem[]>(() => {
     const activeIncomplete = parsedQuery.value.activeIncompleteTag
     if (!activeIncomplete) return []
 
     const key = activeIncomplete.key.toLowerCase()
-    const partial = activeIncomplete.partialValue.toLowerCase().trim()
+    const partial = activeIncomplete.partialValue.toLowerCase()
     const inverted = activeIncomplete.inverted
-    const sep = activeIncomplete.separator || '#'
-    const rawMod = activeIncomplete.rawModifier ?? (inverted ? '!' : '')
-    const completed = activeIncomplete.completedValues || []
 
-    // Scope recommendations strictly to metadata values of this tag
-    const metadataItems = searchRegistry.harvestTagMetadata(key)
-    const indexValues = getIndexedTagValues(activeIndexedTables.value, key)
-
-    // Merge metadata items with any table-indexed values not yet captured
-    const valueMap = new Map<string, {
-      value: string
-      indicatorLabels: string[]
-      indicators: Array<{ label: string; color: string }>
-      count: number
-    }>()
-
-    for (const m of metadataItems) {
-      valueMap.set(m.value.toLowerCase(), {
-        value: m.value,
-        indicatorLabels: m.indicatorLabels,
-        indicators: m.indicators,
-        count: m.count
-      })
-    }
-
-    for (const val of indexValues) {
-      const vLower = val.toLowerCase()
-      if (!valueMap.has(vLower)) {
-        // Find which tables contain this value
-        const matchedTables = activeIndexedTables.value.filter(t => t.tagValues.get(key)?.has(val))
-        valueMap.set(vLower, {
-          value: val,
-          indicatorLabels: matchedTables.map(t => t.indicatorLabel),
-          indicators: matchedTables.map(t => ({ label: t.indicatorLabel, color: t.indicatorColor })),
-          count: 1
-        })
-      }
-    }
-
-    if (valueMap.size === 0) return []
+    // Look up available values for this tag key
+    const allValues = getIndexedTagValues(activeIndexedTables.value, key)
+    if (allValues.length === 0) return []
 
     const results: TagCompletionItem[] = []
 
-    for (const item of valueMap.values()) {
-      const val = item.value
-      const displayLabel = sep === '#' || completed.length > 0
-        ? `${rawMod}${key}#${[...completed, val].join(',')} `
-        : `${rawMod}${key}:${val}`
-
+    for (const val of allValues) {
       if (!partial) {
+        // Empty substring: show all unique values
         results.push({
           key,
           value: val,
           inverted,
-          displayLabel,
+          displayLabel: `${inverted ? '!' : ''}${key}:${val}`,
           score: 100,
-          indices: [],
-          indicatorLabels: item.indicatorLabels,
-          indicators: item.indicators,
-          count: item.count
+          indices: []
         })
       } else {
         const match = fzfMatch(partial, val)
@@ -164,31 +116,16 @@ export function useTagContextSearch(initialContext: SearchContext) {
             key,
             value: val,
             inverted,
-            displayLabel,
+            displayLabel: `${inverted ? '!' : ''}${key}:${val}`,
             score: match.score,
-            indices: match.indices,
-            indicatorLabels: item.indicatorLabels,
-            indicators: item.indicators,
-            count: item.count
-          })
-        } else if (val.toLowerCase().includes(partial)) {
-          results.push({
-            key,
-            value: val,
-            inverted,
-            displayLabel,
-            score: 50,
-            indices: [],
-            indicatorLabels: item.indicatorLabels,
-            indicators: item.indicators,
-            count: item.count
+            indices: match.indices
           })
         }
       }
     }
 
-    // Sort by score descending then count descending
-    results.sort((a, b) => b.score - a.score || (b.count || 0) - (a.count || 0))
+    // Sort by score descending
+    results.sort((a, b) => b.score - a.score)
     return results.slice(0, 15)
   })
 
@@ -203,20 +140,13 @@ export function useTagContextSearch(initialContext: SearchContext) {
     if (!activeIncomplete) return
 
     const raw = searchQuery.value
-    const sep = activeIncomplete.separator || '#'
-    const rawMod = activeIncomplete.rawModifier ?? (activeIncomplete.inverted ? '!' : '')
-    const completed = activeIncomplete.completedValues || []
-    const allValues = [...completed, item.value]
-
-    const completedToken = `${rawMod}${activeIncomplete.key}${sep}${allValues.join(',')} `
-
-    if (activeIncomplete.rawToken && raw.includes(activeIncomplete.rawToken)) {
-      searchQuery.value = raw.replace(activeIncomplete.rawToken, completedToken)
-    } else {
-      const tokenRegex = new RegExp(`(!?[a-zA-Z0-9_-]+)[#:][^\\s]*`, 'gi')
-      searchQuery.value = raw.replace(tokenRegex, completedToken)
-    }
-
+    const prefix = `${activeIncomplete.inverted ? '!' : ''}${activeIncomplete.key}:`
+    
+    // Replace the incomplete tag token with the completed token
+    const tokenRegex = new RegExp(`(!?${activeIncomplete.key}):[\\S]*`, 'gi')
+    const completedToken = `${prefix}${item.value} `
+    
+    searchQuery.value = raw.replace(tokenRegex, completedToken)
     cursorPosition.value = searchQuery.value.length
     activeSuggestionIndex.value = 0
   }

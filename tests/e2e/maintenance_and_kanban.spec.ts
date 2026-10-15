@@ -25,13 +25,16 @@ test.describe('Maintenance Incident Dispatching & Kanban Board E2E', () => {
     await listToggle.click()
   })
 
-  test('opens report incident modal and shows form fields', async ({ page }) => {
-    const reportBtn = page.getByRole('button', { name: /report incident/i }).first()
+  test('navigates to dedicated /dashboard/tickets/new report incident studio without modal popups', async ({ page }) => {
+    const reportBtn = page.getByRole('link', { name: /report incident/i }).first()
     await expect(reportBtn).toBeVisible({ timeout: 10000 })
-    await page.waitForTimeout(2000)
     await reportBtn.click()
 
-    await expect(page.locator('[role="dialog"]').first()).toBeVisible({ timeout: 5000 })
-    await expect(page.getByText('Report Maintenance Ticket')).toBeVisible({ timeout: 5000 })
+    await page.waitForURL('**/dashboard/tickets/new')
+    await expect(page.getByRole('heading', { name: /report maintenance incident/i })).toBeVisible({ timeout: 10000 })
+
+    // Verify zero modal overlays
+    const modalBackdrops = page.locator('.fixed.inset-0.bg-background\\/80, [role="dialog"]')
+    await expect(modalBackdrops).toHaveCount(0)
   })
 })

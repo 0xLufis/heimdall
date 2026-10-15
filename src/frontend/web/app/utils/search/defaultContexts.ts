@@ -81,7 +81,7 @@ export const defaultInventorySource: SearchSource = {
   data: SAMPLE_INVENTORY_DATA,
   indexedKey: 'id',
   columns: ['name', 'category', 'manufacturer', 'location', 'status', 'serialNumber'],
-  linkGenerator: (item) => `/dashboard/inventory/${item.id}`
+  linkGenerator: (item) => `/dashboard/inventory?partId=${item.id}`
 }
 
 export const defaultUsersSource: SearchSource = {
@@ -93,7 +93,7 @@ export const defaultUsersSource: SearchSource = {
   data: SAMPLE_USERS_DATA,
   indexedKey: 'id',
   columns: ['name', 'email', 'role', 'department'],
-  linkGenerator: (item) => `/dashboard/users/${item.id}`
+  linkGenerator: (item) => `/dashboard/users?userId=${item.id}`
 }
 
 export const defaultTemplatesSource: SearchSource = {
@@ -109,7 +109,7 @@ export const defaultTemplatesSource: SearchSource = {
   ],
   indexedKey: 'id',
   columns: ['name', 'manufacturer', 'topLevelCategory', 'identifierPattern', 'tag'],
-  linkGenerator: (item) => `/dashboard/inventory?section=templates&templateId=${item.id}`
+  linkGenerator: (item) => `/dashboard/inventory?templateId=${item.id}`
 }
 
 export const GLOBAL_SEARCH_CONTEXT: SearchContext = {
@@ -145,34 +145,3 @@ export const INVENTORY_SEARCH_CONTEXT: SearchContext = {
   ]
 }
 
-export const defaultTelemetrySource: SearchSource = {
-  id: 'telemetry',
-  name: 'Telemetry Metrics & Data Points',
-  entityType: 'TelemetryMetric',
-  indicatorLabel: 'TEL',
-  indicatorColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-  data: [
-    { id: 'spindleSpeedRpm', name: 'Spindle Rotational Speed', category: 'Machining', dataType: 'Float64', unit: 'RPM', description: 'Actual speed of primary motor spindle' },
-    { id: 'vibrationEnvelopeMmS', name: 'Harmonic Vibration RMS', category: 'Vibration', dataType: 'Float64', unit: 'mm/s', description: 'Tri-axial accelerometer vibration velocity' },
-    { id: 'spindleTemperatureC', name: 'Spindle Bearing Temp', category: 'Thermal', dataType: 'Float64', unit: '°C', description: 'Front bearing PT100 temperature' },
-    { id: 'cycleTimeMs', name: 'Station Tact Cycle Time', category: 'Cycle', dataType: 'Int32', unit: 'ms', description: 'TwinCAT PLC actual cycle duration' },
-    { id: 'hydraulicPressureBar', name: 'System Hydraulic Pressure', category: 'Pneumatics', dataType: 'Float64', unit: 'bar', description: 'Main manifold supply pressure' },
-    { id: 'plcState', name: 'TwinCAT Run State', category: 'PLC', dataType: 'String', unit: 'state', description: 'Beckhoff PLC execution state' },
-    { id: 'cpuUsagePct', name: 'IPC Host CPU Utilization', category: 'Resources', dataType: 'Float64', unit: '%', description: 'Aggregated core processing workload across all physical cores' },
-    { id: 'ramUsagePct', name: 'IPC System Memory Load', category: 'Resources', dataType: 'Float64', unit: '%', description: 'Physical RAM active allocation percentage' },
-    { id: 'cycleJitterUs', name: 'Real-Time Soft-PLC Task Jitter', category: 'Jitter', dataType: 'Float64', unit: 'μs', description: 'Cyclic task scheduling jitter measured across TwinCAT real-time kernel cores' },
-    { id: 'dcBusVoltageV', name: 'Inverter DC Bus Voltage', category: 'Electrical', dataType: 'Float64', unit: 'V', description: 'Intermediate circuit DC link voltage monitored across servo drives' },
-    { id: 'fieldbusErrorRate', name: 'Fieldbus Frame Loss & CRC Errors', category: 'Fieldbus', dataType: 'Float64', unit: 'err/min', description: 'EtherCAT or PROFINET frame corruption and cyclic packet drop frequency' }
-  ],
-  indexedKey: 'id',
-  columns: ['name', 'category', 'dataType', 'description', 'unit'],
-  linkGenerator: (item) => `/dashboard/telemetry?tab=live&metric=${item.id}`
-}
-
-export const TELEMETRY_SEARCH_CONTEXT: SearchContext = {
-  id: 'telemetry-workspace',
-  title: 'Industrial Telemetry Hub & Live Streams',
-  sources: [
-    defaultTelemetrySource
-  ]
-}

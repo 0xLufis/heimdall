@@ -119,28 +119,17 @@ public abstract partial class BaseInventoryItem
 /// Represents a Production Station or Operational Machine on the factory floor.
 /// First-class Aggregate Root decoupled from inventory items.
 /// </summary>
-[Table("machines", Schema = "backend")]
-public partial class Machine
+[Table("stations", Schema = "backend")]
+public partial class Machine : BaseInventoryItem
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
-    [Required, MaxLength(255)]
-    public string Name { get; set; } = string.Empty;
-
-    public string? DisplayName { get; set; }
-    public string? Description { get; set; }
-
-    [MaxLength(128)]
-    public string? OrganizationId { get; set; }
-    
-    [MaxLength(128)]
+    [NotMapped]
     public string? PlantId { get; set; }
 
     /// <summary>A custom, user-defined identifier for the station (e.g., "LINE-A-OP10").</summary>
     [Required, MaxLength(255)]
     public string CustomIdentifier { get; set; } = string.Empty;
 
+    [NotMapped]
     public string? Barcode { get; set; }
 
     /// <summary>The functional technology / machine type (e.g. "Automatic Optical Inspection", "Gap Filler", "Screwing Station", "Soldering", "Milling", "Fitting", "Pressing", "Manipulator", "Tester Cell", "Painting").</summary>
@@ -150,10 +139,10 @@ public partial class Machine
     [MaxLength(64)]
     public string Status { get; set; } = "active";
 
-    [MaxLength(64)]
+    [NotMapped]
     public string OperationalState { get; set; } = "Idle";
 
-    [MaxLength(64)]
+    [NotMapped]
     public string Criticality { get; set; } = "Tier2_Major";
 
     /// <summary>Documented user justification for decommissioning.</summary>
@@ -167,43 +156,58 @@ public partial class Machine
     public string? DecommissionDisposition { get; set; }
 
     /// <summary>List of technologies defined by this machine (e.g. ["Welding", "Robotics", "Vision"]).</summary>
-    public List<string> Technologies { get; set; } = new();
+    public List<string>? Technologies { get; set; } = new();
 
     /// <summary>Hierarchical group / line envelope identifier (legacy string).</summary>
     public string? GroupId { get; set; }
 
     /// <summary>Foreign key referencing the parent Line MachineGroup.</summary>
     public Guid? LineGroupId { get; set; }
+    [NotMapped]
     public MachineGroup? LineGroup { get; set; }
 
     /// <summary>Hierarchical parent machine ID if this station is part of a larger super-machine.</summary>
+    [NotMapped]
     public Guid? ParentMachineId { get; set; }
+    [NotMapped]
     public Machine? ParentMachine { get; set; }
 
     /// <summary>Foreign key to the active floor plan DXF/SVG.</summary>
+    [NotMapped]
     public Guid? FloorPlanId { get; set; }
 
     /// <summary>The CAD/DXF object handle for mapping this station to a spatial layout.</summary>
     public string? PinnedObjectHandle { get; set; }
 
     /// <summary>Spatial bounding box and coordinates (JSON).</summary>
+    [NotMapped]
     public string? SpatialTransformJson { get; set; }
 
     /// <summary>Automated system classification tags.</summary>
+    [NotMapped]
     public List<string> SystemTags { get; set; } = new();
 
     /// <summary>User-managed operational tags.</summary>
+    [NotMapped]
     public List<string> UserTags { get; set; } = new();
 
     /// <summary>Dynamic user custom fields (JSON).</summary>
+    [NotMapped]
     public string? CustomFieldsJson { get; set; }
 
+    [NotMapped]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    [NotMapped]
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    [NotMapped]
     public DateTimeOffset? CommissionedAt { get; set; }
+    [NotMapped]
     public DateTimeOffset? DecommissionedAt { get; set; }
+    [NotMapped]
     public DateTimeOffset? LastHeartbeatAt { get; set; }
+    [NotMapped]
     public DateTimeOffset? LastAuditAt { get; set; }
+    [NotMapped]
     public int SchemaVersion { get; set; } = 2;
 
     /// <summary>Optional identifier for dedicated preferred technician.</summary>
@@ -211,8 +215,6 @@ public partial class Machine
 
     /// <summary>Optional name of dedicated preferred technician.</summary>
     public string? PreferredTechnicianName { get; set; }
-
-    public JsonDocument? Metadata { get; set; }
 
     /// <summary>List of operational component slots installed on this machine.</summary>
     public List<MachineComponent> Components { get; set; } = new();
@@ -231,13 +233,6 @@ public partial class Machine
 
     /// <summary>Operational journal service logs.</summary>
     public List<MachineServiceLog> ServiceLogs { get; set; } = new();
-
-    /// <summary>Responsible engineering teams.</summary>
-    public List<ResponsibleTeam> ResponsibleTeams { get; set; } = new();
-
-    /// <summary>Backward compatibility accessor for legacy child inventory hierarchies.</summary>
-    [NotMapped]
-    public List<BaseInventoryItem> Children { get; set; } = new();
 }
 
 /// <summary>
@@ -1408,6 +1403,7 @@ public class MachineGroup
     public List<MachineGroupMembership> Memberships { get; set; } = new();
 
     /// <summary>Machines directly attached to this line group.</summary>
+    [NotMapped]
     public List<Machine> Machines { get; set; } = new();
 }
 

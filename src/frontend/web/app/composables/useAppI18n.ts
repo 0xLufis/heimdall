@@ -21,8 +21,9 @@ const messages: Record<SupportedLocale, any> = {
   hu: huMessages
 }
 
-// Fallback ref for environments without Nuxt useState/useCookie (e.g. Vitest unit tests)
-const fallbackLocale = ref<SupportedLocale>('en')
+// Global shared state across components
+const currentLocale = ref<SupportedLocale>('en')
+let isInitialized = false
 
 function getNestedValue(obj: any, path: string): string | undefined {
   if (!obj) return undefined
@@ -36,40 +37,26 @@ function getNestedValue(obj: any, path: string): string | undefined {
 }
 
 export function useAppI18n() {
-  const currentLocale = typeof useState !== 'undefined'
-    ? useState<SupportedLocale>('app_locale', () => {
-        if (typeof useCookie !== 'undefined') {
-          const cookie = useCookie<SupportedLocale>('heimdall_locale')
-          if (cookie.value === 'en' || cookie.value === 'hu') {
-            return cookie.value
-          }
+  if (!isInitialized && typeof window !== 'undefined') {
+    try {
+      const saved = window.localStorage?.getItem('heimdall_locale') as SupportedLocale | null
+      if (saved && (saved === 'en' || saved === 'hu')) {
+        currentLocale.value = saved
+      } else {
+        const browserLang = navigator.language?.toLowerCase()
+        if (browserLang && browserLang.startsWith('hu')) {
+          currentLocale.value = 'hu'
         }
-        if (typeof useRequestHeaders !== 'undefined') {
-          try {
-            const headers = useRequestHeaders(['accept-language'])
-            const acceptLang = headers['accept-language']?.toLowerCase()
-            if (acceptLang && (acceptLang.startsWith('hu') || acceptLang.includes(',hu') || acceptLang.includes('hu-hu'))) {
-              return 'hu'
-            }
-          } catch {}
-        }
-        return 'en'
-      })
-    : fallbackLocale
+      }
+    } catch {
+      // Safe fallback when localStorage is restricted or in test environments
+    }
+    isInitialized = true
+  }
 
   const setLocale = (locale: SupportedLocale) => {
     if (locale !== 'en' && locale !== 'hu') return
     currentLocale.value = locale
-    fallbackLocale.value = locale
-
-    if (typeof useCookie !== 'undefined') {
-      const cookie = useCookie<SupportedLocale>('heimdall_locale', {
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 31536000
-      })
-      cookie.value = locale
-    }
 
     if (typeof window !== 'undefined') {
       try {

@@ -52,7 +52,6 @@ export interface KeyLookupSuggestion {
   description?: string
   sourceTable?: string
   count?: number
-  indicators?: Array<{ label: string; color: string }>
 }
 
 export interface SearchGroup {

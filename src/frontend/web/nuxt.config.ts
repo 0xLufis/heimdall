@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import tailwindcss from '@tailwindcss/vite'
+import { resolveModuleFlagsFromEnv, parseEnvBoolean } from './app/utils/moduleFlags'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -75,20 +76,20 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL,
-    enableDevFeatures: process.env.HEIMDALL_ENABLE_DEV === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
-    enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true',
-    enableSimulation: process.env.HEIMDALL_ENABLE_SIMULATION === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false'),
-    enableTicketing: process.env.HEIMDALL_MODULE_TICKETING !== 'false',
-    enableInventory: process.env.HEIMDALL_MODULE_INVENTORY !== 'false',
-    enableTelemetry: process.env.HEIMDALL_MODULE_TELEMETRY !== 'false',
+    enableDevFeatures: parseEnvBoolean(process.env.HEIMDALL_ENABLE_DEV) ?? (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
+    enableDebugFeatures: parseEnvBoolean(process.env.HEIMDALL_ENABLE_DEBUG) ?? parseEnvBoolean(process.env.HEIMDALL_DEBUG) ?? false,
+    enableSimulation: parseEnvBoolean(process.env.HEIMDALL_ENABLE_SIMULATION) ?? (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false'),
+    enableTicketing: resolveModuleFlagsFromEnv(process.env).enableTicketing,
+    enableInventory: resolveModuleFlagsFromEnv(process.env).enableInventory,
+    enableTelemetry: resolveModuleFlagsFromEnv(process.env).enableTelemetry,
     public: {
-      signalrHubUrl: process.env.SIGNALR_HUB_URL || '',
-      enableDevFeatures: process.env.HEIMDALL_ENABLE_DEV === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
-      enableDebugFeatures: process.env.HEIMDALL_ENABLE_DEBUG === 'true' || process.env.HEIMDALL_DEBUG === 'true',
-      enableSimulation: process.env.HEIMDALL_ENABLE_SIMULATION === 'true' || (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false'),
-      enableTicketing: process.env.HEIMDALL_MODULE_TICKETING !== 'false',
-      enableInventory: process.env.HEIMDALL_MODULE_INVENTORY !== 'false',
-      enableTelemetry: process.env.HEIMDALL_MODULE_TELEMETRY !== 'false'
+      signalrHubUrl: process.env.SIGNALR_HUB_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5099/hubs/maintenance' : '/hubs/maintenance'),
+      enableDevFeatures: parseEnvBoolean(process.env.HEIMDALL_ENABLE_DEV) ?? (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_DEV !== 'false'),
+      enableDebugFeatures: parseEnvBoolean(process.env.HEIMDALL_ENABLE_DEBUG) ?? parseEnvBoolean(process.env.HEIMDALL_DEBUG) ?? false,
+      enableSimulation: parseEnvBoolean(process.env.HEIMDALL_ENABLE_SIMULATION) ?? (process.env.NODE_ENV !== 'production' && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false'),
+      enableTicketing: resolveModuleFlagsFromEnv(process.env).enableTicketing,
+      enableInventory: resolveModuleFlagsFromEnv(process.env).enableInventory,
+      enableTelemetry: resolveModuleFlagsFromEnv(process.env).enableTelemetry
     }
   },
   nitro: {
@@ -100,7 +101,7 @@ export default defineNuxtConfig({
     routeRules: {
       '/**': {
         headers: {
-          'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss: http: https:;",
+          'Content-Security-Policy': "default-src 'self'; frame-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss: http: https:;",
           'X-Content-Type-Options': 'nosniff',
           'X-Frame-Options': 'SAMEORIGIN',
           'Referrer-Policy': 'strict-origin-when-cross-origin'

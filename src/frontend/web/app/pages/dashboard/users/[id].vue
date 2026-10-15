@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { toast } from 'vue-sonner'
 import { authClient } from '~/utils/auth-client'
 import {
   ChevronRight,
@@ -70,16 +71,16 @@ async function fetchUserSessions() {
 }
 
 async function handleRevokeSession(id: string) {
-  if (!confirm('Revoke this session? The user will be signed out on that device.')) return
   try {
     const { error: revokeError } = await authClient.admin.revokeUserSession({
       userId,
       sessionId: id
     })
     if (revokeError) throw revokeError
+    toast.success('User session revoked successfully')
     await fetchUserSessions()
   } catch (e: any) {
-    alert(e.message || 'Failed to revoke session')
+    toast.error(e.message || 'Failed to revoke session')
   }
 }
 
@@ -89,24 +90,25 @@ async function handleImpersonate() {
       userId
     })
     if (impError) throw impError
+    toast.info('Starting user impersonation session...')
     navigateTo('/dashboard')
   } catch (e: any) {
-    alert(e.message || 'Failed to impersonate')
+    toast.error(e.message || 'Failed to impersonate user')
   }
 }
 
 async function handleBan() {
-  const reason = prompt('Reason for account suspension:')
-  if (reason === null) return
+  const reason = 'Administrative suspension via User Profile Console'
   try {
     const { error: banError } = await authClient.admin.banUser({
       userId,
       banReason: reason
     })
     if (banError) throw banError
+    toast.success('Account suspended successfully')
     await fetchUserDetails()
   } catch (e: any) {
-    alert(e.message || 'Failed to suspend account')
+    toast.error(e.message || 'Failed to suspend account')
   }
 }
 

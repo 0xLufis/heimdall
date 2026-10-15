@@ -25,13 +25,15 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
         const configuredUrl = config?.public?.signalrHubUrl as string | undefined
         if (configuredUrl) {
           this.hubUrl = configuredUrl
-        } else if (window.location.port === '3000') {
-          this.hubUrl = `${window.location.protocol}//${window.location.hostname}:5099/hubs/maintenance`
+        } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          this.hubUrl = 'http://localhost:5099/hubs/maintenance'
         } else {
           this.hubUrl = '/hubs/maintenance'
         }
       } catch {
-        this.hubUrl = '/hubs/maintenance'
+        this.hubUrl = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+          ? 'http://localhost:5099/hubs/maintenance'
+          : '/hubs/maintenance'
       }
     }
     this.initSignalR()
@@ -45,7 +47,16 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
       this.hubConnection = new HubConnectionBuilder()
         .withUrl(this.hubUrl, {
           transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling,
-          withCredentials: true
+          withCredentials: true,
+          accessTokenFactory: () => {
+            if (typeof document !== 'undefined') {
+              const match = document.cookie.match(/(?:^|;\s*)better-auth\.session_token=([^;]+)/)
+              if (match) {
+                return decodeURIComponent(match[1])
+              }
+            }
+            return ''
+          }
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
         .configureLogging(LogLevel.Warning)

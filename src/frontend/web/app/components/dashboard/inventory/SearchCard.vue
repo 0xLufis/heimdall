@@ -97,7 +97,7 @@ function removeCondition(index: number) {
     
     <div class="flex items-center gap-3 mt-4 pt-4 border-t border-border">
       <Button @click="addCondition" variant="outline" size="sm" class="text-xs font-bold uppercase tracking-wider border-border bg-card text-foreground hover:bg-muted">
-        <PlusIcon class="h-4 w-4 mr-2" /> {{ $t('common.add') }} {{ $t('common.filter') }}
+        <PlusIcon class="h-4 w-4 mr-2" /> Add Filter
       </Button>
     </div>
   </Card>

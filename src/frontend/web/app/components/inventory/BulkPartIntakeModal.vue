@@ -21,6 +21,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:open', val: boolean): void
   (e: 'bulkLogged', parts: Array<Partial<InventoryPart>>): void
+  (e: 'intake', parts: Array<Partial<InventoryPart>>): void
 }>()
 
 const activeMode = ref<'visual' | 'json'>('visual')
@@ -134,12 +135,14 @@ const handleVisualSubmit = () => {
   }))
 
   emit('bulkLogged', parts)
+  emit('intake', parts)
   emit('update:open', false)
 }
 
 const handleJsonSubmit = () => {
   if (jsonError.value || parsedJsonPreview.value.length === 0) return
   emit('bulkLogged', parsedJsonPreview.value)
+  emit('intake', parsedJsonPreview.value)
   emit('update:open', false)
 }
 </script>
@@ -209,7 +212,7 @@ const handleJsonSubmit = () => {
               class="h-7 text-xs gap-1 cursor-pointer"
             >
               <Plus class="size-3" />
-              <span>{{ $t('common.addRow') }}</span>
+              <span>Add Row</span>
             </Button>
           </div>
 
@@ -309,7 +312,7 @@ const handleJsonSubmit = () => {
           @click="emit('update:open', false)"
           class="text-xs h-8 cursor-pointer"
         >
-          {{ $t('common.cancel') }}
+          Cancel
         </Button>
         <Button
           type="button"
@@ -319,7 +322,7 @@ const handleJsonSubmit = () => {
           class="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-8 gap-1.5 cursor-pointer disabled:opacity-50"
         >
           <CheckCircle2 class="size-3.5" />
-          <span>{{ $t('inventory.confirmBulkIntake') }} ({{ activeMode === 'visual' ? visualRows.length : parsedJsonPreview.length }})</span>
+          <span>Confirm Bulk Intake ({{ activeMode === 'visual' ? visualRows.length : parsedJsonPreview.length }})</span>
         </Button>
       </div>
     </div>

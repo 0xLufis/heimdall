@@ -1,4 +1,7 @@
 import { createError } from 'h3'
+import { resolveModuleFlagsFromEnv, parseEnvBoolean } from '../../app/utils/moduleFlags'
+
+export { resolveModuleFlagsFromEnv, parseEnvBoolean }
 
 export interface ServerFeatureFlags {
   enableDevFeatures: boolean
@@ -14,33 +17,30 @@ export interface ServerFeatureFlags {
  * - enableDevFeatures: Enabled if HEIMDALL_ENABLE_DEV === 'true' or NODE_ENV !== 'production'. In production, default is false.
  * - enableDebugFeatures: Enabled if HEIMDALL_ENABLE_DEBUG === 'true' or HEIMDALL_DEBUG === 'true'. In production, default is false.
  * - enableSimulation: Enabled if HEIMDALL_ENABLE_SIMULATION === 'true' or (!isProduction && enableDevFeatures && HEIMDALL_ENABLE_SIMULATION !== 'false').
- * - enableTicketing: Enabled unless HEIMDALL_MODULE_TICKETING === 'false'.
- * - enableInventory: Enabled unless HEIMDALL_MODULE_INVENTORY === 'false'.
- * - enableTelemetry: Enabled unless HEIMDALL_MODULE_TELEMETRY === 'false'.
+ * - enableTicketing, enableInventory, enableTelemetry: Resolved from env variables, presets, inclusion/exclusion lists, or defaults.
  */
 export function getFeatureFlags(): ServerFeatureFlags {
   const isProduction = process.env.NODE_ENV === 'production'
   const enableDevFeatures =
-    process.env.HEIMDALL_ENABLE_DEV === 'true' ||
+    parseEnvBoolean(process.env.HEIMDALL_ENABLE_DEV) ??
     (!isProduction && process.env.HEIMDALL_ENABLE_DEV !== 'false')
   const enableDebugFeatures =
-    process.env.HEIMDALL_ENABLE_DEBUG === 'true' ||
-    process.env.HEIMDALL_DEBUG === 'true'
+    parseEnvBoolean(process.env.HEIMDALL_ENABLE_DEBUG) ??
+    parseEnvBoolean(process.env.HEIMDALL_DEBUG) ??
+    false
   const enableSimulation =
-    process.env.HEIMDALL_ENABLE_SIMULATION === 'true' ||
+    parseEnvBoolean(process.env.HEIMDALL_ENABLE_SIMULATION) ??
     (enableDevFeatures && process.env.HEIMDALL_ENABLE_SIMULATION !== 'false')
 
-  const enableTicketing = process.env.HEIMDALL_MODULE_TICKETING !== 'false'
-  const enableInventory = process.env.HEIMDALL_MODULE_INVENTORY !== 'false'
-  const enableTelemetry = process.env.HEIMDALL_MODULE_TELEMETRY !== 'false'
+  const moduleFlags = resolveModuleFlagsFromEnv(process.env as any)
 
   return {
     enableDevFeatures,
     enableDebugFeatures,
     enableSimulation,
-    enableTicketing,
-    enableInventory,
-    enableTelemetry
+    enableTicketing: moduleFlags.enableTicketing,
+    enableInventory: moduleFlags.enableInventory,
+    enableTelemetry: moduleFlags.enableTelemetry
   }
 }
 

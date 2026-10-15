@@ -297,8 +297,8 @@ function handleClose() {
 </script>
 
 <template>
-  <div v-if="open" role="dialog" aria-modal="true" class="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+  <div v-if="open" role="dialog" aria-modal="true" class="w-full my-4 animate-in fade-in duration-200">
+    <div class="bg-card border border-border rounded-3xl shadow-xl w-full max-w-3xl mx-auto overflow-hidden">
       
       <!-- Header -->
       <div class="p-6 border-b border-border flex items-center justify-between bg-muted/40">
@@ -615,10 +615,10 @@ function handleClose() {
           </div>
           <button
             type="button"
-            class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded bg-indigo-600 hover:bg-indigo-500 text-white transition cursor-pointer"
+            class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded bg-indigo-600 hover:bg-indigo-500 text-white transition"
             @click="useSuggestedTechnician"
           >
-            {{ $t('tickets.assign') }}
+            Assign
           </button>
         </div>
 
@@ -653,16 +653,16 @@ function handleClose() {
 
       <!-- Footer -->
       <div class="p-6 border-t border-border bg-muted/40 flex items-center justify-end gap-3">
-        <Button variant="ghost" @click="handleClose" class="text-xs font-black uppercase text-muted-foreground hover:text-foreground rounded-xl cursor-pointer">
-          {{ $t('common.cancel') }}
+        <Button variant="ghost" @click="handleClose" class="text-xs font-black uppercase text-muted-foreground hover:text-foreground rounded-xl">
+          Cancel
         </Button>
         <Button
           @click="handleSubmit"
           :disabled="isSubmitting"
-          class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase tracking-widest px-6 cursor-pointer"
+          class="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-black uppercase tracking-widest px-6"
         >
-          <span v-if="!isSubmitting">{{ $t('tickets.submitTicket') }}</span>
-          <span v-else>{{ $t('tickets.submitting') }}</span>
+          <span v-if="!isSubmitting">Submit Ticket</span>
+          <span v-else>Submitting...</span>
         </Button>
       </div>
 

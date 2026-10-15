@@ -7,7 +7,6 @@ import FleetAnalyticsSummary, { type FleetSummaryData } from '~/components/analy
 import TelemetryTrendVisualizer from '~/components/analytics/TelemetryTrendVisualizer.vue'
 import KpiGraphBuilder from '~/components/analytics/KpiGraphBuilder.vue'
 import AlertRulesManager from '~/components/analytics/AlertRulesManager.vue'
-import AuditLogsVisualizer from '~/components/analytics/AuditLogsVisualizer.vue'
 import { useAlertRules } from '~/composables/useAlertRules'
 import {
   Activity,
@@ -15,8 +14,7 @@ import {
   Sliders,
   Sparkles,
   RefreshCw,
-  Bell,
-  History
+  Bell
 } from 'lucide-vue-next'
 
 definePageMeta({
@@ -25,7 +23,7 @@ definePageMeta({
 
 const router = useRouter()
 const { activeAlertsCount } = useAlertRules()
-type AnalyticsTab = 'overview' | 'rules-alerts' | 'predictive' | 'builder' | 'audit-logs'
+type AnalyticsTab = 'overview' | 'rules-alerts' | 'predictive' | 'builder'
 const activeTab = ref<AnalyticsTab>('overview')
 const isLoading = ref(false)
 
@@ -62,24 +60,24 @@ onMounted(() => {
 <template>
   <div class="space-y-6 pb-12">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-card border border-border shadow-xs text-foreground">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-sm">
       <div class="space-y-1">
         <div
           role="button"
           tabindex="0"
           @click="resetAnalyticsView"
           @keydown.enter="resetAnalyticsView"
-          class="flex items-center gap-2.5 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-muted/60"
+          class="flex items-center gap-2.5 cursor-pointer select-none group p-1 -m-1 rounded-xl transition-all hover:bg-zinc-800/60"
         >
-          <div class="p-2 rounded-lg bg-muted border border-border text-foreground group-hover:scale-105 transition-all">
-            <BarChart3 class="w-5 h-5 text-primary" />
+          <div class="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 group-hover:scale-105 group-hover:bg-zinc-700 transition-all">
+            <BarChart3 class="w-5 h-5" />
           </div>
           <div>
-            <h2 class="text-lg font-bold text-foreground transition-colors">
+            <h2 class="text-lg font-bold text-zinc-100 group-hover:text-white transition-colors">
               Fleet Analytics
             </h2>
-            <p class="text-xs text-muted-foreground transition-colors">
-              Machine degradation modeling, anomaly detection, compliance audits, and custom KPIs.
+            <p class="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
+              Machine degradation modeling, anomaly detection, and custom KPIs.
             </p>
           </div>
         </div>
@@ -90,7 +88,7 @@ onMounted(() => {
           variant="outline"
           size="sm"
           @click="fetchFleetSummary"
-          class="text-xs h-9"
+          class="border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white text-xs h-9"
         >
           <RefreshCw :class="{ 'animate-spin': isLoading }" class="w-3.5 h-3.5 mr-1.5" />
           <span>Refresh</span>
@@ -99,11 +97,11 @@ onMounted(() => {
     </div>
 
     <!-- Navigation Tabs -->
-    <div class="flex items-center bg-muted/50 p-1 rounded-xl border border-border text-xs font-medium overflow-x-auto gap-1">
+    <div class="flex items-center bg-zinc-950 p-1 rounded-xl border border-zinc-800 text-xs font-medium overflow-x-auto">
       <button
         type="button"
         @click="activeTab = 'overview'"
-        :class="activeTab === 'overview' ? 'bg-background text-foreground shadow-xs border border-border font-bold' : 'text-muted-foreground hover:text-foreground'"
+        :class="activeTab === 'overview' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
         class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Activity class="w-4 h-4" />
@@ -113,7 +111,7 @@ onMounted(() => {
       <button
         type="button"
         @click="activeTab = 'rules-alerts'"
-        :class="activeTab === 'rules-alerts' ? 'bg-background text-foreground shadow-xs border border-border font-bold' : 'text-muted-foreground hover:text-foreground'"
+        :class="activeTab === 'rules-alerts' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
         class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Bell class="w-4 h-4" />
@@ -126,7 +124,7 @@ onMounted(() => {
       <button
         type="button"
         @click="activeTab = 'predictive'"
-        :class="activeTab === 'predictive' ? 'bg-background text-foreground shadow-xs border border-border font-bold' : 'text-muted-foreground hover:text-foreground'"
+        :class="activeTab === 'predictive' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
         class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Sparkles class="w-4 h-4" />
@@ -136,28 +134,18 @@ onMounted(() => {
       <button
         type="button"
         @click="activeTab = 'builder'"
-        :class="activeTab === 'builder' ? 'bg-background text-foreground shadow-xs border border-border font-bold' : 'text-muted-foreground hover:text-foreground'"
+        :class="activeTab === 'builder' ? 'bg-zinc-700 text-white shadow-sm border border-zinc-600/50' : 'text-zinc-400 hover:text-zinc-200'"
         class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
       >
         <Sliders class="w-4 h-4" />
         <span>KPI Builder</span>
       </button>
-
-      <button
-        type="button"
-        @click="activeTab = 'audit-logs'"
-        :class="activeTab === 'audit-logs' ? 'bg-background text-foreground shadow-xs border border-border font-bold' : 'text-muted-foreground hover:text-foreground'"
-        class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
-      >
-        <History class="w-4 h-4" />
-        <span>Audit Logs</span>
-      </button>
     </div>
 
     <template v-if="activeTab === 'overview'">
       <FleetAnalyticsSummary v-if="summaryData" :summary="summaryData" />
-      <div v-else-if="isLoading" class="text-muted-foreground text-sm text-center py-16">Loading fleet summary...</div>
-      <div v-else class="text-muted-foreground text-sm text-center py-16">Fleet summary unavailable.</div>
+      <div v-else-if="isLoading" class="text-zinc-500 text-sm text-center py-16">Loading fleet summary...</div>
+      <div v-else class="text-zinc-500 text-sm text-center py-16">Fleet summary unavailable.</div>
     </template>
 
     <template v-else-if="activeTab === 'rules-alerts'">
@@ -170,10 +158,6 @@ onMounted(() => {
 
     <template v-else-if="activeTab === 'builder'">
       <KpiGraphBuilder />
-    </template>
-
-    <template v-else-if="activeTab === 'audit-logs'">
-      <AuditLogsVisualizer />
     </template>
   </div>
 </template>

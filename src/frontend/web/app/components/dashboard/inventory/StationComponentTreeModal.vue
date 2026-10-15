@@ -151,50 +151,16 @@ const fetchTreeData = async (id: string) => {
     loading.value = false
   }
 
-  // Graceful visual mock if both endpoints fail
-  const stationObj = stationsList.value.find(s => s.id === id) || { name: 'OP10-Load', groupId: 'Line 1', machineType: 'Assembly' }
+  // If both endpoints return no data, set empty topology
+  const stationObj = stationsList.value.find(s => s.id === id) || { name: 'Station ' + id, groupId: 'Line 1', machineType: 'Assembly' }
   treeData.value = {
     stationId: id,
     stationName: stationObj.name,
     displayName: stationObj.displayName || stationObj.name,
     lineName: stationObj.groupId || 'Line 1',
     technology: stationObj.machineType || 'Assembly',
-    controllers: [
-      {
-        id: 'ctrl-101',
-        hostname: `IPC-${stationObj.name}`,
-        ipAddress: '192.168.1.110',
-        macAddress: '00:1B:44:11:3A:B7',
-        isOnline: true,
-        hardware: [
-          { id: 'hw-cpu', name: 'Intel Core i7-11700E', type: 'CPU' },
-          { id: 'hw-ram', name: '32GB DDR4 ECC Memory', type: 'RAM' },
-          { id: 'hw-nic', name: 'Intel I210 Dual GbE NIC', type: 'NIC' }
-        ]
-      }
-    ],
-    parts: [
-      {
-        id: 'part-01',
-        name: 'Spindle Motor Assembly 15kW',
-        serialNumber: 'SN-SPINDLE-994',
-        equipmentStatus: 'InMachine',
-        technology: 'Assembly',
-        storageLocation: `${stationObj.name} Spindle Mount 1`,
-        manufacturer: 'Siemens',
-        costInHUF: 1850000
-      },
-      {
-        id: 'part-02',
-        name: 'Coolant Flow Sensor IO-Link',
-        serialNumber: 'SN-SENSOR-441',
-        equipmentStatus: 'InMachine',
-        technology: 'Assembly',
-        storageLocation: `${stationObj.name} Feed Pipe`,
-        manufacturer: 'IFM Electronic',
-        costInHUF: 320000
-      }
-    ]
+    controllers: [],
+    parts: []
   }
   expandAll()
 }
@@ -337,7 +303,7 @@ const getAttachedComponentsForPart = (part: any) => {
               @click="expandAll"
               class="h-8 px-2.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted text-[9px] font-black uppercase tracking-wider rounded-lg"
             >
-              {{ $t('common.expandAll') }}
+              Expand All
             </Button>
             <Button
               variant="outline"
@@ -345,7 +311,7 @@ const getAttachedComponentsForPart = (part: any) => {
               @click="collapseAll"
               class="h-8 px-2.5 border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted text-[9px] font-black uppercase tracking-wider rounded-lg"
             >
-              {{ $t('common.collapseAll') }}
+              Collapse All
             </Button>
           </div>
         </div>
@@ -561,7 +527,7 @@ const getAttachedComponentsForPart = (part: any) => {
                             @click="togglePayload(childHw.id || childHw.name)"
                             class="text-[8px] font-mono text-primary hover:underline underline-offset-2 ml-1"
                           >
-                            {{ expandedPayloads[childHw.id || childHw.name] ? $t('common.hide') : $t('common.data') }}
+                            {{ expandedPayloads[childHw.id || childHw.name] ? 'Hide' : 'Data' }}
                           </button>
                         </div>
                       </div>

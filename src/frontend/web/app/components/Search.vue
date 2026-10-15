@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
-import { cn } from '~/lib/utils'
 import { useGlobalSearchModal } from '~/composables/useGlobalSearchModal'
 import { useShortcuts } from '~/composables/useShortcuts'
 import { defineShortcuts } from '~/composables/defineShortcuts'
-import { useAppI18n } from '~/composables/useAppI18n'
 
 /**
  * Confluence-style Quick Search Launcher.
@@ -15,10 +12,9 @@ const props = withDefaults(
   defineProps<{
     placeholder?: string
     immediate?: boolean
-    class?: HTMLAttributes['class']
   }>(),
   {
-    placeholder: undefined
+    placeholder: 'Search or jump to...'
   }
 )
 
@@ -26,11 +22,8 @@ const emit = defineEmits<{
   search: [query: string]
 }>()
 
-const { t } = useAppI18n()
 const { metaSymbol } = useShortcuts()
 const { triggerSearch } = useGlobalSearchModal()
-
-const displayPlaceholder = computed(() => props.placeholder || t('common.searchOrJump', 'Search or jump to...'))
 
 defineShortcuts({
   Meta_K: () => triggerSearch(),
@@ -39,12 +32,12 @@ defineShortcuts({
 </script>
 
 <template>
-  <div :class="cn('w-full px-2 py-1', props.class)">
+  <div class="w-full px-2 py-1">
     <button
       type="button"
       class="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground bg-muted/40 hover:bg-muted/70 hover:text-foreground border border-border/60 rounded-xl transition-all duration-150 cursor-pointer group shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-      :title="t('common.openGlobalSearch', 'Open Global Search') + ' (⌘K)'"
-      :aria-label="t('common.openGlobalSearch', 'Open Global Search')"
+      title="Open Global Search (⌘K)"
+      aria-label="Open Global Search"
       @click="triggerSearch"
     >
       <div class="flex items-center gap-2.5 overflow-hidden">
@@ -53,7 +46,7 @@ defineShortcuts({
           class="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
         />
         <span class="truncate text-xs font-normal">
-          {{ displayPlaceholder }}
+          {{ placeholder }}
         </span>
       </div>
 

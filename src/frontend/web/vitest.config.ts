@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@vue/test-utils': path.resolve(__dirname, './node_modules/@vue/test-utils'),
+      vue: path.resolve(__dirname, './node_modules/vue'),
       '~': path.resolve(__dirname, './app'),
       '@': path.resolve(__dirname, './app'),
       '~~': path.resolve(__dirname, '.'),
@@ -20,7 +21,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: [path.resolve(__dirname, './vitest.setup.ts')],
     include: ['tests/**/*.test.ts', '../../../tests/frontend/unit/**/*.test.ts'],
   },
 })

@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button'
 import RbacButton from '~/components/common/RbacButton.vue'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { toast } from 'vue-sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
@@ -296,8 +297,9 @@ async function saveFleetPolicy() {
     })
     saveSuccess.value = true
     setTimeout(() => { saveSuccess.value = false }, 3000)
+    toast.success('Telemetry policy saved successfully')
   } catch (err: any) {
-    alert(err?.message || 'Failed to save policy')
+    toast.error(err?.message || 'Failed to save policy')
   } finally {
     isSavingPolicy.value = false
   }
@@ -365,7 +367,7 @@ function removeOuPatternFromForm(idx: number) {
 
 function saveRuleModal() {
   if (!newRuleForm.value.name.trim()) {
-    alert('Please enter a rule name.')
+    toast.error('Please enter a rule name.')
     return
   }
 
@@ -389,10 +391,9 @@ function saveRuleModal() {
 }
 
 function deleteRule(ruleId: string) {
-  if (confirm('Are you sure you want to delete this rule?')) {
-    fleetPolicy.value.ouTagRules = (fleetPolicy.value.ouTagRules || []).filter(r => r.id !== ruleId)
-    saveFleetPolicy()
-  }
+  fleetPolicy.value.ouTagRules = (fleetPolicy.value.ouTagRules || []).filter(r => r.id !== ruleId)
+  saveFleetPolicy()
+  toast.success('Rule deleted successfully')
 }
 
 function moveRulePriority(idx: number, direction: 'up' | 'down') {
@@ -507,10 +508,10 @@ async function dispatchConfigToHost(controller: any, silent: boolean = false) {
         template: template?.name || 'Standard Baseline'
       })
     } else if (!silent) {
-      alert(res.error || 'Failed to dispatch configuration')
+      toast.error(res?.error || 'Failed to dispatch configuration')
     }
   } catch (err: any) {
-    if (!silent) alert(err?.message || 'Error communicating with backend')
+    if (!silent) toast.error(err?.message || 'Error communicating with backend')
   } finally {
     if (!silent) dispatchingHostId.value = null
   }
@@ -1243,12 +1244,12 @@ async function pushToAllHosts() {
       </CardContent>
     </Card>
 
-    <!-- Rule Creation / Editing Modal -->
+    <!-- Rule Creation / Editing Workbench Drawer (Zero Modal Overlays) -->
     <div
       v-if="isRuleModalOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in"
+      class="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-card border-l border-border shadow-2xl overflow-hidden space-y-5 p-6 flex flex-col justify-between animate-in slide-in-from-right duration-200"
     >
-      <div class="w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl overflow-hidden space-y-5 p-6">
+      <div class="space-y-5">
         <div class="flex items-center justify-between border-b border-border pb-4">
           <div class="flex items-center gap-2.5">
             <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">

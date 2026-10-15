@@ -8,10 +8,4 @@ export interface AppSettings {
     color?: ThemeColor
     type?: ThemeType
   }
-  ai?: {
-    enableAiImport?: boolean
-    aiApiToken?: string
-    aiProvider?: 'cloud' | 'local'
-    endpoint?: string
-  }
 }

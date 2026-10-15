@@ -9,15 +9,13 @@ import {
   ShieldIcon,
   KeyIcon,
   PaletteIcon,
-  UserCheckIcon,
-  Sliders
+  UserCheckIcon
 } from 'lucide-vue-next'
 import SettingsProfileTab from '~/components/settings/SettingsProfileTab.vue'
 import SettingsRolesTab from '~/components/settings/SettingsRolesTab.vue'
 import SettingsSecurityTab from '~/components/settings/SettingsSecurityTab.vue'
 import SettingsAppearanceTab from '~/components/settings/SettingsAppearanceTab.vue'
 import SettingsPersonasTab from '~/components/settings/SettingsPersonasTab.vue'
-import SettingsDigitalTwinTab from '~/components/settings/SettingsDigitalTwinTab.vue'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -37,10 +35,10 @@ const activeTab = ref('profile')
         </div>
         <div>
           <h1 class="text-2xl font-bold tracking-tight text-foreground">
-            {{ $t('settings.title', 'User Settings & Preferences') }}
+            User Settings &amp; Preferences
           </h1>
           <p class="text-sm text-muted-foreground mt-0.5">
-            {{ $t('settings.description', 'Manage your account profile, role capabilities, security credentials, and workspace appearance') }}
+            Manage your account profile, role capabilities, security credentials, and workspace appearance
           </p>
         </div>
       </div>
@@ -58,33 +56,25 @@ const activeTab = ref('profile')
       <TabsList class="grid grid-cols-2 md:grid-cols-5 gap-2 bg-muted/60 p-1 rounded-xl border border-border h-auto">
         <TabsTrigger value="profile" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors cursor-pointer">
           <UserIcon class="h-4 w-4" />
-          <span>{{ $t('settings.profile', 'Profile') }}</span>
+          <span>Profile</span>
         </TabsTrigger>
         <TabsTrigger value="roles" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors cursor-pointer">
           <ShieldIcon class="h-4 w-4" />
-          <span>{{ $t('settings.roles', 'Roles & Scopes') }}</span>
+          <span>Roles &amp; Scopes</span>
         </TabsTrigger>
         <TabsTrigger value="security" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors cursor-pointer">
           <KeyIcon class="h-4 w-4" />
-          <span>{{ $t('settings.security', 'Security & API') }}</span>
+          <span>Security &amp; API</span>
         </TabsTrigger>
         <TabsTrigger value="appearance" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors cursor-pointer">
           <PaletteIcon class="h-4 w-4" />
-          <span>{{ $t('settings.appearance', 'Appearance') }}</span>
-        </TabsTrigger>
-        <TabsTrigger value="digital-twin" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-teal-600 data-[state=active]:text-white transition-colors cursor-pointer">
-          <Sliders class="h-4 w-4" />
-          <span>Digital Twin Studio</span>
+          <span>Appearance</span>
         </TabsTrigger>
         <TabsTrigger v-if="isPersonaSimulationAllowed" value="personas" class="flex items-center gap-2 text-xs font-medium py-2 rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-colors cursor-pointer">
           <UserCheckIcon class="h-4 w-4" />
-          <span>{{ $t('settings.personas', 'Personas') }}</span>
+          <span>Personas</span>
         </TabsTrigger>
       </TabsList>
-
-      <TabsContent value="digital-twin" class="space-y-6">
-        <SettingsDigitalTwinTab />
-      </TabsContent>
 
       <TabsContent value="profile" class="space-y-6">
         <SettingsProfileTab />

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useSidebar } from '~/components/ui/sidebar'
 import { useAuthSession } from '~/composables/useAuthSession'
-import { useAppI18n } from '~/composables/useAppI18n'
 import RoleBadge from '~/components/dashboard/RoleBadge.vue'
 
 defineProps<{
@@ -25,7 +24,6 @@ const {
   DEMO_PERSONAS
 } = useAuthSession()
 
-const { t } = useAppI18n()
 const colorMode = useColorMode()
 
 async function handleLogout() {
@@ -87,7 +85,7 @@ async function handleLogout() {
             <DropdownMenuItem as-child>
               <NuxtLink to="/dashboard/settings" @click="setOpenMobile(false)" class="flex items-center gap-2 cursor-pointer">
                 <Icon name="i-lucide-settings" class="h-4 w-4 text-primary" />
-                <span class="font-medium">{{ t('nav.userSettings', 'User Settings') }}</span>
+                <span class="font-medium">User Settings</span>
               </NuxtLink>
             </DropdownMenuItem>
 
@@ -95,22 +93,22 @@ async function handleLogout() {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger class="flex items-center gap-2 cursor-pointer">
                 <Icon name="i-lucide-palette" class="h-4 w-4 text-purple-400" />
-                <span>{{ t('settings.theme', 'Theme') }}: <strong class="capitalize font-semibold">{{ colorMode.preference }}</strong></span>
+                <span>Theme: <strong class="capitalize font-semibold">{{ colorMode.preference }}</strong></span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent class="min-w-36">
                 <DropdownMenuItem @click="colorMode.preference = 'light'" class="flex items-center gap-2 cursor-pointer">
                   <Icon name="i-lucide-sun" class="h-4 w-4 text-amber-500" />
-                  <span>{{ t('settings.light', 'Light') }}</span>
+                  <span>Light</span>
                   <Icon v-if="colorMode.preference === 'light'" name="i-lucide-check" class="ml-auto h-3.5 w-3.5 text-primary" />
                 </DropdownMenuItem>
                 <DropdownMenuItem @click="colorMode.preference = 'dark'" class="flex items-center gap-2 cursor-pointer">
                   <Icon name="i-lucide-moon" class="h-4 w-4 text-indigo-400" />
-                  <span>{{ t('settings.dark', 'Dark') }}</span>
+                  <span>Dark</span>
                   <Icon v-if="colorMode.preference === 'dark'" name="i-lucide-check" class="ml-auto h-3.5 w-3.5 text-primary" />
                 </DropdownMenuItem>
                 <DropdownMenuItem @click="colorMode.preference = 'system'" class="flex items-center gap-2 cursor-pointer">
                   <Icon name="i-lucide-monitor" class="h-4 w-4 text-muted-foreground" />
-                  <span>{{ t('settings.system', 'System') }}</span>
+                  <span>System</span>
                   <Icon v-if="colorMode.preference === 'system'" name="i-lucide-check" class="ml-auto h-3.5 w-3.5 text-primary" />
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
@@ -120,11 +118,11 @@ async function handleLogout() {
             <DropdownMenuSub v-if="isPersonaSimulationAllowed">
               <DropdownMenuSubTrigger class="flex items-center gap-2 cursor-pointer">
                 <Icon name="i-lucide-user-check" class="h-4 w-4 text-cyan-400" />
-                <span>{{ t('settings.switchPersona', 'Switch Persona') }}</span>
+                <span>Switch Persona</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent class="w-72 max-h-80 overflow-y-auto p-1">
                 <div class="px-2 py-1 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                  {{ t('settings.simulatePrivileges', 'Simulate Role Privileges') }}
+                  Simulate Role Privileges
                 </div>
                 <DropdownMenuItem 
                   v-for="p in DEMO_PERSONAS" 
@@ -143,7 +141,7 @@ async function handleLogout() {
                   :disabled="!simulatedPersona"
                 >
                   <Icon name="i-lucide-rotate-ccw" class="h-3.5 w-3.5" />
-                  <span>{{ t('settings.resetToRealUser', 'Reset to Real User') }}</span>
+                  <span>Reset to Real User</span>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
@@ -153,7 +151,7 @@ async function handleLogout() {
 
           <DropdownMenuItem @click="handleLogout" class="text-destructive focus:bg-destructive focus:text-destructive-foreground flex items-center gap-2 cursor-pointer">
             <Icon name="i-lucide-log-out" class="h-4 w-4" />
-            <span>{{ t('auth.logout', 'Log out') }}</span>
+            <span>Log out</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

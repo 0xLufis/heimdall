@@ -32,10 +32,8 @@ import {
   ClockIcon,
   KeyRoundIcon,
   GitBranchIcon,
-  CloudIcon,
-  BotIcon
+  CloudIcon
 } from 'lucide-vue-next'
-import { useAppSettings } from '~/composables/useAppSettings'
 
 const { user, userRole } = useAuthSession()
 
@@ -536,29 +534,6 @@ watch(() => userRole.value, () => {
   evaluateUserMfaPolicy()
 })
 
-// AI API & Automated Document Import Governance
-const { ai, updateAppSettings } = useAppSettings()
-const aiTokenDraft = ref(ai.value?.aiApiToken || '')
-const aiEnableDraft = ref(ai.value?.enableAiImport || false)
-const aiProviderDraft = ref<'cloud' | 'local'>(ai.value?.aiProvider || 'cloud')
-const aiSavedMessage = ref('')
-
-const handleSaveAiSettings = () => {
-  const token = aiTokenDraft.value.trim()
-  const enabled = aiEnableDraft.value && Boolean(token)
-  updateAppSettings({
-    ai: {
-      enableAiImport: enabled,
-      aiApiToken: token,
-      aiProvider: aiProviderDraft.value
-    }
-  })
-  aiSavedMessage.value = 'AI settings updated successfully.'
-  setTimeout(() => {
-    aiSavedMessage.value = ''
-  }, 3000)
-}
-
 onMounted(() => {
   fetchSessions()
   fetchMfaStatus()
@@ -962,85 +937,6 @@ onMounted(() => {
               Remove
             </Button>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <!-- AI API & Automated Document Import Governance Card -->
-    <Card class="border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/15 shadow-xs">
-      <CardHeader>
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div class="space-y-1">
-            <CardTitle class="text-base flex items-center gap-2 text-foreground">
-              <BotIcon class="h-5 w-5 text-emerald-500" />
-              <span>AI Engine &amp; Automated Document Intake</span>
-            </CardTitle>
-            <CardDescription>
-              Configure local or cloud AI models for automatic invoice, technical drawing, and spare part document extraction.
-            </CardDescription>
-          </div>
-          <Badge
-            :variant="ai?.enableAiImport && ai?.aiApiToken ? 'default' : 'outline'"
-            class="self-start sm:self-center font-mono text-xs px-2.5 py-0.5 tracking-wider uppercase"
-            :class="ai?.enableAiImport && ai?.aiApiToken ? 'bg-emerald-600 text-white' : 'border-emerald-500/40 text-emerald-500 bg-emerald-500/10'"
-          >
-            {{ ai?.enableAiImport && ai?.aiApiToken ? 'AI Import Active' : 'Import Inactive' }}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <div v-if="aiSavedMessage" class="p-3 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-          <CheckCircle2Icon class="h-4 w-4 shrink-0" />
-          <span>{{ aiSavedMessage }}</span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div class="space-y-1.5">
-            <label class="font-semibold text-muted-foreground uppercase text-[11px]">AI Model Provider</label>
-            <select
-              v-model="aiProviderDraft"
-              class="w-full h-9 rounded-md border border-border bg-background px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="cloud">Cloud Provider (Gemini / OpenAI API)</option>
-              <option value="local">Local Hardware Inference (Ollama / vLLM)</option>
-            </select>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="font-semibold text-muted-foreground uppercase text-[11px] flex items-center justify-between">
-              <span>AI API Token / Secret Key</span>
-              <span class="text-[10px] text-muted-foreground">Required to enable import</span>
-            </label>
-            <Input
-              v-model="aiTokenDraft"
-              type="password"
-              placeholder="sk-... or local-secret-token"
-              class="font-mono text-xs"
-            />
-          </div>
-        </div>
-
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-border/60">
-          <div class="flex items-center gap-2">
-            <input
-              id="ai-enable-import"
-              type="checkbox"
-              v-model="aiEnableDraft"
-              :disabled="!aiTokenDraft.trim()"
-              class="rounded border-border text-emerald-600 focus:ring-emerald-500 size-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-            />
-            <label for="ai-enable-import" class="text-xs text-foreground font-medium cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': !aiTokenDraft.trim() }">
-              Enable AI Document Intake in Inventory (requires API token)
-            </label>
-          </div>
-
-          <Button
-            size="sm"
-            class="bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer px-4"
-            @click="handleSaveAiSettings"
-          >
-            Save AI Settings
-          </Button>
         </div>
       </CardContent>
     </Card>

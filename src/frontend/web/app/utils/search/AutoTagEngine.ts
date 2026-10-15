@@ -423,26 +423,7 @@ export class AutoTagEngine {
       })
     }
 
-    // Parse {modifier}{tag}#{value1},{valueN} tags
-    const hashTagRegex = /(?<=^|\s)(!|-|\+|&|\||\^|NOT|AND|OR|XOR|not|and|or|xor)?([a-zA-Z0-9_-]+)#(?:"([^"]+)"|([^\s]+))/g
-    while ((match = hashTagRegex.exec(input)) !== null) {
-      const rawMod = match[1] || ''
-      const key = match[2]
-      const rawVal = match[3] || match[4] || ''
-      const values = rawVal.split(',').map(s => s.trim()).filter(Boolean)
-      for (const val of values) {
-        tags.push({
-          id: `tag-${key}-${val}`,
-          key,
-          value: val,
-          label: `${rawMod}${key}#${val}`,
-          removable: true
-        })
-      }
-    }
-
     const remainingText = input
-      .replace(hashTagRegex, ' ')
       .replace(tagRegex, ' ')
       .replace(prefixRegex, ' ')
       .replace(/\s+/g, ' ')

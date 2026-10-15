@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { useFeatureFlags } from '~/composables/useFeatureFlags'
+import { useFeatureFlags, getAppFeatureFlags } from '~/composables/useFeatureFlags'
 import { PLATFORM_MODULE_MANIFESTS, type PlatformModuleId } from '~/types/modules'
 
 export type PluginCategory = 'core' | 'operations' | 'integration' | 'custom'
@@ -97,12 +97,12 @@ const INITIAL_BUILTIN_PLUGINS: HeimdallPlugin[] = [
     dependencies: ['core-platform', 'maintenance-ticketing']
   },
   {
-    id: 'opc-ua-gateway',
-    name: 'OPC UA Industrial Gateway',
-    version: '1.0.0',
-    description: 'Industrial machine connectivity hub for OPC UA telemetry, nodes, and subscription feeds.',
-    author: 'Heimdall Controls',
-    icon: 'i-lucide-network',
+    id: 'sap-pm-bridge',
+    name: 'SAP Plant Maintenance (PM) Connector',
+    version: '0.9.0',
+    description: 'Enterprise ERP bridge for synchronization of work orders, cost centers, and equipment masters.',
+    author: 'Enterprise ERP Labs',
+    icon: 'i-lucide-database',
     category: 'integration',
     isRequired: false,
     enabled: false,
@@ -119,8 +119,17 @@ function initPluginsState() {
   isInitialized = true
 
   const initialMap = new Map<string, HeimdallPlugin>()
+  const appFlags = getAppFeatureFlags()
   for (const p of INITIAL_BUILTIN_PLUGINS) {
-    initialMap.set(p.id, { ...p })
+    const copy = { ...p }
+    if (copy.id === 'maintenance-ticketing') {
+      copy.enabled = appFlags.enableTicketing
+    } else if (copy.id === 'inventory-assets') {
+      copy.enabled = appFlags.enableInventory
+    } else if (copy.id === 'industrial-telemetry') {
+      copy.enabled = appFlags.enableTelemetry
+    }
+    initialMap.set(copy.id, copy)
   }
 
   if (typeof window !== 'undefined') {

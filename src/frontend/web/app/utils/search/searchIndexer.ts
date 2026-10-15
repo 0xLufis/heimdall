@@ -128,96 +128,45 @@ export function getIndexedTagValues(indexTables: SearchIndexTable[], tagKey: str
 }
 
 /**
- * Checks whether a single value matches a field on the item or the table.
- */
-function itemMatchesTagValue(item: any, tagKey: string, targetVal: string, table: SearchIndexTable): boolean {
-  const normTarget = targetVal.toLowerCase().trim()
-  if (!normTarget) return false
-
-  // Handle type/entity tag
-  if (tagKey === 'type' || tagKey === 'entity' || tagKey === 'table') {
-    return (
-      table.entityType.toLowerCase() === normTarget ||
-      table.sourceId.toLowerCase() === normTarget ||
-      table.indicatorLabel.toLowerCase() === normTarget
-    )
-  }
-
-  // Handle field matching including common industrial aliases
-  const possibleKeys = [tagKey]
-  if (tagKey === 'mfr') possibleKeys.push('manufacturer')
-  else if (tagKey === 'manufacturer') possibleKeys.push('mfr')
-  else if (tagKey === 'ip') possibleKeys.push('ipAddress')
-  else if (tagKey === 'ipaddress') possibleKeys.push('ip')
-  else if (tagKey === 'mac') possibleKeys.push('macAddress')
-  else if (tagKey === 'macaddress') possibleKeys.push('mac')
-  else if (tagKey === 'serial') possibleKeys.push('serialNumber')
-  else if (tagKey === 'serialnumber') possibleKeys.push('serial')
-  else if (tagKey === 'os') possibleKeys.push('osVersion')
-  else if (tagKey === 'osversion') possibleKeys.push('os')
-  else if (tagKey === 'ticket') possibleKeys.push('ticketNumber')
-  else if (tagKey === 'ticketnumber') possibleKeys.push('ticket')
-  else if (tagKey === 'host') possibleKeys.push('hostname')
-  else if (tagKey === 'hostname') possibleKeys.push('host')
-  else if (tagKey === 'loc') possibleKeys.push('location')
-  else if (tagKey === 'location') possibleKeys.push('loc')
-
-  for (const k of possibleKeys) {
-    const fieldVal = getFieldValue(item, k)
-    if (fieldVal !== undefined && fieldVal !== null) {
-      if (Array.isArray(fieldVal)) {
-        if (fieldVal.some(v => String(v).toLowerCase().includes(normTarget))) {
-          return true
-        }
-      } else {
-        const s = String(fieldVal).toLowerCase()
-        if (s.includes(normTarget) || s === normTarget) {
-          return true
-        }
-      }
-    }
-  }
-
-  return false
-}
-
-/**
- * Checks whether an item passes all positive, negative, and relational tag filters (AND, OR, XOR, NOT).
+ * Checks whether an item passes all positive and negative tag filters.
  */
 export function matchesTagFilters(item: any, tags: SearchTagFilter[], table: SearchIndexTable): boolean {
   if (!tags || tags.length === 0) return true
 
   for (const tag of tags) {
     const k = tag.key.toLowerCase()
-    const values = (tag.values && tag.values.length > 0)
-      ? tag.values
-      : (tag.value ? tag.value.split(',').map(s => s.trim()).filter(Boolean) : [])
+    const targetVal = tag.value.toLowerCase()
 
-    if (values.length === 0) continue
+    // Handle type/entity tag
+    if (k === 'type' || k === 'entity' || k === 'table') {
+      const match =
+        table.entityType.toLowerCase() === targetVal ||
+        table.sourceId.toLowerCase() === targetVal ||
+        table.indicatorLabel.toLowerCase() === targetVal
 
-    const modifier = tag.modifier || (tag.inverted ? 'NOT' : 'NONE')
-    const matchCount = values.filter(v => itemMatchesTagValue(item, k, v, table)).length
-
-    if (modifier === 'NOT' || tag.inverted) {
-      // Negating: item must NOT match ANY of the comma-separated values
-      if (matchCount > 0) {
+      if (tag.inverted ? match : !match) {
         return false
       }
-    } else if (modifier === 'OR') {
-      // OR: item must match AT LEAST ONE of the comma-separated values
-      if (matchCount === 0) {
-        return false
+      continue
+    }
+
+    const fieldVal = getFieldValue(item, k)
+    let isMatch = false
+
+    if (fieldVal !== undefined && fieldVal !== null) {
+      if (Array.isArray(fieldVal)) {
+        isMatch = fieldVal.some(v => String(v).toLowerCase().includes(targetVal))
+      } else {
+        const s = String(fieldVal).toLowerCase()
+        isMatch = s.includes(targetVal) || s === targetVal
       }
-    } else if (modifier === 'XOR') {
-      // XOR: item must match EXACTLY ONE of the comma-separated values
-      if (matchCount !== 1) {
-        return false
-      }
+    }
+
+    // Invert condition if '!' was present
+    if (tag.inverted) {
+      if (isMatch) return false
     } else {
-      // AND or NONE (default): item must match ALL values specified
-      if (matchCount < values.length) {
-        return false
-      }
+      if (!isMatch) return false
     }
   }
 

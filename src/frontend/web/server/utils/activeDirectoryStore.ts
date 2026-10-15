@@ -106,6 +106,36 @@ function buildActiveDirectoryOus(): AdOrganizationalUnit[] {
 const AD_OUS: AdOrganizationalUnit[] = buildActiveDirectoryOus()
 const ouGovernanceMap = new Map<string, AdOuGovernance>()
 
+for (const ou of AD_OUS) {
+  ouGovernanceMap.set(ou.ouPath.toLowerCase(), {
+    ouPath: ou.ouPath,
+    accessLevel: 'read_write',
+    isApproved: true,
+    approvedBy: 'usr-itsiteadmin-1',
+    approvedAt: new Date().toISOString(),
+    notes: 'Default IT Admin automated approval'
+  })
+}
+
+const DEMO_OUS = [
+  'OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp',
+  'OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp',
+  'OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp',
+  'OU=Milling,OU=VLAN30-Machining,DC=factory,DC=corp',
+  'OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp',
+]
+
+for (const p of DEMO_OUS) {
+  ouGovernanceMap.set(p.toLowerCase(), {
+    ouPath: p,
+    accessLevel: 'read_write',
+    isApproved: true,
+    approvedBy: 'usr-itsiteadmin-1',
+    approvedAt: new Date().toISOString(),
+    notes: 'Default IT Admin automated approval'
+  })
+}
+
 export function getOuGovernances(): AdOuGovernance[] {
   return Array.from(ouGovernanceMap.values())
 }

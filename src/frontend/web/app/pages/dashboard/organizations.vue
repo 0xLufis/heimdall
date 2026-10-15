@@ -66,13 +66,15 @@ async function handleSubmitOrg() {
           name: newOrgName.value
         }
       })
-      if (error) { alert(error.message); return }
+      if (error) { toast.error(error.message); return }
+      toast.success('Organization updated successfully')
     } else {
       const { error } = await authClient.organization.create({
         name: newOrgName.value,
         slug: newOrgSlug.value
       })
-      if (error) { alert(error.message); return }
+      if (error) { toast.error(error.message); return }
+      toast.success('Organization created successfully')
     }
 
     showCreateModal.value = false
@@ -80,21 +82,21 @@ async function handleSubmitOrg() {
     newOrgSlug.value = ''
     editingOrg.value = null
     await fetchOrgs()
-  } catch (e) {
-    alert('Operation failed')
+  } catch (e: any) {
+    toast.error(e?.message || 'Operation failed')
   } finally {
     creating.value = false
   }
 }
 
 async function handleDeleteOrg(org: any) {
-  if (!confirm(`Permanently delete organization "${org.name}"? This cannot be undone.`)) return
   try {
     const { error } = await authClient.organization.delete({ organizationId: org.id })
-    if (error) { alert(error.message); return }
+    if (error) { toast.error(error.message); return }
+    toast.success(`Organization "${org.name}" deleted`)
     await fetchOrgs()
-  } catch (e) {
-    alert('Delete failed')
+  } catch (e: any) {
+    toast.error(e?.message || 'Delete failed')
   }
 }
 
@@ -125,15 +127,16 @@ async function handleInviteMember() {
       email: inviteEmail.value,
       role: inviteRole.value
     })
-    if (error) { alert(error.message); return }
+    if (error) { toast.error(error.message); return }
+    toast.success(`Invitation dispatched to ${inviteEmail.value}`)
     inviteEmail.value = ''
     // Refresh member list
     const res = await $fetch<{ success: boolean; members: any[] }>(`/api/organizations/${selectedOrg.value.id}/members`)
     if (res?.members) members.value = res.members
     // Refresh org list for updated member count
     await fetchOrgs()
-  } catch (e) {
-    alert('Invite failed')
+  } catch (e: any) {
+    toast.error(e?.message || 'Invite failed')
   } finally {
     inviting.value = false
   }
@@ -141,19 +144,19 @@ async function handleInviteMember() {
 
 async function handleRemoveMember(mem: any) {
   if (!selectedOrg.value) return
-  if (!confirm(`Remove ${mem.user.name} from ${selectedOrg.value.name}?`)) return
   removingMemberId.value = mem.id
   try {
     const { error } = await (authClient.organization as any).removeMember({
       organizationId: selectedOrg.value.id,
       memberIdOrEmail: mem.user.email
     })
-    if (error) { alert(error.message); return }
+    if (error) { toast.error(error.message); return }
+    toast.success(`Removed member ${mem.user.name}`)
     members.value = members.value.filter(m => m.id !== mem.id)
     // Refresh org list for updated member count
     await fetchOrgs()
-  } catch (e) {
-    alert('Remove failed')
+  } catch (e: any) {
+    toast.error(e?.message || 'Remove failed')
   } finally {
     removingMemberId.value = null
   }

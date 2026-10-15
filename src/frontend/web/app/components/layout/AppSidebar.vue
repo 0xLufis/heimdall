@@ -6,24 +6,8 @@ import { authClient } from "~/utils/auth-client"
 import { useAppSettings } from '~/composables/useAppSettings'
 import { useAuthSession } from '~/composables/useAuthSession'
 import { useRbacPermission } from '~/composables/useRbacPermission'
-import { useAppI18n } from '~/composables/useAppI18n'
 
 import { useFeatureFlags } from '~/composables/useFeatureFlags'
-
-const { t } = useAppI18n()
-
-const headingKeyMap: Record<string, string> = {
-  'Management': 'nav.management',
-  'Data': 'nav.data',
-  'Maintenance': 'nav.maintenance',
-  'Settings': 'nav.settings'
-}
-
-const getLocalizedHeading = (heading?: string) => {
-  if (!heading) return ''
-  const key = headingKeyMap[heading]
-  return key ? t(key, heading) : heading
-}
 
 /**
  * Resolves the appropriate component for a given navigation item.
@@ -124,7 +108,7 @@ const { sidebar } = useAppSettings()
     <SidebarContent>
       <SidebarGroup v-for="(nav, indexGroup) in visibleNavMenu" :key="indexGroup">
         <SidebarGroupLabel v-if="nav.heading">
-          {{ getLocalizedHeading(nav.heading) }}
+          {{ nav.heading }}
         </SidebarGroupLabel>
         <component :is="resolveNavItemComponent(item)" v-for="(item, index) in nav.items" :key="index" :item="item" />
       </SidebarGroup>

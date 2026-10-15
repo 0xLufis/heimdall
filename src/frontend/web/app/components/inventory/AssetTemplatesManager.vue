@@ -21,6 +21,7 @@ import {
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { toast } from 'vue-sonner'
 import type { AssetTemplateDefinition, InventoryPart } from '~/types/inventory'
 import { usePartsInventory } from '~/composables/usePartsInventory'
 import CreateEditTemplateModal from './CreateEditTemplateModal.vue'
@@ -44,6 +45,7 @@ const editResellOverride = ref<number | undefined>(undefined)
 const showTemplateModal = ref(false)
 const templateModalMode = ref<'create' | 'edit'>('create')
 const selectedTemplateForEdit = ref<AssetTemplateDefinition | null>(null)
+const confirmingDeleteId = ref<string | null>(null)
 
 const openCreateTemplate = () => {
   templateModalMode.value = 'create'
@@ -57,18 +59,34 @@ const openEditTemplate = (tmpl: AssetTemplateDefinition) => {
   showTemplateModal.value = true
 }
 
-const handleDeleteTemplate = async (tmpl: AssetTemplateDefinition) => {
-  if (confirm(`Are you sure you want to delete template "${tmpl.name}"?`)) {
-    try {
-      await deleteTemplate(tmpl.id)
-      emit('refresh')
-    } catch (err: any) {
-      alert(err.data?.statusMessage || err.message || 'Failed to delete template.')
-    }
+const requestDeleteTemplate = (tmpl: AssetTemplateDefinition) => {
+  confirmingDeleteId.value = tmpl.id
+}
+
+const cancelDeleteTemplate = () => {
+  confirmingDeleteId.value = null
+}
+
+const confirmDeleteTemplate = async (tmpl: AssetTemplateDefinition) => {
+  try {
+    await deleteTemplate(tmpl.id)
+    confirmingDeleteId.value = null
+    toast.success(`Template "${tmpl.name}" deleted successfully.`)
+    emit('refresh')
+  } catch (err: any) {
+    const msg = err.data?.statusMessage || err.message || 'Failed to delete template.'
+    toast.error(msg)
   }
 }
 
-const onTemplateSaved = () => {
+const handleDeleteTemplate = async (tmpl: AssetTemplateDefinition) => {
+  requestDeleteTemplate(tmpl)
+}
+
+const onTemplateSaved = (tmpl?: AssetTemplateDefinition) => {
+  if (tmpl?.name) {
+    toast.success(`Template "${tmpl.name}" saved successfully.`)
+  }
   emit('refresh')
 }
 
@@ -103,12 +121,17 @@ const cancelEditResell = () => {
 
 const saveEditResell = async () => {
   if (!editingInstance.value) return
-  await updateResellPrice(editingInstance.value.id, {
-    wearDepreciationPercentage: editWearPercent.value,
-    resellPriceOverrideEur: editResellOverride.value
-  })
-  editingInstance.value = null
-  emit('refresh')
+  try {
+    await updateResellPrice(editingInstance.value.id, {
+      wearDepreciationPercentage: editWearPercent.value,
+      resellPriceOverrideEur: editResellOverride.value
+    })
+    toast.success(`Valuation updated for unit ${editingInstance.value.customIdentifier}`)
+    editingInstance.value = null
+    emit('refresh')
+  } catch (err: any) {
+    toast.error(err?.message || 'Failed to update valuation.')
+  }
 }
 
 const getValidSpecs = (specs?: Record<string, any>) => {
@@ -261,25 +284,47 @@ const getValidSpecs = (specs?: Record<string, any>) => {
 
             <!-- Template Blueprint Actions -->
             <div class="flex items-center gap-1.5 ml-1">
-              <Button
-                variant="outline"
-                size="sm"
-                @click.stop="openEditTemplate(tmpl)"
-                class="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground border-border bg-card shadow-2xs cursor-pointer"
-                title="Edit Blueprint Specs & Schema"
-              >
-                <Edit2 class="size-3 mr-1 text-primary" />
-                <span>Edit</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                @click.stop="handleDeleteTemplate(tmpl)"
-                class="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                title="Delete Template"
-              >
-                <Trash2 class="size-3.5" />
-              </Button>
+              <div v-if="confirmingDeleteId === tmpl.id" class="flex items-center gap-1 bg-destructive/10 border border-destructive/30 rounded-lg p-1" @click.stop>
+                <span class="text-[10px] text-destructive font-bold px-1">Delete?</span>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  @click.stop="confirmDeleteTemplate(tmpl)"
+                  class="h-6 px-2 text-[10px] font-bold cursor-pointer"
+                >
+                  Confirm
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  @click.stop="cancelDeleteTemplate"
+                  class="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              <template v-else>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  @click.stop="openEditTemplate(tmpl)"
+                  class="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground border-border bg-card shadow-2xs cursor-pointer"
+                  title="Edit Blueprint Specs & Schema"
+                >
+                  <Edit2 class="size-3 mr-1 text-primary" />
+                  <span>Edit</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  @click.stop="requestDeleteTemplate(tmpl)"
+                  class="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                  title="Delete Template"
+                >
+                  <Trash2 class="size-3.5" />
+                </Button>
+              </template>
             </div>
           </div>
         </div>
@@ -411,56 +456,58 @@ const getValidSpecs = (specs?: Record<string, any>) => {
       </div>
     </div>
 
-    <!-- Edit Valuation Modal / Drawer Overlay -->
-    <div v-if="editingInstance" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div class="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between pb-3 border-b border-border">
-          <div>
-            <h4 class="text-sm font-bold text-foreground">Adjust Resell Price & Wear Scalar</h4>
-            <p class="text-xs text-muted-foreground mt-0.5">
-              Unit: {{ editingInstance.customIdentifier }} (Base: €{{ editingInstance.priceEur }})
-            </p>
-          </div>
-          <button type="button" @click="cancelEditResell" class="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer">
-            <X class="size-4" />
-          </button>
+    <!-- Edit Valuation Slide-out Drawer (Zero Blocking Backdrop) -->
+    <div
+      v-if="editingInstance"
+      class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-card border-l border-border shadow-2xl p-5 sm:p-6 space-y-4 overflow-y-auto animate-in slide-in-from-right duration-200 select-none"
+    >
+      <div class="flex items-center justify-between pb-3 border-b border-border">
+        <div>
+          <h4 class="text-sm font-bold text-foreground">Adjust Resell Price & Wear Scalar</h4>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            Unit: {{ editingInstance.customIdentifier }} (Base: €{{ editingInstance.priceEur }})
+          </p>
+        </div>
+        <button type="button" @click="cancelEditResell" class="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer">
+          <X class="size-4" />
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="space-y-1.5">
+          <label class="font-semibold text-foreground flex items-center gap-1.5">
+            <Percent class="size-3.5 text-primary" />
+            <span>Wear Depreciation Percentage (0 - 100%)</span>
+          </label>
+          <Input v-model.number="editWearPercent" type="number" min="0" max="100" class="h-9 text-xs font-mono" />
+          <p class="text-[11px] text-muted-foreground">
+            Calculates resell price via scalar math: basePrice * (1 - wear%) = €{{ Math.round(editingInstance.priceEur * (1 - (editWearPercent / 100)) * 100) / 100 }}
+          </p>
         </div>
 
-        <div class="space-y-3 text-xs">
-          <div class="space-y-1.5">
-            <label class="font-semibold text-foreground flex items-center gap-1.5">
-              <Percent class="size-3.5 text-primary" />
-              <span>Wear Depreciation Percentage (0 - 100%)</span>
-            </label>
-            <Input v-model.number="editWearPercent" type="number" min="0" max="100" class="h-9 text-xs font-mono" />
-            <p class="text-[11px] text-muted-foreground">
-              Calculates resell price via scalar math: basePrice * (1 - wear%) = €{{ Math.round(editingInstance.priceEur * (1 - (editWearPercent / 100)) * 100) / 100 }}
-            </p>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="font-semibold text-foreground flex items-center gap-1.5">
-              <DollarSign class="size-3.5 text-amber-500" />
-              <span>Or Direct Resell Price Override (EUR)</span>
-            </label>
-            <Input v-model.number="editResellOverride" type="number" min="0" placeholder="Optional fixed override" class="h-9 text-xs font-mono" />
-          </div>
+        <div class="space-y-1.5">
+          <label class="font-semibold text-foreground flex items-center gap-1.5">
+            <DollarSign class="size-3.5 text-amber-500" />
+            <span>Or Direct Resell Price Override (EUR)</span>
+          </label>
+          <Input v-model.number="editResellOverride" type="number" min="0" placeholder="Optional fixed override" class="h-9 text-xs font-mono" />
         </div>
+      </div>
 
-        <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
-          <Button variant="outline" size="sm" @click="cancelEditResell" class="h-8 text-xs cursor-pointer">
-            Cancel
-          </Button>
-          <Button size="sm" @click="saveEditResell" class="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer">
-            Save Valuation
-          </Button>
-        </div>
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+        <Button variant="outline" size="sm" @click="cancelEditResell" class="h-8 text-xs cursor-pointer">
+          Cancel
+        </Button>
+        <Button size="sm" @click="saveEditResell" class="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer">
+          Save Valuation
+        </Button>
       </div>
     </div>
 
-    <!-- Create / Edit Template Modal -->
+    <!-- Create / Edit Template Modal (Rendered as Non-Blocking Slide-out Drawer) -->
     <CreateEditTemplateModal
       :open="showTemplateModal"
+      :inline="true"
       :mode="templateModalMode"
       :template="selectedTemplateForEdit"
       :available-templates="templates"
