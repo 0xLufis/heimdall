@@ -174,10 +174,9 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-    <div class="relative w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+  <div v-if="open" class="fixed inset-y-0 right-0 z-40 w-full max-w-xl bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
         <div class="flex items-center gap-3">
           <div class="p-2 rounded-lg bg-primary/10 border border-primary/20 text-primary">
             <Edit3 class="size-5" />
@@ -209,7 +208,7 @@ const handleSubmit = async () => {
       </datalist>
 
       <!-- Form Body -->
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-4 overflow-y-auto flex-1">
+      <form @submit.prevent="handleSubmit" class="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
         <!-- Error & Success Banners -->
         <div v-if="errorMessage" class="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
           <AlertTriangle class="size-4 shrink-0" />
@@ -409,6 +408,5 @@ const handleSubmit = async () => {
           <span>Save Changes</span>
         </Button>
       </div>
-    </div>
   </div>
 </template>

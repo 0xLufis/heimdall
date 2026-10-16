@@ -151,11 +151,9 @@ function close() {
 </script>
 
 <template>
-  <div v-if="open" role="dialog" aria-modal="true" class="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden text-foreground animate-in fade-in zoom-in-95 duration-200">
-      
-      <!-- Header -->
-      <div class="p-5 border-b border-border flex items-center justify-between bg-muted/40">
+  <div v-if="open" role="dialog" class="fixed inset-y-0 right-0 z-40 w-full max-w-xl bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    <!-- Header -->
+    <div class="p-5 border-b border-border flex items-center justify-between bg-muted/40 shrink-0">
         <div class="flex items-center gap-3">
           <div class="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
             <Activity class="h-5 w-5" />
@@ -182,7 +180,7 @@ function close() {
       </div>
 
       <!-- Body -->
-      <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+      <div class="p-6 space-y-6 flex-1 overflow-y-auto">
         
         <!-- Live Fleet Telemetry Stats -->
         <div>
@@ -335,6 +333,5 @@ function close() {
         </Button>
       </div>
 
-    </div>
   </div>
 </template>

@@ -131,10 +131,9 @@ const triggerUseScanned = () => {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-    <div class="relative w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-5 py-3.5 border-b border-border bg-muted/30">
+  <div v-if="open" class="fixed inset-y-0 right-0 z-40 w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-3.5 border-b border-border bg-muted/30">
         <div class="flex items-center gap-2.5">
           <div class="p-2 rounded-lg bg-primary/10 border border-primary/20 text-primary">
             <QrCode class="size-5" />
@@ -196,7 +195,7 @@ const triggerUseScanned = () => {
       </div>
 
       <!-- Scanner Area -->
-      <div class="p-4 space-y-3.5 overflow-y-auto flex-1">
+      <div class="p-4 space-y-3.5 overflow-y-auto flex-1 custom-scrollbar">
         <!-- Live Camera Viewport or Viewport Simulation -->
         <div class="relative w-full aspect-video sm:h-52 bg-black/90 rounded-xl overflow-hidden border border-border flex items-center justify-center">
           <video
@@ -333,6 +332,5 @@ const triggerUseScanned = () => {
           Close Scanner
         </Button>
       </div>
-    </div>
   </div>
 </template>

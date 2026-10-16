@@ -148,9 +148,8 @@ const handleJsonSubmit = () => {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-    <div class="relative w-full max-w-4xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-      <!-- Header -->
+  <div v-if="open" class="fixed inset-y-0 right-0 z-40 w-full max-w-3xl bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
         <div class="flex items-center gap-3">
           <div class="p-2 rounded-lg bg-primary/10 border border-primary/20 text-primary">
@@ -197,7 +196,7 @@ const handleJsonSubmit = () => {
       </div>
 
       <!-- Body Content -->
-      <div class="p-6 overflow-y-auto flex-1 space-y-4">
+      <div class="p-6 overflow-y-auto flex-1 space-y-4 custom-scrollbar">
         <!-- Visual Mode -->
         <div v-if="activeMode === 'visual'" class="space-y-3">
           <div class="flex items-center justify-between">
@@ -325,6 +324,5 @@ const handleJsonSubmit = () => {
           <span>Confirm Bulk Intake ({{ activeMode === 'visual' ? visualRows.length : parsedJsonPreview.length }})</span>
         </Button>
       </div>
-    </div>
   </div>
 </template>

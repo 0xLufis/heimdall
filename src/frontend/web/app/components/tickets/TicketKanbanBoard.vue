@@ -482,29 +482,34 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
       </div>
     </div>
 
-    <!-- ── Interactive Modal: Select Pending Reason ── -->
+    <!-- ── Interactive Drawer: Select Pending Reason (Zero Overlay) ── -->
     <div
       v-if="activePendingTicket"
       role="dialog"
-      aria-modal="true"
-      class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
-      @click.self="closePendingSelector"
+      class="fixed inset-y-0 right-0 z-40 w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
     >
-      <div class="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md overflow-hidden text-foreground">
-        <div class="p-5 border-b border-border bg-amber-500/10 flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <div class="p-2 rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-300">
-              <Clock class="size-5" />
-            </div>
-            <div>
-              <h4 class="text-sm font-black uppercase tracking-wider text-foreground">
-                Set Pending Reason
-              </h4>
-              <p class="text-[10px] font-mono text-muted-foreground mt-0.5">
-                {{ activePendingTicket.ticketNumber }} &mdash; {{ activePendingTicket.stationName }}
-              </p>
-            </div>
+      <div class="p-5 border-b border-border bg-amber-500/10 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="p-2 rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-300 shrink-0">
+            <Clock class="size-5" />
           </div>
+          <div class="min-w-0">
+            <h4 class="text-sm font-black uppercase tracking-wider text-foreground">
+              Set Pending Reason
+            </h4>
+            <p class="text-[10px] font-mono text-muted-foreground mt-0.5 truncate">
+              {{ activePendingTicket.ticketNumber }} &mdash; {{ activePendingTicket.stationName }}
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <NuxtLink
+            :to="`/dashboard/tickets/${activePendingTicket.id}`"
+            class="px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            <span>Open Full Investigation Page</span>
+            <ArrowRight class="size-3" />
+          </NuxtLink>
           <Button
             variant="ghost"
             size="icon"
@@ -512,95 +517,100 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
             @click="closePendingSelector"
           >
             <X class="size-4" />
-          </Button>
-        </div>
-
-        <div class="p-5 space-y-4">
-          <p class="text-xs text-muted-foreground leading-relaxed">
-            Select the industrial condition holding this ticket in the Pending status:
-          </p>
-
-          <!-- 4 Canonical Pending Reasons -->
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              v-for="(cfg, rKey) in PENDING_REASON_CONFIGS"
-              :key="rKey"
-              type="button"
-              @click="pendingDraftReason = rKey"
-              class="p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer"
-              :class="pendingDraftReason === rKey
-                ? 'border-amber-500 bg-amber-500/15 ring-2 ring-amber-500/30 text-foreground font-bold shadow-xs'
-                : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/70 hover:text-foreground'"
-            >
-              <div class="p-1 rounded-md bg-background border border-border/80 text-foreground shrink-0 mt-0.5">
-                <Package class="size-3.5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div class="min-w-0">
-                <div class="text-xs font-black leading-tight">{{ cfg.label }}</div>
-                <div class="text-[9px] text-muted-foreground line-clamp-2 mt-0.5 leading-tight">
-                  {{ cfg.description }}
-                </div>
-              </div>
-            </button>
-          </div>
-
-          <!-- Pending Details Input -->
-          <div class="space-y-1.5">
-            <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Additional Details (optional)
-            </label>
-            <input
-              v-model="pendingDraftDetails"
-              type="text"
-              placeholder="e.g., PO #49281 ordered from vendor, ETA 2 days"
-              class="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-amber-500/50"
-            />
-          </div>
-        </div>
-
-        <div class="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            class="text-xs border-border cursor-pointer"
-            @click="closePendingSelector"
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            class="bg-amber-600 hover:bg-amber-500 text-white font-black text-xs px-4 cursor-pointer shadow-xs"
-            @click="applyPendingReason"
-          >
-            Apply Pending Reason
           </Button>
         </div>
       </div>
+
+      <div class="p-5 space-y-4 flex-1 overflow-y-auto">
+        <p class="text-xs text-muted-foreground leading-relaxed">
+          Select the industrial condition holding this ticket in the Pending status:
+        </p>
+
+        <!-- 4 Canonical Pending Reasons -->
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="(cfg, rKey) in PENDING_REASON_CONFIGS"
+            :key="rKey"
+            type="button"
+            @click="pendingDraftReason = rKey"
+            class="p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer"
+            :class="pendingDraftReason === rKey
+              ? 'border-amber-500 bg-amber-500/15 ring-2 ring-amber-500/30 text-foreground font-bold shadow-xs'
+              : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/70 hover:text-foreground'"
+          >
+            <div class="p-1 rounded-md bg-background border border-border/80 text-foreground shrink-0 mt-0.5">
+              <Package class="size-3.5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-black leading-tight">{{ cfg.label }}</div>
+              <div class="text-[9px] text-muted-foreground line-clamp-2 mt-0.5 leading-tight">
+                {{ cfg.description }}
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Pending Details Input -->
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Additional Details (optional)
+          </label>
+          <input
+            v-model="pendingDraftDetails"
+            type="text"
+            placeholder="e.g., PO #49281 ordered from vendor, ETA 2 days"
+            class="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-amber-500/50"
+          />
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2 shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          class="text-xs border-border cursor-pointer"
+          @click="closePendingSelector"
+        >
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          class="bg-amber-600 hover:bg-amber-500 text-white font-black text-xs px-4 cursor-pointer shadow-xs"
+          @click="applyPendingReason"
+        >
+          Apply Pending Reason
+        </Button>
+      </div>
     </div>
 
-    <!-- ── Interactive Modal: Escalate Ticket ── -->
+    <!-- ── Interactive Drawer: Escalate Ticket (Zero Overlay) ── -->
     <div
       v-if="activeEscalateTicket"
       role="dialog"
-      aria-modal="true"
-      class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
-      @click.self="activeEscalateTicket = null"
+      class="fixed inset-y-0 right-0 z-40 w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
     >
-      <div class="bg-card border border-rose-500/30 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden text-foreground">
-        <div class="p-5 border-b border-border bg-rose-500/10 flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <div class="p-2 rounded-xl bg-rose-500/20 text-rose-700 dark:text-rose-300">
-              <ShieldAlert class="size-5" />
-            </div>
-            <div>
-              <h4 class="text-sm font-black uppercase tracking-wider text-foreground">
-                Escalate Ticket
-              </h4>
-              <p class="text-[10px] font-mono text-muted-foreground mt-0.5">
-                {{ activeEscalateTicket.ticketNumber }} &mdash; {{ activeEscalateTicket.stationName }}
-              </p>
-            </div>
+      <div class="p-5 border-b border-border bg-rose-500/10 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="p-2 rounded-xl bg-rose-500/20 text-rose-700 dark:text-rose-300 shrink-0">
+            <ShieldAlert class="size-5" />
           </div>
+          <div class="min-w-0">
+            <h4 class="text-sm font-black uppercase tracking-wider text-foreground">
+              Escalate Ticket
+            </h4>
+            <p class="text-[10px] font-mono text-muted-foreground mt-0.5 truncate">
+              {{ activeEscalateTicket.ticketNumber }} &mdash; {{ activeEscalateTicket.stationName }}
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <NuxtLink
+            :to="`/dashboard/tickets/${activeEscalateTicket.id}`"
+            class="px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            <span>Open Full Investigation Page</span>
+            <ArrowRight class="size-3" />
+          </NuxtLink>
           <Button
             variant="ghost"
             size="icon"
@@ -610,43 +620,43 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
             <X class="size-4" />
           </Button>
         </div>
+      </div>
 
-        <div class="p-5 space-y-4">
-          <p class="text-xs text-muted-foreground leading-relaxed">
-            Escalation flags this incident for priority management and engineering oversight. The ticket remains in its current status (<strong>{{ activeEscalateTicket.status }}</strong>) and can be de-escalated independently.
-          </p>
+      <div class="p-5 space-y-4 flex-1 overflow-y-auto">
+        <p class="text-xs text-muted-foreground leading-relaxed">
+          Escalation flags this incident for priority management and engineering oversight. The ticket remains in its current status (<strong>{{ activeEscalateTicket.status }}</strong>) and can be de-escalated independently.
+        </p>
 
-          <div class="space-y-1.5">
-            <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Escalation Reason *
-            </label>
-            <textarea
-              v-model="escalateDraftReason"
-              rows="3"
-              placeholder="e.g. Critical machine downtime impacting Line 2 production. OEM support specialist required."
-              class="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-rose-500/50 resize-none"
-            />
-          </div>
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Escalation Reason *
+          </label>
+          <textarea
+            v-model="escalateDraftReason"
+            rows="3"
+            placeholder="e.g. Critical machine downtime impacting Line 2 production. OEM support specialist required."
+            class="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-rose-500/50 resize-none"
+          />
         </div>
+      </div>
 
-        <div class="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            class="text-xs border-border cursor-pointer"
-            @click="activeEscalateTicket = null"
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            :disabled="!escalateDraftReason.trim()"
-            class="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-4 cursor-pointer shadow-xs disabled:opacity-50"
-            @click="applyEscalation"
-          >
-            Confirm Escalation
-          </Button>
-        </div>
+      <div class="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2 shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          class="text-xs border-border cursor-pointer"
+          @click="activeEscalateTicket = null"
+        >
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          :disabled="!escalateDraftReason.trim()"
+          class="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-4 cursor-pointer shadow-xs disabled:opacity-50"
+          @click="applyEscalation"
+        >
+          Confirm Escalation
+        </Button>
       </div>
     </div>
   </div>

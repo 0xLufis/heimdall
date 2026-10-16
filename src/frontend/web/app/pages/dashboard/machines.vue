@@ -96,14 +96,13 @@ const fetchData = async () => {
   loading.value = true
   try {
     const [machRes, kpiRes] = await Promise.allSettled([
-      $fetch<any[]>('/api/proxy/v1/Machine'),
-      $fetch<any[]>('/api/proxy/v1/Analytics/kpis')
+      $fetch<any[]>('/api/machines').catch(() => $fetch<any[]>('/api/proxy/v1/Machine')),
+      $fetch<any[]>('/api/proxy/v1/Analytics/kpis').catch(() => [])
     ])
 
     if (machRes.status === 'fulfilled' && Array.isArray(machRes.value)) {
       machines.value = machRes.value
     } else {
-      // Fallback to empty list rather than hardcoded mock IDs
       machines.value = []
     }
 

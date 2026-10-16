@@ -37,15 +37,30 @@ async function fetchUserDetails() {
   loading.value = true
   error.value = ''
   try {
-    const { data: allData, error: allErr } = await authClient.admin.listUsers({
-      query: { limit: 100 }
-    })
+    let foundUser: any = null
 
-    if (allErr) throw allErr
+    // 1. Try resilient BFF endpoint /api/users
+    try {
+      const res = await $fetch<{ success: boolean; users: any[] }>('/api/users')
+      if (res?.users) {
+        foundUser = res.users.find((u: any) => u.id === userId || u.username === userId || u.email === userId)
+      }
+    } catch {}
 
-    const foundUser = allData.users.find((u: any) => u.id === userId)
+    // 2. Try authClient admin listUsers if not found yet
     if (!foundUser) {
-      error.value = 'User not found.'
+      try {
+        const { data: allData, error: allErr } = await authClient.admin.listUsers({
+          query: { limit: 100 }
+        })
+        if (!allErr && allData?.users) {
+          foundUser = allData.users.find((u: any) => u.id === userId || u.username === userId)
+        }
+      } catch {}
+    }
+
+    if (!foundUser) {
+      error.value = 'User profile was not found in the directory.'
       return
     }
 
@@ -152,15 +167,22 @@ onMounted(() => {
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="bg-rose-500/10 border border-rose-500/20 p-6 rounded-xl text-center">
+    <div v-else-if="error" class="bg-rose-500/10 border border-rose-500/20 p-6 rounded-xl text-center max-w-lg mx-auto">
       <div class="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center mx-auto mb-3 text-rose-600 dark:text-rose-400">
         <AlertTriangle class="size-5" />
       </div>
-      <h3 class="text-base font-semibold text-rose-700 dark:text-rose-300">Failed to Load User</h3>
+      <h3 class="text-base font-semibold text-rose-700 dark:text-rose-300">User Profile Unavailable</h3>
       <p class="text-xs text-rose-600/80 dark:text-rose-400/80 mt-1">{{ error }}</p>
-      <Button @click="fetchUserDetails" size="sm" class="mt-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-lg h-8 px-3">
-        Try Again
-      </Button>
+      <div class="mt-4 flex items-center justify-center gap-2">
+        <Button @click="fetchUserDetails" size="sm" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-lg h-8 px-3 cursor-pointer">
+          Try Again
+        </Button>
+        <NuxtLink to="/dashboard/users">
+          <Button variant="outline" size="sm" class="border-border text-foreground hover:bg-muted text-xs font-medium rounded-lg h-8 px-3 cursor-pointer">
+            Back to User Directory
+          </Button>
+        </NuxtLink>
+      </div>
     </div>
 
     <!-- User Content -->

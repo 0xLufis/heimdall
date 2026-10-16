@@ -190,10 +190,9 @@ const handleImport = async () => {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-    <div class="relative w-full max-w-3xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+  <div v-if="open" class="fixed inset-y-0 right-0 z-40 w-full max-w-2xl bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
         <div class="flex items-center gap-3">
           <div class="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
             <Bot class="size-5" />
@@ -222,7 +221,7 @@ const handleImport = async () => {
       </div>
 
       <!-- Body Content -->
-      <div class="p-6 overflow-y-auto flex-1 space-y-4">
+      <div class="p-6 overflow-y-auto flex-1 space-y-4 custom-scrollbar">
         <!-- Target Machine Assignment -->
         <div class="space-y-1.5 pb-3 border-b border-border">
           <Label class="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -344,6 +343,5 @@ const handleImport = async () => {
           <span>Import {{ totalExtractedCount }} Assets to Machine</span>
         </Button>
       </div>
-    </div>
   </div>
 </template>

@@ -75,9 +75,8 @@ const formatDate = (iso: string) => {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex justify-end bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-    <div class="relative w-full max-w-lg bg-card border-l border-border shadow-2xl h-full flex flex-col">
-      <!-- Drawer Header -->
+  <div v-if="open" class="fixed inset-y-0 right-0 z-40 w-full max-w-xl bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    <!-- Drawer Header -->
       <div class="flex items-center justify-between p-4 border-b border-border bg-muted/30">
         <div class="flex items-center gap-2.5">
           <div class="p-2 rounded-lg bg-primary/10 border border-primary/20 text-primary">
@@ -208,6 +207,5 @@ const formatDate = (iso: string) => {
           </p>
         </div>
       </div>
-    </div>
   </div>
 </template>

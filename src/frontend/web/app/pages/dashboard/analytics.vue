@@ -38,11 +38,11 @@ const summaryData = ref<FleetSummaryData | null>(null)
 const fetchFleetSummary = async () => {
   isLoading.value = true
   try {
-    const res = await $fetch<FleetSummaryData>('/api/proxy/v1/analytics/fleet-summary')
+    const res = await $fetch<FleetSummaryData>('/api/analytics/fleet-summary')
     if (res) summaryData.value = res
   } catch {
     try {
-      const fallback = await $fetch<FleetSummaryData>('/api/analytics/fleet-summary')
+      const fallback = await $fetch<FleetSummaryData>('/api/proxy/v1/analytics/fleet-summary')
       if (fallback) summaryData.value = fallback
     } catch {
       // Data unavailable — component handles empty state

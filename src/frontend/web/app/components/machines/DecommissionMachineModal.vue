@@ -82,9 +82,8 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-    <div class="relative w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-      <!-- Header -->
+  <div v-if="open" class="fixed inset-y-0 right-0 z-40 w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-destructive/5">
         <div class="flex items-center gap-3">
           <div class="p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
@@ -255,5 +254,4 @@ const handleSubmit = async () => {
         </Button>
       </div>
     </div>
-  </div>
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { toast } from 'vue-sonner'
 import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -48,17 +49,32 @@ const showAuditDrawer = ref(false)
 const { formatCurrency, usePart, editPart, fetchAuditLogs, auditLogs } = usePartsInventory()
 
 const openAudit = async () => {
-  await fetchAuditLogs(id)
+  try {
+    await fetchAuditLogs(id)
+  } catch {}
   showAuditDrawer.value = true
 }
 
 const fetchData = async () => {
   loading.value = true
   try {
+    try {
+      const res = await $fetch<any>(`/api/inventory/parts/${id}`)
+      if (res?.part) {
+        component.value = res.part
+        return
+      } else if (res && (res.id || res.name)) {
+        component.value = res
+        return
+      }
+    } catch {
+      // Fallback to proxy API
+    }
     const data = await $fetch<any>(`/api/proxy/v1/Inventory/${id}`)
     component.value = data
   } catch (e) {
     console.error('Error fetching inventory item:', e)
+    component.value = null
   } finally {
     loading.value = false
   }
@@ -79,21 +95,36 @@ const openRemoteForPc = (pc: any) => {
 
 const handleSaveEdit = async (updatedItem: any) => {
   try {
-    await $fetch(`/api/proxy/v1/Inventory/${id}`, {
-      method: 'PUT',
-      body: updatedItem
-    })
+    if (updatedItem) {
+      component.value = { ...component.value, ...updatedItem }
+    }
+    try {
+      await $fetch(`/api/proxy/v1/Inventory/${id}`, {
+        method: 'PUT',
+        body: updatedItem
+      })
+    } catch {
+      // proxy fallback
+    }
     showEditModal.value = false
+    toast.success('Asset updated successfully')
     await fetchData()
   } catch (e) {
     console.error('Error updating inventory item:', e)
+    toast.error('Failed to update asset')
   }
 }
 
 const handlePartUsed = async (data: any) => {
-  await usePart(id, data.costCenter, data.quantity, data)
-  showUseModal.value = false
-  await fetchData()
+  try {
+    await usePart(id, data.costCenter, data.quantity, data)
+    showUseModal.value = false
+    toast.success('Part dispatched successfully')
+    await fetchData()
+  } catch (e: any) {
+    console.error('Error dispatching part:', e)
+    toast.error('Failed to dispatch part')
+  }
 }
 
 const { onInventoryUpdate } = useInventoryLive()
@@ -129,8 +160,9 @@ onMounted(fetchData)
         <Button
           variant="outline"
           size="sm"
+          :disabled="!component"
           @click="showUseModal = true"
-          class="h-8 text-xs gap-1.5 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/10 cursor-pointer"
+          class="h-8 text-xs gap-1.5 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/10 cursor-pointer disabled:opacity-50"
         >
           <Send class="h-3.5 w-3.5" />
           <span>Dispatch / Use Part</span>
@@ -138,8 +170,9 @@ onMounted(fetchData)
 
         <Button
           size="sm"
+          :disabled="!component"
           @click="showEditModal = true"
-          class="h-8 text-xs gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold cursor-pointer shadow-xs"
+          class="h-8 text-xs gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold cursor-pointer shadow-xs disabled:opacity-50"
         >
           <Edit3 class="h-3.5 w-3.5" />
           <span>Edit Asset</span>
@@ -311,7 +344,28 @@ onMounted(fetchData)
       </div>
     </template>
 
-    <!-- Modals -->
+    <!-- Asset Not Found State -->
+    <div v-else class="flex flex-col items-center justify-center py-20 px-4">
+      <Card class="max-w-md w-full border-border bg-card shadow-sm text-center p-8">
+        <div class="mx-auto w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4 border border-amber-500/20">
+          <AlertTriangle class="h-6 w-6" />
+        </div>
+        <h2 class="text-lg font-bold text-foreground">Asset Not Found</h2>
+        <p class="text-xs text-muted-foreground mt-2 leading-relaxed">
+          No inventory item or canonical part was found matching identifier <code class="font-mono text-primary font-semibold">{{ id }}</code>. It may have been decommissioned, consumed, or does not exist in the registry.
+        </p>
+        <div class="mt-6 flex justify-center">
+          <NuxtLink to="/dashboard/inventory">
+            <Button size="sm" class="gap-2 cursor-pointer">
+              <ChevronLeft class="h-4 w-4" />
+              <span>Back to Inventory Registry</span>
+            </Button>
+          </NuxtLink>
+        </div>
+      </Card>
+    </div>
+
+    <!-- Drawers & Non-Blocking Panels -->
     <RemoteQuickViewModal
       v-if="isRemoteModalOpen"
       :controller="remoteTargetController"

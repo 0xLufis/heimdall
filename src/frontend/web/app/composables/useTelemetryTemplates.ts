@@ -154,8 +154,17 @@ export const useTelemetryTemplates = () => {
     }
   }
 
+  const activeTemplate = ref<TelemetryTemplate | null>(BUILTIN_TELEMETRY_TEMPLATES[0] || null)
+
+  const setActiveTemplate = (tmpl: TelemetryTemplate) => {
+    activeTemplate.value = tmpl
+  }
+
   return {
     allTemplates,
+    templates: allTemplates,
+    activeTemplate,
+    setActiveTemplate,
     customTemplates,
     isLoading,
     isSaving,

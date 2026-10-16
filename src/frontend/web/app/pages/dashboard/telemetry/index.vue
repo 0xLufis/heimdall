@@ -144,7 +144,7 @@ const filteredCatalog = computed(() => {
       >
         <Layers class="w-3.5 h-3.5" />
         <span>Layout Templates</span>
-        <Badge variant="outline" class="text-[9px] px-1 py-0 font-mono">{{ templates.length }}</Badge>
+        <Badge variant="outline" class="text-[9px] px-1 py-0 font-mono">{{ templates?.length || 0 }}</Badge>
       </button>
 
       <button
@@ -179,8 +179,8 @@ const filteredCatalog = computed(() => {
     <!-- Tab 2: Layout Templates -->
     <div v-else-if="activeTab === 'templates'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <Card
-        v-for="tmpl in templates"
-        :key="tmpl.id"
+        v-for="tmpl in (templates || [])"
+        :key="tmpl.recipeId || (tmpl as any).id"
         class="border border-border bg-card shadow-xs transition-all hover:border-primary/50 flex flex-col justify-between"
       >
         <CardHeader>
@@ -193,15 +193,15 @@ const filteredCatalog = computed(() => {
                 {{ tmpl.description }}
               </CardDescription>
             </div>
-            <Badge v-if="activeTemplate?.id === tmpl.id" variant="default" class="text-[10px] px-2 py-0.5">
+            <Badge v-if="(activeTemplate?.recipeId || (activeTemplate as any)?.id) === (tmpl.recipeId || (tmpl as any).id)" variant="default" class="text-[10px] px-2 py-0.5">
               Active
             </Badge>
           </div>
         </CardHeader>
         <CardContent class="pt-0 space-y-3">
           <div class="text-[11px] text-muted-foreground font-mono flex items-center justify-between">
-            <span>Widgets: {{ tmpl.widgets?.length || 4 }}</span>
-            <span>Layout: {{ tmpl.layoutType || 'Grid 3x2' }}</span>
+            <span>Data Points: {{ tmpl.dataPoints?.length || (tmpl as any).widgets?.length || 4 }}</span>
+            <span>Platform: {{ tmpl.targetSelector?.osPlatform || (tmpl as any).layoutType || 'Windows IPC' }}</span>
           </div>
           <Button
             variant="outline"
@@ -209,7 +209,7 @@ const filteredCatalog = computed(() => {
             @click="setActiveTemplate(tmpl)"
             class="w-full text-xs cursor-pointer"
           >
-            {{ activeTemplate?.id === tmpl.id ? 'Currently Applied' : 'Apply Layout Template' }}
+            {{ (activeTemplate?.recipeId || (activeTemplate as any)?.id) === (tmpl.recipeId || (tmpl as any).id) ? 'Currently Applied' : 'Apply Layout Template' }}
           </Button>
         </CardContent>
       </Card>

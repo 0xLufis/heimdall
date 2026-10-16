@@ -351,8 +351,8 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <!-- AUTHENTICATION REQUIRED MODAL (If unauthenticated) -->
-    <div v-if="!isAuthenticated && !loading" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-6">
+    <!-- AUTHENTICATION REQUIRED (Dedicated Page View, Zero Popups) -->
+    <div v-if="!isAuthenticated && !loading" class="flex-1 flex items-center justify-center p-6 min-h-[70vh]">
       <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center">
         <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4">
           <Lock class="w-8 h-8" />
