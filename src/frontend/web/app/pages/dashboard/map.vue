@@ -177,6 +177,7 @@ const handleMapClick = () => {
   activePin.value = null
   activeBlockName.value = null
   selectedAssetId.value = null
+  expandedHandles.value = []
 }
 
 const selectAsset = (asset: any) => {

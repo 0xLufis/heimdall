@@ -65,6 +65,30 @@ const getNodeTelemetry = (nodeName: string) => {
   return { vib, temp, isHealthy, osc }
 }
 
+const getClamped3dPlacement = (proj: any, nodeName: string) => {
+  const isExp = expandedNode.value === nodeName
+  const w = isExp ? 240 : 160
+  const h = isExp ? 150 : 28
+
+  const cw = containerRef.value?.clientWidth || 800
+  const ch = containerRef.value?.clientHeight || 540
+
+  let left = proj.x - w / 2
+  left = Math.max(12, Math.min(left, cw - 12 - w))
+
+  let top = proj.y - h - 8
+  if (top < 48) {
+    top = proj.y + 12
+  }
+  top = Math.max(48, Math.min(top, ch - 12 - h))
+
+  return {
+    left: `${Math.round(left)}px`,
+    top: `${Math.round(top)}px`,
+    zIndex: selectedNodeName.value === nodeName ? 40 : 20
+  }
+}
+
 const {
   isLoading,
   loadProgress,
@@ -277,12 +301,7 @@ const handleMouseLeave = () => {
         <div
           v-if="proj.isVisible"
           class="absolute pointer-events-auto transition-transform duration-75 select-none"
-          :style="{
-            left: `${proj.x}px`,
-            top: `${proj.y}px`,
-            transform: 'translate(-50%, -100%)',
-            zIndex: selectedNodeName === nodeName ? 40 : 20
-          }"
+          :style="getClamped3dPlacement(proj, nodeName)"
         >
           <!-- Compact 3D Pill Badge -->
           <div

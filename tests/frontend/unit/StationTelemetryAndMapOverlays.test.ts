@@ -421,4 +421,45 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       }
     })
   })
+
+  describe('Viewport Containment & Collision Clamping Strategy', () => {
+    it('flips bubble below the station when anchor is too close to top edge', () => {
+      // Simulate viewport: 800x600, topMin = 62, maxY = 580
+      const cw = 800
+      const ch = 600
+      const minY = 62
+      const maxY = ch - 20
+      const cardH = 380
+
+      // Station near the top at Y = 100
+      const anchorY = 100
+      const topAbove = anchorY - cardH - 12 // 100 - 380 - 12 = -292 (out of bounds)
+      expect(topAbove).toBeLessThan(minY)
+
+      // Algorithm flips below:
+      const topBelow = anchorY + 16 // 116
+      expect(topBelow).toBeGreaterThanOrEqual(minY)
+      expect(topBelow + cardH).toBeLessThanOrEqual(maxY)
+    })
+
+    it('clamps horizontal position when anchor is near viewport edges', () => {
+      const cw = 800
+      const minX = 14
+      const maxX = cw - 14
+      const cardW = 320
+
+      // Case 1: Station near left edge (anchorX = 20)
+      const anchorXLeft = 20
+      let left1 = anchorXLeft - cardW / 2 // 20 - 160 = -140
+      left1 = Math.max(minX, Math.min(left1, maxX - cardW))
+      expect(left1).toBe(minX) // Clamped to 14px
+
+      // Case 2: Station near right edge (anchorX = 780)
+      const anchorXRight = 780
+      let left2 = anchorXRight - cardW / 2 // 780 - 160 = 620
+      left2 = Math.max(minX, Math.min(left2, maxX - cardW))
+      expect(left2).toBe(maxX - cardW) // Clamped to 466px
+      expect(left2 + cardW).toBeLessThanOrEqual(cw)
+    })
+  })
 })

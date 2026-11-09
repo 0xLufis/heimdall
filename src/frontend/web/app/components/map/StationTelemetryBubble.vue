@@ -33,6 +33,7 @@ const props = withDefaults(
     showOee?: boolean
     showSla?: boolean
     showOscillation?: boolean
+    isFlippedBottom?: boolean
   }>(),
   {
     name: '',
@@ -42,7 +43,8 @@ const props = withDefaults(
     showPartsHour: true,
     showOee: true,
     showSla: true,
-    showOscillation: true
+    showOscillation: true,
+    isFlippedBottom: false
   }
 )
 
@@ -207,8 +209,17 @@ const statusBadgeClass = computed(() => {
     <div
       v-else
       @click.stop
-      class="expanded-card w-72 sm:w-80 bg-slate-950/95 border border-slate-700 shadow-2xl rounded-xl p-3 backdrop-blur-xl text-slate-100 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-150"
+      class="expanded-card relative w-72 sm:w-80 max-h-[min(500px,calc(100vh-140px))] overflow-y-auto custom-scrollbar bg-slate-950/95 border border-slate-700 shadow-2xl rounded-xl p-3 backdrop-blur-xl text-slate-100 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-150"
     >
+      <!-- Pointer Connector Indicator -->
+      <div
+        v-if="isFlippedBottom"
+        class="absolute -top-1.5 left-6 w-3 h-3 bg-slate-950 border-t border-l border-slate-700 transform rotate-45 pointer-events-none"
+      />
+      <div
+        v-else
+        class="absolute -bottom-1.5 left-6 w-3 h-3 bg-slate-950 border-b border-r border-slate-700 transform rotate-45 pointer-events-none"
+      />
       <!-- Card Header -->
       <div class="flex items-center justify-between pb-2 border-b border-slate-800">
         <div class="flex items-center gap-2">
@@ -410,7 +421,7 @@ const statusBadgeClass = computed(() => {
 
 <style scoped>
 .station-telemetry-bubble {
-  transform: translate(-50%, -100%);
-  margin-top: -10px;
+  display: inline-block;
+  will-change: transform;
 }
 </style>

@@ -195,11 +195,15 @@ Heimdall renders factory floor AutoCAD DXF drawings as interactive, vector-based
 ### 5.3 Real-Time Telemetry HUD Overlays & Expandable Bubbles (`StationTelemetryBubble.vue`)
 To eliminate context switching between separate analytics tabs and the physical shopfloor geography, Heimdall layers an interactive HTML HUD directly over the SVG CAD map canvas:
 
-1. **Synchronized Viewport Transform**:
+1. **Synchronized Viewport Transform & Dynamic Boundary Clamping**:
    A reactive coordinate transformation maps CAD SVG user coordinates $(x, y)$ into viewport screen pixels using the active viewBox and container bounds:
    $$\text{screenX} = \text{offsetX} + (x - \text{viewBox.x}) \times \text{scale}$$
    $$\text{screenY} = \text{offsetY} + (y - \text{viewBox.y}) \times \text{scale}$$
-   This ensures HTML overlay elements stay perfectly anchored to equipment nodes while panning and zooming at 60 FPS, with full anti-aliasing and subpixel clarity.
+   To guarantee bubbles and expanded cards remain 100% within the visible canvas viewport without being cut off by page headers, navigation toolbars, or screen edges:
+   * **Horizontal Viewport Clamping**: Bubble X coordinates are clamped between $X_{\min}$ (14px) and $X_{\max} - W_{\text{card}}$ (container width - 14px), preventing horizontal overflow.
+   * **Vertical Flip Strategy**: If placing the card above the station node overflows the upper boundary ($Y_0 - H - \text{gap} < Y_{\min}$, e.g. < 62px below the HUD toolbar), the placement dynamically flips below the station ($Y_0 + \text{gap}$).
+   * **Strict Height Bounding**: Cards are constrained to `max-h-[min(500px,calc(100vh-140px))]` with custom smooth scrollbars, ensuring complete legibility across smaller displays.
+   * **Accordion Single Focus**: Expanding an equipment card automatically collapses adjacent bubbles, eliminating card occlusion across dense workstation lines.
 
 2. **Compact Floating Bubble**:
    * **OEE Pill**: Color-coded metric indicator ($\ge 85\%$ Emerald, $70-84\%$ Amber, $< 70\%$ Rose).

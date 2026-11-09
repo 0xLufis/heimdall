@@ -48,6 +48,7 @@ const emit = defineEmits<{
 }>()
 
 const svgContainer = ref<SVGSVGElement | null>(null)
+const mapContainerRef = ref<HTMLDivElement | null>(null)
 const { isLoading, error, parsedEntities, viewBox, loadAndParseDxf, zoom, pan } = useDxfMap(props.dxfUrl)
 const { getStationKpi, getStationSla } = useStationTelemetry()
 
@@ -66,6 +67,8 @@ const toggleExpand = (handle: string) => {
   if (localExpandedHandles.value.has(handle)) {
     localExpandedHandles.value.delete(handle)
   } else {
+    // Single-expand accordion mode prevents visual clutter and overlapping cards
+    localExpandedHandles.value.clear()
     localExpandedHandles.value.add(handle)
   }
 }
@@ -107,6 +110,115 @@ const getScreenPosition = (entity: any) => {
   const visible = screenX >= -120 && screenX <= cw + 120 && screenY >= -120 && screenY <= ch + 120
 
   return { x: Math.round(screenX), y: Math.round(screenY), visible }
+}
+
+const getBubblePlacement = (entity: any) => {
+  const handle = entity.handle || entity.name
+  const expanded = isExpanded(handle)
+  const pos = getScreenPosition(entity)
+
+  if (!pos.visible) {
+    return {
+      left: 0,
+      top: 0,
+      visible: false,
+      isFlippedBottom: false,
+      zIndex: 20
+    }
+  }
+
+  // Get viewport dimensions from container or SVG canvas
+  const container = mapContainerRef.value || svgContainer.value?.parentElement
+  const cw = container?.clientWidth || svgContainer.value?.clientWidth || 800
+  const ch = container?.clientHeight || svgContainer.value?.clientHeight || 600
+
+  // Viewport padding bounds: guarantee bubbles stay 100% inside visible canvas
+  const minX = 14
+  const maxX = cw - 14
+  // Top padding accounts for floating Telemetry HUD toolbar (~54px)
+  const minY = 62
+  // Bottom padding accounts for bottom legend and zoom buttons (~24px)
+  const maxY = ch - 20
+
+  const anchorX = pos.x
+  const anchorY = pos.y
+
+  if (!expanded) {
+    // --- COMPACT PILL MODE ---
+    const pillW = 200
+    const pillH = 30
+
+    // Horizontal clamping: center on anchorX, keep strictly within [minX, maxX]
+    let left = anchorX - pillW / 2
+    left = Math.max(minX, Math.min(left, maxX - pillW))
+
+    // Vertical placement: default above station (-8px gap), flip below (+14px gap) if too close to top
+    let top = anchorY - pillH - 8
+    let isFlipped = false
+    if (top < minY) {
+      top = anchorY + 14
+      isFlipped = true
+    }
+    // Safety clamp
+    top = Math.max(minY, Math.min(top, maxY - pillH))
+
+    return {
+      left: Math.round(left),
+      top: Math.round(top),
+      visible: true,
+      isFlippedBottom: isFlipped,
+      zIndex: 30
+    }
+  } else {
+    // --- EXPANDED HUD CARD MODE ---
+    // Expanded card dimensions: max 320px width, max 390px height
+    const cardW = Math.min(320, cw - 28)
+    const availableHeight = Math.max(260, maxY - minY)
+    const cardH = Math.min(390, availableHeight)
+
+    // Horizontal clamping: center on anchorX, keep strictly within [minX, maxX]
+    let left = anchorX - cardW / 2
+    left = Math.max(minX, Math.min(left, maxX - cardW))
+
+    // Vertical placement & Flip strategy:
+    const topAbove = anchorY - cardH - 12
+    const topBelow = anchorY + 16
+
+    let top: number
+    let isFlipped = false
+
+    if (topAbove >= minY) {
+      // Comfortably fits above
+      top = topAbove
+      isFlipped = false
+    } else if (topBelow + cardH <= maxY) {
+      // Comfortably fits below
+      top = topBelow
+      isFlipped = true
+    } else {
+      // If doesn't fit completely on either side, choose side with more vertical room and clamp
+      const roomAbove = anchorY - minY
+      const roomBelow = maxY - anchorY
+      if (roomAbove >= roomBelow) {
+        top = Math.max(minY, topAbove)
+        isFlipped = false
+      } else {
+        top = Math.min(maxY - cardH, topBelow)
+        isFlipped = true
+      }
+    }
+
+    // Strict containment clamp inside [minY, maxY - cardH]
+    top = Math.max(minY, Math.min(top, maxY - cardH))
+
+    return {
+      left: Math.round(left),
+      top: Math.round(top),
+      visible: true,
+      isFlippedBottom: isFlipped,
+      zIndex: 60
+    }
+  }
 }
 
 const shouldRenderBubble = (entity: any) => {
@@ -194,7 +306,7 @@ const resetView = () => {
 
 const isHighlighted = (entity: any) => {
   const h = entity.handle || entity.block || entity.name
-  return props.highlightedHandles.includes(h) || props.activePin === h
+  return props.highlightedHandles.includes(h) || props.activePin === h || isExpanded(h)
 }
 
 const isHovered = (entity: any) => {
@@ -236,7 +348,10 @@ watch(() => props.dxfUrl, (newUrl) => {
 </script>
 
 <template>
-  <div class="relative w-full h-full bg-background select-none overflow-hidden flex flex-col justify-center items-center">
+  <div
+    ref="mapContainerRef"
+    class="relative w-full h-full bg-background select-none overflow-hidden flex flex-col justify-center items-center"
+  >
     <!-- Loading State -->
     <div v-if="isLoading" class="flex flex-col items-center justify-center gap-3 p-12 text-muted-foreground">
       <Loader2 class="w-8 h-8 animate-spin text-indigo-500" />
@@ -476,20 +591,19 @@ watch(() => props.dxfUrl, (newUrl) => {
       </g>
     </svg>
 
-    <!-- HTML Overlays Layer for Crisp Telemetry Bubbles -->
+    <!-- HTML Overlays Layer for Crisp Telemetry Bubbles (Clamped to Viewport) -->
     <div
       v-if="showTelemetryOverlays && !isLoading && !error"
       class="absolute inset-0 pointer-events-none overflow-hidden z-20"
     >
       <template v-for="entity in stationInsertEntities" :key="`bubble-${entity.handle || entity.name}`">
         <div
-          v-if="shouldRenderBubble(entity)"
-          class="absolute transition-all duration-75"
+          v-if="shouldRenderBubble(entity) && getBubblePlacement(entity).visible"
+          class="absolute transition-all duration-75 pointer-events-auto"
           :style="{
-            left: `${getScreenPosition(entity).x}px`,
-            top: `${getScreenPosition(entity).y}px`,
-            display: getScreenPosition(entity).visible ? 'block' : 'none',
-            zIndex: isExpanded(entity.handle || entity.name) ? 50 : 30
+            left: `${getBubblePlacement(entity).left}px`,
+            top: `${getBubblePlacement(entity).top}px`,
+            zIndex: getBubblePlacement(entity).zIndex
           }"
         >
           <StationTelemetryBubble
@@ -498,6 +612,7 @@ watch(() => props.dxfUrl, (newUrl) => {
             :kpi="resolveKpi(entity.handle || entity.name)"
             :sla="resolveSla(entity.handle || entity.name)"
             :is-expanded="isExpanded(entity.handle || entity.name)"
+            :is-flipped-bottom="getBubblePlacement(entity).isFlippedBottom"
             :show-oee="showOee"
             :show-yield="showYield"
             :show-parts-hour="showPartsHour"
