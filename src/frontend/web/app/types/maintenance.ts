@@ -449,6 +449,8 @@ export interface MaintenanceEvent {
     | 'ReceiveNotification'
     | 'InventoryUpdated'
     | 'TelemetryReceived'
+    | 'StationTelemetryReceived'
+    | 'StationOscillationReceived'
   ticketId?: string
   ticket?: MaintenanceTicket
   status?: TicketStatus

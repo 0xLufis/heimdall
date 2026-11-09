@@ -223,6 +223,14 @@ To eliminate context switching between separate analytics tabs and the physical 
      * `Hover Focus`: Displays the HUD bubble only for the currently hovered or selected station.
    * **Fleet Metric Ticker**: Real-time production hall aggregate of Average OEE, Average Yield, Fleet Output Rate, and Active SLA tickets count.
 
+5. **Sub-Second Dynamic Oscillation Streaming & 3D Digital Twin HUD Viewport**:
+   * **SignalR Live Stream**: Direct integration with `/hubs/maintenance` listening to `StationTelemetryReceived` and `StationOscillationReceived` events for sub-second machine oscillations.
+   * **SVG Sparkline Waveform**: Live rolling vibration RMS oscilloscope waveform with gradient fill and pulse dot rendered directly inside expanded HUD bubbles.
+   * **3D Three.js Projection**: `useCadModelViewer.ts` calculates real-time 2D screen coordinates from 3D mesh bounding boxes:
+     $$\text{screenX} = (v_{\text{ndc}}.x \times 0.5 + 0.5) \times W_{\text{canvas}}$$
+     $$\text{screenY} = (-v_{\text{ndc}}.y \times 0.5 + 0.5) \times H_{\text{canvas}}$$
+   * **3D Floating HUD Bubbles**: `Machine3dDigitalTwin.vue` displays interactive telemetry badges and expandable cards over mechanical component slots (`GANTRY-X-01`, `TOOL-HEAD-01`, `CONVEYOR-01`), supporting isometric camera resets, wireframe toggles, and health heatmaps.
+
 ---
 
 ## 6. Dynamic 5-Tab Asset Template Engine (`AssetTabbedEditor.vue`)

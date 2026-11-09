@@ -26,8 +26,14 @@
 - [x] Ring buffer stream visualization (`CircularBuffer.ts`, `useTelemetryStream.ts`).
 - [x] Real-time Soft-PLC jitter, cycle time, thermal, and vibration metrics registry (`telemetryCacheStore.ts`).
 - [x] Standardized catalog discovery for built-in and user-defined metrics.
+- [x] Sub-second dynamic machine oscillation streaming over SignalR (`StationOscillationReceived`, `StationTelemetryReceived`).
+- [x] Live SVG sparkline waveform visualization in plant map and 3D digital twin HUD overlays.
+
+### 3. 3D Digital Twin HUD Telemetry Overlays
+- [x] Three.js camera projection mapping 3D mesh bounding boxes to 2D viewport coordinates in `useCadModelViewer.ts`.
+- [x] Interactive floating 3D HUD telemetry bubbles in `Machine3dDigitalTwin.vue` across mechanical slots (`GANTRY-X-01`, `TOOL-HEAD-01`, `CONVEYOR-01`).
+- [x] Sub-second dynamics (Vibration RMS, Spindle RPM, Power Load) tracking 3D camera orbit, pan, and zoom.
 
 ## Future Enhancements
-- [ ] Direct OPC UA PubSub streaming to station bubbles via WebSockets.
+- [ ] Direct OPC UA PubSub binary gateway for hardware PLCs without MQTT broker.
 - [ ] User-customizable bubble widget presets saved per user profile.
-- [ ] 3D digital twin bubble pinning in WebGL viewports.

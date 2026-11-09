@@ -329,5 +329,96 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
         expect(wrapper.emitted('view-ticket')?.[0]).toEqual(['tkt-301'])
       }
     })
+
+    it('renders sub-second live vibration badge in compact mode', () => {
+      const wrapper = mount(StationTelemetryBubble, {
+        props: {
+          handle: 'L01-OP030',
+          kpi: dummyKpi,
+          oscillation: {
+            stationId: 'L01-OP030',
+            vibrationMmS: 1.5,
+            spindleRpm: 2950,
+            cycleTimeMs: 24000,
+            powerKw: 5.2,
+            temperatureC: 44.0,
+            frequencyHz: 50.0,
+            timestamp: Date.now(),
+            history: [1.2, 1.3, 1.5]
+          },
+          showOscillation: true,
+          isExpanded: false
+        }
+      })
+
+      expect(wrapper.text()).toContain('1.5 mm/s')
+      expect(wrapper.find('[title*="Sub-Second Oscillation"]').exists()).toBe(true)
+    })
+
+    it('renders real-time dynamic oscillation waveform sparkline and metrics in expanded mode', () => {
+      const wrapper = mount(StationTelemetryBubble, {
+        props: {
+          handle: 'L01-OP030',
+          kpi: dummyKpi,
+          oscillation: {
+            stationId: 'L01-OP030',
+            vibrationMmS: 1.62,
+            spindleRpm: 2840,
+            cycleTimeMs: 24000,
+            powerKw: 4.8,
+            temperatureC: 45.5,
+            frequencyHz: 50.0,
+            timestamp: Date.now(),
+            history: [1.2, 1.4, 1.3, 1.5, 1.62]
+          },
+          showOscillation: true,
+          isExpanded: true
+        }
+      })
+
+      expect(wrapper.text()).toContain('Live Machine Dynamics')
+      expect(wrapper.text()).toContain('SignalR 60Hz')
+      expect(wrapper.text()).toContain('1.62')
+      expect(wrapper.text()).toContain('2840')
+      expect(wrapper.text()).toContain('4.8')
+
+      // Check SVG sparkline
+      const polyline = wrapper.find('polyline')
+      expect(polyline.exists()).toBe(true)
+      expect(polyline.attributes('stroke')).toBe('#22d3ee')
+    })
+  })
+
+  describe('Real-Time Sub-Second Oscillation & Stream Engine', () => {
+    it('generates deterministic oscillation data with 20-point historical buffer', () => {
+      const { getStationOscillation, stopOscillationStream } = useStationTelemetry()
+      try {
+        const osc = getStationOscillation('L01-OP020')
+        expect(osc.stationId).toBe('L01-OP020')
+        expect(osc.vibrationMmS).toBeGreaterThan(0.5)
+        expect(osc.spindleRpm).toBeGreaterThan(1500)
+        expect(osc.powerKw).toBeGreaterThan(1.0)
+        expect(osc.history.length).toBe(20)
+      } finally {
+        stopOscillationStream()
+      }
+    })
+
+    it('updates oscillation and maintains bounded rolling history', () => {
+      const { getStationOscillation, updateStationOscillation, stopOscillationStream } = useStationTelemetry()
+      try {
+        const initial = getStationOscillation('L01-OP050')
+        const initialLen = initial.history.length
+
+        updateStationOscillation('L01-OP050', { vibrationMmS: 2.85, spindleRpm: 3100 })
+        const updated = getStationOscillation('L01-OP050')
+        expect(updated.vibrationMmS).toBe(2.85)
+        expect(updated.spindleRpm).toBe(3100)
+        expect(updated.history.length).toBeLessThanOrEqual(24)
+        expect(updated.history[updated.history.length - 1]).toBe(2.85)
+      } finally {
+        stopOscillationStream()
+      }
+    })
   })
 })

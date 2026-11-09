@@ -17,6 +17,7 @@ const props = withDefaults(
     showYield?: boolean
     showPartsHour?: boolean
     showSla?: boolean
+    showOscillation?: boolean
     expandedHandles?: string[]
     stationKpis?: Record<string, StationTelemetryKpi>
     stationTickets?: MaintenanceTicket[]
@@ -31,6 +32,7 @@ const props = withDefaults(
     showYield: true,
     showPartsHour: true,
     showSla: true,
+    showOscillation: true,
     expandedHandles: () => []
   }
 )
@@ -500,6 +502,7 @@ watch(() => props.dxfUrl, (newUrl) => {
             :show-yield="showYield"
             :show-parts-hour="showPartsHour"
             :show-sla="showSla"
+            :show-oscillation="showOscillation"
             @toggle-expand="toggleExpand(entity.handle || entity.name)"
             @select-station="emit('object-clicked', entity.handle || entity.name, entity.name || 'Station')"
             @create-ticket="emit('create-ticket', entity.handle || entity.name)"

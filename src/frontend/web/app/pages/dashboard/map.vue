@@ -13,7 +13,7 @@ import { useGlobalContextMenu, type ContextMenuContextData } from '~/composables
 import { useMaintenance } from '~/composables/useMaintenance'
 import { useStationTelemetry } from '~/composables/useStationTelemetry'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
-import { Activity, Flame, Gauge, Clock, ChevronRight, AlertTriangle, CheckCircle2 } from 'lucide-vue-next'
+import { Activity, Flame, Gauge, Clock, ChevronRight, AlertTriangle, CheckCircle2, Radio, Zap } from 'lucide-vue-next'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -24,7 +24,7 @@ const { stations, fetchStations, updateStationPin } = useStations()
 const { controllers, fetchControllers, updateControllerPin } = useControllers()
 const { openContextMenu } = useGlobalContextMenu()
 const { tickets, fetchTickets } = useMaintenance()
-const { stationKpis, fetchStationKpis, getStationKpi, getStationSla } = useStationTelemetry()
+const { stationKpis, fetchStationKpis, getStationKpi, getStationSla, getStationOscillation } = useStationTelemetry()
 
 // Overlay Controls
 const showTelemetryOverlays = ref(true)
@@ -33,6 +33,7 @@ const showOeeBadge = ref(true)
 const showYieldBadge = ref(true)
 const showPartsHourBadge = ref(true)
 const showSlaBadge = ref(true)
+const showOscillationBadge = ref(true)
 const expandedHandles = ref<string[]>([])
 
 const handleCreateTicket = (handle: string) => {
@@ -54,6 +55,11 @@ const activeStationKpi = computed(() => {
 const activeStationSla = computed(() => {
   if (!activePin.value) return null
   return getStationSla(activePin.value, tickets.value)
+})
+
+const activeStationOscillation = computed(() => {
+  if (!activePin.value) return null
+  return getStationOscillation(activePin.value)
 })
 
 const fleetKpiSummary = computed(() => {
@@ -431,6 +437,17 @@ onMounted(() => {
               >
                 Hover Focus
               </button>
+
+              <button
+                type="button"
+                @click="showOscillationBadge = !showOscillationBadge"
+                class="px-2 py-1 rounded-lg text-[11px] font-medium transition-colors flex items-center gap-1"
+                :class="showOscillationBadge ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                title="Toggle sub-second machine oscillation & vibration readings"
+              >
+                <Radio class="size-3" :class="showOscillationBadge ? 'animate-pulse text-cyan-400' : ''" />
+                <span>Dynamics</span>
+              </button>
             </template>
           </div>
 
@@ -472,6 +489,7 @@ onMounted(() => {
           :show-yield="showYieldBadge"
           :show-parts-hour="showPartsHourBadge"
           :show-sla="showSlaBadge"
+          :show-oscillation="showOscillationBadge"
           :expanded-handles="expandedHandles"
           :station-kpis="stationKpis"
           :station-tickets="tickets"
@@ -537,6 +555,15 @@ onMounted(() => {
                 <span class="text-[9px] text-muted-foreground uppercase font-semibold">Rate</span>
                 <p class="text-xs font-bold font-mono text-indigo-600 dark:text-indigo-400">{{ activeStationKpi.partsPerHour }}/h</p>
               </div>
+            </div>
+
+            <!-- Active Machine Sub-Second Dynamics -->
+            <div v-if="activeStationOscillation" class="flex items-center justify-between p-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-[10px] font-mono">
+              <div class="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-300">
+                <Radio class="size-3 animate-pulse text-cyan-500 shrink-0" />
+                <span>Vib: <strong>{{ activeStationOscillation.vibrationMmS.toFixed(2) }}</strong> mm/s</span>
+              </div>
+              <span class="text-muted-foreground">{{ Math.round(activeStationOscillation.spindleRpm) }} RPM</span>
             </div>
 
             <!-- Active SLA Section -->

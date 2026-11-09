@@ -87,6 +87,24 @@ Station operational state is dynamically evaluated based on telemetry limits and
 * **`FAULTED`**: Immediate line stop, emergency stop (E-stop), hardware fault, or breached SLA incident active.
 * **`MAINTENANCE`**: Station reserved or undergoing technician on-site diagnostics.
 
+### 5.3 Sub-Second Real-Time Dynamics & 60Hz SignalR Oscillation Streaming
+
+For high-speed spindle operations, robotics, and precision mechanical assembly, Heimdall captures sub-second mechanical dynamics broadcasted over SignalR (`/hubs/maintenance`):
+* **Vibration RMS ($v_{\text{rms}}$)**: Evaluated per ISO 10816-3 (Class II industrial machinery):
+  * Good / Nominal: $< 2.5\text{ mm/s}$
+  * Warning / Elevated: $2.5 - 4.5\text{ mm/s}$
+  * Critical / Damaging: $> 4.5\text{ mm/s}$
+* **Harmonic Frequency & Speed**: Spindle RPM oscillations and power draw (kW) correlated with cutting loads and feeder kinematics.
+* **Dynamic Sparkline Waveforms**: Circular buffer rolling histories projected onto animated SVG polylines directly within both DXF plant map bubbles and 3D digital twin HUD overlays.
+
+### 5.4 3D Digital Twin HUD Telemetry Overlays
+
+In the 3D Digital Twin viewport (`Machine3dDigitalTwin.vue`), component node bounding boxes are projected in real-time from Three.js object world space into 2D viewport coordinates:
+$$\mathbf{v}_{\text{ndc}} = \mathbf{P} \cdot \mathbf{V} \cdot \begin{pmatrix} x \\ y_{\text{max}} + \Delta y \\ z \\ 1 \end{pmatrix}$$
+$$\text{screenX} = \left(\frac{v_{\text{ndc}}.x + 1}{2}\right) \times W_{\text{canvas}}$$
+$$\text{screenY} = \left(\frac{1 - v_{\text{ndc}}.y}{2}\right) \times H_{\text{canvas}}$$
+This binds interactive HUD telemetry bubbles directly over physical CAD subassemblies (e.g. `GANTRY-X-01`, `TOOL-HEAD-01`, `CONVEYOR-01`), tracking spatial orientation seamlessly across orbit, pan, and zoom interactions.
+
 ---
 
 ## 6. Endpoints & API Reference

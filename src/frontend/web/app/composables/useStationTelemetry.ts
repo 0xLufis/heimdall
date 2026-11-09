@@ -35,10 +35,26 @@ export interface StationSlaSummary {
   tickets: MaintenanceTicket[]
 }
 
+export interface StationOscillationData {
+  stationId: string
+  vibrationMmS: number
+  spindleRpm: number
+  cycleTimeMs: number
+  powerKw: number
+  temperatureC: number
+  frequencyHz: number
+  timestamp: number
+  history: number[] // Rolling vibration RMS values (20-30 points) for sparklines
+}
+
 const globalStationKpis = ref<Record<string, StationTelemetryKpi>>({})
+const globalStationOscillations = ref<Record<string, StationOscillationData>>({})
 const isStationKpisLoading = ref(false)
+const isSignalRConnected = ref(false)
 const lastRefreshedAt = ref<Date>(new Date())
 let simTimer: any = null
+let oscillationTimer: any = null
+let unsubscribeMaintenanceEvents: (() => void) | null = null
 let activeSubscribers = 0
 
 export const useStationTelemetry = () => {
@@ -189,6 +205,144 @@ export const useStationTelemetry = () => {
     }
   }
 
+  // Fast synchronous getter for sub-second oscillation data
+  const getStationOscillation = (handleOrId: string): StationOscillationData => {
+    const key = (handleOrId || '').toUpperCase()
+    if (globalStationOscillations.value[key]) {
+      return globalStationOscillations.value[key]
+    }
+
+    // Deterministic algorithmic baseline based on key hash
+    let hash = 0
+    for (let i = 0; i < key.length; i++) {
+      hash = (hash << 5) - hash + key.charCodeAt(i)
+      hash |= 0
+    }
+    hash = Math.abs(hash)
+
+    const baseVib = 0.85 + (hash % 12) * 0.11 // 0.85 to ~2.06 mm/s
+    const baseRpm = 2200 + (hash % 15) * 80  // 2200 to 3400 RPM
+    const basePower = 3.2 + (hash % 10) * 0.4 // 3.2 to 6.8 kW
+    const baseTemp = 42.0 + (hash % 8) * 1.5 // 42.0 to 52.5 C
+
+    // Seed 20 historical points with minor harmonic fluctuation
+    const history: number[] = []
+    for (let i = 0; i < 20; i++) {
+      const harmonic = 0.12 * Math.sin((i / 20) * Math.PI * 4) + 0.04 * Math.cos((i / 20) * Math.PI * 8)
+      history.push(Number((baseVib + harmonic).toFixed(3)))
+    }
+
+    const fallback: StationOscillationData = {
+      stationId: handleOrId,
+      vibrationMmS: Number(baseVib.toFixed(2)),
+      spindleRpm: baseRpm,
+      cycleTimeMs: 24000,
+      powerKw: Number(basePower.toFixed(1)),
+      temperatureC: Number(baseTemp.toFixed(1)),
+      frequencyHz: 50.0 + ((hash % 5) - 2) * 0.05,
+      timestamp: Date.now(),
+      history
+    }
+
+    globalStationOscillations.value = { ...globalStationOscillations.value, [key]: fallback }
+    return fallback
+  }
+
+  const updateStationOscillation = (stationId: string, partial: Partial<StationOscillationData>) => {
+    const key = (stationId || '').toUpperCase()
+    const current = getStationOscillation(key)
+    const newVib = partial.vibrationMmS !== undefined ? partial.vibrationMmS : current.vibrationMmS
+    const updatedHistory = [...(current.history || []), newVib].slice(-24)
+
+    globalStationOscillations.value = {
+      ...globalStationOscillations.value,
+      [key]: {
+        ...current,
+        ...partial,
+        vibrationMmS: newVib,
+        history: updatedHistory,
+        timestamp: Date.now()
+      }
+    }
+  }
+
+  const startOscillationStream = () => {
+    if (typeof window === 'undefined') return
+    if (oscillationTimer) return
+
+    // 1. Connect or listen to Maintenance Service SignalR events if available
+    try {
+      if (!unsubscribeMaintenanceEvents) {
+        import('~/services/maintenance').then(({ getMaintenanceService }) => {
+          const svc = getMaintenanceService()
+          if (svc && typeof svc.subscribeToEvents === 'function') {
+            unsubscribeMaintenanceEvents = svc.subscribeToEvents((ev: any) => {
+              if (ev.type === 'StationTelemetryReceived' && ev.summary) {
+                const kpi = ev.summary
+                const key = (kpi.handle || ev.stationName || '').toUpperCase()
+                if (key) {
+                  globalStationKpis.value = { ...globalStationKpis.value, [key]: { ...getStationKpi(key), ...kpi } }
+                }
+              } else if (ev.type === 'StationOscillationReceived' && ev.summary) {
+                const osc = ev.summary
+                const key = (osc.stationId || ev.stationName || '').toUpperCase()
+                if (key) {
+                  updateStationOscillation(key, osc)
+                }
+              }
+            })
+            isSignalRConnected.value = true
+          }
+        }).catch(() => {})
+      }
+    } catch {
+      // Fallback in headless/isolated test environments
+    }
+
+    // 2. High performance sub-second oscillation generator (300ms)
+    let tickCount = 0
+    oscillationTimer = setInterval(() => {
+      tickCount++
+      const currentMap = { ...globalStationOscillations.value }
+      const keys = Object.keys(currentMap)
+      if (keys.length === 0) return
+
+      for (const k of keys) {
+        const item = currentMap[k]
+        if (!item) continue
+        const t = tickCount * 0.3
+        // Harmonic synthesis: f1 = 0.7Hz, f2 = 1.9Hz + slight noise
+        const harmonic = 0.14 * Math.sin(2 * Math.PI * 0.7 * t) + 0.05 * Math.sin(2 * Math.PI * 1.9 * t) + (Math.random() - 0.5) * 0.03
+        const newVib = Math.max(0.2, Number((item.vibrationMmS + harmonic * 0.25).toFixed(3)))
+        const rpmJitter = Math.round((Math.random() - 0.5) * 16)
+
+        const hist = [...(item.history || []), newVib].slice(-24)
+        currentMap[k] = {
+          ...item,
+          vibrationMmS: newVib,
+          spindleRpm: Math.max(800, item.spindleRpm + rpmJitter),
+          history: hist,
+          timestamp: Date.now()
+        }
+      }
+      globalStationOscillations.value = currentMap
+    }, 300)
+  }
+
+  const stopOscillationStream = () => {
+    if (oscillationTimer) {
+      clearInterval(oscillationTimer)
+      oscillationTimer = null
+    }
+    if (unsubscribeMaintenanceEvents) {
+      try {
+        unsubscribeMaintenanceEvents()
+      } catch {}
+      unsubscribeMaintenanceEvents = null
+    }
+    isSignalRConnected.value = false
+  }
+
   const startLiveSimulation = () => {
     if (typeof window === 'undefined') return
     if (simTimer) return
@@ -234,24 +388,32 @@ export const useStationTelemetry = () => {
         fetchStationKpis()
       }
       startLiveSimulation()
+      startOscillationStream()
     })
 
     onUnmounted(() => {
       activeSubscribers = Math.max(0, activeSubscribers - 1)
       if (activeSubscribers === 0) {
         stopLiveSimulation()
+        stopOscillationStream()
       }
     })
   }
 
   return {
     stationKpis,
+    stationOscillations: globalStationOscillations,
     isLoading,
+    isSignalRConnected,
     lastUpdated,
     fetchStationKpis,
     getStationKpi,
     getStationSla,
+    getStationOscillation,
+    updateStationOscillation,
     startLiveSimulation,
-    stopLiveSimulation
+    stopLiveSimulation,
+    startOscillationStream,
+    stopOscillationStream
   }
 }

@@ -13,6 +13,14 @@ export interface MeshNodeInfo {
   status?: string
 }
 
+export interface Projected3dNode {
+  name: string
+  x: number
+  y: number
+  isVisible: boolean
+  worldPos: [number, number, number]
+}
+
 export const useCadModelViewer = () => {
   const isLoading = ref(false)
   const loadProgress = ref(0)
@@ -22,6 +30,7 @@ export const useCadModelViewer = () => {
   const hoveredNodeName = ref<string | null>(null)
   const selectedNodeName = ref<string | null>(null)
   const availableNodeNames = ref<string[]>([])
+  const projectedNodes = ref<Record<string, Projected3dNode>>({})
 
   // Three.js runtime references (shallow to avoid Vue reactivity proxy overhead on WebGL objects)
   const sceneRef = shallowRef<any>(null)
@@ -140,6 +149,48 @@ export const useCadModelViewer = () => {
           }
         } else {
           controls.update()
+        }
+
+        // Update 3D screen projection coordinates for HUD overlays
+        if (containerEl && camera && meshMap.size > 0) {
+          const w = containerEl.clientWidth || 800
+          const h = containerEl.clientHeight || 500
+          const projMap: Record<string, Projected3dNode> = {}
+          const processedNames = new Set<string>()
+
+          for (const nodeName of availableNodeNames.value) {
+            if (processedNames.has(nodeName)) continue
+            processedNames.add(nodeName)
+
+            const mesh = meshMap.get(nodeName)
+            if (!mesh) continue
+
+            const box = new THREE.Box3().setFromObject(mesh)
+            const center = new THREE.Vector3()
+            box.getCenter(center)
+            center.y = box.max.y + 0.08 // Float above top of mesh bounding box
+
+            const projected = center.clone().project(camera)
+            const isVisible =
+              projected.z > -1.0 &&
+              projected.z < 1.0 &&
+              projected.x >= -1.05 &&
+              projected.x <= 1.05 &&
+              projected.y >= -1.05 &&
+              projected.y <= 1.05
+
+            const screenX = (projected.x * 0.5 + 0.5) * w
+            const screenY = (-projected.y * 0.5 + 0.5) * h
+
+            projMap[nodeName] = {
+              name: nodeName,
+              x: Math.round(screenX),
+              y: Math.round(screenY),
+              isVisible,
+              worldPos: [Number(center.x.toFixed(2)), Number(center.y.toFixed(2)), Number(center.z.toFixed(2))]
+            }
+          }
+          projectedNodes.value = projMap
         }
 
         renderer.render(scene, camera)
@@ -395,6 +446,7 @@ export const useCadModelViewer = () => {
     hoveredNodeName,
     selectedNodeName,
     availableNodeNames,
+    projectedNodes,
     initViewer,
     loadModel,
     focusComponent,

@@ -145,6 +145,24 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
         })
       })
 
+      this.hubConnection.on('StationTelemetryReceived', (stationId: string, kpi: any) => {
+        this.notifyListeners({
+          type: 'StationTelemetryReceived',
+          stationName: stationId,
+          summary: kpi,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      this.hubConnection.on('StationOscillationReceived', (stationId: string, oscillation: any) => {
+        this.notifyListeners({
+          type: 'StationOscillationReceived',
+          stationName: stationId,
+          summary: oscillation,
+          timestamp: new Date().toISOString()
+        })
+      })
+
       await this.hubConnection.start()
     } catch (err) {
       console.warn('SignalR Hub connection failed, fallback mode active:', err)

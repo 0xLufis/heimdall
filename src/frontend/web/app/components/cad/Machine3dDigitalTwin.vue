@@ -11,11 +11,15 @@ import {
   Eye,
   CheckCircle2,
   AlertTriangle,
-  Cpu
+  Cpu,
+  Radio,
+  Zap,
+  Gauge
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useCadModelViewer } from '~/composables/useCadModelViewer'
+import { useStationTelemetry } from '~/composables/useStationTelemetry'
 
 const props = withDefaults(
   defineProps<{
@@ -23,12 +27,14 @@ const props = withDefaults(
     selectedSlot?: string | null
     components?: any[]
     height?: string
+    stationId?: string
   }>(),
   {
     modelUrl: '/sample/station_digital_twin.glb',
     selectedSlot: null,
     components: () => [],
-    height: '540px'
+    height: '540px',
+    stationId: 'L01-OP010'
   }
 )
 
@@ -39,6 +45,25 @@ const emit = defineEmits<{
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const show3dOverlays = ref(true)
+const expandedNode = ref<string | null>(null)
+
+const { getStationOscillation } = useStationTelemetry()
+
+const getNodeTelemetry = (nodeName: string) => {
+  const osc = getStationOscillation(props.stationId || 'L01-OP010')
+  let hash = 0
+  for (let i = 0; i < nodeName.length; i++) {
+    hash = (hash << 5) - hash + nodeName.charCodeAt(i)
+    hash |= 0
+  }
+  hash = Math.abs(hash)
+  const vibOffset = ((hash % 7) - 3) * 0.08
+  const vib = Math.max(0.4, Number((osc.vibrationMmS + vibOffset).toFixed(2)))
+  const temp = Math.round(osc.temperatureC + ((hash % 5) - 2) * 2)
+  const isHealthy = vib < 2.5
+  return { vib, temp, isHealthy, osc }
+}
 
 const {
   isLoading,
@@ -49,6 +74,7 @@ const {
   hoveredNodeName,
   selectedNodeName,
   availableNodeNames,
+  projectedNodes,
   initViewer,
   loadModel,
   focusComponent,
@@ -230,6 +256,115 @@ const handleMouseLeave = () => {
       >
         <Activity class="w-3.5 h-3.5" />
       </Button>
+
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        :class="['h-7 w-7', show3dOverlays ? 'text-cyan-400 bg-cyan-500/10' : 'text-muted-foreground hover:text-foreground']"
+        title="Toggle 3D HUD Telemetry Overlays"
+        @click="show3dOverlays = !show3dOverlays"
+      >
+        <Radio class="w-3.5 h-3.5" :class="show3dOverlays ? 'animate-pulse text-cyan-400' : ''" />
+      </Button>
+    </div>
+
+    <!-- 3D HUD Telemetry Overlays Layer -->
+    <div
+      v-if="show3dOverlays && !isLoading && !error"
+      class="absolute inset-0 pointer-events-none overflow-hidden z-15"
+    >
+      <template v-for="(proj, nodeName) in projectedNodes" :key="`hud-3d-${nodeName}`">
+        <div
+          v-if="proj.isVisible"
+          class="absolute pointer-events-auto transition-transform duration-75 select-none"
+          :style="{
+            left: `${proj.x}px`,
+            top: `${proj.y}px`,
+            transform: 'translate(-50%, -100%)',
+            zIndex: selectedNodeName === nodeName ? 40 : 20
+          }"
+        >
+          <!-- Compact 3D Pill Badge -->
+          <div
+            v-if="expandedNode !== nodeName"
+            @click.stop="focusComponent(String(nodeName)); emit('select-slot', String(nodeName)); expandedNode = String(nodeName)"
+            class="group flex items-center gap-1.5 px-2 py-1 bg-slate-950/90 hover:bg-slate-900 border rounded-full shadow-xl backdrop-blur-md cursor-pointer transition-all duration-150 transform hover:scale-105"
+            :class="[
+              selectedNodeName === nodeName
+                ? 'border-cyan-400 ring-2 ring-cyan-400/50 bg-slate-900'
+                : hoveredNodeName === nodeName
+                ? 'border-amber-400 ring-1 ring-amber-400/40'
+                : 'border-slate-700/80 hover:border-cyan-500/60'
+            ]"
+            :title="`Slot ${nodeName}: Click to focus in 3D & view telemetry`"
+          >
+            <span
+              class="w-1.5 h-1.5 rounded-full shrink-0"
+              :class="getNodeTelemetry(String(nodeName)).isHealthy ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'"
+            />
+            <span class="text-[10px] font-mono font-bold text-slate-200 group-hover:text-cyan-300 transition-colors">
+              {{ nodeName }}
+            </span>
+            <span
+              class="text-[9px] font-mono px-1 py-0.2 rounded font-semibold border"
+              :class="getNodeTelemetry(String(nodeName)).isHealthy ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' : 'bg-amber-500/15 text-amber-400 border-amber-500/30'"
+            >
+              {{ getNodeTelemetry(String(nodeName)).vib }} mm/s
+            </span>
+          </div>
+
+          <!-- Expanded 3D HUD Telemetry Card -->
+          <div
+            v-else
+            @click.stop
+            class="w-60 bg-slate-950/95 border border-cyan-500/60 shadow-2xl rounded-xl p-2.5 backdrop-blur-xl text-slate-100 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div class="flex items-center justify-between pb-1.5 border-b border-slate-800">
+              <div class="flex items-center gap-1.5 truncate">
+                <Cpu class="size-3.5 text-cyan-400 shrink-0" />
+                <span class="text-xs font-mono font-bold text-white truncate">{{ nodeName }}</span>
+              </div>
+              <button
+                type="button"
+                @click.stop="expandedNode = null"
+                class="p-0.5 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors"
+                title="Collapse"
+              >
+                <RotateCcw class="size-3" />
+              </button>
+            </div>
+
+            <!-- Mini Telemetry Stat Grid -->
+            <div class="grid grid-cols-2 gap-1.5 text-center">
+              <div class="bg-slate-900/80 p-1 rounded border border-slate-800 text-[10px] font-mono">
+                <span class="text-[8px] uppercase text-slate-400 block font-sans">Vibration</span>
+                <span class="font-bold text-cyan-300">{{ getNodeTelemetry(String(nodeName)).vib }} mm/s</span>
+              </div>
+              <div class="bg-slate-900/80 p-1 rounded border border-slate-800 text-[10px] font-mono">
+                <span class="text-[8px] uppercase text-slate-400 block font-sans">Temperature</span>
+                <span class="font-bold text-amber-300">{{ getNodeTelemetry(String(nodeName)).temp }} °C</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-1 pt-0.5">
+              <button
+                type="button"
+                @click.stop="focusComponent(String(nodeName))"
+                class="flex-1 py-1 px-2 rounded bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/40 text-[9px] font-semibold text-cyan-200 transition-colors text-center"
+              >
+                Focus 3D View
+              </button>
+              <button
+                type="button"
+                @click.stop="expandedNode = null"
+                class="py-1 px-2 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[9px] text-slate-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
 
     <!-- Active Picked Component Floating Chip -->

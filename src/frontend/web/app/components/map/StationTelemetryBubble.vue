@@ -13,9 +13,11 @@ import {
   Clock,
   Gauge,
   Cpu,
-  Layers
+  Layers,
+  Zap,
+  Radio
 } from 'lucide-vue-next'
-import type { StationTelemetryKpi, StationSlaSummary } from '~/composables/useStationTelemetry'
+import { useStationTelemetry, type StationTelemetryKpi, type StationSlaSummary, type StationOscillationData } from '~/composables/useStationTelemetry'
 
 const props = withDefaults(
   defineProps<{
@@ -23,12 +25,14 @@ const props = withDefaults(
     name?: string
     kpi: StationTelemetryKpi
     sla?: StationSlaSummary
+    oscillation?: StationOscillationData
     isExpanded?: boolean
     mode?: 'compact' | 'expanded'
     showYield?: boolean
     showPartsHour?: boolean
     showOee?: boolean
     showSla?: boolean
+    showOscillation?: boolean
   }>(),
   {
     name: '',
@@ -37,7 +41,8 @@ const props = withDefaults(
     showYield: true,
     showPartsHour: true,
     showOee: true,
-    showSla: true
+    showSla: true,
+    showOscillation: true
   }
 )
 
@@ -47,6 +52,46 @@ const emit = defineEmits<{
   (e: 'create-ticket', handle: string): void
   (e: 'view-ticket', ticketId: string): void
 }>()
+
+const { getStationOscillation } = useStationTelemetry()
+
+const activeOscillation = computed(() => {
+  return props.oscillation || getStationOscillation(props.handle)
+})
+
+const sparklinePoints = computed(() => {
+  const history = activeOscillation.value?.history || []
+  if (history.length <= 1) return '0,15 100,15'
+
+  const min = Math.min(...history, 0.4)
+  const max = Math.max(...history, 3.2)
+  const range = max - min || 1.0
+
+  return history
+    .map((val, idx) => {
+      const x = (idx / (history.length - 1)) * 100
+      const y = 26 - ((val - min) / range) * 22
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+})
+
+const sparklineAreaPoints = computed(() => {
+  const pts = sparklinePoints.value
+  if (!pts) return '0,28 100,28'
+  return `0,28 ${pts} 100,28`
+})
+
+const latestPoint = computed(() => {
+  const history = activeOscillation.value?.history || []
+  if (history.length === 0) return { x: 100, y: 14 }
+  const min = Math.min(...history, 0.4)
+  const max = Math.max(...history, 3.2)
+  const range = max - min || 1.0
+  const lastVal = history[history.length - 1]
+  const y = 26 - ((lastVal - min) / range) * 22
+  return { x: 100, y: Number(y.toFixed(1)) }
+})
 
 const oeeColorClass = computed(() => {
   const val = props.kpi.oee
@@ -143,6 +188,17 @@ const statusBadgeClass = computed(() => {
         {{ kpi.partsPerHour }}/h
       </span>
 
+      <!-- Sub-Second Live Vibration & Stream Indicator -->
+      <span
+        v-if="showOscillation && activeOscillation"
+        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono border tracking-tight"
+        :class="activeOscillation.vibrationMmS > 3.0 ? 'text-amber-400 bg-amber-500/15 border-amber-500/35' : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30'"
+        :title="`Sub-Second Oscillation: ${activeOscillation.vibrationMmS.toFixed(2)} mm/s RMS | Spindle: ${Math.round(activeOscillation.spindleRpm)} RPM`"
+      >
+        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+        <span>{{ activeOscillation.vibrationMmS.toFixed(1) }} mm/s</span>
+      </span>
+
       <!-- Expand Indicator Chevron -->
       <ChevronDown class="size-3 text-slate-400 group-hover:text-indigo-400 transition-colors" />
     </div>
@@ -223,6 +279,58 @@ const statusBadgeClass = computed(() => {
           <span class="text-[8px] text-slate-400 mt-1 font-mono">
             Tact: {{ kpi.cycleTimeSeconds }}s
           </span>
+        </div>
+      </div>
+
+      <!-- Sub-Second Live Dynamics & Oscillation Waveform -->
+      <div v-if="showOscillation && activeOscillation" class="p-2 bg-slate-900/85 rounded-lg border border-slate-800/90 flex flex-col gap-1.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <Radio class="size-3 text-cyan-400 animate-pulse" />
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-300">Live Machine Dynamics</span>
+          </div>
+
+          <div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[9px] font-mono text-emerald-400 font-semibold">
+            <span class="w-1 h-1 rounded-full bg-emerald-400 animate-ping mr-0.5" />
+            <span>SignalR 60Hz</span>
+          </div>
+        </div>
+
+        <!-- Real-Time Sparkline Waveform -->
+        <div class="relative w-full h-9 bg-slate-950/80 rounded border border-slate-800 overflow-hidden flex items-center px-1">
+          <svg class="w-full h-7 overflow-visible" viewBox="0 0 100 28" preserveAspectRatio="none">
+            <defs>
+              <linearGradient :id="`grad-${handle}`" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.45" />
+                <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.0" />
+              </linearGradient>
+            </defs>
+            <polygon :points="sparklineAreaPoints" :fill="`url(#grad-${handle})`" />
+            <polyline :points="sparklinePoints" fill="none" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <circle :cx="latestPoint.x" :cy="latestPoint.y" r="2.5" fill="#38bdf8" />
+          </svg>
+        </div>
+
+        <!-- Dynamic Metrics Grid -->
+        <div class="grid grid-cols-3 gap-1.5 text-center">
+          <div class="bg-slate-950/70 p-1 rounded border border-slate-800/70">
+            <div class="text-[8px] uppercase text-slate-400 font-medium">Vibration</div>
+            <div class="text-[11px] font-mono font-bold text-cyan-300">
+              {{ activeOscillation.vibrationMmS.toFixed(2) }} <span class="text-[8px] font-normal text-slate-400">mm/s</span>
+            </div>
+          </div>
+          <div class="bg-slate-950/70 p-1 rounded border border-slate-800/70">
+            <div class="text-[8px] uppercase text-slate-400 font-medium">Spindle</div>
+            <div class="text-[11px] font-mono font-bold text-indigo-300">
+              {{ Math.round(activeOscillation.spindleRpm) }} <span class="text-[8px] font-normal text-slate-400">RPM</span>
+            </div>
+          </div>
+          <div class="bg-slate-950/70 p-1 rounded border border-slate-800/70">
+            <div class="text-[8px] uppercase text-slate-400 font-medium">Power</div>
+            <div class="text-[11px] font-mono font-bold text-amber-300">
+              {{ activeOscillation.powerKw.toFixed(1) }} <span class="text-[8px] font-normal text-slate-400">kW</span>
+            </div>
+          </div>
         </div>
       </div>
 

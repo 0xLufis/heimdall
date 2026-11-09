@@ -15,6 +15,8 @@ public interface IMaintenanceClient
     Task InventoryUpdated(string source, string hostname, string macAddress);
     Task TelemetryReceived(string hostname, string macAddress, object telemetrySummary);
     Task PlcMemoryReceived(string hostname, string machineIdentifier, string amsNetId, string symbolName, object memoryData);
+    Task StationTelemetryReceived(string stationId, object stationKpi);
+    Task StationOscillationReceived(string stationId, object oscillationData);
 }
 
 [Authorize(Policy = "MaintenanceOperations")]

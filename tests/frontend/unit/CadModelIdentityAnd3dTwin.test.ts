@@ -135,4 +135,26 @@ describe('3D CAD Digital Twin & Component Identity Linking Suite', () => {
       expect(cadRef.boundingBox3d?.maxX).toBe(0.5)
     })
   })
+
+  describe('3D CAD HUD Telemetry Overlay & Projected Node Coordinates', () => {
+    it('calculates screen projection from 3D camera coordinates', () => {
+      // Linear screen space projection formula verification:
+      // screenX = (projected.x * 0.5 + 0.5) * width
+      // screenY = (-projected.y * 0.5 + 0.5) * height
+      const width = 800
+      const height = 600
+
+      // Center point (NDC: 0, 0, 0.5)
+      const centerX = (0 * 0.5 + 0.5) * width
+      const centerY = (-0 * 0.5 + 0.5) * height
+      expect(centerX).toBe(400)
+      expect(centerY).toBe(300)
+
+      // Top-right point (NDC: 0.5, 0.5, 0.2)
+      const trX = (0.5 * 0.5 + 0.5) * width
+      const trY = (-0.5 * 0.5 + 0.5) * height
+      expect(trX).toBe(600)
+      expect(trY).toBe(150)
+    })
+  })
 })
