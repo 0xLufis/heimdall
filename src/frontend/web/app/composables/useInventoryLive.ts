@@ -7,6 +7,7 @@ const subscribers = new Set<() => void>()
 const isLiveConnected = ref<boolean>(false)
 const lastEvent = ref<any>(null)
 const lastSyncedAt = ref<Date>(new Date())
+let activeInstances = 0
 
 export const useInventoryLive = () => {
   const connectionError = ref<string | null>(null)
@@ -43,6 +44,25 @@ export const useInventoryLive = () => {
     }
   }
 
+  const stopPolling = () => {
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+  }
+
+  // Setup auto-poll fallback if SignalR is unavailable
+  const startPolling = (intervalMs: number = 8000) => {
+    if (typeof window === 'undefined') return
+    stopPolling()
+    pollTimer = setInterval(() => {
+      // If SignalR is not connected, poll
+      if (!isLiveConnected.value) {
+        notifySubscribers()
+      }
+    }, intervalMs)
+  }
+
   const onInventoryUpdate = (callback: () => void) => {
     subscribers.add(callback)
     if (getCurrentInstance()) {
@@ -52,22 +72,24 @@ export const useInventoryLive = () => {
     }
   }
 
-  // Setup auto-poll fallback if SignalR is unavailable
-  const startPolling = (intervalMs: number = 8000) => {
-    if (typeof window === 'undefined') return
-    if (pollTimer) clearInterval(pollTimer)
-    pollTimer = setInterval(() => {
-      // If SignalR is not connected, poll
-      if (!isLiveConnected.value) {
-        notifySubscribers()
-      }
-    }, intervalMs)
-  }
-
   if (getCurrentInstance()) {
     onMounted(() => {
+      activeInstances++
       connectSignalR()
       startPolling()
+    })
+
+    onUnmounted(() => {
+      activeInstances = Math.max(0, activeInstances - 1)
+      if (activeInstances === 0) {
+        stopPolling()
+        if (maintenanceEventUnsub) {
+          maintenanceEventUnsub()
+          maintenanceEventUnsub = null
+        }
+        subscribers.clear()
+        isLiveConnected.value = false
+      }
     })
   }
 
@@ -78,6 +100,8 @@ export const useInventoryLive = () => {
     connectionError,
     onInventoryUpdate,
     connectSignalR,
-    notifySubscribers
+    notifySubscribers,
+    startPolling,
+    stopPolling
   }
 }

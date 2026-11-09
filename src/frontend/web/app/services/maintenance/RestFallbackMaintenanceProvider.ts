@@ -397,6 +397,18 @@ export class RestFallbackMaintenanceProvider implements IMaintenanceService {
     }
   }
 
+  public stopPolling(): void {
+    if (this.pollingTimer) {
+      clearInterval(this.pollingTimer)
+      this.pollingTimer = null
+    }
+  }
+
+  public destroy(): void {
+    this.stopPolling()
+    this.eventListeners.clear()
+  }
+
   public subscribeToEvents(listener: (event: MaintenanceEvent) => void): () => void {
     this.eventListeners.add(listener)
     return () => {

@@ -23,5 +23,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: [path.resolve(__dirname, './vitest.setup.ts')],
     include: ['tests/**/*.test.ts', '../../../tests/frontend/unit/**/*.test.ts'],
+    clearMocks: true,
+    restoreMocks: true,
   },
 })
