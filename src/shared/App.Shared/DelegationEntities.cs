@@ -81,10 +81,107 @@ public class DelegationRecipe
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Specific target technology for technology-primary technician dedication (e.g. Laser, Welding, Robotics, Controls).</summary>
+    [MaxLength(128)]
+    [Column("technology")]
+    public string? Technology { get; set; }
+
+    /// <summary>Whether this delegation prioritizes technology-dedicated technicians/engineers primarily.</summary>
+    [Column("is_technology_primary")]
+    public bool IsTechnologyPrimary { get; set; } = true;
+
+    /// <summary>Whether this recipe designates a complete machine dedication (dedicating technician to the entire machine).</summary>
+    [Column("is_complete_machine_dedication")]
+    public bool IsCompleteMachineDedication { get; set; } = false;
+
+    /// <summary>JSON array of Maintenance / Personnel Group IDs (referring to 1 or more maintenance groups).</summary>
+    [Column("maintenance_group_ids_json")]
+    public string MaintenanceGroupIdsJson { get; set; } = "[]";
+
+    /// <summary>JSON array of IMachineGroup IDs (referring to 1 or more machine groups across the hierarchy).</summary>
+    [Column("machine_group_ids_json")]
+    public string MachineGroupIdsJson { get; set; } = "[]";
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public List<MachineDelegationBinding> Bindings { get; set; } = new();
+
+    /// <summary>Multi-maintenance group references decoupled from single group.</summary>
+    public List<DelegationMaintenanceGroup> MaintenanceGroups { get; set; } = new();
+
+    /// <summary>Multi-machine group references (IMachineGroup hierarchy: Business Unit, Project, Line, Sub-Line, Machine).</summary>
+    public List<DelegationMachineGroup> MachineGroups { get; set; } = new();
+
+    [NotMapped]
+    public List<Guid> MaintenanceGroupIds
+    {
+        get
+        {
+            try
+            {
+                var list = System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(MaintenanceGroupIdsJson) ?? new();
+                if (PrimaryPersonnelGroupId.HasValue && !list.Contains(PrimaryPersonnelGroupId.Value))
+                    list.Insert(0, PrimaryPersonnelGroupId.Value);
+                return list;
+            }
+            catch { return PrimaryPersonnelGroupId.HasValue ? new List<Guid> { PrimaryPersonnelGroupId.Value } : new(); }
+        }
+        set => MaintenanceGroupIdsJson = System.Text.Json.JsonSerializer.Serialize(value ?? new());
+    }
+
+    [NotMapped]
+    public List<Guid> MachineGroupIds
+    {
+        get
+        {
+            try { return System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(MachineGroupIdsJson) ?? new(); }
+            catch { return new(); }
+        }
+        set => MachineGroupIdsJson = System.Text.Json.JsonSerializer.Serialize(value ?? new());
+    }
+}
+
+/// <summary>
+/// Junction linking a delegation recipe to one or more maintenance / personnel groups.
+/// Decouples delegations to support multiple maintenance teams.
+/// </summary>
+[Table("delegation_maintenance_groups", Schema = "backend")]
+public class DelegationMaintenanceGroup
+{
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    public Guid DelegationRecipeId { get; set; }
+    public DelegationRecipe? DelegationRecipe { get; set; }
+
+    [Required]
+    public Guid MaintenanceGroupId { get; set; }
+    public PersonnelGroup? MaintenanceGroup { get; set; }
+
+    public DateTimeOffset AssignedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Junction linking a delegation recipe to one or more machine groups (IMachineGroup).
+/// Decouples delegations to support hierarchy levels: Business Unit > Project > Line > Sub-Line > Machine.
+/// </summary>
+[Table("delegation_machine_groups", Schema = "backend")]
+public class DelegationMachineGroup
+{
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    public Guid DelegationRecipeId { get; set; }
+    public DelegationRecipe? DelegationRecipe { get; set; }
+
+    [Required]
+    public Guid MachineGroupId { get; set; }
+    public MachineGroup? MachineGroup { get; set; }
+
+    public DateTimeOffset AssignedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 /// <summary>

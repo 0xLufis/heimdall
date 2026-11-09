@@ -15,11 +15,18 @@ import {
   Mail,
   Activity,
   Building2,
-  Lock
+  Lock,
+  Cpu,
+  Layers,
+  Sparkles,
+  Trash2,
+  Plus
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import DashboardRoleBadge from '~/components/dashboard/RoleBadge.vue'
+import { useDedications } from '~/composables/useDedications'
+import type { UserDedications } from '~/types/maintenance'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -146,8 +153,70 @@ function parseUserAgent(ua: string) {
   return 'Browser Session'
 }
 
+// User Dedications state
+const { fetchUserDedications, dedicateUserToMachine, removeUserDedicationFromMachine } = useDedications()
+const userDedications = ref<UserDedications | null>(null)
+const dedicationsLoading = ref(false)
+const availableMachines = ref<any[]>([])
+const selectedMachineToDedicate = ref('')
+const selectedDedicationTechnology = ref('General')
+const isDedicatingMachine = ref(false)
+
+async function fetchUserDedicationsData() {
+  dedicationsLoading.value = true
+  try {
+    const [deds, machines] = await Promise.all([
+      fetchUserDedications(userId),
+      $fetch<any[]>('/api/machines').catch(() => [])
+    ])
+    userDedications.value = deds
+    availableMachines.value = machines || []
+  } catch (err: any) {
+    console.error('Failed to load user dedications', err)
+  } finally {
+    dedicationsLoading.value = false
+  }
+}
+
+async function handleDedicateToMachine() {
+  if (!selectedMachineToDedicate.value) return
+  isDedicatingMachine.value = true
+  try {
+    const success = await dedicateUserToMachine(userId, selectedMachineToDedicate.value, selectedDedicationTechnology.value)
+    if (success) {
+      toast.success(`User dedicated to machine for ${selectedDedicationTechnology.value} successfully`)
+      selectedMachineToDedicate.value = ''
+      await fetchUserDedicationsData()
+    } else {
+      toast.error('Failed to dedicate user to machine')
+    }
+  } catch (err: any) {
+    toast.error(err?.message || 'Failed to dedicate user')
+  } finally {
+    isDedicatingMachine.value = false
+  }
+}
+
+async function handleRemoveUserDedication(machineId: string, technology?: string) {
+  dedicationsLoading.value = true
+  try {
+    const success = await removeUserDedicationFromMachine(userId, machineId, technology)
+    if (success) {
+      toast.success('Machine dedication removed')
+      await fetchUserDedicationsData()
+    } else {
+      toast.error('Failed to remove dedication')
+    }
+  } catch (err: any) {
+    toast.error(err?.message || 'Failed to remove dedication')
+  } finally {
+    dedicationsLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchUserDetails()
+  fetchUserDedicationsData()
 })
 </script>
 
@@ -286,6 +355,193 @@ onMounted(() => {
             </div>
             <div class="p-2 rounded-lg bg-muted text-foreground">
               <Building2 class="size-4" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Machine Dedications & Technology Coverage Card -->
+        <div class="bg-card rounded-xl shadow-sm border border-border overflow-hidden space-y-4 p-5">
+          <div class="flex items-center justify-between border-b border-border pb-3.5">
+            <div class="flex items-center gap-2">
+              <Cpu class="size-4 text-indigo-600 dark:text-indigo-400" />
+              <h4 class="text-xs font-semibold text-foreground uppercase tracking-wider">
+                Machine Dedications & Coverage
+              </h4>
+            </div>
+            <Badge variant="outline" class="text-[10px] uppercase font-mono text-indigo-600 dark:text-indigo-400 border-indigo-500/30 bg-indigo-500/10">
+              {{ (userDedications?.directlyDedicatedMachines?.length || 0) + (userDedications?.dedicatedMachineGroups?.length || 0) }} Dedicated Targets
+            </Badge>
+          </div>
+
+          <!-- Directly Dedicated Machines List -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-foreground">Directly Dedicated Machines</span>
+              <span class="text-[11px] text-muted-foreground">{{ userDedications?.directlyDedicatedMachines?.length || 0 }} machines</span>
+            </div>
+
+            <div v-if="userDedications?.directlyDedicatedMachines?.length" class="space-y-2">
+              <div
+                v-for="mach in userDedications.directlyDedicatedMachines"
+                :key="`${mach.machineId}_${mach.technology || 'General'}`"
+                class="p-3 rounded-lg bg-muted/40 border border-border flex items-center justify-between"
+              >
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold text-foreground">{{ mach.machineName }}</span>
+                    <Badge variant="outline" class="text-[9px] font-mono border-border">
+                      {{ mach.customIdentifier || mach.machineType || 'Machine' }}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      class="text-[9px] font-mono px-1.5 py-0 uppercase"
+                      :class="mach.technology === 'Vision' ? 'border-violet-500/40 text-violet-500 bg-violet-500/10' :
+                              mach.technology === 'Controls' ? 'border-sky-500/40 text-sky-500 bg-sky-500/10' :
+                              mach.technology === 'Mechanical' ? 'border-amber-500/40 text-amber-500 bg-amber-500/10' :
+                              'border-emerald-500/30 text-emerald-500 bg-emerald-500/10'"
+                    >
+                      {{ mach.technology || 'General' }}
+                    </Badge>
+                    <Badge
+                      v-if="mach.supersedesTechnologicalGroup"
+                      class="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0"
+                    >
+                      ⚡ Supersedes {{ mach.supersededGroupName }}
+                    </Badge>
+                  </div>
+                  <p class="text-[11px] text-muted-foreground">
+                    Physical Line: <span class="text-foreground font-medium">{{ mach.groupName || 'Primary Line' }}</span>
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  @click="handleRemoveUserDedication(mach.machineId, mach.technology)"
+                  class="h-7 px-2.5 text-xs text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg cursor-pointer"
+                >
+                  <Trash2 class="size-3 mr-1" />
+                  Unassign
+                </Button>
+              </div>
+            </div>
+
+            <div v-else class="p-4 text-center rounded-lg bg-muted/20 border border-dashed border-border text-xs text-muted-foreground">
+              This user is not directly dedicated to any individual machines.
+            </div>
+          </div>
+
+          <!-- Vice-Versa Selector: Dedicate User to Additional Machine -->
+          <div class="p-3.5 rounded-lg bg-muted/20 border border-border space-y-2.5">
+            <span class="text-[11px] font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Plus class="size-3.5 text-indigo-500" />
+              Dedicate User to a Machine
+            </span>
+            <div class="flex flex-wrap items-center gap-2">
+              <select
+                v-model="selectedMachineToDedicate"
+                class="flex-1 min-w-[180px] h-8 px-2.5 text-xs rounded-md bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="" disabled>Select machine to dedicate this user to...</option>
+                <option v-for="m in availableMachines" :key="m.id" :value="m.id">
+                  {{ m.name }} ({{ m.customIdentifier || m.machineType || 'Station' }})
+                </option>
+              </select>
+              <select
+                v-model="selectedDedicationTechnology"
+                class="w-36 h-8 px-2.5 text-xs rounded-md bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="General">General Support</option>
+                <option value="Controls">Controls</option>
+                <option value="Mechanical">Mechanical</option>
+                <option value="Vision">Vision</option>
+                <option value="Robotics">Robotics</option>
+                <option value="Laser">Laser</option>
+                <option value="Welding">Welding</option>
+              </select>
+              <Button
+                size="sm"
+                @click="handleDedicateToMachine"
+                :disabled="!selectedMachineToDedicate || isDedicatingMachine"
+                class="h-8 px-3 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              >
+                <RefreshCw v-if="isDedicatingMachine" class="size-3 mr-1 animate-spin" />
+                <Plus v-else class="size-3 mr-1" />
+                Dedicate ({{ selectedDedicationTechnology }})
+              </Button>
+            </div>
+          </div>
+
+          <!-- Dedicated Machine Groups (if any) -->
+          <div v-if="userDedications?.dedicatedMachineGroups?.length" class="space-y-2 pt-2 border-t border-border">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Layers class="size-3.5 text-primary" />
+                Assigned Machine Groups (Lead Engineer)
+              </span>
+            </div>
+            <div class="space-y-1.5">
+              <div
+                v-for="grp in userDedications.dedicatedMachineGroups"
+                :key="grp.groupId"
+                class="p-2.5 rounded-lg bg-muted/30 border border-border flex items-center justify-between text-xs"
+              >
+                <div>
+                  <span class="font-semibold text-foreground">{{ grp.groupName }}</span>
+                  <Badge variant="outline" class="ml-2 text-[9px] uppercase font-mono">
+                    {{ grp.groupType }}
+                  </Badge>
+                </div>
+                <span class="text-[11px] text-muted-foreground">{{ grp.machineCount }} child machines</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Technological Group Coverage -->
+          <div v-if="userDedications?.technologicalCoverage?.length" class="space-y-2.5 pt-2 border-t border-border">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Sparkles class="size-3.5 text-indigo-500" />
+                Technological Team Coverage
+              </span>
+            </div>
+            <p class="text-[11px] text-muted-foreground">
+              Machines possessing technology maintained by this user's technological groups.
+            </p>
+
+            <div
+              v-for="cov in userDedications.technologicalCoverage"
+              :key="cov.groupId"
+              class="p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/20 space-y-2 text-xs"
+            >
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-foreground">{{ cov.groupName }}</span>
+                <Badge class="text-[9px] font-mono bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30">
+                  {{ cov.technology }}
+                </Badge>
+              </div>
+
+              <div v-if="cov.coveredMachines.length" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                <div
+                  v-for="cm in cov.coveredMachines"
+                  :key="cm.machineId"
+                  class="p-2 rounded-md bg-card border border-border flex items-center justify-between text-[11px]"
+                >
+                  <span class="font-medium text-foreground truncate mr-2">{{ cm.machineName }}</span>
+                  <Badge
+                    v-if="cm.supersedesTechnologicalGroup"
+                    class="text-[8px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 shrink-0"
+                  >
+                    ⚡ Superseded by You
+                  </Badge>
+                  <span v-else class="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">
+                    Auto-Covered
+                  </span>
+                </div>
+              </div>
+              <div v-else class="text-[11px] text-muted-foreground italic">
+                No active stations found requiring this technology.
+              </div>
             </div>
           </div>
         </div>

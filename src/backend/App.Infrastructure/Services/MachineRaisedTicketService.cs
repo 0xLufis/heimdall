@@ -84,11 +84,13 @@ public class MachineRaisedTicketService : IMachineRaisedTicketService
             scheduleType = WorkerScheduleType.OnCall;
         }
 
-        // Resolve responsible personnel
+        // Determine technology and resolve responsible personnel
+        string? tech = machine.Technologies?.FirstOrDefault() ?? machine.MachineType;
         var resolved = await _delegationService.ResolvePersonnelForMachineAsync(
             request.MachineId,
             discipline,
             scheduleType,
+            tech,
             cancellationToken);
 
         string effectiveAssignee = resolved.EffectiveAssigneeName

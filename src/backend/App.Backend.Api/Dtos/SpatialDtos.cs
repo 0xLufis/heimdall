@@ -103,12 +103,68 @@ public class MachineDto
     public DateTimeOffset? DecommissionDate { get; set; }
     /// <summary>Disposition of installed parts on decommission.</summary>
     public string? DecommissionDisposition { get; set; }
+    /// <summary>Single Point of Contact (SPOC) for the machine.</summary>
+    public string? Spoc { get; set; }
+    public string? SpocUserId { get; set; }
+
+    /// <summary>Machine owner.</summary>
+    public string? Owner { get; set; }
+    public string? OwnerUserId { get; set; }
+
+    /// <summary>Foreign key referencing the parent Sub-Line MachineGroup.</summary>
+    public Guid? SubLineGroupId { get; set; }
+    public string? SubLineGroupName { get; set; }
+
+    /// <summary>Foreign key referencing the parent Line MachineGroup.</summary>
+    public Guid? LineGroupId { get; set; }
+    public string? LineGroupName { get; set; }
+
+    /// <summary>Foreign key referencing the parent Project MachineGroup.</summary>
+    public Guid? ProjectGroupId { get; set; }
+    public string? ProjectGroupName { get; set; }
+
+    /// <summary>Foreign key referencing the parent Business Unit MachineGroup.</summary>
+    public Guid? BusinessUnitGroupId { get; set; }
+    public string? BusinessUnitGroupName { get; set; }
+
+    /// <summary>Parent machine ID for sub-machines in multi-machine cells or roundtables.</summary>
+    public Guid? ParentMachineId { get; set; }
+    public string? ParentMachineName { get; set; }
+
+    /// <summary>Station slot index or angular position on a roundtable/dial table.</summary>
+    public int? SubMachineIndex { get; set; }
+
+    /// <summary>Cell classification: Standard, MultiMachineCell, Roundtable.</summary>
+    public string? CellType { get; set; }
+
+    /// <summary>Whether this machine acts as a multi-machine cell or roundtable containing child stations.</summary>
+    public bool IsCellOrRoundtable { get; set; }
+
+    /// <summary>Sub-machines nested under this cell or roundtable.</summary>
+    public List<SubMachineSummaryDto> SubMachines { get; set; } = new();
+
     /// <summary>Summary of Client PCs controlling this station.</summary>
     public List<ClientPcSummaryDto> Controllers { get; set; } = new();
     /// <summary>List of teams responsible for this station.</summary>
     public List<TeamSummaryDto> ResponsibleTeams { get; set; } = new();
     /// <summary>Tree of hardware components installed at this station.</summary>
     public List<InventoryItemDto> Children { get; set; } = new();
+}
+
+/// <summary>
+/// Lightweight representation of a Sub-Machine within a multi-machine cell or roundtable.
+/// </summary>
+public class SubMachineSummaryDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string CustomIdentifier { get; set; } = string.Empty;
+    public int? SubMachineIndex { get; set; }
+    public string? MachineType { get; set; }
+    public string Status { get; set; } = "active";
+    public string? Spoc { get; set; }
+    public string? Owner { get; set; }
+    public string? PreferredTechnicianName { get; set; }
 }
 
 public class MachineDecommissionDto
@@ -193,6 +249,17 @@ public class MachineUpdateDto
     public string? PinnedObjectHandle { get; set; }
     public string? OrganizationId { get; set; }
     public List<Guid>? ControllerIds { get; set; }
+    public string? Spoc { get; set; }
+    public string? SpocUserId { get; set; }
+    public string? Owner { get; set; }
+    public string? OwnerUserId { get; set; }
+    public Guid? SubLineGroupId { get; set; }
+    public Guid? LineGroupId { get; set; }
+    public Guid? ProjectGroupId { get; set; }
+    public Guid? BusinessUnitGroupId { get; set; }
+    public Guid? ParentMachineId { get; set; }
+    public int? SubMachineIndex { get; set; }
+    public string? CellType { get; set; }
 }
 
 /// <summary>

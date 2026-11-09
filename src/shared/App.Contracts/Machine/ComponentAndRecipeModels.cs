@@ -36,6 +36,48 @@ public class EplanCadReference
 
     /// <summary>Direct coordinate link inside an exported PDF schematic or plant drawing.</summary>
     public PdfNodeLocation? PdfLocation { get; set; }
+
+    /// <summary>Relative or absolute URL/storage path to 3D model asset (.glb, .gltf, .step).</summary>
+    public string? Model3dUrl { get; set; }
+
+    /// <summary>Scene graph node path or identifier in 3D CAD (e.g. "GANTRY-X-01", "ToolHead").</summary>
+    public string? Cad3dNodePath { get; set; }
+
+    /// <summary>Unique mesh or geometry identifier within the 3D container.</summary>
+    public string? Cad3dMeshId { get; set; }
+
+    /// <summary>Local spatial position and orientation relative to machine datum.</summary>
+    public Cad3dTransform? LocalTransform { get; set; }
+
+    /// <summary>3D Bounding box for raycasting, camera framing, and collision volumes.</summary>
+    public Cad3dBoundingBox? BoundingBox3d { get; set; }
+}
+
+/// <summary>
+/// 3D local coordinate transform for CAD spatial positioning and orientation.
+/// </summary>
+public class Cad3dTransform
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Z { get; set; }
+    public double RotationX { get; set; }
+    public double RotationY { get; set; }
+    public double RotationZ { get; set; }
+    public double Scale { get; set; } = 1.0;
+}
+
+/// <summary>
+/// 3D bounding box extents for camera framing and spatial raycasting.
+/// </summary>
+public class Cad3dBoundingBox
+{
+    public double MinX { get; set; }
+    public double MinY { get; set; }
+    public double MinZ { get; set; }
+    public double MaxX { get; set; }
+    public double MaxY { get; set; }
+    public double MaxZ { get; set; }
 }
 
 /// <summary>

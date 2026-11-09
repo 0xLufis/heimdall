@@ -3,6 +3,7 @@ namespace App.Contracts.Inventory;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using App.Contracts.Machine;
 
 /// <summary>
 /// Strongly-typed Station Component Tree representation.
@@ -16,6 +17,8 @@ public class StationComponentTreeDto
     public string? CustomIdentifier { get; set; }
     public string? MachineType { get; set; }
     public string? GroupId { get; set; }
+    /// <summary>Relative or absolute URL/path to the 3D digital twin model (.glb, .gltf).</summary>
+    public string? Model3dUrl { get; set; }
     public List<StationControllerNodeDto> Controllers { get; set; } = new();
     public List<StationInstalledPartDto> InstalledParts { get; set; } = new();
     public int TotalComponentsCount { get; set; }
@@ -60,4 +63,10 @@ public class StationInstalledPartDto
     public string? StorageLocation { get; set; }
     public string ItemType { get; set; } = string.Empty;
     public string? ManufacturerName { get; set; }
+    /// <summary>3D CAD scene node path/identifier matching the 3D model node hierarchy.</summary>
+    public string? Cad3dNodePath { get; set; }
+    /// <summary>Functional slot identifier assigned to this component position.</summary>
+    public string? FunctionalSlotIdentifier { get; set; }
+    /// <summary>Complete electrical and mechanical CAD reference metadata.</summary>
+    public EplanCadReference? CadReference { get; set; }
 }

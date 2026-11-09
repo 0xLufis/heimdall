@@ -10,6 +10,7 @@ import StationPhysicalView from '~/components/inventory/StationPhysicalView.vue'
 import StationDetailWorkbench from '~/components/machines/StationDetailWorkbench.vue'
 import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
+import { useOrganizationMachineTypes } from '~/composables/useOrganizationMachineTypes'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -119,6 +120,8 @@ const fetchData = async () => {
   }
 }
 
+const { isMachineTypeVisible } = useOrganizationMachineTypes()
+
 // Filtered machines
 const filteredMachines = computed(() => {
   let list = machines.value
@@ -131,6 +134,9 @@ const filteredMachines = computed(() => {
   } else if (statusFilter.value === 'decommissioned') {
     list = list.filter(m => m.status === 'decommissioned' || m.status === 'dismantled')
   }
+
+  // Filter out machine types/categories disabled by the organization
+  list = list.filter(m => isMachineTypeVisible(m.machineType))
 
   // Search Query
   if (searchQuery.value.trim()) {

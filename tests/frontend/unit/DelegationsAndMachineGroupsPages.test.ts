@@ -61,7 +61,7 @@ describe('Frontend Reorganization: Delegations and Machine Groups', () => {
 
     // Maintenance items
     expect(maint.items.map(i => i.link)).toContain('/dashboard/tickets')
-    expect(maint.items.map(i => i.link)).toContain('/dashboard/delegations')
+    expect(maint.items.map(i => i.link)).not.toContain('/dashboard/delegations')
 
     // Settings items
     expect(settings.items.map(i => i.link)).toContain('/dashboard/users')

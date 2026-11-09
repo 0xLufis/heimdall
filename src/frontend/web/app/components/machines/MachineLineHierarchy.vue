@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
 import { Layers, Cpu, ChevronRight } from 'lucide-vue-next'
 import MachineCardGrid from './MachineCardGrid.vue'
+import { useOrganizationMachineTypes } from '~/composables/useOrganizationMachineTypes'
 
 const props = defineProps<{
   machines: any[]
@@ -18,12 +19,20 @@ const emit = defineEmits<{
   'contextMenu': [machine: any, event: MouseEvent]
 }>()
 
+const { isCategoryEnabled, isMachineTypeVisible } = useOrganizationMachineTypes()
+
 const groups = computed(() => {
   const map = new Map<string, any[]>()
   for (const m of props.machines) {
+    if (props.mode === 'technologies' && !isMachineTypeVisible(m.machineType)) {
+      continue
+    }
     const key = props.mode === 'lines'
       ? (m.groupId || 'Unassigned Line')
       : (m.machineType || 'General Industrial')
+    if (props.mode === 'technologies' && !isCategoryEnabled(key)) {
+      continue
+    }
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(m)
   }

@@ -21,6 +21,29 @@ export interface MachineEntity {
   pinnedObjectHandle?: string
   technologies?: string[]
   lineGroupId?: string
+  subLineGroupId?: string
+  projectGroupId?: string
+  businessUnitGroupId?: string
+  // SPOC & Owner Governance
+  spoc?: string
+  spocUserId?: string
+  owner?: string
+  ownerUserId?: string
+  // Sub-Machine Architecture
+  parentMachineId?: string
+  subMachineIndex?: number
+  cellType?: 'Standard' | 'MultiMachineCell' | 'Roundtable' | string
+  isSubMachine?: boolean
+  isCellOrRoundtable?: boolean
+  subMachines?: Array<{
+    id: string
+    name: string
+    displayName?: string
+    customIdentifier: string
+    subMachineIndex?: number
+    cellType?: string
+    status?: string
+  }>
   systemTags?: string[]
   userTags?: string[]
   components?: Array<{
@@ -36,15 +59,101 @@ export interface MachineEntity {
 
 const SEED_MACHINES: MachineEntity[] = [
   {
-    id: 'STATION-OP10-01',
+    id: '10101010-1010-1010-1010-101010101010',
     name: 'OP10-CNC',
     displayName: 'OP-10 CNC Machining Cell',
     customIdentifier: 'STATION-OP10-01',
     machineType: 'Milling',
-    groupId: 'Line 1',
+    groupId: 'Line 06 — Module Assembly (AUDI)',
     status: 'active',
+    spoc: 'István Kovács',
+    spocUserId: 'usr-kovacs',
+    owner: 'CNC Machining Operations BU',
+    ownerUserId: 'usr-bu-lead',
+    businessUnitGroupId: 'grp-bu-emobility',
+    projectGroupId: 'grp-prj-audi',
+    lineGroupId: 'grp-line06',
+    subLineGroupId: 'grp-subline-dispense',
     controllers: [{ id: 'c-op10', hostname: 'IPC-EDGE-CONTROLLER', ipAddress: '192.168.1.101', isOnline: true }],
     responsibleTeams: [{ name: 'Mechanical Maintenance' }]
+  },
+  {
+    id: '20202020-2020-2020-2020-202020202020',
+    name: 'RT-CELL-01',
+    displayName: 'Automated 4-Station Rotary Dial Table Cell',
+    customIdentifier: 'LINE1-RT01',
+    machineType: 'Roundtable',
+    groupId: 'Line 06 — Module Assembly (AUDI)',
+    status: 'active',
+    spoc: 'Zoltán Németh',
+    spocUserId: 'usr-nemeth',
+    owner: 'E-Mobility Systems BU',
+    businessUnitGroupId: 'grp-bu-emobility',
+    projectGroupId: 'grp-prj-audi',
+    lineGroupId: 'grp-line06',
+    subLineGroupId: 'grp-subline-dispense',
+    cellType: 'Roundtable',
+    isCellOrRoundtable: true,
+    controllers: [{ id: 'c-rt-master', hostname: 'IPC-RT01-MASTER', ipAddress: '192.168.1.180', isOnline: true }],
+    responsibleTeams: [{ name: 'Assembly Automation' }],
+    subMachines: [
+      {
+        id: '20202020-2020-2020-2020-202020200001',
+        name: 'RT-Station-1-Infeed',
+        displayName: 'Rotary Dial Station 1 (Part Infeed & Orientation)',
+        customIdentifier: 'LINE1-RT01-S1',
+        subMachineIndex: 1,
+        cellType: 'Roundtable',
+        status: 'active'
+      },
+      {
+        id: '20202020-2020-2020-2020-202020200002',
+        name: 'RT-Station-2-Dispense',
+        displayName: 'Rotary Dial Station 2 (Gap Filler Dispense)',
+        customIdentifier: 'LINE1-RT01-S2',
+        subMachineIndex: 2,
+        cellType: 'Roundtable',
+        status: 'active'
+      },
+      {
+        id: '20202020-2020-2020-2020-202020200003',
+        name: 'RT-Station-3-Fasten',
+        displayName: 'Rotary Dial Station 3 (Multi-Spindle Fastener)',
+        customIdentifier: 'LINE1-RT01-S3',
+        subMachineIndex: 3,
+        cellType: 'Roundtable',
+        status: 'active'
+      },
+      {
+        id: '20202020-2020-2020-2020-202020200004',
+        name: 'RT-Station-4-Outfeed',
+        displayName: 'Rotary Dial Station 4 (Vision QC & Unload Robot)',
+        customIdentifier: 'LINE1-RT01-S4',
+        subMachineIndex: 4,
+        cellType: 'Roundtable',
+        status: 'active'
+      }
+    ]
+  },
+  {
+    id: '20202020-2020-2020-2020-202020200001',
+    name: 'RT-Station-1-Infeed',
+    displayName: 'Rotary Dial Station 1 (Part Infeed & Orientation)',
+    customIdentifier: 'LINE1-RT01-S1',
+    machineType: 'Assembly',
+    groupId: 'Line 06 — Module Assembly (AUDI)',
+    status: 'active',
+    spoc: 'Zoltán Németh',
+    owner: 'E-Mobility Systems BU',
+    businessUnitGroupId: 'grp-bu-emobility',
+    projectGroupId: 'grp-prj-audi',
+    lineGroupId: 'grp-line06',
+    subLineGroupId: 'grp-subline-dispense',
+    parentMachineId: '20202020-2020-2020-2020-202020202020',
+    subMachineIndex: 1,
+    cellType: 'Roundtable',
+    isSubMachine: true,
+    controllers: [{ id: 'c-rt-s1', hostname: 'IPC-RT01-S1', ipAddress: '192.168.1.181', isOnline: true }]
   },
   {
     id: '11111111-1111-1111-1111-111111111111',
@@ -165,6 +274,12 @@ class MachinesStore {
 
   public getMachineById(id: string): MachineEntity | undefined {
     return this.machines.get(id) || Array.from(this.machines.values()).find(m => m.customIdentifier === id)
+  }
+
+  public getSubMachines(id: string): MachineEntity[] {
+    const parent = this.getMachineById(id)
+    if (!parent) return []
+    return Array.from(this.machines.values()).filter(m => m.parentMachineId === parent.id || m.parentMachineId === parent.customIdentifier)
   }
 
   public updateMachineStatus(

@@ -78,6 +78,7 @@ public class MachineComponent
     public Guid? ComponentRecipeId { get; set; }
     public ComponentRecipe? ComponentRecipe { get; set; }
 
+
     /// <summary>Foreign key referencing the currently installed physical inventory item.</summary>
     public Guid? CurrentPartId { get; set; }
     public BaseInventoryItem? CurrentPart { get; set; }

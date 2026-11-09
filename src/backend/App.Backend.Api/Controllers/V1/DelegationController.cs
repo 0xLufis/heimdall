@@ -31,11 +31,15 @@ public class DelegationController : ControllerBase
     }
 
     [HttpGet("machine/{machineId}")]
-    public async Task<ActionResult<List<DelegationRecipeDto>>> GetRecipesForMachine(Guid machineId)
+    public async Task<ActionResult<List<DelegationRecipeDto>>> GetRecipesForMachine(string machineId)
     {
         var recipes = await _delegationService.GetRecipesForMachineAsync(machineId);
         return Ok(recipes);
     }
+
+    [NonAction]
+    public Task<ActionResult<List<DelegationRecipeDto>>> GetRecipesForMachine(Guid machineId)
+        => GetRecipesForMachine(machineId.ToString());
 
     [HttpPost("bind")]
     [Authorize(Policy = AuthorizationPolicies.DelegationManagement)]
@@ -81,10 +85,18 @@ public class DelegationController : ControllerBase
     public async Task<ActionResult<ResolvedPersonnelDto>> ResolvePersonnel(
         Guid machineId,
         [FromQuery] DelegationDiscipline discipline = DelegationDiscipline.General,
-        [FromQuery] WorkerScheduleType scheduleType = WorkerScheduleType.Shift)
+        [FromQuery] WorkerScheduleType scheduleType = WorkerScheduleType.Shift,
+        [FromQuery] string? technology = null)
     {
-        var resolved = await _delegationService.ResolvePersonnelForMachineAsync(machineId, discipline, scheduleType);
+        var resolved = await _delegationService.ResolvePersonnelForMachineAsync(machineId, discipline, scheduleType, technology);
         return Ok(resolved);
+    }
+
+    [HttpGet("applicable/{machineId}")]
+    public async Task<ActionResult<List<DelegationRecipeDto>>> GetApplicableRecipes(Guid machineId)
+    {
+        var recipes = await _delegationService.GetRecipesApplicableToMachineAsync(machineId);
+        return Ok(recipes);
     }
 
     [HttpGet("groups")]
@@ -145,4 +157,96 @@ public class DelegationController : ControllerBase
         dto.Id = group.Id;
         return CreatedAtAction(nameof(GetPersonnelGroups), new { id = group.Id }, dto);
     }
+
+    [HttpGet("machine/{machineId}/dedications")]
+    public async Task<ActionResult<MachineDedicationsDto>> GetMachineDedications(string machineId)
+    {
+        try
+        {
+            var dedications = await _delegationService.GetMachineDedicationsAsync(machineId);
+            return Ok(dedications);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    [NonAction]
+    public Task<ActionResult<MachineDedicationsDto>> GetMachineDedications(Guid machineId)
+        => GetMachineDedications(machineId.ToString());
+
+    [HttpPost("machine/{machineId}/dedicate")]
+    [Authorize(Policy = AuthorizationPolicies.DelegationManagement)]
+    public async Task<ActionResult<MachineDedicationsDto>> DedicateToMachine(string machineId, [FromBody] DedicationAssignmentRequest request)
+    {
+        try
+        {
+            var result = await _delegationService.DedicateToMachineAsync(machineId, request);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    [NonAction]
+    public Task<ActionResult<MachineDedicationsDto>> DedicateToMachine(Guid machineId, DedicationAssignmentRequest request)
+        => DedicateToMachine(machineId.ToString(), request);
+
+    [HttpDelete("machine/{machineId}/dedicate")]
+    [Authorize(Policy = AuthorizationPolicies.DelegationManagement)]
+    public async Task<ActionResult> RemoveMachineDedication(
+        string machineId,
+        [FromQuery] string? targetId = null,
+        [FromQuery] string? technology = null)
+    {
+        var success = await _delegationService.RemoveMachineDedicationAsync(machineId, targetId, technology);
+        if (!success) return NotFound();
+        return NoContent();
+    }
+
+    [NonAction]
+    public Task<ActionResult> RemoveMachineDedication(Guid machineId, string? targetId = null, string? technology = null)
+        => RemoveMachineDedication(machineId.ToString(), targetId, technology);
+
+    [HttpGet("user/{userId}/dedications")]
+    public async Task<ActionResult<UserDedicationsDto>> GetUserDedications(string userId)
+    {
+        var dedications = await _delegationService.GetUserDedicationsAsync(userId);
+        return Ok(dedications);
+    }
+
+    [HttpPost("user/{userId}/dedicate-machine/{machineId}")]
+    [Authorize(Policy = AuthorizationPolicies.DelegationManagement)]
+    public async Task<ActionResult> DedicateUserToMachine(
+        string userId,
+        string machineId,
+        [FromQuery] string? technology = null)
+    {
+        var success = await _delegationService.DedicateUserToMachineAsync(userId, machineId, technology);
+        if (!success) return NotFound();
+        return Ok(new { success = true });
+    }
+
+    [NonAction]
+    public Task<ActionResult> DedicateUserToMachine(string userId, Guid machineId, string? technology = null)
+        => DedicateUserToMachine(userId, machineId.ToString(), technology);
+
+    [HttpDelete("user/{userId}/dedicate-machine/{machineId}")]
+    [Authorize(Policy = AuthorizationPolicies.DelegationManagement)]
+    public async Task<ActionResult> RemoveUserDedicationFromMachine(
+        string userId,
+        string machineId,
+        [FromQuery] string? technology = null)
+    {
+        var success = await _delegationService.RemoveUserDedicationFromMachineAsync(userId, machineId, technology);
+        if (!success) return NotFound();
+        return NoContent();
+    }
+
+    [NonAction]
+    public Task<ActionResult> RemoveUserDedicationFromMachine(string userId, Guid machineId, string? technology = null)
+        => RemoveUserDedicationFromMachine(userId, machineId.ToString(), technology);
 }

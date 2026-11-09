@@ -77,6 +77,27 @@ public class DelegationRecipeDto
     public int EscalationTimeoutMinutes { get; set; } = 30;
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>IDs of 1 or more Maintenance Groups referred to by this delegation.</summary>
+    public List<Guid> MaintenanceGroupIds { get; set; } = new();
+
+    /// <summary>Display names of Maintenance Groups referred to by this delegation.</summary>
+    public List<string> MaintenanceGroupNames { get; set; } = new();
+
+    /// <summary>IDs of 1 or more Machine Groups (IMachineGroup) referred to by this delegation.</summary>
+    public List<Guid> MachineGroupIds { get; set; } = new();
+
+    /// <summary>Display names of Machine Groups referred to by this delegation.</summary>
+    public List<string> MachineGroupNames { get; set; } = new();
+
+    /// <summary>Specific target technology for technology-primary technician dedication (e.g. Laser, Welding, Robotics, Controls).</summary>
+    public string? Technology { get; set; }
+
+    /// <summary>Whether this delegation prioritizes technology-dedicated technicians/engineers primarily.</summary>
+    public bool IsTechnologyPrimary { get; set; } = true;
+
+    /// <summary>Whether this recipe designates a complete machine dedication.</summary>
+    public bool IsCompleteMachineDedication { get; set; } = false;
 }
 
 /// <summary>
@@ -100,6 +121,7 @@ public class ResolvedPersonnelDto
     public Guid DelegationRecipeId { get; set; }
     public string RecipeName { get; set; } = string.Empty;
     public DelegationDiscipline Discipline { get; set; }
+    public string? Technology { get; set; }
     public string? EffectiveAssigneeId { get; set; }
     public string? EffectiveAssigneeName { get; set; }
     public Guid? EffectiveGroupId { get; set; }
@@ -107,6 +129,7 @@ public class ResolvedPersonnelDto
     public bool IsOnCallFallback { get; set; }
     public bool IsEscalated { get; set; }
     public string ResolutionReason { get; set; } = string.Empty;
+    public string DedicationSource { get; set; } = "default";
 }
 
 /// <summary>
@@ -133,4 +156,132 @@ public class FunctionalSettingDto
     public string Category { get; set; } = "General";
     public string UpdatedBy { get; set; } = "admin";
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Direct Dedications Architecture: Machines <-> Groups <-> Users
+// ─────────────────────────────────────────────────────────────────────────────
+
+public class DedicationAssignmentRequest
+{
+    public string TargetType { get; set; } = "person"; // "person" or "group"
+    public string TargetId { get; set; } = string.Empty; // User ID or PersonnelGroup ID
+    public string TargetName { get; set; } = string.Empty;
+    public string? TargetEmail { get; set; }
+    public string? Technology { get; set; }
+}
+
+public class MachineDirectDedicationDto
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string TargetType { get; set; } = "person"; // "person" | "group"
+    public string TargetId { get; set; } = string.Empty; // User ID or PersonnelGroup ID
+    public string TargetName { get; set; } = string.Empty;
+    public string? TargetEmail { get; set; }
+    public string Technology { get; set; } = "General"; // "Controls", "Mechanical", "Vision", "General"
+    public bool IsTechnologySpecific { get; set; }
+    public bool IsGroupMemberOverride { get; set; }
+    public string? OverriddenGroupName { get; set; }
+    public DateTimeOffset AssignedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public class MachineDedicationsDto
+{
+    public Guid MachineId { get; set; }
+    public string MachineName { get; set; } = string.Empty;
+    public string CustomIdentifier { get; set; } = string.Empty;
+    public List<string> Technologies { get; set; } = new();
+
+    // Multiple direct machine dedications (complete machine or per-technology)
+    public List<MachineDirectDedicationDto> DirectDedications { get; set; } = new();
+
+    // Direct machine dedications (primary/fallback for backwards compatibility)
+    public DedicatedPersonDto? DedicatedPerson { get; set; }
+    public DedicatedGroupDto? DedicatedGroup { get; set; }
+
+    // Inherited from machine group hierarchy (SubLine, Line, Project, BU)
+    public List<InheritedDedicationDto> InheritedDedications { get; set; } = new();
+
+    // Technological groups automatically dedicated, with superseding info
+    public List<TechnologicalGroupDedicationDto> TechnologicalGroupDedications { get; set; } = new();
+}
+
+public class DedicatedPersonDto
+{
+    public string UserId { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string Source { get; set; } = "machine_preferred";
+    public string Technology { get; set; } = "General";
+    public bool IsGroupMemberOverride { get; set; }
+    public string? OverriddenGroupName { get; set; }
+}
+
+public class DedicatedGroupDto
+{
+    public Guid GroupId { get; set; }
+    public string GroupName { get; set; } = string.Empty;
+    public string Discipline { get; set; } = string.Empty;
+    public string? Technology { get; set; }
+    public int MemberCount { get; set; }
+    public List<string> MemberNames { get; set; } = new();
+}
+
+public class InheritedDedicationDto
+{
+    public Guid MachineGroupId { get; set; }
+    public string MachineGroupName { get; set; } = string.Empty;
+    public string GroupType { get; set; } = string.Empty;
+    public DedicatedPersonDto? DedicatedPerson { get; set; }
+    public DedicatedGroupDto? DedicatedGroup { get; set; }
+}
+
+public class TechnologicalGroupDedicationDto
+{
+    public Guid GroupId { get; set; }
+    public string GroupName { get; set; } = string.Empty;
+    public string Technology { get; set; } = string.Empty;
+    public bool IsAutomaticallyDedicated { get; set; } = true;
+    public bool IsSuperseded { get; set; }
+    public string? SupersededByUserId { get; set; }
+    public string? SupersededByUserName { get; set; }
+    public List<string> MemberUserIds { get; set; } = new();
+    public List<string> MemberNames { get; set; } = new();
+}
+
+public class UserDedicationsDto
+{
+    public string UserId { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public List<DedicatedMachineItemDto> DirectlyDedicatedMachines { get; set; } = new();
+    public List<DedicatedMachineGroupItemDto> DedicatedMachineGroups { get; set; } = new();
+    public List<UserTechnologicalCoverageDto> TechnologicalCoverage { get; set; } = new();
+}
+
+public class DedicatedMachineItemDto
+{
+    public Guid MachineId { get; set; }
+    public string MachineName { get; set; } = string.Empty;
+    public string CustomIdentifier { get; set; } = string.Empty;
+    public string? MachineType { get; set; }
+    public string? GroupName { get; set; }
+    public string Technology { get; set; } = "General";
+    public bool SupersedesTechnologicalGroup { get; set; }
+    public string? SupersededGroupName { get; set; }
+}
+
+public class DedicatedMachineGroupItemDto
+{
+    public Guid GroupId { get; set; }
+    public string GroupName { get; set; } = string.Empty;
+    public string GroupType { get; set; } = string.Empty;
+    public int MachineCount { get; set; }
+}
+
+public class UserTechnologicalCoverageDto
+{
+    public Guid GroupId { get; set; }
+    public string GroupName { get; set; } = string.Empty;
+    public string Technology { get; set; } = string.Empty;
+    public List<DedicatedMachineItemDto> CoveredMachines { get; set; } = new();
 }

@@ -1,7 +1,10 @@
 using App.Infrastructure.Repositories;
+using App.Infrastructure.Services;
+using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace App.Backend.Api.Controllers.V1;
 
@@ -14,10 +17,17 @@ namespace App.Backend.Api.Controllers.V1;
 public class MachineController : ControllerBase
 {
     private readonly IStationRepository _stationRepository;
+    private readonly AppDbContext? _context;
+    private readonly IGenericTemplateService? _templateService;
 
-    public MachineController(IStationRepository stationRepository)
+    public MachineController(
+        IStationRepository stationRepository,
+        AppDbContext? context = null,
+        IGenericTemplateService? templateService = null)
     {
         _stationRepository = stationRepository;
+        _context = context;
+        _templateService = templateService;
     }
 
     [HttpGet]
@@ -40,6 +50,35 @@ public class MachineController : ControllerBase
             DecommissionReason = m.DecommissionReason,
             DecommissionDate = m.DecommissionDate,
             DecommissionDisposition = m.DecommissionDisposition,
+            Spoc = m.Spoc,
+            SpocUserId = m.SpocUserId,
+            Owner = m.Owner,
+            OwnerUserId = m.OwnerUserId,
+            SubLineGroupId = m.SubLineGroupId,
+            SubLineGroupName = m.SubLineGroup?.Name,
+            LineGroupId = m.LineGroupId,
+            LineGroupName = m.LineGroup?.Name,
+            ProjectGroupId = m.ProjectGroupId,
+            ProjectGroupName = m.ProjectGroup?.Name,
+            BusinessUnitGroupId = m.BusinessUnitGroupId,
+            BusinessUnitGroupName = m.BusinessUnitGroup?.Name,
+            ParentMachineId = m.ParentMachineId,
+            ParentMachineName = m.ParentMachine?.Name,
+            SubMachineIndex = m.SubMachineIndex,
+            CellType = m.CellType,
+            IsCellOrRoundtable = m.IsCellOrRoundtable,
+            SubMachines = m.SubMachines.Select(sm => new App.Backend.Api.Dtos.SubMachineSummaryDto
+            {
+                Id = sm.Id,
+                Name = sm.Name,
+                CustomIdentifier = sm.CustomIdentifier,
+                SubMachineIndex = sm.SubMachineIndex,
+                MachineType = sm.MachineType,
+                Status = sm.Status ?? "active",
+                Spoc = sm.Spoc,
+                Owner = sm.Owner,
+                PreferredTechnicianName = sm.PreferredTechnicianName
+            }).ToList(),
             Controllers = m.Controllers.Select(c => new App.Backend.Api.Dtos.ClientPcSummaryDto
             {
                 Id = c.Id,
@@ -75,6 +114,9 @@ public class MachineController : ControllerBase
                     m.CustomIdentifier,
                     m.MachineType,
                     m.GroupId,
+                    m.Spoc,
+                    m.Owner,
+                    SubMachinesCount = m.SubMachines.Count,
                     ControllersCount = m.Controllers.Count,
                     Controllers = m.Controllers.Select(c => new { c.Id, c.Hostname, c.IpAddress, c.LastOnline })
                 }).ToList()
@@ -90,7 +132,7 @@ public class MachineController : ControllerBase
     {
         var machines = await _stationRepository.GetAllAsync();
         var grouped = machines
-            .GroupBy(m => string.IsNullOrWhiteSpace(m.GroupId) ? "Unassigned Line" : m.GroupId)
+            .GroupBy(m => string.IsNullOrWhiteSpace(m.GroupId) ? (m.LineGroup?.Name ?? "Unassigned Line") : m.GroupId)
             .Select(g => new
             {
                 LineId = g.Key,
@@ -105,6 +147,9 @@ public class MachineController : ControllerBase
                     m.CustomIdentifier,
                     m.MachineType,
                     m.GroupId,
+                    m.Spoc,
+                    m.Owner,
+                    SubMachinesCount = m.SubMachines.Count,
                     Controllers = m.Controllers.Select(c => new { c.Id, c.Hostname, c.IpAddress, c.LastOnline })
                 }).ToList()
             })
@@ -115,11 +160,70 @@ public class MachineController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Machine>> GetMachine(Guid id)
+    public async Task<ActionResult<Machine>> GetMachine(string id)
     {
-        var machine = await _stationRepository.GetByIdAsync(id);
+        Guid? targetGuid = Guid.TryParse(id, out var g) ? g : null;
+        if (targetGuid.HasValue)
+        {
+            var byId = await _stationRepository.GetByIdAsync(targetGuid.Value);
+            if (byId != null) return Ok(byId);
+        }
+
+        var all = await _stationRepository.GetAllAsync();
+        var machine = all.FirstOrDefault(m => m.CustomIdentifier == id || m.Name == id);
         if (machine == null) return NotFound();
         return Ok(machine);
+    }
+
+    [HttpGet("{id}/sub-machines")]
+    public async Task<ActionResult<List<App.Backend.Api.Dtos.SubMachineSummaryDto>>> GetSubMachines(string id)
+    {
+        Guid targetGuid = Guid.Empty;
+        if (Guid.TryParse(id, out var g))
+        {
+            targetGuid = g;
+        }
+        else
+        {
+            var all = await _stationRepository.GetAllAsync();
+            var m = all.FirstOrDefault(mach => mach.CustomIdentifier == id || mach.Name == id);
+            if (m != null) targetGuid = m.Id;
+        }
+
+        if (targetGuid == Guid.Empty) return Ok(new List<App.Backend.Api.Dtos.SubMachineSummaryDto>());
+        var subMachines = await _stationRepository.GetSubMachinesAsync(targetGuid);
+        var dtos = subMachines.Select(sm => new App.Backend.Api.Dtos.SubMachineSummaryDto
+        {
+            Id = sm.Id,
+            Name = sm.Name,
+            CustomIdentifier = sm.CustomIdentifier,
+            SubMachineIndex = sm.SubMachineIndex,
+            MachineType = sm.MachineType,
+            Status = sm.Status ?? "active",
+            Spoc = sm.Spoc,
+            Owner = sm.Owner,
+            PreferredTechnicianName = sm.PreferredTechnicianName
+        }).ToList();
+
+        return Ok(dtos);
+    }
+
+    [HttpPost("{id}/sub-machines")]
+    [Authorize(Policy = "EndpointConfigManagement")]
+    public async Task<ActionResult<Machine>> AddSubMachine(Guid id, [FromBody] Machine subMachine)
+    {
+        var added = await _stationRepository.AddSubMachineAsync(id, subMachine);
+        if (added == null) return NotFound($"Parent machine '{id}' was not found.");
+        return CreatedAtAction(nameof(GetMachine), new { id = added.Id }, added);
+    }
+
+    [HttpDelete("{id}/sub-machines/{subMachineId}")]
+    [Authorize(Policy = "EndpointConfigManagement")]
+    public async Task<IActionResult> RemoveSubMachine(Guid id, Guid subMachineId)
+    {
+        var success = await _stationRepository.RemoveSubMachineAsync(id, subMachineId);
+        if (!success) return NotFound();
+        return NoContent();
     }
 
     [HttpPost]
@@ -140,7 +244,18 @@ public class MachineController : ControllerBase
             update.CustomIdentifier,
             update.PinnedObjectHandle,
             null,
-            update.ControllerIds
+            update.ControllerIds,
+            update.Spoc,
+            update.SpocUserId,
+            update.Owner,
+            update.OwnerUserId,
+            update.SubLineGroupId,
+            update.LineGroupId,
+            update.ProjectGroupId,
+            update.BusinessUnitGroupId,
+            update.ParentMachineId,
+            update.SubMachineIndex,
+            update.CellType
         );
 
         if (updated == null) return NotFound();
@@ -175,5 +290,94 @@ public class MachineController : ControllerBase
             machine.DecommissionDate,
             machine.DecommissionDisposition
         });
+    }
+
+    [HttpGet("organization-types")]
+    public async Task<IActionResult> GetOrganizationMachineTypes([FromQuery] string? organizationId = null)
+    {
+        var orgId = organizationId ?? User?.FindFirst("organization_id")?.Value ?? "default";
+        var allMachineTemplates = _templateService != null
+            ? await _templateService.GetTemplatesAsync(new App.Contracts.Templates.TemplateQueryFilterDto { TemplateType = "machine" })
+            : new List<App.Contracts.Templates.GenericTemplateDto>();
+
+        var allCategories = allMachineTemplates.Select(t => t.Category).Distinct().OrderBy(c => c).ToList();
+        if (allCategories.Count == 0)
+        {
+            allCategories = new List<string> { "SMT", "Inspection", "Soldering", "Depaneling", "Dispensing", "Fastening", "Testing", "Assembly", "Robotics" };
+        }
+
+        List<string> enabledCategories = new();
+        if (_context != null)
+        {
+            var setting = await _context.SystemSettings
+                .FirstOrDefaultAsync(s => s.Key == $"OrgMachineTypes_{orgId}" || s.Category == $"OrgMachineTypes_{orgId}");
+            if (setting != null && !string.IsNullOrWhiteSpace(setting.ValueJson))
+            {
+                try
+                {
+                    var parsed = System.Text.Json.JsonSerializer.Deserialize<List<string>>(setting.ValueJson);
+                    if (parsed != null) enabledCategories = parsed;
+                }
+                catch { }
+            }
+        }
+
+        if (enabledCategories.Count == 0)
+        {
+            // Default: all categories enabled
+            enabledCategories = new List<string>(allCategories);
+        }
+
+        return Ok(new
+        {
+            OrganizationId = orgId,
+            AllCategories = allCategories,
+            EnabledCategories = enabledCategories,
+            Templates = allMachineTemplates.Select(t => new
+            {
+                t.Id,
+                t.Code,
+                t.Name,
+                t.Category,
+                t.Icon,
+                IsEnabled = enabledCategories.Contains(t.Category, StringComparer.OrdinalIgnoreCase)
+            }).ToList()
+        });
+    }
+
+    [HttpPut("organization-types")]
+    public async Task<IActionResult> UpdateOrganizationMachineTypes([FromBody] App.Contracts.Templates.OrganizationMachineTypeFilterDto dto)
+    {
+        var orgId = string.IsNullOrWhiteSpace(dto.OrganizationId)
+            ? (User?.FindFirst("organization_id")?.Value ?? "default")
+            : dto.OrganizationId;
+
+        if (_context == null) return Ok(new { success = true, enabledCategories = dto.EnabledCategories });
+
+        var key = $"OrgMachineTypes_{orgId}";
+        var setting = await _context.SystemSettings.FirstOrDefaultAsync(s => s.Key == key);
+        var json = System.Text.Json.JsonSerializer.Serialize(dto.EnabledCategories);
+
+        if (setting == null)
+        {
+            setting = new SystemSetting
+            {
+                Key = key,
+                Category = key,
+                ValueJson = json,
+                UpdatedBy = User?.Identity?.Name ?? "system",
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            _context.SystemSettings.Add(setting);
+        }
+        else
+        {
+            setting.ValueJson = json;
+            setting.UpdatedBy = User?.Identity?.Name ?? "system";
+            setting.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { success = true, organizationId = orgId, enabledCategories = dto.EnabledCategories });
     }
 }

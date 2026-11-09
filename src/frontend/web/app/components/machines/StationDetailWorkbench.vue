@@ -19,18 +19,29 @@ import {
   Check,
   Wrench,
   Archive,
-  RefreshCw
+  RefreshCw,
+  Users,
+  UserCheck,
+  ShieldAlert,
+  Trash2,
+  UserPlus,
+  Sparkles,
+  Box
 } from 'lucide-vue-next'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { useDedications } from '~/composables/useDedications'
+import type { MachineDedications } from '~/types/maintenance'
+import DynamicUiExtensions from '~/components/lua/DynamicUiExtensions.vue'
+import Machine3dDigitalTwin from '~/components/cad/Machine3dDigitalTwin.vue'
 
 const props = withDefaults(
   defineProps<{
     open: boolean
     machine: any | null
-    initialTab?: 'tree' | 'diagnostics' | 'lifecycle'
+    initialTab?: 'tree' | '3d-twin' | 'diagnostics' | 'lifecycle' | 'dedications'
   }>(),
   {
     open: false,
@@ -44,12 +55,126 @@ const emit = defineEmits<{
   (e: 'refresh'): void
 }>()
 
-const activeTab = ref<'tree' | 'diagnostics' | 'lifecycle'>('tree')
+const activeTab = ref<'tree' | '3d-twin' | 'diagnostics' | 'lifecycle' | 'dedications'>(props.initialTab || 'tree')
 const treeLoading = ref(false)
 const treeData = ref<any | null>(null)
 const searchQuery = ref('')
 const expandedNodes = ref<Record<string, boolean>>({})
 const isCopied = ref(false)
+
+// 3D Digital Twin state
+const selected3dSlot = ref<string | null>(null)
+const on3dSlotSelected = (slotId: string) => {
+  selected3dSlot.value = slotId
+}
+
+const default3dParts = [
+  { id: 'part-frame-01', name: 'Precision Base Enclosure Frame', cad3dNodePath: 'FRAME-BASE-01', functionalSlotIdentifier: 'FRAME-BASE-01', technology: 'Structural', equipmentStatus: 'InMachine' },
+  { id: 'part-conv-01', name: 'Dual-Lane SMEMA Belt Conveyor', cad3dNodePath: 'CONVEYOR-01', functionalSlotIdentifier: 'CONVEYOR-01', technology: 'Pneumatics', equipmentStatus: 'InMachine' },
+  { id: 'part-gantry-x', name: 'High-Speed Linear X-Carriage Beam', cad3dNodePath: 'GANTRY-X-01', functionalSlotIdentifier: 'GANTRY-X-01', technology: 'Kinematics', equipmentStatus: 'InMachine' },
+  { id: 'part-gantry-z', name: 'Precision Vertical Z-Slide Axis', cad3dNodePath: 'GANTRY-Z-01', functionalSlotIdentifier: 'GANTRY-Z-01', technology: 'Kinematics', equipmentStatus: 'InMachine' },
+  { id: 'part-tool-01', name: 'Piezo Jetting Dispenser / Spindle Head', cad3dNodePath: 'TOOL-HEAD-01', functionalSlotIdentifier: 'TOOL-HEAD-01', technology: 'Dispensing', equipmentStatus: 'InMachine' },
+  { id: 'part-cam-01', name: 'VisionPro GigE Camera & Ring Light', cad3dNodePath: 'VISION-CAM-01', functionalSlotIdentifier: 'VISION-CAM-01', technology: 'Optics', equipmentStatus: 'InMachine' },
+  { id: 'part-status-01', name: '3-Tier Industrial Status Beacon', cad3dNodePath: 'PANEL-STATUS-01', functionalSlotIdentifier: 'PANEL-STATUS-01', technology: 'Safety', equipmentStatus: 'InMachine' }
+]
+
+// Dedications state
+const { fetchMachineDedications, dedicateToMachine, removeMachineDedication } = useDedications()
+const dedicationsData = ref<MachineDedications | null>(null)
+const dedicationsLoading = ref(false)
+const targetType = ref<'person' | 'group'>('person')
+const selectedUserId = ref('')
+const selectedGroupId = ref('')
+const selectedTechnology = ref('General')
+const isSubmittingDedication = ref(false)
+const dedicationFeedback = ref('')
+const availableUsers = ref<any[]>([])
+const availableGroups = ref<any[]>([])
+
+const availableTechnologies = computed(() => {
+  const set = new Set<string>(['General', 'Controls', 'Mechanical'])
+  if (dedicationsData.value?.technologies) {
+    dedicationsData.value.technologies.forEach(t => set.add(t))
+  }
+  return Array.from(set)
+})
+
+const loadDedications = async () => {
+  const machineId = props.machine?.id || props.machine?.customIdentifier
+  if (!machineId) return
+  dedicationsLoading.value = true
+  dedicationFeedback.value = ''
+  try {
+    const [deds, usersRes, groupsRes] = await Promise.all([
+      fetchMachineDedications(machineId).catch(() => null),
+      $fetch<{ success: boolean; users: any[] }>('/api/users').catch(() => ({ success: false, users: [] })),
+      $fetch<any[]>('/api/personnel/groups').catch(() => [])
+    ])
+    dedicationsData.value = deds
+    availableUsers.value = usersRes?.users || []
+    availableGroups.value = groupsRes || []
+  } catch (err: any) {
+    console.error('Failed to load dedications', err)
+  } finally {
+    dedicationsLoading.value = false
+  }
+}
+
+const handleAssignDedication = async () => {
+  const machineId = props.machine?.id || props.machine?.customIdentifier
+  if (!machineId) return
+  isSubmittingDedication.value = true
+  dedicationFeedback.value = ''
+  try {
+    if (targetType.value === 'person') {
+      const user = availableUsers.value.find(u => u.id === selectedUserId.value)
+      if (!user) return
+      await dedicateToMachine(
+        machineId,
+        'person',
+        user.id,
+        user.name || user.email,
+        user.email,
+        selectedTechnology.value
+      )
+      dedicationFeedback.value = `Dedicated ${user.name || user.email} (${selectedTechnology.value}) to this machine successfully.`
+    } else {
+      const group = availableGroups.value.find(g => g.id === selectedGroupId.value)
+      if (!group) return
+      await dedicateToMachine(
+        machineId,
+        'group',
+        group.id,
+        group.name,
+        undefined,
+        selectedTechnology.value
+      )
+      dedicationFeedback.value = `Dedicated maintenance group ${group.name} (${selectedTechnology.value}) to this machine successfully.`
+    }
+    await loadDedications()
+    emit('refresh')
+  } catch (err: any) {
+    dedicationFeedback.value = err?.message || 'Failed to assign dedication.'
+  } finally {
+    isSubmittingDedication.value = false
+  }
+}
+
+const handleRemoveDedication = async (targetId?: string, technology?: string) => {
+  const machineId = props.machine?.id || props.machine?.customIdentifier
+  if (!machineId) return
+  dedicationsLoading.value = true
+  try {
+    await removeMachineDedication(machineId, { targetId, technology })
+    dedicationFeedback.value = 'Machine dedication removed.'
+    await loadDedications()
+    emit('refresh')
+  } catch (err: any) {
+    dedicationFeedback.value = err?.message || 'Failed to remove dedication.'
+  } finally {
+    dedicationsLoading.value = false
+  }
+}
 
 // Lifecycle state
 const decommissionReason = ref('')
@@ -58,28 +183,6 @@ const partsHandling = ref<'salvage_donor' | 'scrap' | 'retain'>('salvage_donor')
 const decommissionDate = ref(new Date().toISOString().substring(0, 10))
 const isSubmittingLifecycle = ref(false)
 const lifecycleFeedback = ref('')
-
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (isOpen) {
-      if (props.initialTab) activeTab.value = props.initialTab
-      lifecycleFeedback.value = ''
-      if (props.machine) {
-        fetchStationTopology(props.machine.id || props.machine.customIdentifier)
-      }
-    }
-  }
-)
-
-watch(
-  () => props.machine,
-  (newMach) => {
-    if (newMach && props.open) {
-      fetchStationTopology(newMach.id || newMach.customIdentifier)
-    }
-  }
-)
 
 const toggleNode = (nodeId: string) => {
   expandedNodes.value[nodeId] = !expandedNodes.value[nodeId]
@@ -157,6 +260,47 @@ const fetchStationTopology = async (stationId: string) => {
     treeLoading.value = false
   }
 }
+
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      if (props.initialTab) activeTab.value = props.initialTab
+      lifecycleFeedback.value = ''
+      if (props.machine) {
+        fetchStationTopology(props.machine.id || props.machine.customIdentifier)
+        loadDedications()
+      }
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.initialTab,
+  (newTab) => {
+    if (newTab) activeTab.value = newTab
+  }
+)
+
+watch(
+  () => props.machine,
+  (newMach) => {
+    if (newMach && props.open) {
+      fetchStationTopology(newMach.id || newMach.customIdentifier)
+      loadDedications()
+    }
+  }
+)
+
+watch(
+  activeTab,
+  (tab) => {
+    if (tab === 'dedications' && props.open && props.machine) {
+      loadDedications()
+    }
+  }
+)
 
 const filteredControllers = computed(() => {
   if (!treeData.value?.controllers) return []
@@ -264,8 +408,13 @@ const handleLifecycleSubmit = async () => {
         </button>
       </div>
 
+      <!-- Dynamic Lua UI Extensions -->
+      <div v-if="machine" class="mt-3 pt-2 border-t border-border/60">
+        <DynamicUiExtensions zone="MachineDetails" :context="{ machine_id: machine.id || machine.customIdentifier }" />
+      </div>
+
       <!-- Tab Buttons -->
-      <div class="flex items-center gap-1.5 mt-4 pt-3 border-t border-border">
+      <div class="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
         <button
           type="button"
           @click="activeTab = 'tree'"
@@ -274,6 +423,15 @@ const handleLifecycleSubmit = async () => {
         >
           <FolderTree class="w-3.5 h-3.5" />
           <span>Hardware Topology & BOM</span>
+        </button>
+        <button
+          type="button"
+          @click="activeTab = '3d-twin'"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+          :class="activeTab === '3d-twin' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+        >
+          <Box class="w-3.5 h-3.5 text-cyan-400" />
+          <span>3D Digital Twin</span>
         </button>
         <button
           type="button"
@@ -292,6 +450,15 @@ const handleLifecycleSubmit = async () => {
         >
           <Wrench class="w-3.5 h-3.5" />
           <span>Station Lifecycle</span>
+        </button>
+        <button
+          type="button"
+          @click="activeTab = 'dedications'"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+          :class="activeTab === 'dedications' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+        >
+          <Users class="w-3.5 h-3.5" />
+          <span>Dedications</span>
         </button>
       </div>
     </div>
@@ -446,6 +613,81 @@ const handleLifecycleSubmit = async () => {
                       {{ new Intl.NumberFormat('hu-HU').format(part.costInHUF) }} HUF
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: 3D DIGITAL TWIN -->
+      <div v-else-if="activeTab === '3d-twin'" class="space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- 3D Canvas Viewport (8 cols on lg) -->
+          <div class="lg:col-span-8">
+            <ClientOnly>
+              <Machine3dDigitalTwin
+                :model-url="treeData?.model3dUrl || '/sample/station_digital_twin.glb'"
+                :selected-slot="selected3dSlot"
+                :components="(treeData?.installedParts && treeData.installedParts.length > 0) ? treeData.installedParts : default3dParts"
+                height="560px"
+                @select-slot="on3dSlotSelected"
+              />
+              <template #fallback>
+                <div class="w-full h-[560px] rounded-xl border border-border/60 bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+                  <Box class="w-8 h-8 text-cyan-400 mb-2 animate-bounce" />
+                  <span class="text-xs font-mono text-muted-foreground">Initializing 3D Digital Twin Engine...</span>
+                </div>
+              </template>
+            </ClientOnly>
+          </div>
+
+          <!-- Digital Twin Component Explorer / Inspector (4 cols on lg) -->
+          <div class="lg:col-span-4 flex flex-col gap-3">
+            <div class="p-4 rounded-xl bg-card border border-border shadow-xs flex-1 flex flex-col">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                  <Layers class="w-3.5 h-3.5 text-primary" />
+                  <span>CAD Component Slots</span>
+                </div>
+                <Badge variant="outline" class="text-[10px] font-mono">
+                  {{ ((treeData?.installedParts && treeData.installedParts.length > 0) ? treeData.installedParts : default3dParts).length }} Nodes
+                </Badge>
+              </div>
+              <p class="text-[11px] text-muted-foreground leading-relaxed mb-3">
+                Click any mechanical component in 3D or pick a slot below to zoom and inspect telemetry.
+              </p>
+
+              <!-- Scrollable Slot List -->
+              <div class="space-y-1.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+                <div
+                  v-for="part in ((treeData?.installedParts && treeData.installedParts.length > 0) ? treeData.installedParts : default3dParts)"
+                  :key="part.id || part.cad3dNodePath"
+                  class="p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between"
+                  :class="[
+                    (selected3dSlot && (part.cad3dNodePath === selected3dSlot || part.functionalSlotIdentifier === selected3dSlot))
+                      ? 'bg-primary/10 border-primary text-foreground ring-1 ring-primary/40'
+                      : 'bg-muted/20 border-border/70 hover:bg-muted/40 text-muted-foreground'
+                  ]"
+                  @click="selected3dSlot = part.cad3dNodePath || part.functionalSlotIdentifier"
+                >
+                  <div class="flex items-center gap-2 truncate">
+                    <div
+                      class="w-2 h-2 rounded-full shrink-0"
+                      :class="part.equipmentStatus === 'InMachine' || part.equipmentStatus === 'active' ? 'bg-emerald-500' : 'bg-amber-500'"
+                    />
+                    <div class="truncate">
+                      <div class="text-xs font-semibold text-foreground truncate">
+                        {{ part.name || part.displayName || part.cad3dNodePath }}
+                      </div>
+                      <div class="text-[10px] font-mono text-muted-foreground truncate">
+                        Slot: <span class="font-bold text-primary">{{ part.cad3dNodePath || part.functionalSlotIdentifier }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="outline" class="text-[9px] uppercase font-mono shrink-0 ml-1">
+                    {{ part.technology || 'Hardware' }}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -616,6 +858,346 @@ const handleLifecycleSubmit = async () => {
 
           <div v-if="lifecycleFeedback" class="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
             {{ lifecycleFeedback }}
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: DEDICATIONS & SPECIALISTS -->
+      <div v-if="activeTab === 'dedications'" class="space-y-5">
+        <div v-if="dedicationsLoading" class="p-8 text-center text-xs font-semibold text-muted-foreground animate-pulse">
+          Loading machine dedications, specialists, and technological groups...
+        </div>
+
+        <div v-else class="space-y-4">
+          <!-- Station Inferred / Required Technologies -->
+          <div class="p-3.5 rounded-xl bg-card border border-border shadow-xs flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <Cpu class="w-4 h-4 text-primary" />
+              <span class="text-xs font-bold uppercase tracking-wider text-foreground">
+                Technology Requirements
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <Badge
+                v-for="tech in dedicationsData?.technologies || ['Controls', 'Mechanical']"
+                :key="tech"
+                variant="outline"
+                class="text-[10px] font-mono font-semibold"
+                :class="tech === 'Vision' ? 'border-violet-500/40 text-violet-500 bg-violet-500/10' :
+                        tech === 'Controls' ? 'border-sky-500/40 text-sky-500 bg-sky-500/10' :
+                        tech === 'Mechanical' ? 'border-amber-500/40 text-amber-500 bg-amber-500/10' :
+                        'border-border text-foreground bg-muted/30'"
+              >
+                {{ tech }}
+              </Badge>
+            </div>
+          </div>
+
+          <!-- Active Direct Dedications List (Multiple & Per-Technology) -->
+          <div class="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <UserCheck class="w-4 h-4 text-primary" />
+                <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Current Machine Dedication
+                </h3>
+              </div>
+              <Badge
+                v-if="dedicationsData?.directDedications?.some(d => d.targetType === 'person') || dedicationsData?.dedicatedPerson"
+                variant="outline"
+                class="text-[9px] uppercase font-mono text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
+              >
+                Direct Specialist
+              </Badge>
+              <Badge
+                v-else-if="dedicationsData?.directDedications?.some(d => d.targetType === 'group') || dedicationsData?.dedicatedGroup"
+                variant="outline"
+                class="text-[9px] uppercase font-mono text-indigo-500 border-indigo-500/30 bg-indigo-500/10"
+              >
+                Direct Group
+              </Badge>
+              <Badge
+                v-else
+                variant="outline"
+                class="text-[9px] uppercase font-mono text-muted-foreground border-border bg-muted/40"
+              >
+                Not Assigned
+              </Badge>
+            </div>
+
+            <!-- List of Multiple Direct Dedications -->
+            <div v-if="dedicationsData?.directDedications?.length" class="space-y-2.5">
+              <div
+                v-for="ded in dedicationsData.directDedications"
+                :key="ded.id || `${ded.targetId}_${ded.technology}`"
+                class="p-3 rounded-lg bg-muted/30 border border-border flex items-center justify-between gap-3"
+              >
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+                    :class="ded.targetType === 'group'
+                      ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-500'
+                      : 'bg-primary/10 border border-primary/20 text-primary'"
+                  >
+                    <Users v-if="ded.targetType === 'group'" class="w-4 h-4" />
+                    <span v-else>{{ (ded.targetName || 'U').charAt(0).toUpperCase() }}</span>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
+                      <span>{{ ded.targetName }}</span>
+                      <Badge
+                        variant="outline"
+                        class="text-[9px] font-mono px-1.5 py-0 uppercase"
+                        :class="ded.technology === 'Vision' ? 'border-violet-500/40 text-violet-500 bg-violet-500/10' :
+                                ded.technology === 'Controls' ? 'border-sky-500/40 text-sky-500 bg-sky-500/10' :
+                                ded.technology === 'Mechanical' ? 'border-amber-500/40 text-amber-500 bg-amber-500/10' :
+                                'border-emerald-500/30 text-emerald-500 bg-emerald-500/10'"
+                      >
+                        {{ ded.technology }}
+                      </Badge>
+                      <Badge
+                        v-if="ded.isGroupMemberOverride"
+                        class="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0"
+                      >
+                        ⚡ Group Member Override
+                      </Badge>
+                    </div>
+                    <div class="text-[11px] text-muted-foreground font-mono mt-0.5">
+                      {{ ded.targetEmail || (ded.targetType === 'group' ? 'Maintenance Group' : ded.targetId) }}
+                    </div>
+                    <p v-if="ded.isGroupMemberOverride" class="text-[10px] text-amber-600/90 dark:text-amber-400/90 mt-1">
+                      Direct assignment supersedes '{{ ded.overriddenGroupName }}' group dedication for {{ ded.technology }} on this machine.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  @click="handleRemoveDedication(ded.targetId, ded.technology)"
+                  class="h-7 px-2.5 text-xs text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg cursor-pointer shrink-0"
+                >
+                  <Trash2 class="w-3.5 h-3.5 mr-1" />
+                  Unassign
+                </Button>
+              </div>
+            </div>
+
+            <!-- Dedicated Person Card Fallback -->
+            <div v-else-if="dedicationsData?.dedicatedPerson" class="p-3 rounded-lg bg-muted/30 border border-border flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                  {{ (dedicationsData.dedicatedPerson.userName || 'U').charAt(0).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
+                    <span>{{ dedicationsData.dedicatedPerson.userName }}</span>
+                    <Badge variant="outline" class="text-[9px] font-mono px-1.5 py-0 uppercase border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
+                      {{ dedicationsData.dedicatedPerson.technology || 'General' }}
+                    </Badge>
+                    <Badge
+                      v-if="dedicationsData.dedicatedPerson.isGroupMemberOverride"
+                      class="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0"
+                    >
+                      ⚡ Group Member Override
+                    </Badge>
+                  </div>
+                  <div class="text-[11px] text-muted-foreground font-mono mt-0.5">
+                    {{ dedicationsData.dedicatedPerson.email || dedicationsData.dedicatedPerson.userId }}
+                  </div>
+                  <p v-if="dedicationsData.dedicatedPerson.isGroupMemberOverride" class="text-[10px] text-amber-600/90 dark:text-amber-400/90 mt-1">
+                    Direct assignment supersedes '{{ dedicationsData.dedicatedPerson.overriddenGroupName }}' group dedication on this machine.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                @click="handleRemoveDedication()"
+                class="h-7 px-2.5 text-xs text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg cursor-pointer shrink-0"
+              >
+                <Trash2 class="w-3.5 h-3.5 mr-1" />
+                Unassign
+              </Button>
+            </div>
+
+            <div v-else class="p-3 text-center rounded-lg bg-muted/20 border border-dashed border-border text-xs text-muted-foreground">
+              No direct specialists or groups dedicated yet. Assign below per technology (e.g. Controls, Mechanical, Vision) or rely on automatic technological group coverage.
+            </div>
+          </div>
+
+          <!-- Dedicate Person or Group Selector -->
+          <div class="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <UserPlus class="w-4 h-4 text-primary" />
+                <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Dedicate to Machine
+                </h3>
+              </div>
+              <!-- Target Type Toggle -->
+              <div class="flex items-center p-0.5 rounded-lg bg-muted border border-border text-[11px] font-semibold">
+                <button
+                  type="button"
+                  @click="targetType = 'person'"
+                  class="px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                  :class="targetType === 'person' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                >
+                  Person
+                </button>
+                <button
+                  type="button"
+                  @click="targetType = 'group'"
+                  class="px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                  :class="targetType === 'group' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                >
+                  Group
+                </button>
+              </div>
+            </div>
+
+            <!-- Technology Scope Selection -->
+            <div class="space-y-1.5">
+              <Label class="text-[10px] uppercase font-bold text-muted-foreground">Technology Scope</Label>
+              <select
+                v-model="selectedTechnology"
+                class="w-full h-8 px-2.5 text-xs rounded-md bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option v-for="tech in availableTechnologies" :key="tech" :value="tech">
+                  {{ tech === 'General' ? 'General (Complete Machine)' : `${tech} Support` }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Person Selector -->
+            <div v-if="targetType === 'person'" class="space-y-2">
+              <Label class="text-[10px] uppercase font-bold text-muted-foreground">Select Specialist / Engineer</Label>
+              <select
+                v-model="selectedUserId"
+                class="w-full h-8 px-2.5 text-xs rounded-md bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="" disabled>Choose a technician or engineer...</option>
+                <option v-for="u in availableUsers" :key="u.id" :value="u.id">
+                  {{ u.name || u.email }} ({{ u.role || 'Member' }})
+                </option>
+              </select>
+            </div>
+
+            <!-- Group Selector -->
+            <div v-else class="space-y-2">
+              <Label class="text-[10px] uppercase font-bold text-muted-foreground">Select Maintenance Group</Label>
+              <select
+                v-model="selectedGroupId"
+                class="w-full h-8 px-2.5 text-xs rounded-md bg-background border border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="" disabled>Choose a maintenance team...</option>
+                <option v-for="g in availableGroups" :key="g.id" :value="g.id">
+                  {{ g.name }} ({{ g.discipline || 'General' }})
+                </option>
+              </select>
+            </div>
+
+            <Button
+              @click="handleAssignDedication"
+              :disabled="isSubmittingDedication || (targetType === 'person' ? !selectedUserId : !selectedGroupId)"
+              class="w-full h-8 text-xs font-bold gap-2 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+            >
+              <RefreshCw v-if="isSubmittingDedication" class="w-3.5 h-3.5 animate-spin" />
+              <Check v-else class="w-3.5 h-3.5" />
+              <span>Assign Dedication ({{ selectedTechnology }})</span>
+            </Button>
+
+            <div v-if="dedicationFeedback" class="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+              {{ dedicationFeedback }}
+            </div>
+          </div>
+
+          <!-- Technological Groups (Automatic Coverage & Member Superseding) -->
+          <div class="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <Sparkles class="w-4 h-4 text-indigo-500" />
+                <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Technological Groups (Auto Coverage)
+                </h3>
+              </div>
+              <Badge variant="outline" class="text-[9px] uppercase font-mono text-indigo-500 border-indigo-500/30 bg-indigo-500/10">
+                Technology Primary
+              </Badge>
+            </div>
+            <p class="text-[11px] text-muted-foreground">
+              Teams automatically dedicated based on machine technology capabilities (<span class="text-foreground font-semibold">{{ machine?.machineType || 'General' }}</span>). Dedicated individual group members supersede generic team coverage.
+            </p>
+
+            <div v-if="dedicationsData?.technologicalGroupDedications?.length" class="space-y-2.5 pt-1">
+              <div
+                v-for="tg in dedicationsData.technologicalGroupDedications"
+                :key="tg.groupId"
+                class="p-3 rounded-lg border transition-colors"
+                :class="tg.isSuperseded ? 'bg-amber-500/5 border-amber-500/30' : 'bg-emerald-500/5 border-emerald-500/30'"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-semibold text-foreground">{{ tg.groupName }}</span>
+                      <Badge variant="outline" class="text-[9px] font-mono border-border">
+                        {{ tg.technology }}
+                      </Badge>
+                    </div>
+                    <div class="text-[11px] mt-1.5" :class="tg.isSuperseded ? 'text-amber-700 dark:text-amber-400 font-medium' : 'text-emerald-700 dark:text-emerald-400 font-medium'">
+                      <span v-if="tg.isSuperseded" class="flex items-center gap-1">
+                        <ShieldAlert class="w-3.5 h-3.5 shrink-0" />
+                        <span>Dedicated member <strong>{{ tg.supersededByUserName }}</strong> supersedes this group on this machine.</span>
+                      </span>
+                      <span v-else class="flex items-center gap-1">
+                        <Check class="w-3.5 h-3.5 shrink-0" />
+                        <span>Automatically active: machine operates {{ tg.technology }} technology.</span>
+                      </span>
+                    </div>
+                  </div>
+                  <Badge
+                    class="text-[9px] uppercase font-mono shrink-0"
+                    :class="tg.isSuperseded ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'"
+                  >
+                    {{ tg.isSuperseded ? '⚡ Superseded' : '✓ Active Auto' }}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+            <div v-else class="p-3 text-center rounded-lg bg-muted/20 border border-dashed border-border text-xs text-muted-foreground">
+              No matching technological groups found for this station's configuration.
+            </div>
+          </div>
+
+          <!-- Inherited Machine Group Hierarchy Dedications -->
+          <div v-if="dedicationsData?.inheritedDedications?.length" class="p-4 rounded-xl bg-card border border-border shadow-xs space-y-3">
+            <div class="flex items-center gap-2">
+              <Layers class="w-4 h-4 text-primary" />
+              <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">
+                Inherited Dedications (Hierarchy)
+              </h3>
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="inh in dedicationsData.inheritedDedications"
+                :key="inh.machineGroupId"
+                class="p-2.5 rounded-lg bg-muted/30 border border-border flex items-center justify-between text-xs"
+              >
+                <div>
+                  <div class="font-semibold text-foreground flex items-center gap-1.5">
+                    <span>{{ inh.machineGroupName }}</span>
+                    <Badge variant="outline" class="text-[9px] uppercase font-mono text-muted-foreground border-border">
+                      {{ inh.groupType }}
+                    </Badge>
+                  </div>
+                  <p class="text-[11px] text-muted-foreground mt-0.5">
+                    Assigned: <span class="text-foreground font-medium">{{ inh.dedicatedPerson?.userName || inh.dedicatedGroup?.groupName }}</span>
+                  </p>
+                </div>
+                <Badge class="text-[9px] bg-primary/10 text-primary border-primary/20">
+                  Inherited
+                </Badge>
+              </div>
+            </div>
           </div>
         </div>
       </div>
