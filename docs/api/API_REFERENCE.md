@@ -506,7 +506,76 @@ Returns high-level plant operational metrics (cached in L1 memory for 30 seconds
 
 ---
 
-### 1.7 Copia Automation Git Webhook (`/api/v1/integrations/copia/webhook`)
+### 1.9 Predictive Maintenance & Telemetry Analytics (`/api/v1/analytics`)
+
+Provides statistical Z-score anomaly detection, line and station-level OEE and Yield aggregations, and spatial floor plan telemetry feeds.
+
+#### `GET /api/v1/analytics/station-kpis`
+Returns station-level OEE, First-Pass Yield, Throughput Rate (Parts/Hour), Cycle Tact Time, Operational Status, and correlated active SLA tickets.
+* **Query Parameters**:
+  * `lineId` (`string`, optional): Filter stations by production line ID (e.g. `L01`).
+  * `stationId` (`string`, optional): Filter by station identifier or CAD handle (e.g. `L02-OP060`).
+* **Response `200 OK`**:
+```json
+[
+  {
+    "stationId": "L01-OP030",
+    "handle": "L01-OP030",
+    "name": "L01-OP030 Dispensing & Bonding Cell",
+    "lineId": "L01",
+    "lineName": "Line 1 - Pre-Assembly",
+    "oee": 92.4,
+    "availability": 97.5,
+    "performance": 95.0,
+    "quality": 99.8,
+    "yield": 99.2,
+    "partsPerHour": 142.0,
+    "targetPartsPerHour": 150.0,
+    "cycleTimeSeconds": 25.4,
+    "targetCycleTimeSeconds": 24.0,
+    "totalPartsProduced": 1248,
+    "scrapParts": 10,
+    "operationalStatus": "RUNNING",
+    "activeTicketCount": 1,
+    "criticalTicketCount": 0,
+    "hasSlaBreach": false
+  }
+]
+```
+
+#### `GET /api/v1/analytics/kpis`
+Retrieves line-level OEE, Availability, Performance, Quality, MTBF, and MTTR reliability metrics across all active factory lines.
+* **Response `200 OK`**:
+```json
+[
+  {
+    "lineId": "L01",
+    "lineName": "Line 1 - Pre-Assembly",
+    "availability": 97.2,
+    "performance": 94.5,
+    "quality": 99.4,
+    "oee": 91.3,
+    "mtbfHours": 380.0,
+    "mttrMinutes": 28.0,
+    "incidentCount": 12
+  }
+]
+```
+
+#### `GET /api/v1/analytics/trends`
+Calculates rolling telemetry points, linear regression trendlines, standard deviation corridors, and recipe-based failure forecasts.
+* **Query Parameters**:
+  * `machineId` (`string`, default: `m-op20`): Target machine identifier.
+  * `metric` (`string`, default: `cycle_time`): Telemetry key.
+  * `range` (`string`, default: `8h`): Timespan window (`1h`, `8h`, `24h`, `7d`).
+  * `recipeId` (`string`, optional): Recipe context for tool wear degradation analysis.
+
+#### `GET /api/v1/analytics/fleet-summary`
+Aggregates fleet-wide uptime percentage, top-faulting machines, maintenance backlog age, and critical stock depletion alerts.
+
+---
+
+### 1.10 Copia Automation Git Webhook (`/api/v1/integrations/copia/webhook`)
 
 Receives automated Git commit notifications when PLC control logic or TwinCAT projects are pushed to Copia Automation repositories.
 * **Headers**: `X-Copia-Signature: sha256=...`

@@ -212,14 +212,19 @@ public enum MfaTimeoutThreshold
 }
 
 /// <summary>
-/// Architectural type of machine group.
+/// Architectural type and hierarchy level of machine group.
+/// Hierarchy: Business unit > Project > Line > Sub-Line > Machine.
 /// </summary>
 public enum MachineGroupType
 {
-    Customer = 1,
-    Line = 2,
-    Technological = 3,
-    Manual = 4
+    BusinessUnit = 1,
+    Project = 2,
+    Line = 3,
+    SubLine = 4,
+    Machine = 5,
+    Technological = 6,
+    Customer = 7,
+    Manual = 8
 }
 
 /// <summary>

@@ -130,10 +130,18 @@ builder.Services.AddScoped<PredictiveMaintenanceService>(sp => (PredictiveMainte
 builder.Services.AddScoped<IComponentInventoryBridge, ComponentInventoryBridge>();
 builder.Services.AddScoped<IDelegationRecipeService, DelegationRecipeService>();
 builder.Services.AddScoped<IMachineRaisedTicketService, MachineRaisedTicketService>();
+builder.Services.AddScoped<IGenericTemplateService, GenericTemplateService>();
 builder.Services.AddSingleton<App.Backend.Api.Services.Plugins.IPluginService>(sp =>
     new App.Backend.Api.Services.Plugins.PluginService(
         sp.GetRequiredService<IServiceScopeFactory>(),
         sp.GetRequiredService<ILogger<App.Backend.Api.Services.Plugins.PluginService>>()));
+builder.Services.AddScoped<App.Shared.Lua.Bridge.ILuaPlantDataProvider, App.Infrastructure.Services.DbPlantDataProvider>();
+builder.Services.AddScoped<App.Shared.Lua.Core.ILuaScriptEngine>(sp => 
+    new App.Shared.Lua.Core.LuaScriptEngine(sp.GetRequiredService<App.Shared.Lua.Bridge.ILuaPlantDataProvider>()));
+builder.Services.AddSingleton<App.Backend.Api.Services.ILuaAutomationService>(sp =>
+    new App.Backend.Api.Services.LuaAutomationService(
+        sp.GetRequiredService<IServiceScopeFactory>(),
+        sp.GetRequiredService<ILogger<App.Backend.Api.Services.LuaAutomationService>>()));
 
 // --- 3. Authentication & Authorization ---
 builder.Services.AddAuthentication("BetterAuth")

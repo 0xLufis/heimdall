@@ -36,6 +36,16 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-map',
         link: '/dashboard/map',
       },
+      {
+        title: 'Lua Automation',
+        icon: 'i-lucide-code-2',
+        link: '/dashboard/scripts',
+      },
+      {
+        title: 'Template & Recipe Studio',
+        icon: 'i-lucide-layout-template',
+        link: '/dashboard/templates',
+      },
     ],
   },
   {
@@ -80,12 +90,6 @@ export const navMenu: NavMenu[] = [
         title: 'Tickets',
         icon: 'i-lucide-wrench',
         link: '/dashboard/tickets',
-        requiredModule: 'ticketing',
-      },
-      {
-        title: 'Delegations',
-        icon: 'i-lucide-users',
-        link: '/dashboard/delegations',
         requiredModule: 'ticketing',
       },
     ],

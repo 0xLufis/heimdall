@@ -1,0 +1,333 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { useStationTelemetry } from '../../../src/frontend/web/app/composables/useStationTelemetry'
+import { generateStationKpis } from '../../../src/frontend/web/server/api/telemetry/station-kpis.get'
+import StationTelemetryBubble from '../../../src/frontend/web/app/components/map/StationTelemetryBubble.vue'
+import type { MaintenanceTicket } from '../../../src/frontend/web/app/types/maintenance'
+
+describe('Station Telemetry & Plant Map Overlay Suite', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Server Station KPI Generator', () => {
+    it('generates 100 station KPIs across all 8 production lines', () => {
+      const allKpis = generateStationKpis()
+      expect(allKpis.length).toBe(100)
+
+      for (const kpi of allKpis) {
+        expect(kpi.handle).toMatch(/^L0[1-8]-OP\d{3}$/)
+        expect(kpi.oee).toBeGreaterThan(50.0)
+        expect(kpi.oee).toBeLessThanOrEqual(100.0)
+        expect(kpi.yield).toBeGreaterThan(80.0)
+        expect(kpi.yield).toBeLessThanOrEqual(100.0)
+        expect(kpi.partsPerHour).toBeGreaterThan(50)
+        expect(kpi.cycleTimeSeconds).toBeGreaterThan(0)
+        expect(['RUNNING', 'IDLE', 'WARNING', 'FAULTED', 'MAINTENANCE']).toContain(kpi.operationalStatus)
+      }
+    })
+
+    it('filters stations by line ID correctly', () => {
+      const line1 = generateStationKpis('L01')
+      expect(line1.length).toBe(12)
+      expect(line1.every(s => s.lineId === 'L01')).toBe(true)
+
+      const line2 = generateStationKpis('L02')
+      expect(line2.length).toBe(13)
+      expect(line2.every(s => s.lineId === 'L02')).toBe(true)
+    })
+
+    it('identifies critical station and SLA breach on L02-OP060', () => {
+      const op60 = generateStationKpis(undefined, 'L02-OP060')
+      expect(op60.length).toBe(1)
+      expect(op60[0].handle).toBe('L02-OP060')
+      expect(op60[0].hasSlaBreach).toBe(true)
+      expect(op60[0].operationalStatus).toBe('FAULTED')
+      expect(op60[0].activeTicketCount).toBeGreaterThan(0)
+    })
+  })
+
+  describe('useStationTelemetry Composable', () => {
+    it('provides fast synchronous getStationKpi with deterministic fallback', () => {
+      const { getStationKpi, stopLiveSimulation } = useStationTelemetry()
+      try {
+        const kpi = getStationKpi('L01-OP030')
+        expect(kpi).toBeDefined()
+        expect(kpi.handle).toBe('L01-OP030')
+        expect(kpi.oee).toBeGreaterThan(70)
+        expect(kpi.yield).toBeGreaterThan(90)
+        expect(kpi.partsPerHour).toBeGreaterThan(80)
+        expect(kpi.cycleTimeSeconds).toBeGreaterThan(10)
+        expect(kpi.targetPartsPerHour).toBe(150)
+      } finally {
+        stopLiveSimulation()
+      }
+    })
+
+    it('computes SLA status correctly when zero tickets exist', () => {
+      const { getStationSla, stopLiveSimulation } = useStationTelemetry()
+      try {
+        const sla = getStationSla('L01-OP010', [])
+        expect(sla.totalTickets).toBe(0)
+        expect(sla.openTickets).toBe(0)
+        expect(sla.slaHealth).toBe('none')
+        expect(sla.earliestDueText).toBeNull()
+      } finally {
+        stopLiveSimulation()
+      }
+    })
+
+    it('detects healthy active ticket within SLA window', () => {
+      const { getStationSla, stopLiveSimulation } = useStationTelemetry()
+      try {
+        const mockTickets: MaintenanceTicket[] = [
+          {
+            id: 'tkt-101',
+            title: 'Lubrication Check',
+            status: 'Open',
+            priority: 'Medium',
+            stationId: 'L01-OP010',
+            slaDueAt: new Date(Date.now() + 14400000).toISOString(), // 4h in future
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: ['L01-OP010'],
+            comments: []
+          }
+        ]
+
+        const sla = getStationSla('L01-OP010', mockTickets)
+        expect(sla.totalTickets).toBe(1)
+        expect(sla.openTickets).toBe(1)
+        expect(sla.slaHealth).toBe('healthy')
+        expect(sla.earliestDueText).toContain('Due in')
+      } finally {
+        stopLiveSimulation()
+      }
+    })
+
+    it('detects urgent warning when SLA expires in under 2 hours', () => {
+      const { getStationSla, stopLiveSimulation } = useStationTelemetry()
+      try {
+        const mockTickets: MaintenanceTicket[] = [
+          {
+            id: 'tkt-102',
+            title: 'Pneumatic Pressure Drop',
+            status: 'InProgress',
+            priority: 'High',
+            stationId: 'L01-OP020',
+            slaDueAt: new Date(Date.now() + 2700000).toISOString(), // 45m in future
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: ['L01-OP020'],
+            comments: []
+          }
+        ]
+
+        const sla = getStationSla('L01-OP020', mockTickets)
+        expect(sla.warningTickets).toBe(1)
+        expect(sla.slaHealth).toBe('warning')
+        expect(sla.earliestDueText).toBe('Due in 45m')
+      } finally {
+        stopLiveSimulation()
+      }
+    })
+
+    it('detects breached SLA when overdue', () => {
+      const { getStationSla, stopLiveSimulation } = useStationTelemetry()
+      try {
+        const mockTickets: MaintenanceTicket[] = [
+          {
+            id: 'tkt-103',
+            title: 'Spindle Bearing Seizure',
+            status: 'Open',
+            priority: 'Critical',
+            stationId: 'L02-OP060',
+            slaDueAt: new Date(Date.now() - 900000).toISOString(), // 15m in past
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: ['L02-OP060'],
+            comments: []
+          }
+        ]
+
+        const sla = getStationSla('L02-OP060', mockTickets)
+        expect(sla.breachedTickets).toBe(1)
+        expect(sla.criticalTickets).toBe(1)
+        expect(sla.slaHealth).toBe('breached')
+        expect(sla.earliestDueText).toContain('SLA Breached')
+      } finally {
+        stopLiveSimulation()
+      }
+    })
+  })
+
+  describe('StationTelemetryBubble Component', () => {
+    const dummyKpi = {
+      stationId: 'L01-OP030',
+      handle: 'L01-OP030',
+      name: 'L01-OP030 Dispensing & Bonding Cell',
+      lineId: 'L01',
+      lineName: 'Line 1 - Pre-Assembly',
+      oee: 92.4,
+      availability: 97.5,
+      performance: 95.0,
+      quality: 99.8,
+      yield: 99.2,
+      partsPerHour: 142,
+      targetPartsPerHour: 150,
+      cycleTimeSeconds: 25.4,
+      targetCycleTimeSeconds: 24.0,
+      totalPartsProduced: 1248,
+      scrapParts: 10,
+      operationalStatus: 'RUNNING' as const,
+      activeTicketCount: 0,
+      criticalTicketCount: 0,
+      hasSlaBreach: false
+    }
+
+    it('renders compact pill with OEE %, Yield %, and Parts/Hour', () => {
+      const wrapper = mount(StationTelemetryBubble, {
+        props: {
+          handle: 'L01-OP030',
+          kpi: dummyKpi,
+          isExpanded: false
+        }
+      })
+
+      expect(wrapper.text()).toContain('92.4%')
+      expect(wrapper.text()).toContain('99.2%')
+      expect(wrapper.text()).toContain('142/h')
+      expect(wrapper.find('.compact-pill').exists()).toBe(true)
+      expect(wrapper.find('.expanded-card').exists()).toBe(false)
+    })
+
+    it('renders SLA alert badge in compact mode when open tickets exist', () => {
+      const wrapper = mount(StationTelemetryBubble, {
+        props: {
+          handle: 'L01-OP030',
+          kpi: dummyKpi,
+          sla: {
+            totalTickets: 2,
+            openTickets: 2,
+            criticalTickets: 1,
+            breachedTickets: 0,
+            warningTickets: 1,
+            slaHealth: 'warning',
+            earliestDueText: 'Due in 40m',
+            tickets: []
+          },
+          isExpanded: false
+        }
+      })
+
+      expect(wrapper.text()).toContain('2 SLA')
+    })
+
+    it('emits toggle-expand when compact pill is clicked', async () => {
+      const wrapper = mount(StationTelemetryBubble, {
+        props: {
+          handle: 'L01-OP030',
+          kpi: dummyKpi,
+          isExpanded: false
+        }
+      })
+
+      await wrapper.find('.compact-pill').trigger('click')
+      expect(wrapper.emitted('toggle-expand')).toBeTruthy()
+    })
+
+    it('renders rich expanded HUD view when isExpanded is true', () => {
+      const mockTickets: MaintenanceTicket[] = [
+        {
+          id: 'tkt-201',
+          title: 'Glue Dispenser Nozzle Clogged',
+          status: 'Open',
+          priority: 'High',
+          stationId: 'L01-OP030',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          comments: []
+        }
+      ]
+
+      const wrapper = mount(StationTelemetryBubble, {
+        props: {
+          handle: 'L01-OP030',
+          kpi: dummyKpi,
+          sla: {
+            totalTickets: 1,
+            openTickets: 1,
+            criticalTickets: 0,
+            breachedTickets: 0,
+            warningTickets: 0,
+            slaHealth: 'healthy',
+            earliestDueText: 'Due in 2h',
+            tickets: mockTickets
+          },
+          isExpanded: true
+        }
+      })
+
+      expect(wrapper.find('.expanded-card').exists()).toBe(true)
+      expect(wrapper.text()).toContain('L01-OP030')
+      expect(wrapper.text()).toContain('RUNNING')
+      expect(wrapper.text()).toContain('OEE')
+      expect(wrapper.text()).toContain('Yield')
+      expect(wrapper.text()).toContain('Parts / h')
+      expect(wrapper.text()).toContain('A:97.5%')
+      expect(wrapper.text()).toContain('Glue Dispenser Nozzle Clogged')
+      expect(wrapper.text()).toContain('Scrap: 10 pcs')
+    })
+
+    it('emits select-station, create-ticket and view-ticket events from expanded HUD', async () => {
+      const mockTickets: MaintenanceTicket[] = [
+        {
+          id: 'tkt-301',
+          title: 'Nozzle Clean Required',
+          status: 'Open',
+          priority: 'Critical',
+          stationId: 'L01-OP030',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          comments: []
+        }
+      ]
+
+      const wrapper = mount(StationTelemetryBubble, {
+        props: {
+          handle: 'L01-OP030',
+          kpi: dummyKpi,
+          sla: {
+            totalTickets: 1,
+            openTickets: 1,
+            criticalTickets: 1,
+            breachedTickets: 0,
+            warningTickets: 0,
+            slaHealth: 'warning',
+            earliestDueText: 'Due in 30m',
+            tickets: mockTickets
+          },
+          isExpanded: true
+        }
+      })
+
+      const buttons = wrapper.findAll('button')
+      const selectBtn = buttons.find(b => b.text().includes('Select Node'))
+      expect(selectBtn).toBeDefined()
+      await selectBtn?.trigger('click')
+      expect(wrapper.emitted('select-station')?.[0]).toEqual(['L01-OP030'])
+
+      const ticketBtn = buttons.find(b => b.text().includes('Ticket'))
+      expect(ticketBtn).toBeDefined()
+      await ticketBtn?.trigger('click')
+      expect(wrapper.emitted('create-ticket')?.[0]).toEqual(['L01-OP030'])
+
+      // Click ticket row
+      const ticketRow = wrapper.find('.expanded-card [class*="cursor-pointer"]')
+      if (ticketRow.exists()) {
+        await ticketRow.trigger('click')
+        expect(wrapper.emitted('view-ticket')?.[0]).toEqual(['tkt-301'])
+      }
+    })
+  })
+})

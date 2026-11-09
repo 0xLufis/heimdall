@@ -116,12 +116,16 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet("station-tree/{id}")]
-    public async Task<ActionResult<StationComponentTreeDto>> GetStationTree(Guid id)
+    public async Task<ActionResult<StationComponentTreeDto>> GetStationTree(string id)
     {
         var tree = await _assetRepository.GetStationComponentTreeAsync(id);
         if (tree == null) return NotFound();
         return Ok(tree);
     }
+
+    [NonAction]
+    public Task<ActionResult<StationComponentTreeDto>> GetStationTree(Guid id)
+        => GetStationTree(id.ToString());
 
     /// <summary>
     /// Server-side filtered, sorted, paginated inventory search with global KPIs.

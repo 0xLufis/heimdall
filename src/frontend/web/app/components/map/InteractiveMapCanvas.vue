@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useDxfMap } from '~/composables/useDxfMap'
+import { useStationTelemetry, type StationTelemetryKpi, type StationSlaSummary } from '~/composables/useStationTelemetry'
+import type { MaintenanceTicket } from '~/types/maintenance'
+import StationTelemetryBubble from '~/components/map/StationTelemetryBubble.vue'
 import { ZoomIn, ZoomOut, Maximize2, Loader2, AlertCircle } from 'lucide-vue-next'
 
 const props = withDefaults(
@@ -8,11 +11,27 @@ const props = withDefaults(
     dxfUrl?: string
     highlightedHandles?: string[]
     activePin?: string | null
+    showTelemetryOverlays?: boolean
+    overlayFilterMode?: 'all' | 'alerts_only' | 'hover_only'
+    showOee?: boolean
+    showYield?: boolean
+    showPartsHour?: boolean
+    showSla?: boolean
+    expandedHandles?: string[]
+    stationKpis?: Record<string, StationTelemetryKpi>
+    stationTickets?: MaintenanceTicket[]
   }>(),
   {
     dxfUrl: '/sample/production_hall.dxf',
     highlightedHandles: () => [],
-    activePin: null
+    activePin: null,
+    showTelemetryOverlays: true,
+    overlayFilterMode: 'alerts_only',
+    showOee: true,
+    showYield: true,
+    showPartsHour: true,
+    showSla: true,
+    expandedHandles: () => []
   }
 )
 
@@ -22,12 +41,91 @@ const emit = defineEmits<{
   (e: 'object-contextmenu', handle: string, blockName: string, event: MouseEvent): void
   (e: 'map-clicked'): void
   (e: 'map-contextmenu', event: MouseEvent): void
+  (e: 'create-ticket', handle: string): void
+  (e: 'view-ticket', ticketId: string): void
 }>()
 
 const svgContainer = ref<SVGSVGElement | null>(null)
 const { isLoading, error, parsedEntities, viewBox, loadAndParseDxf, zoom, pan } = useDxfMap(props.dxfUrl)
+const { getStationKpi, getStationSla } = useStationTelemetry()
 
 const hoveredEntity = ref<string | null>(null)
+const localExpandedHandles = ref<Set<string>>(new Set(props.expandedHandles))
+
+watch(() => props.expandedHandles, (newHandles) => {
+  localExpandedHandles.value = new Set(newHandles)
+})
+
+const isExpanded = (handle: string) => {
+  return localExpandedHandles.value.has(handle)
+}
+
+const toggleExpand = (handle: string) => {
+  if (localExpandedHandles.value.has(handle)) {
+    localExpandedHandles.value.delete(handle)
+  } else {
+    localExpandedHandles.value.add(handle)
+  }
+}
+
+const resolveKpi = (handle: string): StationTelemetryKpi => {
+  if (props.stationKpis && props.stationKpis[handle.toUpperCase()]) {
+    return props.stationKpis[handle.toUpperCase()]
+  }
+  return getStationKpi(handle)
+}
+
+const resolveSla = (handle: string): StationSlaSummary => {
+  return getStationSla(handle, props.stationTickets || [])
+}
+
+const stationInsertEntities = computed(() => {
+  return parsedEntities.value.filter(e => e.type === 'INSERT' && e.position && (e.handle || e.name))
+})
+
+const getScreenPosition = (entity: any) => {
+  if (!svgContainer.value || !entity.position) return { x: 0, y: 0, visible: false }
+
+  const cw = svgContainer.value.clientWidth || 800
+  const ch = svgContainer.value.clientHeight || 600
+  const vb = viewBox.value
+
+  if (!vb.width || !vb.height) return { x: 0, y: 0, visible: false }
+
+  const scaleX = cw / vb.width
+  const scaleY = ch / vb.height
+  const scale = Math.min(scaleX, scaleY)
+
+  const offsetX = (cw - vb.width * scale) / 2
+  const offsetY = (ch - vb.height * scale) / 2
+
+  const screenX = offsetX + (entity.position.x - vb.x) * scale
+  const screenY = offsetY + (entity.position.y - vb.y) * scale
+
+  const visible = screenX >= -120 && screenX <= cw + 120 && screenY >= -120 && screenY <= ch + 120
+
+  return { x: Math.round(screenX), y: Math.round(screenY), visible }
+}
+
+const shouldRenderBubble = (entity: any) => {
+  if (!props.showTelemetryOverlays) return false
+  const h = entity.handle || entity.name
+  if (isExpanded(h)) return true
+  if (props.activePin === h || hoveredEntity.value === h) return true
+
+  if (props.overlayFilterMode === 'hover_only') {
+    return false
+  }
+
+  if (props.overlayFilterMode === 'alerts_only') {
+    const sla = resolveSla(h)
+    const kpi = resolveKpi(h)
+    return (sla && sla.openTickets > 0) || kpi.oee < 85 || kpi.operationalStatus === 'FAULTED' || kpi.operationalStatus === 'WARNING'
+  }
+
+  // 'all' mode: render all on-screen stations
+  return true
+}
 
 let isDragging = false
 let startDrag = { x: 0, y: 0 }
@@ -375,6 +473,41 @@ watch(() => props.dxfUrl, (newUrl) => {
         </template>
       </g>
     </svg>
+
+    <!-- HTML Overlays Layer for Crisp Telemetry Bubbles -->
+    <div
+      v-if="showTelemetryOverlays && !isLoading && !error"
+      class="absolute inset-0 pointer-events-none overflow-hidden z-20"
+    >
+      <template v-for="entity in stationInsertEntities" :key="`bubble-${entity.handle || entity.name}`">
+        <div
+          v-if="shouldRenderBubble(entity)"
+          class="absolute transition-all duration-75"
+          :style="{
+            left: `${getScreenPosition(entity).x}px`,
+            top: `${getScreenPosition(entity).y}px`,
+            display: getScreenPosition(entity).visible ? 'block' : 'none',
+            zIndex: isExpanded(entity.handle || entity.name) ? 50 : 30
+          }"
+        >
+          <StationTelemetryBubble
+            :handle="entity.handle || entity.name"
+            :name="entity.name"
+            :kpi="resolveKpi(entity.handle || entity.name)"
+            :sla="resolveSla(entity.handle || entity.name)"
+            :is-expanded="isExpanded(entity.handle || entity.name)"
+            :show-oee="showOee"
+            :show-yield="showYield"
+            :show-parts-hour="showPartsHour"
+            :show-sla="showSla"
+            @toggle-expand="toggleExpand(entity.handle || entity.name)"
+            @select-station="emit('object-clicked', entity.handle || entity.name, entity.name || 'Station')"
+            @create-ticket="emit('create-ticket', entity.handle || entity.name)"
+            @view-ticket="(id) => emit('view-ticket', id)"
+          />
+        </div>
+      </template>
+    </div>
 
     <!-- Floating CAD Controls -->
     <div class="absolute bottom-6 right-6 flex flex-col gap-2 z-10">

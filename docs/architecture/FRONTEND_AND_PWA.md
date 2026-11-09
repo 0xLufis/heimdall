@@ -188,9 +188,40 @@ Heimdall renders factory floor AutoCAD DXF drawings as interactive, vector-based
 4. The canvas applies a pan-and-zoom transformation matrix with smooth mouse wheel and touch gesture support.
 
 ### 5.2 Spatial Asset Pinning
-* **Handle Linking**: Each machine block in the CAD drawing has an AutoCAD handle (e.g., `5A1F`).
+* **Handle Linking**: Each machine block in the CAD drawing has an AutoCAD handle (e.g., `5A1F` or `L01-OP010`).
 * **Station Association**: In the map editor, clicking a machine block binds its handle to a `ProductionStation.PinnedObjectHandle`.
 * **Hover Interaction**: Hovering over a computer row in `/dashboard/clients` highlights its physical machine bounding box on the map canvas.
+
+### 5.3 Real-Time Telemetry HUD Overlays & Expandable Bubbles (`StationTelemetryBubble.vue`)
+To eliminate context switching between separate analytics tabs and the physical shopfloor geography, Heimdall layers an interactive HTML HUD directly over the SVG CAD map canvas:
+
+1. **Synchronized Viewport Transform**:
+   A reactive coordinate transformation maps CAD SVG user coordinates $(x, y)$ into viewport screen pixels using the active viewBox and container bounds:
+   $$\text{screenX} = \text{offsetX} + (x - \text{viewBox.x}) \times \text{scale}$$
+   $$\text{screenY} = \text{offsetY} + (y - \text{viewBox.y}) \times \text{scale}$$
+   This ensures HTML overlay elements stay perfectly anchored to equipment nodes while panning and zooming at 60 FPS, with full anti-aliasing and subpixel clarity.
+
+2. **Compact Floating Bubble**:
+   * **OEE Pill**: Color-coded metric indicator ($\ge 85\%$ Emerald, $70-84\%$ Amber, $< 70\%$ Rose).
+   * **Yield & Throughput**: Displays first-pass yield percentage and parts/hour rate (e.g. `99.2% · 142/h`).
+   * **SLA Urgency Alert**: Shows active ticket count and warning status (e.g. `⚠️ 2 SLA`, `🚨 SLA Breached!`).
+
+3. **Expanded Glassmorphic HUD Card**:
+   Clicking any bubble expands it into an equipment inspection card:
+   * **Operational Status Pill**: `RUNNING`, `IDLE`, `WARNING`, `FAULTED` with animated pulse indicators.
+   * **OEE Breakdown**: Gauge and micro progress bars for Availability %, Performance %, and Quality %.
+   * **First-Pass Yield**: Total Conforming Parts vs Scrap Parts.
+   * **Output Cadence**: Parts / Hour vs target (150/h) and measured cycle tact time.
+   * **Active SLA Incidents**: Real-time list of open maintenance tickets with priority badge, status, and direct link to ticket resolution drawer.
+   * **Direct Actions**: "+ Ticket" incident creation button and "Select Node" inspector focus.
+
+4. **HUD Map Controls Bar**:
+   * **Telemetry HUD Toggle**: Master toggle to show/hide overlays with pulsing status indicator.
+   * **Filter Modes**:
+     * `Alerts & SLA`: Automatically focuses only on stations with active maintenance tickets, low OEE (< 85%), or SLA breaches.
+     * `All Nodes`: Shows telemetry bubbles across every station in the production hall.
+     * `Hover Focus`: Displays the HUD bubble only for the currently hovered or selected station.
+   * **Fleet Metric Ticker**: Real-time production hall aggregate of Average OEE, Average Yield, Fleet Output Rate, and Active SLA tickets count.
 
 ---
 

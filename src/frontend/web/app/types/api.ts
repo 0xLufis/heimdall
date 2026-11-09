@@ -62,4 +62,15 @@ export interface MachineUpdateDto {
   pinnedObjectHandle?: string | null
   organizationId?: string
   controllerIds?: string[]
+  spoc?: string
+  spocUserId?: string
+  owner?: string
+  ownerUserId?: string
+  subLineGroupId?: string
+  lineGroupId?: string
+  projectGroupId?: string
+  businessUnitGroupId?: string
+  parentMachineId?: string
+  subMachineIndex?: number
+  cellType?: string
 }

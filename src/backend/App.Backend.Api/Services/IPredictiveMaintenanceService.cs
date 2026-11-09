@@ -17,4 +17,5 @@ public interface IPredictiveMaintenanceService
     Task<FleetSummaryDto> GetFleetSummaryAsync(CancellationToken cancellationToken = default);
     MachineTrendSeriesDto GetMachineTrends(string machineId, string metricName, TimeSpan timeRange, string? recipeId = null);
     List<LineKpiDto> GetLineKpis();
+    List<StationKpiDto> GetStationTelemetryKpis(string? lineId = null, string? stationId = null);
 }

@@ -70,4 +70,16 @@ public class AnalyticsController : ControllerBase
         var kpis = _predictiveService.GetLineKpis();
         return Ok(kpis);
     }
+
+    /// <summary>
+    /// Gets station-level OEE, Yield, Parts/Hour, and SLA ticket overlays for floor plan CAD visualization.
+    /// </summary>
+    [HttpGet("station-kpis")]
+    public ActionResult<List<StationKpiDto>> GetStationKpis(
+        [FromQuery] string? lineId = null,
+        [FromQuery] string? stationId = null)
+    {
+        var stationKpis = _predictiveService.GetStationTelemetryKpis(lineId, stationId);
+        return Ok(stationKpis);
+    }
 }

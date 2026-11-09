@@ -23,6 +23,7 @@ public interface IAssetRepository
     Task<List<BaseInventoryItem>> GetPartsAsync();
     Task<List<BaseInventoryItem>> GetStockAsync();
     Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId);
+    Task<StationComponentTreeDto?> GetStationComponentTreeAsync(string stationIdentifier);
     Task<InventoryFilterResultDto> FilterInventoryAsync(InventoryFilterRequest request, CancellationToken cancellationToken = default);
     Task<BaseInventoryItem?> UpdateAsync(BaseInventoryItem item);
 }

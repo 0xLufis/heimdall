@@ -65,11 +65,36 @@ $$\text{OEE} = A \times P \times Q$$
 
 ---
 
-## 5. Endpoints & API Reference
+## 5. Station-Level Real-Time Telemetry & Plant Map HUD Overlays
+
+To empower shopfloor supervisors and controls engineers with immediate contextual insight directly on the factory floor layout, Heimdall computes station-level operational telemetry aligned with CAD drawing block handles (e.g. `L01-OP010` to `L08-OP130`):
+
+### 5.1 Station Telemetry Metrics Matrix
+
+* **Station OEE**: Real-time Overall Equipment Effectiveness percentage calculated per machine node, broken down by Availability, Performance, and Quality components.
+* **First-Pass Quality Yield**: Ratio of conforming products produced on first pass without requiring rework, scrap, or re-testing:
+  $$\text{Yield} = \frac{\text{Conforming Parts}}{\text{Total Parts Produced}} \times 100\%$$
+* **Production Throughput (Parts / Hour)**: Instantaneous production rate extrapolated from active operating cycles:
+  $$\text{Parts/Hour} = \frac{3600}{\text{Current Tact Time (s)}}$$
+* **SLA Incident Tracking**: Real-time correlation with active maintenance tickets. Monitors ticket severity, earliest breach deadlines, and SLA compliance health (`healthy`, `warning`, `breached`, `none`).
+
+### 5.2 Operational Status Classification
+
+Station operational state is dynamically evaluated based on telemetry limits and ticket severity:
+* **`RUNNING`**: Machine is cycling within nominal tact time and OEE envelope with zero critical alarms.
+* **`IDLE`**: Performance index drops below 82% or parts infeed is starvation-paused.
+* **`WARNING`**: OEE drops below 85% or an open High/Critical ticket has an impending SLA breach (< 2 hours).
+* **`FAULTED`**: Immediate line stop, emergency stop (E-stop), hardware fault, or breached SLA incident active.
+* **`MAINTENANCE`**: Station reserved or undergoing technician on-site diagnostics.
+
+---
+
+## 6. Endpoints & API Reference
 
 | Endpoint | Method | Response Model | Purpose |
 | :--- | :--- | :--- | :--- |
 | `/api/v1/Analytics/fleet-summary` | `GET` | `FleetSummaryDto` | Fleet uptime, top-faulting machines, backlog age, stock depletion |
 | `/api/v1/Analytics/trends` | `GET` | `MachineTrendSeriesDto` | Rolling telemetry points with nominal limits and anomaly flags |
 | `/api/v1/Analytics/kpis` | `GET` | `List<LineKpiDto>` | Production line OEE, MTBF, and MTTR aggregations |
+| `/api/v1/Analytics/station-kpis` | `GET` | `List<StationKpiDto>` | Station-level OEE, Yield, Parts/Hour, and SLA tickets for CAD overlays |
 | `/api/v1/Analytics/powerbi/config` | `GET` | `PowerBiConfigDto` | Power BI Embedded workspace and token configuration |

@@ -34,6 +34,7 @@ public class FakeAssetRepository : IAssetRepository
     public Task<List<BaseInventoryItem>> GetPartsAsync() => Task.FromResult(Items.ToList());
     public Task<List<BaseInventoryItem>> GetStockAsync() => Task.FromResult(Items.ToList());
     public Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId) => Task.FromResult<StationComponentTreeDto?>(null);
+    public Task<StationComponentTreeDto?> GetStationComponentTreeAsync(string stationIdentifier) => Task.FromResult<StationComponentTreeDto?>(null);
     public Task<InventoryFilterResultDto> FilterInventoryAsync(InventoryFilterRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new InventoryFilterResultDto());
     public Task<BaseInventoryItem?> UpdateAsync(BaseInventoryItem item) => Task.FromResult<BaseInventoryItem?>(item);
 }
@@ -204,5 +205,39 @@ public class PredictiveMaintenanceAndAnalyticsTests
         var okTrends = Assert.IsType<OkObjectResult>(trendsResult.Result);
         var trendsDto = Assert.IsType<MachineTrendSeriesDto>(okTrends.Value);
         Assert.Equal("m-op10", trendsDto.MachineId);
+
+        var stationKpisResult = controller.GetStationKpis();
+        var okStationKpis = Assert.IsType<OkObjectResult>(stationKpisResult.Result);
+        var stationKpisList = Assert.IsType<List<StationKpiDto>>(okStationKpis.Value);
+        Assert.Equal(100, stationKpisList.Count);
+        Assert.All(stationKpisList, s =>
+        {
+            Assert.True(s.Oee > 50.0 && s.Oee <= 100.0);
+            Assert.True(s.Yield > 80.0 && s.Yield <= 100.0);
+            Assert.True(s.PartsPerHour > 0);
+            Assert.False(string.IsNullOrEmpty(s.Handle));
+            Assert.False(string.IsNullOrEmpty(s.LineId));
+        });
+    }
+
+    [Fact]
+    public void PredictiveMaintenanceService_GetStationTelemetryKpis_FiltersCorrectly()
+    {
+        var service = new PredictiveMaintenanceService(
+            new FakeAssetRepository(),
+            new FakeControllerRepository(),
+            new FakeMaintenanceTicketRepository(),
+            new FakeMemoryCacheService(),
+            NullLogger<PredictiveMaintenanceService>.Instance);
+
+        var l01Stations = service.GetStationTelemetryKpis("L01");
+        Assert.Equal(12, l01Stations.Count);
+        Assert.All(l01Stations, s => Assert.Equal("L01", s.LineId));
+
+        var singleStation = service.GetStationTelemetryKpis(null, "L02-OP060");
+        Assert.Single(singleStation);
+        Assert.Equal("L02-OP060", singleStation[0].Handle);
+        Assert.True(singleStation[0].HasSlaBreach);
+        Assert.Equal("FAULTED", singleStation[0].OperationalStatus);
     }
 }

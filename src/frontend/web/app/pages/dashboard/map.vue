@@ -11,7 +11,9 @@ import { useStations } from '~/composables/useStations'
 import { useControllers } from '~/composables/useControllers'
 import { useGlobalContextMenu, type ContextMenuContextData } from '~/composables/useGlobalContextMenu'
 import { useMaintenance } from '~/composables/useMaintenance'
+import { useStationTelemetry } from '~/composables/useStationTelemetry'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
+import { Activity, Flame, Gauge, Clock, ChevronRight, AlertTriangle, CheckCircle2 } from 'lucide-vue-next'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -22,6 +24,54 @@ const { stations, fetchStations, updateStationPin } = useStations()
 const { controllers, fetchControllers, updateControllerPin } = useControllers()
 const { openContextMenu } = useGlobalContextMenu()
 const { tickets, fetchTickets } = useMaintenance()
+const { stationKpis, fetchStationKpis, getStationKpi, getStationSla } = useStationTelemetry()
+
+// Overlay Controls
+const showTelemetryOverlays = ref(true)
+const overlayFilterMode = ref<'all' | 'alerts_only' | 'hover_only'>('alerts_only')
+const showOeeBadge = ref(true)
+const showYieldBadge = ref(true)
+const showPartsHourBadge = ref(true)
+const showSlaBadge = ref(true)
+const expandedHandles = ref<string[]>([])
+
+const handleCreateTicket = (handle: string) => {
+  router.push({
+    path: '/dashboard/tickets/new',
+    query: { stationId: handle }
+  })
+}
+
+const handleViewTicket = (ticketId: string) => {
+  router.push(`/dashboard/tickets/${ticketId}`)
+}
+
+const activeStationKpi = computed(() => {
+  if (!activePin.value) return null
+  return getStationKpi(activePin.value)
+})
+
+const activeStationSla = computed(() => {
+  if (!activePin.value) return null
+  return getStationSla(activePin.value, tickets.value)
+})
+
+const fleetKpiSummary = computed(() => {
+  const kpis = Object.values(stationKpis.value)
+  const allTickets = tickets.value || []
+  const openTkts = allTickets.filter(t => t.status !== 'Resolved' && t.status !== 'Closed')
+  const breachedCount = openTkts.filter(t => t.slaDueAt && new Date(t.slaDueAt).getTime() < Date.now()).length
+
+  if (kpis.length === 0) {
+    return { avgOee: 91.2, avgYield: 99.1, totalThroughput: 1140, totalSlaTickets: openTkts.length, breachedCount }
+  }
+
+  const avgOee = Number((kpis.reduce((acc, k) => acc + k.oee, 0) / kpis.length).toFixed(1))
+  const avgYield = Number((kpis.reduce((acc, k) => acc + k.yield, 0) / kpis.length).toFixed(1))
+  const totalThroughput = Math.round(kpis.reduce((acc, k) => acc + k.partsPerHour, 0))
+
+  return { avgOee, avgYield, totalThroughput, totalSlaTickets: openTkts.length, breachedCount }
+})
 
 const resetMapView = () => {
   activePin.value = null
@@ -32,6 +82,7 @@ const resetMapView = () => {
   fetchStations()
   fetchControllers()
   fetchTickets()
+  fetchStationKpis()
 }
 
 const availableFloorPlans = [
@@ -257,6 +308,7 @@ onMounted(() => {
   if (stations.value.length === 0) fetchStations()
   if (controllers.value.length === 0) fetchControllers()
   fetchTickets()
+  fetchStationKpis()
 })
 </script>
 
@@ -327,14 +379,109 @@ onMounted(() => {
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-220px)]">
       <!-- Map Canvas Area -->
       <div class="lg:col-span-3 h-full rounded-xl overflow-hidden border border-border shadow-sm relative bg-card">
+        <!-- Floating Telemetry HUD Toolbar -->
+        <div class="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 z-20 pointer-events-auto">
+          <!-- Left: Overlay Mode Controls -->
+          <div class="flex items-center gap-1.5 p-1 bg-slate-950/90 backdrop-blur-md rounded-xl border border-slate-800 shadow-xl">
+            <!-- Master Toggle Button -->
+            <button
+              type="button"
+              @click="showTelemetryOverlays = !showTelemetryOverlays"
+              class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+              :class="showTelemetryOverlays ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'"
+            >
+              <Activity class="size-3.5" :class="showTelemetryOverlays ? 'animate-pulse text-emerald-300' : ''" />
+              <span>Telemetry HUD</span>
+              <span
+                class="size-1.5 rounded-full"
+                :class="showTelemetryOverlays ? 'bg-emerald-400' : 'bg-slate-500'"
+              ></span>
+            </button>
+
+            <!-- Mode Filter Pills -->
+            <template v-if="showTelemetryOverlays">
+              <div class="h-4 w-px bg-slate-800 mx-0.5"></div>
+
+              <button
+                type="button"
+                @click="overlayFilterMode = 'alerts_only'"
+                class="px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                :class="overlayFilterMode === 'alerts_only' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                title="Display bubbles only on stations with active SLA tickets or OEE warnings"
+              >
+                Alerts & SLA
+              </button>
+
+              <button
+                type="button"
+                @click="overlayFilterMode = 'all'"
+                class="px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                :class="overlayFilterMode === 'all' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                title="Display telemetry bubbles on all visible station nodes"
+              >
+                All Nodes
+              </button>
+
+              <button
+                type="button"
+                @click="overlayFilterMode = 'hover_only'"
+                class="px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                :class="overlayFilterMode === 'hover_only' ? 'bg-slate-800 text-slate-200 font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                title="Show bubble only on hovered or selected station"
+              >
+                Hover Focus
+              </button>
+            </template>
+          </div>
+
+          <!-- Right: Fleet Stats Ticker -->
+          <div class="hidden md:flex items-center gap-3 px-3 py-1 bg-slate-950/90 backdrop-blur-md rounded-xl border border-slate-800 shadow-xl text-xs font-mono">
+            <div class="flex items-center gap-1.5 text-slate-300">
+              <span class="text-slate-500">OEE:</span>
+              <span class="font-bold text-emerald-400">{{ fleetKpiSummary.avgOee }}%</span>
+            </div>
+            <span class="text-slate-700">•</span>
+            <div class="flex items-center gap-1.5 text-slate-300">
+              <span class="text-slate-500">Yield:</span>
+              <span class="font-bold text-cyan-400">{{ fleetKpiSummary.avgYield }}%</span>
+            </div>
+            <span class="text-slate-700">•</span>
+            <div class="flex items-center gap-1.5 text-slate-300">
+              <span class="text-slate-500">Rate:</span>
+              <span class="font-bold text-indigo-400">{{ fleetKpiSummary.totalThroughput }} pcs/h</span>
+            </div>
+            <span class="text-slate-700">•</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-500">SLA:</span>
+              <span
+                class="font-bold px-1.5 py-0.2 rounded text-[11px]"
+                :class="fleetKpiSummary.breachedCount > 0 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'"
+              >
+                {{ fleetKpiSummary.totalSlaTickets }} Tickets
+              </span>
+            </div>
+          </div>
+        </div>
+
         <InteractiveMapCanvas
           :dxf-url="currentPlan.url"
           :active-pin="activePin"
+          :show-telemetry-overlays="showTelemetryOverlays"
+          :overlay-filter-mode="overlayFilterMode"
+          :show-oee="showOeeBadge"
+          :show-yield="showYieldBadge"
+          :show-parts-hour="showPartsHourBadge"
+          :show-sla="showSlaBadge"
+          :expanded-handles="expandedHandles"
+          :station-kpis="stationKpis"
+          :station-tickets="tickets"
           @object-clicked="handleObjectClick"
           @object-dblclicked="handleObjectDblClick"
           @object-contextmenu="handleObjectContextMenu"
           @map-clicked="handleMapClick"
           @map-contextmenu="handleMapContextMenu"
+          @create-ticket="handleCreateTicket"
+          @view-ticket="handleViewTicket"
         />
 
         <!-- Controls Legend Overlay -->
@@ -344,7 +491,7 @@ onMounted(() => {
             <span class="font-medium text-foreground">Interactive Handle</span>
           </div>
           <div class="flex items-center gap-2 border-l border-border pl-4">
-            <span class="text-muted-foreground">Scroll to Zoom • Drag to Pan • Double-click to Map</span>
+            <span class="text-muted-foreground">Scroll to Zoom • Drag to Pan • Click Bubbles to Expand</span>
           </div>
         </div>
       </div>
@@ -358,6 +505,49 @@ onMounted(() => {
               Spatial Anchors ({{ pinnedAssets.length }})
             </CardTitle>
           </CardHeader>
+
+          <!-- Active Station Live Telemetry Inspection Card -->
+          <div v-if="activeStationKpi" class="p-3 bg-muted/60 border-b border-border flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-foreground font-mono">{{ activePin }}</span>
+              <span
+                :class="{
+                  'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30': activeStationKpi.operationalStatus === 'RUNNING',
+                  'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30': activeStationKpi.operationalStatus === 'IDLE' || activeStationKpi.operationalStatus === 'WARNING',
+                  'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30': activeStationKpi.operationalStatus === 'FAULTED'
+                }"
+                class="text-[9px] px-1.5 py-0.2 rounded font-semibold border uppercase"
+              >
+                {{ activeStationKpi.operationalStatus }}
+              </span>
+            </div>
+            <p class="text-[11px] text-muted-foreground truncate">{{ activeStationKpi.name }}</p>
+
+            <!-- At-A-Glance Stats Grid -->
+            <div class="grid grid-cols-3 gap-1.5 p-2 bg-card rounded-lg border border-border text-center">
+              <div>
+                <span class="text-[9px] text-muted-foreground uppercase font-semibold">OEE</span>
+                <p class="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">{{ activeStationKpi.oee }}%</p>
+              </div>
+              <div class="border-l border-border">
+                <span class="text-[9px] text-muted-foreground uppercase font-semibold">Yield</span>
+                <p class="text-xs font-bold font-mono text-cyan-600 dark:text-cyan-400">{{ activeStationKpi.yield }}%</p>
+              </div>
+              <div class="border-l border-border">
+                <span class="text-[9px] text-muted-foreground uppercase font-semibold">Rate</span>
+                <p class="text-xs font-bold font-mono text-indigo-600 dark:text-indigo-400">{{ activeStationKpi.partsPerHour }}/h</p>
+              </div>
+            </div>
+
+            <!-- Active SLA Section -->
+            <div v-if="activeStationSla && activeStationSla.openTickets > 0" class="flex items-center justify-between p-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[10px]">
+              <div class="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-medium truncate mr-1">
+                <AlertTriangle class="size-3 shrink-0" />
+                <span>{{ activeStationSla.openTickets }} Active Tickets</span>
+              </div>
+              <span class="font-mono font-bold text-amber-600 dark:text-amber-400 shrink-0">{{ activeStationSla.earliestDueText }}</span>
+            </div>
+          </div>
           <CardContent ref="sidebarScrollContainer" class="p-0 overflow-y-auto flex-1 bg-muted/10">
             <div v-if="pinnedAssets.length === 0" class="p-10 text-center">
               <div class="size-10 bg-muted rounded-xl mx-auto mb-3 flex items-center justify-center text-muted-foreground">

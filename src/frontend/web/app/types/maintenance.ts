@@ -116,6 +116,16 @@ export interface ErrorTemplate {
   affectedMachineTypes?: string[]
 }
 
+export type MachineGroupType =
+  | 'BusinessUnit'
+  | 'Project'
+  | 'Line'
+  | 'SubLine'
+  | 'Machine'
+  | 'Technological'
+  | 'Customer'
+  | 'Manual'
+
 export interface MachineGroup {
   id: string
   name: string
@@ -127,6 +137,136 @@ export interface MachineGroup {
   icon?: string
   leadEngineerId?: string
   leadEngineerName?: string
+  groupType?: MachineGroupType
+  interfaceContract?: string
+  technologyKey?: string
+}
+
+export interface DelegationRecipe {
+  id: string
+  name: string
+  description?: string
+  discipline: string
+  triggerEventCategory?: string
+  allowedSchedules: string[]
+  requiredSkillIds: string[]
+  requiredSkillCodes: string[]
+  primaryPersonnelGroupId?: string
+  primaryPersonnelGroupName?: string
+  primaryUserId?: string
+  primaryUserName?: string
+  onCallFallbackUserId?: string
+  onCallFallbackUserName?: string
+  escalationGroupId?: string
+  escalationGroupName?: string
+  escalationTimeoutMinutes: number
+  isActive: boolean
+  technology?: string
+  isTechnologyPrimary?: boolean
+  isCompleteMachineDedication?: boolean
+  maintenanceGroupIds?: string[]
+  maintenanceGroupNames?: string[]
+  machineGroupIds?: string[]
+  machineGroupNames?: string[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface DedicatedPerson {
+  userId: string
+  userName: string
+  email?: string
+  source: string
+  technology?: string
+  isGroupMemberOverride?: boolean
+  overriddenGroupName?: string
+}
+
+export interface DedicatedGroup {
+  groupId: string
+  groupName: string
+  discipline: string
+  technology?: string
+  memberCount: number
+  memberNames: string[]
+}
+
+export interface MachineDirectDedication {
+  id: string
+  targetType: 'person' | 'group'
+  targetId: string
+  targetName: string
+  targetEmail?: string
+  technology: string
+  isTechnologySpecific: boolean
+  isGroupMemberOverride: boolean
+  overriddenGroupName?: string
+  assignedAt: string
+}
+
+export interface InheritedDedication {
+  machineGroupId: string
+  machineGroupName: string
+  groupType: string
+  dedicatedPerson?: DedicatedPerson
+  dedicatedGroup?: DedicatedGroup
+}
+
+export interface TechnologicalGroupDedication {
+  groupId: string
+  groupName: string
+  technology: string
+  isAutomaticallyDedicated: boolean
+  isSuperseded: boolean
+  supersededByUserId?: string
+  supersededByUserName?: string
+  memberUserIds: string[]
+  memberNames: string[]
+}
+
+export interface MachineDedications {
+  machineId: string
+  machineName: string
+  customIdentifier: string
+  technologies: string[]
+  directDedications?: MachineDirectDedication[]
+  dedicatedPerson?: DedicatedPerson | null
+  dedicatedGroup?: DedicatedGroup | null
+  inheritedDedications: InheritedDedication[]
+  technologicalGroupDedications: TechnologicalGroupDedication[]
+}
+
+export interface DedicatedMachineItem {
+  machineId: string
+  machineName: string
+  customIdentifier: string
+  machineType?: string
+  groupName?: string
+  technology?: string
+  supersedesTechnologicalGroup?: boolean
+  supersededGroupName?: string
+}
+
+export interface DedicatedMachineGroupItem {
+  groupId: string
+  groupName: string
+  groupType: string
+  machineCount: number
+}
+
+export interface UserTechnologicalCoverage {
+  groupId: string
+  groupName: string
+  technology: string
+  coveredMachines: DedicatedMachineItem[]
+}
+
+export interface UserDedications {
+  userId: string
+  userName: string
+  directlyDedicatedMachines: DedicatedMachineItem[]
+  dedicatedMachineGroups: DedicatedMachineGroupItem[]
+  technologicalCoverage: UserTechnologicalCoverage[]
 }
 
 export interface TechnicianRule {

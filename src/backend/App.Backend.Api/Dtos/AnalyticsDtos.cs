@@ -118,3 +118,27 @@ public class LineKpiDto
     public double MttrMinutes { get; set; }
     public int IncidentCount { get; set; }
 }
+
+public class StationKpiDto
+{
+    public string StationId { get; set; } = string.Empty;
+    public string Handle { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string LineId { get; set; } = string.Empty;
+    public string LineName { get; set; } = string.Empty;
+    public double Oee { get; set; }
+    public double Availability { get; set; }
+    public double Performance { get; set; }
+    public double Quality { get; set; }
+    public double Yield { get; set; }
+    public double PartsPerHour { get; set; }
+    public double TargetPartsPerHour { get; set; }
+    public double CycleTimeSeconds { get; set; }
+    public double TargetCycleTimeSeconds { get; set; }
+    public int TotalPartsProduced { get; set; }
+    public int ScrapParts { get; set; }
+    public string OperationalStatus { get; set; } = "RUNNING"; // "RUNNING" | "IDLE" | "WARNING" | "FAULTED" | "MAINTENANCE"
+    public int ActiveTicketCount { get; set; }
+    public int CriticalTicketCount { get; set; }
+    public bool HasSlaBreach { get; set; }
+}

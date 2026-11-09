@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\..\src\backend\App.Backend.Api\App.Backend.Api.csproj" />
     <ProjectReference Include="..\..\..\src\shared\App.Contracts\App.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\shared\App.Shared\App.Shared.csproj" />
+    <ProjectReference Include="..\..\..\src\shared\lua\App.Shared.Lua.csproj" />
     <ProjectReference Include="..\..\..\src\agent\App.Agent.Daemon\App.Agent.Daemon.csproj" />
   </ItemGroup>
 

@@ -112,15 +112,32 @@ public abstract partial class BaseInventoryItem
     public virtual string ItemType => this.GetType().Name;
 }
 
+// --- MACHINE GROUPING ABSTRACTIONS & HIERARCHY ---
+
+/// <summary>
+/// Universal interface representing any grouping of machines across the industrial hierarchy:
+/// Business Unit > Project > Line > Sub-Line > Machine.
+/// </summary>
+public interface IMachineGroup
+{
+    Guid Id { get; set; }
+    string Name { get; set; }
+    string? Description { get; set; }
+    MachineGroupType GroupType { get; }
+    Guid? ParentId { get; set; }
+    List<Guid> GetMachineIds();
+    bool MatchesMachine(Machine machine);
+}
+
 // --- CONCRETE IMPLEMENTATIONS (The "Different Models") ---
 
 /// <summary>
-/// <summary>
 /// Represents a Production Station or Operational Machine on the factory floor.
 /// First-class Aggregate Root decoupled from inventory items.
+/// Implements IMachineGroup to allow direct machine dedication in delegations.
 /// </summary>
 [Table("stations", Schema = "backend")]
-public partial class Machine : BaseInventoryItem
+public partial class Machine : BaseInventoryItem, IMachineGroup
 {
     [NotMapped]
     public string? PlantId { get; set; }
@@ -158,23 +175,89 @@ public partial class Machine : BaseInventoryItem
     /// <summary>List of technologies defined by this machine (e.g. ["Welding", "Robotics", "Vision"]).</summary>
     public List<string>? Technologies { get; set; } = new();
 
+    /// <summary>Single Point of Contact (SPOC) name or designated contact for this machine.</summary>
+    [MaxLength(255)]
+    [Column("spoc")]
+    public string? Spoc { get; set; }
+
+    /// <summary>Optional user ID for SPOC.</summary>
+    [MaxLength(128)]
+    [Column("spoc_user_id")]
+    public string? SpocUserId { get; set; }
+
+    /// <summary>Machine Owner (e.g. Lead, Department, or Person who owns this asset).</summary>
+    [MaxLength(255)]
+    [Column("owner")]
+    public string? Owner { get; set; }
+
+    /// <summary>Optional user ID for machine owner.</summary>
+    [MaxLength(128)]
+    [Column("owner_user_id")]
+    public string? OwnerUserId { get; set; }
+
     /// <summary>Hierarchical group / line envelope identifier (legacy string).</summary>
     public string? GroupId { get; set; }
 
+    /// <summary>Foreign key referencing the parent Sub-Line MachineGroup.</summary>
+    [Column("sub_line_group_id")]
+    public Guid? SubLineGroupId { get; set; }
+    public MachineGroup? SubLineGroup { get; set; }
+
     /// <summary>Foreign key referencing the parent Line MachineGroup.</summary>
+    [Column("line_group_id")]
     public Guid? LineGroupId { get; set; }
-    [NotMapped]
     public MachineGroup? LineGroup { get; set; }
 
-    /// <summary>Hierarchical parent machine ID if this station is part of a larger super-machine.</summary>
-    [NotMapped]
+    /// <summary>Foreign key referencing the parent Project MachineGroup.</summary>
+    [Column("project_group_id")]
+    public Guid? ProjectGroupId { get; set; }
+    public MachineGroup? ProjectGroup { get; set; }
+
+    /// <summary>Foreign key referencing the parent Business Unit MachineGroup.</summary>
+    [Column("business_unit_group_id")]
+    public Guid? BusinessUnitGroupId { get; set; }
+    public MachineGroup? BusinessUnitGroup { get; set; }
+
+    /// <summary>Hierarchical parent machine ID if this station is part of a larger super-machine, cell, or roundtable.</summary>
+    [Column("parent_machine_id")]
     public Guid? ParentMachineId { get; set; }
-    [NotMapped]
     public Machine? ParentMachine { get; set; }
+
+    /// <summary>Sub-machines nested under this multi-machine cell or roundtable.</summary>
+    public List<Machine> SubMachines { get; set; } = new();
+
+    /// <summary>Station slot index or angular position on a roundtable/dial table (e.g. 1, 2, 3...).</summary>
+    [Column("sub_machine_index")]
+    public int? SubMachineIndex { get; set; }
+
+    /// <summary>Cell classification: Standard, MultiMachineCell, Roundtable.</summary>
+    [MaxLength(64)]
+    [Column("cell_type")]
+    public string? CellType { get; set; }
+
+    /// <summary>Returns true if this machine is a sub-machine within a cell or roundtable.</summary>
+    [NotMapped]
+    public bool IsSubMachine => ParentMachineId.HasValue;
+
+    /// <summary>Returns true if this machine is a multi-machine cell or roundtable with child stations.</summary>
+    [NotMapped]
+    public bool IsCellOrRoundtable => SubMachines.Count > 0 || string.Equals(CellType, "Roundtable", StringComparison.OrdinalIgnoreCase) || string.Equals(CellType, "MultiMachineCell", StringComparison.OrdinalIgnoreCase);
+
+    // IMachineGroup Implementation
+    MachineGroupType IMachineGroup.GroupType => MachineGroupType.Machine;
+    string? IMachineGroup.Description { get => DisplayName; set => DisplayName = value; }
+    Guid? IMachineGroup.ParentId
+    {
+        get => SubLineGroupId ?? LineGroupId ?? ParentMachineId;
+        set => SubLineGroupId = value;
+    }
+    List<Guid> IMachineGroup.GetMachineIds() => new List<Guid> { Id };
+    bool IMachineGroup.MatchesMachine(Machine machine) => machine.Id == Id;
 
     /// <summary>Foreign key to the active floor plan DXF/SVG.</summary>
     [NotMapped]
     public Guid? FloorPlanId { get; set; }
+
 
     /// <summary>The CAD/DXF object handle for mapping this station to a spatial layout.</summary>
     public string? PinnedObjectHandle { get; set; }
@@ -1334,10 +1417,11 @@ public class DiagnosticSnapshot
 
 /// <summary>
 /// Machine Group entity representing line assignments, functional groups, and plant clusters.
-/// Replaces in-memory shadow store.
+/// Implements IMachineGroup across the industrial hierarchy:
+/// Business Unit > Project > Line > Sub-Line > Machine.
 /// </summary>
 [Table("machine_groups", Schema = "backend")]
-public class MachineGroup
+public class MachineGroup : IMachineGroup
 {
     [Key]
     [Column("id")]
@@ -1354,6 +1438,9 @@ public class MachineGroup
 
     [Column("parent_id")]
     public Guid? ParentId { get; set; }
+
+    public MachineGroup? Parent { get; set; }
+    public List<MachineGroup> Children { get; set; } = new();
 
     [MaxLength(64)]
     [Column("color")]
@@ -1379,7 +1466,7 @@ public class MachineGroup
     [Column("machine_types_json")]
     public string? MachineTypesJson { get; set; }
 
-    /// <summary>Type of machine grouping: Manual, Line, Technology, CustomerLineInterface.</summary>
+    /// <summary>Type of machine grouping: BusinessUnit, Project, Line, SubLine, Machine, Technological, Customer, Manual.</summary>
     [Column("group_type")]
     public MachineGroupType GroupType { get; set; } = MachineGroupType.Manual;
 
@@ -1405,6 +1492,154 @@ public class MachineGroup
     /// <summary>Machines directly attached to this line group.</summary>
     [NotMapped]
     public List<Machine> Machines { get; set; } = new();
+
+    public virtual List<Guid> GetMachineIds()
+    {
+        var result = new List<Guid>();
+        if (!string.IsNullOrWhiteSpace(MachineIdsJson))
+        {
+            try
+            {
+                result = JsonSerializer.Deserialize<List<Guid>>(MachineIdsJson) ?? new();
+            }
+            catch { }
+        }
+        if (Memberships != null && Memberships.Count > 0)
+        {
+            foreach (var m in Memberships)
+            {
+                if (!result.Contains(m.MachineId))
+                    result.Add(m.MachineId);
+            }
+        }
+        return result;
+    }
+
+    public virtual bool MatchesMachine(Machine machine)
+    {
+        if (GetMachineIds().Contains(machine.Id)) return true;
+        if (machine.SubLineGroupId == Id) return true;
+        if (machine.LineGroupId == Id) return true;
+        if (machine.ProjectGroupId == Id) return true;
+        if (machine.BusinessUnitGroupId == Id) return true;
+        if (GroupType == MachineGroupType.Technological && !string.IsNullOrWhiteSpace(TechnologyKey))
+        {
+            if (string.Equals(machine.MachineType, TechnologyKey, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (machine.Technologies != null && machine.Technologies.Any(t => string.Equals(t, TechnologyKey, StringComparison.OrdinalIgnoreCase)))
+                return true;
+        }
+        return false;
+    }
+}
+
+/// <summary>
+/// Level 1 in hierarchy: Business Unit grouping.
+/// Root envelope for a plant operational or market business unit (e.g. Battery Systems, Powertrain, Electronics).
+/// Implements IMachineGroup.
+/// </summary>
+[NotMapped]
+public class BusinessUnitMachineGroup : MachineGroup, IMachineGroup
+{
+    public BusinessUnitMachineGroup()
+    {
+        GroupType = MachineGroupType.BusinessUnit;
+    }
+
+    public string? BusinessUnitCode { get; set; }
+    public string? HeadOfBusinessUnit { get; set; }
+}
+
+/// <summary>
+/// Level 2 in hierarchy: Project grouping.
+/// Extends BusinessUnitMachineGroup (extends the previous grouping type).
+/// Represents a customer vehicle program or product platform (e.g. Audi PPE, BMW Gen6).
+/// </summary>
+[NotMapped]
+public class ProjectMachineGroup : BusinessUnitMachineGroup
+{
+    public ProjectMachineGroup()
+    {
+        GroupType = MachineGroupType.Project;
+    }
+
+    public Guid? BusinessUnitId
+    {
+        get => ParentId;
+        set => ParentId = value;
+    }
+
+    public string? ProjectCode { get; set; }
+    public string? CustomerName { get; set; }
+    public DateTimeOffset? SopDate { get; set; }
+}
+
+/// <summary>
+/// Level 3 in hierarchy: Line grouping.
+/// Extends ProjectMachineGroup (extends the previous grouping type).
+/// Represents an automated manufacturing assembly line (e.g. Line 06 Module Assembly).
+/// </summary>
+[NotMapped]
+public class LineMachineGroup : ProjectMachineGroup
+{
+    public LineMachineGroup()
+    {
+        GroupType = MachineGroupType.Line;
+    }
+
+    public Guid? ProjectId
+    {
+        get => ParentId;
+        set => ParentId = value;
+    }
+
+    public string? LineCode { get; set; }
+    public double? TargetTaktTimeSeconds { get; set; }
+}
+
+/// <summary>
+/// Level 4 in hierarchy: Sub-Line grouping.
+/// Extends LineMachineGroup (extends the previous grouping type).
+/// Represents a production stage, automation segment, or cell cluster inside a Line (e.g. Sub-Line A - Cell Infeed & Stacking).
+/// </summary>
+[NotMapped]
+public class SubLineMachineGroup : LineMachineGroup
+{
+    public SubLineMachineGroup()
+    {
+        GroupType = MachineGroupType.SubLine;
+    }
+
+    public Guid? LineId
+    {
+        get => ParentId;
+        set => ParentId = value;
+    }
+
+    public string? SubLineCode { get; set; }
+    public int StageSequence { get; set; } = 1;
+}
+
+/// <summary>
+/// Level 5 in hierarchy: Machine Unit grouping node.
+/// Extends SubLineMachineGroup (extends the previous grouping type).
+/// Represents a dedicated machine or workstation node inside a Sub-Line.
+/// </summary>
+[NotMapped]
+public class MachineUnitGroup : SubLineMachineGroup
+{
+    public MachineUnitGroup()
+    {
+        GroupType = MachineGroupType.Machine;
+    }
+
+    public Guid? SubLineId
+    {
+        get => ParentId;
+        set => ParentId = value;
+    }
+
+    public Guid? TargetMachineId { get; set; }
 }
 
 /// <summary>

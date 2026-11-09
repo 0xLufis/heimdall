@@ -156,6 +156,7 @@ public class AppDbContext : DbContext
     public DbSet<ShiftAbsence> ShiftAbsences { get; set; }
     
     // Machine Components, Recipes & Assets
+    public DbSet<GenericTemplate> GenericTemplates { get; set; }
     public DbSet<ComponentRecipe> ComponentRecipes { get; set; }
     public DbSet<MachineComponent> MachineComponents { get; set; }
     public DbSet<ComponentPartHistory> ComponentPartHistories { get; set; }
@@ -174,6 +175,8 @@ public class AppDbContext : DbContext
     public DbSet<SecurityGroupMember> SecurityGroupMembers { get; set; }
     public DbSet<FunctionalSetting> FunctionalSettings { get; set; }
     public DbSet<MachineGroupMembership> MachineGroupMemberships { get; set; }
+    public DbSet<DelegationMaintenanceGroup> DelegationMaintenanceGroups { get; set; }
+    public DbSet<DelegationMachineGroup> DelegationMachineGroups { get; set; }
     
     // System Governance, Identity & PKI Sets
     public DbSet<SecurityGroupMapping> SecurityGroupMappings { get; set; }
@@ -374,6 +377,31 @@ public class AppDbContext : DbContext
                   .WithOne(l => l.Machine)
                   .HasForeignKey(l => l.MachineId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ParentMachine)
+                  .WithMany(e => e.SubMachines)
+                  .HasForeignKey(e => e.ParentMachineId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.SubLineGroup)
+                  .WithMany()
+                  .HasForeignKey(e => e.SubLineGroupId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.LineGroup)
+                  .WithMany()
+                  .HasForeignKey(e => e.LineGroupId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ProjectGroup)
+                  .WithMany()
+                  .HasForeignKey(e => e.ProjectGroupId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.BusinessUnitGroup)
+                  .WithMany()
+                  .HasForeignKey(e => e.BusinessUnitGroupId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Configure ClientPc (Standalone)
@@ -675,6 +703,23 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.OrganizationId);
         });
 
+        // Configure Universal Generic Templates & Recipes
+        modelBuilder.Entity<GenericTemplate>(entity =>
+        {
+            entity.ToTable("generic_templates");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.TemplateType);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.ExtendsTemplateId);
+            entity.HasIndex(e => e.OrganizationId);
+
+            entity.HasOne(e => e.ExtendsTemplate)
+                  .WithMany()
+                  .HasForeignKey(e => e.ExtendsTemplateId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
         // Configure Component Recipes
         modelBuilder.Entity<ComponentRecipe>(entity =>
         {
@@ -864,6 +909,11 @@ public class AppDbContext : DbContext
             entity.ToTable("machine_groups");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.GroupType).HasConversion<string>();
+
+            entity.HasOne(e => e.Parent)
+                  .WithMany(e => e.Children)
+                  .HasForeignKey(e => e.ParentId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Configure Machine Group Memberships
@@ -881,6 +931,42 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.Machine)
                   .WithMany()
                   .HasForeignKey(e => e.MachineId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Delegation Maintenance Groups (referring to 1 or more maintenance groups)
+        modelBuilder.Entity<DelegationMaintenanceGroup>(entity =>
+        {
+            entity.ToTable("delegation_maintenance_groups");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.DelegationRecipeId, e.MaintenanceGroupId }).IsUnique();
+
+            entity.HasOne(e => e.DelegationRecipe)
+                  .WithMany(r => r.MaintenanceGroups)
+                  .HasForeignKey(e => e.DelegationRecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.MaintenanceGroup)
+                  .WithMany()
+                  .HasForeignKey(e => e.MaintenanceGroupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Delegation Machine Groups (referring to 1 or more machine groups)
+        modelBuilder.Entity<DelegationMachineGroup>(entity =>
+        {
+            entity.ToTable("delegation_machine_groups");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.DelegationRecipeId, e.MachineGroupId }).IsUnique();
+
+            entity.HasOne(e => e.DelegationRecipe)
+                  .WithMany(r => r.MachineGroups)
+                  .HasForeignKey(e => e.DelegationRecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.MachineGroup)
+                  .WithMany()
+                  .HasForeignKey(e => e.MachineGroupId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

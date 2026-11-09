@@ -6,6 +6,7 @@ import type {
   TicketMetrics,
   TicketStatus,
   PendingReason,
+  EscalationHandoverState,
   TicketComment,
   MaintenanceEvent
 } from '~/types/maintenance'
@@ -209,24 +210,40 @@ export const useMaintenance = () => {
     return await updateStatus(ticketId, 'Pending', undefined, { pendingReason, pendingDetails })
   }
 
-  const escalateTicket = async (ticketId: string, reason: string, escalatedBy?: string) => {
+  const escalateTicket = async (
+    ticketId: string,
+    reason: string,
+    escalatedBy?: string,
+    handoverState?: EscalationHandoverState,
+    escalationTarget?: string
+  ) => {
     const target = tickets.value.find(t => t.id === ticketId)
     if (target) {
       target.isEscalated = true
       target.escalationReason = reason
       target.escalatedBy = escalatedBy || 'Operator'
       target.escalatedAt = new Date().toISOString()
+      target.escalationHandoverState = handoverState || 'Notification'
+      target.escalationTarget = escalationTarget || 'Plant Operations'
       if (selectedTicket.value?.id === ticketId) {
         selectedTicket.value.isEscalated = true
         selectedTicket.value.escalationReason = reason
         selectedTicket.value.escalatedBy = escalatedBy || 'Operator'
         selectedTicket.value.escalatedAt = new Date().toISOString()
+        selectedTicket.value.escalationHandoverState = handoverState || 'Notification'
+        selectedTicket.value.escalationTarget = escalationTarget || 'Plant Operations'
       }
       recalculateMetrics()
     }
 
     try {
-      return await (service as any).escalate(ticketId, reason, escalatedBy || 'Operator')
+      return await (service as any).escalate(
+        ticketId,
+        reason,
+        escalatedBy || 'Operator',
+        handoverState || 'Notification',
+        escalationTarget
+      )
     } catch (err) {
       // Fallback to PATCH /api/tickets/{id}
       return await $fetch(`/api/tickets/${ticketId}`, {
@@ -235,7 +252,9 @@ export const useMaintenance = () => {
           isEscalated: true,
           escalationReason: reason,
           escalatedBy: escalatedBy || 'Operator',
-          escalatedAt: new Date().toISOString()
+          escalatedAt: new Date().toISOString(),
+          escalationHandoverState: handoverState || 'Notification',
+          escalationTarget: escalationTarget || 'Plant Operations'
         }
       })
     }

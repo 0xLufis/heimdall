@@ -66,13 +66,45 @@ export interface InventoryComponent {
   clientPcId?: string
 }
 
+export interface SubMachineSummary {
+  id: string
+  name: string
+  displayName?: string
+  customIdentifier: string
+  subMachineIndex?: number
+  cellType?: string
+  status?: string
+}
+
 export interface Machine {
   id: string
+  name?: string
+  displayName?: string
   organizationId?: string
   customIdentifier: string
+  machineType?: string
+  groupId?: string
+  status?: string
   pinnedObjectHandle?: string
   clientPcs: any[]
   components: InventoryComponent[]
+  // SPOC & Owner Governance
+  spoc?: string
+  spocUserId?: string
+  owner?: string
+  ownerUserId?: string
+  // Industrial Hierarchy: BU > Project > Line > Sub-Line > Machine
+  businessUnitGroupId?: string
+  projectGroupId?: string
+  lineGroupId?: string
+  subLineGroupId?: string
+  // Sub-Machine Architecture
+  parentMachineId?: string
+  subMachineIndex?: number
+  cellType?: 'Standard' | 'MultiMachineCell' | 'Roundtable' | string
+  isSubMachine?: boolean
+  isCellOrRoundtable?: boolean
+  subMachines?: SubMachineSummary[]
 }
 
 // --------------------------------------------------------------------------
@@ -323,4 +355,123 @@ export interface SparePartsReportingSummary {
 // --------------------------------------------------------------------------
 
 export type InventoryRbacRole = 'use_part' | 'log_part' | 'inventory_manager'
+
+// --------------------------------------------------------------------------
+// 3D CAD & Digital Twin Identities
+// --------------------------------------------------------------------------
+
+export interface Cad3dTransform {
+  x: number
+  y: number
+  z: number
+  rotationX: number
+  rotationY: number
+  rotationZ: number
+  scale?: number
+}
+
+export interface Cad3dBoundingBox {
+  minX: number
+  minY: number
+  minZ: number
+  maxX: number
+  maxY: number
+  maxZ: number
+}
+
+export interface PdfNodeLocation {
+  documentId: string
+  pageNumber: number
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface EplanCadReference {
+  deviceTag?: string
+  locationAspect?: string
+  drawingPage?: string
+  functionText?: string
+  cadHandle?: string
+  cadBlockName?: string
+  bomPosition?: string
+  referenceDesignator?: string
+  pdfLocation?: PdfNodeLocation
+  // 3D CAD Digital Twin Properties
+  model3dUrl?: string
+  cad3dNodePath?: string
+  cad3dMeshId?: string
+  localTransform?: Cad3dTransform
+  boundingBox3d?: Cad3dBoundingBox
+}
+
+export interface ComponentRecipe {
+  id: string
+  recipeCode: string
+  name: string
+  description?: string
+  category: 'Hardware' | 'Software' | 'Mechanical' | 'Consumable'
+  manufacturer?: string
+  modelNumber?: string
+  baseCostEur?: number
+  autoTags?: string[]
+  eplanCadDefaults?: EplanCadReference
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface MachineComponentSlot {
+  id: string
+  machineId: string
+  name: string
+  functionalSlotIdentifier: string
+  category: 'Hardware' | 'Software' | 'Mechanical' | 'Consumable'
+  componentRecipeId?: string
+  currentPartId?: string
+  currentPartSerialNumber?: string
+  tags?: string[]
+  attributes?: Record<string, any>
+  eplanCadRef?: EplanCadReference
+  installedAt?: string
+  updatedAt?: string
+}
+
+export interface ComponentPartHistory {
+  id: string
+  componentSlotId: string
+  partId: string
+  serialNumber: string
+  installedAt: string
+  removedAt?: string
+  reason?: string
+}
+
+export interface StationInstalledPartDto {
+  id: string
+  name: string
+  displayName?: string
+  serialNumber?: string
+  equipmentStatus?: string
+  technology?: string
+  storageLocation?: string
+  itemType: string
+  manufacturerName?: string
+  cad3dNodePath?: string
+  functionalSlotIdentifier?: string
+  cadReference?: EplanCadReference
+}
+
+export interface StationComponentTreeDto {
+  stationId: string
+  stationName: string
+  displayName?: string
+  customIdentifier?: string
+  machineType?: string
+  groupId?: string
+  model3dUrl?: string
+  controllers: any[]
+  installedParts: StationInstalledPartDto[]
+  totalComponentsCount: number
+}
 

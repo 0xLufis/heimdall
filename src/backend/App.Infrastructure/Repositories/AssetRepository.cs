@@ -1,7 +1,9 @@
 using App.Contracts.Inventory;
+using App.Contracts.Machine;
 using App.Shared.Data;
 using App.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace App.Infrastructure.Repositories;
@@ -299,21 +301,94 @@ public class AssetRepository : IAssetRepository
             .ToListAsync();
     }
 
-    public async Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId)
+    public Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId)
+        => GetStationComponentTreeAsync(stationId.ToString());
+
+    public async Task<StationComponentTreeDto?> GetStationComponentTreeAsync(string stationIdentifier)
     {
+        if (string.IsNullOrWhiteSpace(stationIdentifier)) return null;
+
+        Guid? targetGuid = Guid.TryParse(stationIdentifier, out var parsed) ? parsed : null;
         var station = await _context.Machines
             .Include(m => m.ResponsibleTeams)
             .Include(m => m.Controllers)
                 .ThenInclude(c => c.InventoryItems)
-            .FirstOrDefaultAsync(m => m.Id == stationId);
+            .FirstOrDefaultAsync(m => (targetGuid.HasValue && m.Id == targetGuid.Value) ||
+                                      m.CustomIdentifier == stationIdentifier ||
+                                      m.Name == stationIdentifier);
 
-        if (station == null) return null;
+        if (station == null)
+        {
+            return new StationComponentTreeDto
+            {
+                StationId = targetGuid ?? Guid.Empty,
+                StationName = stationIdentifier,
+                DisplayName = stationIdentifier,
+                CustomIdentifier = stationIdentifier,
+                MachineType = "General",
+                GroupId = "Line 1",
+                Model3dUrl = "/sample/station_digital_twin.glb",
+                Controllers = new(),
+                InstalledParts = new(),
+                TotalComponentsCount = 0
+            };
+        }
+
+        var machineComponents = await _context.MachineComponents
+            .AsNoTracking()
+            .Where(mc => mc.MachineId == station.Id)
+            .ToListAsync();
+
+        var machineComponentMap = machineComponents
+            .Where(mc => mc.CurrentPartId.HasValue)
+            .ToDictionary(mc => mc.CurrentPartId!.Value);
 
         var installedParts = await _context.InventoryItems
             .AsNoTracking()
             .Include(i => i.Manufacturer)
-            .Where(i => i.MachineId == stationId)
-            .Select(i => new StationInstalledPartDto
+            .Where(i => i.MachineId == station.Id)
+            .ToListAsync();
+
+        var installedPartDtos = installedParts.Select(i =>
+        {
+            EplanCadReference? cadRef = null;
+            string? slotId = null;
+
+            if (machineComponentMap.TryGetValue(i.Id, out var mc))
+            {
+                slotId = mc.FunctionalSlotIdentifier;
+                if (!string.IsNullOrWhiteSpace(mc.EplanCadRefJson))
+                {
+                    try { cadRef = JsonSerializer.Deserialize<EplanCadReference>(mc.EplanCadRefJson); } catch { }
+                }
+            }
+
+            var nodePath = cadRef?.Cad3dNodePath;
+            if (string.IsNullOrEmpty(nodePath))
+            {
+                if (!string.IsNullOrEmpty(slotId))
+                {
+                    nodePath = slotId;
+                }
+                else if (i.Technology?.Contains("Kinematics", StringComparison.OrdinalIgnoreCase) == true || i.Name.Contains("Servo", StringComparison.OrdinalIgnoreCase))
+                {
+                    nodePath = "GANTRY-X-01";
+                }
+                else if (i.Technology?.Contains("Pneumatics", StringComparison.OrdinalIgnoreCase) == true || i.Name.Contains("Conveyor", StringComparison.OrdinalIgnoreCase))
+                {
+                    nodePath = "CONVEYOR-01";
+                }
+                else if (i.Technology?.Contains("Vision", StringComparison.OrdinalIgnoreCase) == true || i.Technology?.Contains("Optics", StringComparison.OrdinalIgnoreCase) == true || i.Name.Contains("Camera", StringComparison.OrdinalIgnoreCase))
+                {
+                    nodePath = "VISION-CAM-01";
+                }
+                else if (i.Name.Contains("Valve", StringComparison.OrdinalIgnoreCase) || i.Name.Contains("Dispenser", StringComparison.OrdinalIgnoreCase) || i.Name.Contains("Screw", StringComparison.OrdinalIgnoreCase))
+                {
+                    nodePath = "TOOL-HEAD-01";
+                }
+            }
+
+            return new StationInstalledPartDto
             {
                 Id = i.Id,
                 Name = i.Name,
@@ -323,9 +398,12 @@ public class AssetRepository : IAssetRepository
                 Technology = i.Technology,
                 StorageLocation = i.StorageLocation,
                 ItemType = i.ItemType,
-                ManufacturerName = i.Manufacturer != null ? i.Manufacturer.Name : null
-            })
-            .ToListAsync();
+                ManufacturerName = i.Manufacturer != null ? i.Manufacturer.Name : null,
+                Cad3dNodePath = nodePath,
+                FunctionalSlotIdentifier = slotId ?? nodePath,
+                CadReference = cadRef
+            };
+        }).ToList();
 
         var controllers = station.Controllers.Select(c => new StationControllerNodeDto
         {
@@ -361,9 +439,10 @@ public class AssetRepository : IAssetRepository
             CustomIdentifier = station.CustomIdentifier,
             MachineType = station.MachineType,
             GroupId = station.GroupId,
+            Model3dUrl = "/sample/station_digital_twin.glb",
             Controllers = controllers,
-            InstalledParts = installedParts,
-            TotalComponentsCount = installedParts.Count + controllers.Sum(ctrl => ctrl.InternalComponents.Count)
+            InstalledParts = installedPartDtos,
+            TotalComponentsCount = installedPartDtos.Count + controllers.Sum(ctrl => ctrl.InternalComponents.Count)
         };
     }
 

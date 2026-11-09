@@ -32,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\shared\App.Contracts\App.Contracts.csproj" />
     <ProjectReference Include="..\..\shared\App.Shared\App.Shared.csproj" />
+    <ProjectReference Include="..\..\shared\lua\App.Shared.Lua.csproj" />
     <ProjectReference Include="..\App.Infrastructure\App.Infrastructure.csproj" />
   </ItemGroup>
 

@@ -416,4 +416,131 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
             new() { LineId = "L08", LineName = "Line 8 - Powertrain Cell Integration", Availability = 97.6, Performance = 95.0, Quality = 99.2, Oee = 91.9, MtbfHours = 410, MttrMinutes = 30, IncidentCount = 10 }
         };
     }
+
+    /// <summary>
+    /// Generates station-level telemetry KPIs for production floor plan overlays (OEE, Yield, Parts/Hour, SLA tickets).
+    /// </summary>
+    public List<StationKpiDto> GetStationTelemetryKpis(string? lineId = null, string? stationId = null)
+    {
+        var lineKpis = GetLineKpis();
+        var results = new List<StationKpiDto>();
+
+        var stationTypeMap = new Dictionary<int, string>
+        {
+            [10] = "Infeed Conveyor",
+            [20] = "CNC Machining Center",
+            [30] = "Dispensing & Bonding Cell",
+            [40] = "Robotic Transfer Cell",
+            [50] = "Automated Screwing Station",
+            [60] = "Laser Welding Cell",
+            [70] = "EOL Test Bench",
+            [80] = "Robot Deburring & Polishing",
+            [90] = "Vision Inspection Cell",
+            [100] = "Secondary Fastening Unit",
+            [110] = "Buffer Conveyor Bed",
+            [120] = "Outfeed Conveyor Bed",
+            [130] = "Packaging & Palletizing Cell"
+        };
+
+        var lineStationCounts = new Dictionary<string, int>
+        {
+            ["L01"] = 12,
+            ["L02"] = 13,
+            ["L03"] = 12,
+            ["L04"] = 12,
+            ["L05"] = 12,
+            ["L06"] = 13,
+            ["L07"] = 13,
+            ["L08"] = 13
+        };
+
+        foreach (var line in lineKpis)
+        {
+            if (!string.IsNullOrEmpty(lineId) && !string.Equals(line.LineId, lineId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            int count = lineStationCounts.GetValueOrDefault(line.LineId, 12);
+            for (int op = 1; op <= count; op++)
+            {
+                int opNum = op * 10;
+                string handle = $"{line.LineId}-OP{opNum:D3}";
+
+                if (!string.IsNullOrEmpty(stationId) &&
+                    !string.Equals(handle, stationId, StringComparison.OrdinalIgnoreCase) &&
+                    !stationId.Contains(handle, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                int hash = Math.Abs((handle).GetHashCode());
+                double varA = ((hash % 11) - 5) * 0.4;
+                double varP = (((hash / 11) % 11) - 5) * 0.6;
+                double varQ = (((hash / 121) % 7) - 3) * 0.15;
+
+                double avail = Math.Clamp(Math.Round(line.Availability + varA, 1), 76.0, 99.8);
+                double perf = Math.Clamp(Math.Round(line.Performance + varP, 1), 72.0, 99.6);
+                double qual = Math.Clamp(Math.Round(line.Quality + varQ, 1), 95.0, 99.9);
+                double oee = Math.Round((avail * perf * qual) / 10000.0, 1);
+                double yieldVal = Math.Clamp(Math.Round(qual - 0.2 + ((hash % 5) * 0.08), 1), 94.0, 99.9);
+
+                double partsPerHour = Math.Round(142.0 * (perf / 94.0), 0);
+                double targetPartsPerHour = 150.0;
+                double cycleTimeSec = partsPerHour > 0 ? Math.Round(3600.0 / partsPerHour, 1) : 0.0;
+                double targetCycleTimeSec = 24.0;
+
+                int produced = 1000 + (hash % 500);
+                int scrap = Math.Max(0, (int)Math.Round(produced * (1.0 - yieldVal / 100.0)));
+
+                // Deterministic active SLA tickets for high-profile stations
+                int activeTickets = 0;
+                int criticalTickets = 0;
+                bool slaBreach = false;
+
+                if (handle is "L01-OP030" or "L02-OP060" or "L04-OP040" or "L05-OP060" or "L07-OP020")
+                {
+                    activeTickets = (hash % 3) + 1;
+                    if (handle is "L02-OP060" or "L04-OP040")
+                    {
+                        criticalTickets = 1;
+                        slaBreach = (handle == "L02-OP060");
+                    }
+                }
+
+                string status = "RUNNING";
+                if (slaBreach || oee < 78.0) status = "FAULTED";
+                else if (criticalTickets > 0 || oee < 85.0) status = "WARNING";
+                else if (perf < 82.0) status = "IDLE";
+
+                string typeName = stationTypeMap.GetValueOrDefault(opNum, "Automation Cell");
+
+                results.Add(new StationKpiDto
+                {
+                    StationId = handle,
+                    Handle = handle,
+                    Name = $"{handle} {typeName}",
+                    LineId = line.LineId,
+                    LineName = line.LineName,
+                    Oee = oee,
+                    Availability = avail,
+                    Performance = perf,
+                    Quality = qual,
+                    Yield = yieldVal,
+                    PartsPerHour = partsPerHour,
+                    TargetPartsPerHour = targetPartsPerHour,
+                    CycleTimeSeconds = cycleTimeSec,
+                    TargetCycleTimeSeconds = targetCycleTimeSec,
+                    TotalPartsProduced = produced,
+                    ScrapParts = scrap,
+                    OperationalStatus = status,
+                    ActiveTicketCount = activeTickets,
+                    CriticalTicketCount = criticalTickets,
+                    HasSlaBreach = slaBreach
+                });
+            }
+        }
+
+        return results;
+    }
 }
