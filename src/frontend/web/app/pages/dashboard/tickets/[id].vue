@@ -42,6 +42,7 @@ import {
   BreadcrumbSeparator
 } from '~/components/ui/breadcrumb'
 import ImageAttachmentUploader from '~/components/tickets/ImageAttachmentUploader.vue'
+import TicketEscalationTreeDrawer from '~/components/tickets/TicketEscalationTreeDrawer.vue'
 import { useMaintenance } from '~/composables/useMaintenance'
 import { authClient } from '~/utils/auth-client'
 import { ANDON_STYLES, getAndonColorForStatus, getAndonPriorityStyle } from '~/utils/andonColors'
@@ -313,6 +314,19 @@ async function handleConfirmEscalate() {
   } finally {
     isChangingStatus.value = false
   }
+}
+
+async function handleEscalated(updated: MaintenanceTicket) {
+  showEscalateForm.value = false
+  if (localTicket.value) {
+    localTicket.value.isEscalated = true
+    localTicket.value.escalationReason = updated.escalationReason
+    localTicket.value.escalationTarget = updated.escalationTarget
+    localTicket.value.escalationHandoverState = updated.escalationHandoverState
+    localTicket.value.escalatedBy = updated.escalatedBy
+    localTicket.value.escalatedAt = updated.escalatedAt
+  }
+  await loadTicket()
 }
 
 async function handleResolveEscalation() {
@@ -745,70 +759,13 @@ async function handleAddComment() {
         </CardContent>
       </Card>
 
-      <!-- Collapsible Escalation Inline Form -->
-      <Card v-if="showEscalateForm" class="border-rose-500/30 bg-rose-500/5 animate-in fade-in duration-200">
-        <CardHeader class="pb-3 pt-4 px-5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-sm">
-              <AlertTriangle class="size-4" />
-              <span>Escalate Maintenance Incident</span>
-            </div>
-            <Button variant="ghost" size="sm" @click="showEscalateForm = false" class="size-7 p-0">
-              <X class="size-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent class="px-5 pb-4 space-y-3">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div>
-              <label class="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-                Escalation Target
-              </label>
-              <select
-                v-model="escalationTarget"
-                class="w-full h-8 bg-background border border-border rounded-lg px-2 text-xs text-foreground focus:outline-hidden"
-              >
-                <option value="DedicatedEngineer">Dedicated Area Automation Engineer</option>
-                <option value="Management">Shopfloor Shift Operations Management</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-                Handover Protocol
-              </label>
-              <select
-                v-model="escalationHandover"
-                class="w-full h-8 bg-background border border-border rounded-lg px-2 text-xs text-foreground focus:outline-hidden"
-              >
-                <option value="Notification">Notification (Alert only, maintain on-duty owner)</option>
-                <option value="HandOff">Complete HandOff (Transfer responsibility)</option>
-                <option value="ParallelWork">Parallel Work (Co-diagnostic session)</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-              Escalation Justification & Assistance Required *
-            </label>
-            <Input
-              v-model="escalationReason"
-              placeholder="e.g. Requires PLC source code diagnostic / Beckhoff TwinCAT engineering access"
-              class="h-8 text-xs bg-background"
-            />
-          </div>
-          <div class="flex justify-end gap-2 pt-2 border-t border-rose-500/20">
-            <Button size="sm" variant="ghost" @click="showEscalateForm = false" class="text-xs h-7">Cancel</Button>
-            <Button
-              size="sm"
-              @click="handleConfirmEscalate"
-              :disabled="isChangingStatus"
-              class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs h-7 px-4 cursor-pointer"
-            >
-              Submit Escalation
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <!-- Escalation Tree Drawer (Zero Overlay) -->
+      <TicketEscalationTreeDrawer
+        :open="showEscalateForm"
+        :ticket="localTicket"
+        @close="showEscalateForm = false"
+        @escalated="handleEscalated"
+      />
 
       <!-- Collapsible Resolve Summary Inline Form -->
       <Card v-if="showResolveForm" class="border-emerald-500/30 bg-emerald-500/5 animate-in fade-in duration-200">

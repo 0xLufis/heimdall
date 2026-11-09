@@ -125,7 +125,7 @@ export default defineEventHandler(async (event) => {
 
   addTicketToStore(newTicket)
 
-  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5001'
+  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   $fetch(`${backendBase}/api/v1/tickets`, {
     method: 'POST',
     body: {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, defineAsyncComponent, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Plus, Camera, RefreshCw, WifiOff, LayoutList, Columns,
@@ -158,6 +158,10 @@ watch(() => [route.query, tickets.value], () => {
     }
   }
 }, { immediate: true })
+
+onMounted(async () => {
+  await fetchTickets()
+})
 
 const displayedTickets = computed(() => {
   let list = tickets.value

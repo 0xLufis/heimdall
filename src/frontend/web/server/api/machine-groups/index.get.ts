@@ -8,7 +8,11 @@ export default defineEventHandler(async (event) => {
       headers: event.headers as any
     })
     if (data && Array.isArray(data) && data.length > 0) {
-      return data
+      return data.map((g: any) => ({
+        ...g,
+        machineIds: g.machineIds || (g.machineIdsJson ? JSON.parse(g.machineIdsJson) : []),
+        machineTypes: g.machineTypes || (g.machineTypesJson ? JSON.parse(g.machineTypesJson) : [])
+      }))
     }
   } catch {}
 

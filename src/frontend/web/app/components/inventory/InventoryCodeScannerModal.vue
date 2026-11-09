@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { InventoryPart } from '~/types/inventory'
 import { usePartsInventory } from '~/composables/usePartsInventory'
+import jsQR from 'jsqr'
 
 const props = defineProps<{
   open: boolean
@@ -52,15 +53,59 @@ const QUICK_TEST_CODES = [
   { label: 'RFID Tag Payload', code: 'E280116060000204A1B2C301' }
 ]
 
+let scanInterval: any = null
+
+const startScanningLoop = () => {
+  if (scanInterval) clearInterval(scanInterval)
+  const offscreenCanvas = document.createElement('canvas')
+  const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true })
+
+  scanInterval = setInterval(() => {
+    if (!videoRef.value || videoRef.value.readyState < 2) return
+    const w = videoRef.value.videoWidth || 640
+    const h = videoRef.value.videoHeight || 480
+    if (w > 0 && h > 0 && ctx) {
+      offscreenCanvas.width = w
+      offscreenCanvas.height = h
+      ctx.drawImage(videoRef.value, 0, 0, w, h)
+      const imgData = ctx.getImageData(0, 0, w, h)
+      if (imgData) {
+        const result = jsQR(imgData.data, w, h, { inversionAttempts: 'attemptBoth' })
+        if (result && result.data) {
+          handleCodeScan(result.data)
+        }
+      }
+    }
+  }, 300)
+}
+
 const startCamera = async () => {
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' }
-    })
-    if (videoRef.value) {
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } }
+      })
+    } catch {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: true
+      })
+    }
+
+    if (videoRef.value && mediaStream) {
       videoRef.value.srcObject = mediaStream
+      videoRef.value.setAttribute('autoplay', '')
+      videoRef.value.setAttribute('playsinline', '')
+      videoRef.value.setAttribute('muted', '')
+
+      videoRef.value.onloadedmetadata = () => {
+        videoRef.value?.play().catch(() => {})
+        isCameraActive.value = true
+      }
+
+      await videoRef.value.play().catch(() => {})
       isCameraActive.value = true
+      startScanningLoop()
     }
   } catch (err) {
     // Camera unavailable or permission denied, fallback to manual input & quick scans
@@ -69,9 +114,16 @@ const startCamera = async () => {
 }
 
 const stopCamera = () => {
+  if (scanInterval) {
+    clearInterval(scanInterval)
+    scanInterval = null
+  }
   if (mediaStream) {
     mediaStream.getTracks().forEach(track => track.stop())
     mediaStream = null
+  }
+  if (videoRef.value) {
+    videoRef.value.srcObject = null
   }
   isCameraActive.value = false
 }
@@ -199,7 +251,6 @@ const triggerUseScanned = () => {
         <!-- Live Camera Viewport or Viewport Simulation -->
         <div class="relative w-full aspect-video sm:h-52 bg-black/90 rounded-xl overflow-hidden border border-border flex items-center justify-center">
           <video
-            v-if="isCameraActive"
             ref="videoRef"
             autoplay
             playsinline

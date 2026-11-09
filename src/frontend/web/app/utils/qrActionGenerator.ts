@@ -25,12 +25,17 @@ export interface QrActionParams {
 /**
  * Build a fully-qualified Heimdall action URI that encodes all params
  * as query-string values. The base path is always `/mobile/action`.
+ * Optional hostOverride allows specifying LAN IP/custom host so mobile phone cameras can reach it.
  */
-export function generateQrUri(params: QrActionParams): string {
-  const base =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/mobile/action`
-      : '/mobile/action'
+export function generateQrUri(params: QrActionParams, hostOverride?: string): string {
+  let base: string
+  if (hostOverride && hostOverride.trim()) {
+    base = `${hostOverride.trim().replace(/\/$/, '')}/mobile/action`
+  } else if (typeof window !== 'undefined' && window.location.origin) {
+    base = `${window.location.origin}/mobile/action`
+  } else {
+    base = '/mobile/action'
+  }
 
   const query = new URLSearchParams()
   query.set('action', params.action)
@@ -66,21 +71,61 @@ export function generateHeimdallDeepLink(params: QrActionParams): string {
 export function parseQrUri(raw: string): QrActionParams | null {
   try {
     let urlStr = raw.trim()
+    if (!urlStr) return null
+
     if (urlStr.startsWith('heimdall://')) {
       urlStr = urlStr.replace('heimdall://', 'http://localhost/')
     }
-    const url = new URL(urlStr, 'http://localhost')
-    const action = url.searchParams.get('action') as QrAction
-    if (!action) return null
-    return {
-      action,
-      stationId: url.searchParams.get('stationId') || undefined,
-      machineType: url.searchParams.get('machineType') || undefined,
-      groupId: url.searchParams.get('groupId') || undefined,
-      ticketId: url.searchParams.get('ticketId') || undefined,
-      prefillTitle: url.searchParams.get('prefillTitle') || undefined,
-      prefillPriority: (url.searchParams.get('prefillPriority') as any) || undefined
+    
+    // Quick validation: must be a URL or schema URI containing action params
+    if (!urlStr.includes('http://') && !urlStr.includes('https://') && !urlStr.startsWith('/')) {
+      return null
     }
+
+    const url = new URL(urlStr, 'http://localhost')
+    
+    // 1. Explicit action query param
+    const action = url.searchParams.get('action') as QrAction
+    if (action) {
+      return {
+        action,
+        stationId: url.searchParams.get('stationId') || undefined,
+        machineType: url.searchParams.get('machineType') || undefined,
+        groupId: url.searchParams.get('groupId') || undefined,
+        ticketId: url.searchParams.get('ticketId') || undefined,
+        prefillTitle: url.searchParams.get('prefillTitle') || undefined,
+        prefillPriority: (url.searchParams.get('prefillPriority') as any) || undefined
+      }
+    }
+
+    // 2. Direct dashboard URLs
+    if (url.pathname.includes('/tickets/new')) {
+      return {
+        action: 'report-incident',
+        stationId: url.searchParams.get('stationId') || undefined,
+        machineType: url.searchParams.get('machineType') || undefined,
+        groupId: url.searchParams.get('groupId') || undefined,
+        prefillTitle: url.searchParams.get('title') || url.searchParams.get('prefillTitle') || undefined,
+        prefillPriority: (url.searchParams.get('priority') as any) || undefined
+      }
+    }
+
+    const ticketMatch = url.pathname.match(/\/tickets\/([^/?#]+)/)
+    if (ticketMatch && ticketMatch[1] && ticketMatch[1] !== 'new' && ticketMatch[1] !== 'templates') {
+      return {
+        action: 'view-ticket',
+        ticketId: ticketMatch[1]
+      }
+    }
+
+    if (url.pathname.includes('/machines')) {
+      return {
+        action: 'view-station',
+        stationId: url.searchParams.get('stationId') || undefined
+      }
+    }
+
+    return null
   } catch {
     return null
   }

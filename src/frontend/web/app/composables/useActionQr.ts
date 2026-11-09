@@ -1,5 +1,5 @@
 import { ref, computed, watch, unref } from 'vue'
-import { generateQrDataUrl } from '~/utils/qrSvgRenderer'
+import { generateQrDataUrl, generateQrPngDataUrl } from '~/utils/qrSvgRenderer'
 import {
   generateQrUri,
   generateHeimdallDeepLink,
@@ -14,6 +14,7 @@ export interface UseActionQrOptions {
   qrDarkColor?: string
   qrLightColor?: string
   protocol?: 'web' | 'heimdall'
+  hostOverride?: string
 }
 
 export function useActionQr(options: UseActionQrOptions = {}) {
@@ -27,9 +28,11 @@ export function useActionQr(options: UseActionQrOptions = {}) {
   const prefillPriority = ref<'Low' | 'Medium' | 'High' | 'Critical' | undefined>(options.initialParams?.prefillPriority)
 
   const protocol = ref<'web' | 'heimdall'>(options.protocol || 'web')
+  const hostOverride = ref<string>(options.hostOverride || '')
   const qrWidth = ref<number>(options.qrWidth || 280)
-  const qrDarkColor = ref<string>(options.qrDarkColor || '#e2e8f0')
-  const qrLightColor = ref<string>(options.qrLightColor || '#0f172a')
+  // Standard high contrast black modules on pure white background for phone cameras
+  const qrDarkColor = ref<string>(options.qrDarkColor || '#000000')
+  const qrLightColor = ref<string>(options.qrLightColor || '#ffffff')
 
   const qrDataUrl = ref<string>('')
   const isRendering = ref<boolean>(false)
@@ -46,7 +49,7 @@ export function useActionQr(options: UseActionQrOptions = {}) {
     prefillPriority: prefillPriority.value || undefined
   }))
 
-  const webUri = computed(() => generateQrUri(currentParams.value))
+  const webUri = computed(() => generateQrUri(currentParams.value, hostOverride.value || undefined))
   const heimdallDeepLink = computed(() => generateHeimdallDeepLink(currentParams.value))
 
   const activeUri = computed(() => {
@@ -59,7 +62,7 @@ export function useActionQr(options: UseActionQrOptions = {}) {
     try {
       qrDataUrl.value = generateQrDataUrl(activeUri.value, {
         width: qrWidth.value,
-        margin: 2,
+        margin: 4, // ISO/IEC 18004 4-module quiet zone
         darkColor: qrDarkColor.value,
         lightColor: qrLightColor.value
       })
@@ -134,7 +137,24 @@ export function useActionQr(options: UseActionQrOptions = {}) {
   async function copyUri(): Promise<boolean> {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(activeUri.value)
+        try {
+          await navigator.clipboard.writeText(activeUri.value)
+          isCopied.value = true
+          setTimeout(() => { isCopied.value = false }, 2500)
+          return true
+        } catch {
+          // Fallback to execCommand
+        }
+      }
+      if (typeof document !== 'undefined') {
+        const ta = document.createElement('textarea')
+        ta.value = activeUri.value
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
         isCopied.value = true
         setTimeout(() => { isCopied.value = false }, 2500)
         return true
@@ -183,12 +203,26 @@ export function useActionQr(options: UseActionQrOptions = {}) {
     printWindow.document.close()
   }
 
-  function downloadPng(filename?: string) {
-    if (!qrDataUrl.value || typeof document === 'undefined') return
-    const link = document.createElement('a')
-    link.download = filename || `heimdall-qr-${stationId.value || action.value}-${Date.now()}.png`
-    link.href = qrDataUrl.value
-    link.click()
+  async function downloadPng(filename?: string) {
+    if (typeof document === 'undefined') return
+    try {
+      const pngDataUrl = await generateQrPngDataUrl(activeUri.value, {
+        width: qrWidth.value,
+        margin: 4,
+        darkColor: qrDarkColor.value,
+        lightColor: qrLightColor.value
+      })
+      const link = document.createElement('a')
+      link.download = filename || `heimdall-qr-${stationId.value || action.value}-${Date.now()}.png`
+      link.href = pngDataUrl
+      link.click()
+    } catch {
+      if (!qrDataUrl.value) return
+      const link = document.createElement('a')
+      link.download = filename || `heimdall-qr-${stationId.value || action.value}-${Date.now()}.png`
+      link.href = qrDataUrl.value
+      link.click()
+    }
   }
 
   return {
@@ -201,6 +235,7 @@ export function useActionQr(options: UseActionQrOptions = {}) {
     prefillTitle,
     prefillPriority,
     protocol,
+    hostOverride,
     qrWidth,
     qrDarkColor,
     qrLightColor,

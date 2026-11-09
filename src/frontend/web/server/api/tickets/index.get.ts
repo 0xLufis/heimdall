@@ -26,6 +26,8 @@ export default defineEventHandler(async (event) => {
   const stationFilter = (query.stationId as string || '').trim()
   const technicianFilter = (query.technicianId as string || '').trim()
   const departmentFilter = (query.department as string || '').toLowerCase().trim()
+  const groupIdFilter = (query.groupId as string || '').trim()
+  const tagFilter = (query.tag as string || '').trim()
   const sortBy = (query.sortBy as string || 'lifecycle').trim()
   const sortOrder = (query.sortOrder as string || 'asc').trim()
 
@@ -50,13 +52,12 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  let allTickets: any[] = []
   if (rawList.length > 0) {
-    allTickets = rawList.map((t: any) => mapBackendTicketToStore(t))
-    upsertTicketsInStore(allTickets)
-  } else {
-    allTickets = [...getTicketsStore()]
+    const backendTickets = rawList.map((t: any) => mapBackendTicketToStore(t))
+    upsertTicketsInStore(backendTickets)
   }
+
+  const allTickets = [...getTicketsStore()]
 
   const now = new Date()
   const overdueCount = allTickets.filter(
@@ -88,6 +89,12 @@ export default defineEventHandler(async (event) => {
       t.assignedTechnicianId === technicianFilter || t.assignedTechnicianName === technicianFilter
     )
   }
+  if (groupIdFilter) {
+    filtered = filtered.filter(t => t.groupId === groupIdFilter)
+  }
+  if (tagFilter) {
+    filtered = filtered.filter(t => Array.isArray(t.tags) && t.tags.some((tag: string) => tag.toLowerCase() === tagFilter.toLowerCase()))
+  }
   if (searchQuery) {
     filtered = filtered.filter(t =>
       (t.ticketNumber || '').toLowerCase().includes(searchQuery) ||
@@ -95,7 +102,8 @@ export default defineEventHandler(async (event) => {
       (t.description || '').toLowerCase().includes(searchQuery) ||
       (t.stationName || '').toLowerCase().includes(searchQuery) ||
       (t.responsibleDepartment || '').toLowerCase().includes(searchQuery) ||
-      (t.assignedTechnicianName || '').toLowerCase().includes(searchQuery)
+      (t.assignedTechnicianName || '').toLowerCase().includes(searchQuery) ||
+      (Array.isArray(t.tags) && t.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery)))
     )
   }
 

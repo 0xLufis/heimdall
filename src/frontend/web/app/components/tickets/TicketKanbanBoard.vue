@@ -9,6 +9,7 @@ import {
   ChevronDown, SlidersHorizontal, AlertTriangle, X,
   Package, CheckCircle2, ShieldAlert
 } from 'lucide-vue-next'
+import TicketEscalationTreeDrawer from '~/components/tickets/TicketEscalationTreeDrawer.vue'
 import {
   ANDON_STYLES,
   getAndonColorForStatus,
@@ -199,12 +200,14 @@ function openEscalateModal(event: Event, ticket: MaintenanceTicket) {
   escalateDraftReason.value = ''
 }
 
-function applyEscalation() {
-  if (!activeEscalateTicket.value || !escalateDraftReason.value.trim()) return
-  const t = activeEscalateTicket.value
-  emit('escalateTicket', t.id, escalateDraftReason.value.trim())
-  t.isEscalated = true
-  t.escalationReason = escalateDraftReason.value.trim()
+function handleEscalated(updatedTicket: MaintenanceTicket) {
+  if (activeEscalateTicket.value) {
+    activeEscalateTicket.value.isEscalated = true
+    activeEscalateTicket.value.escalationReason = updatedTicket.escalationReason
+    activeEscalateTicket.value.escalationTarget = updatedTicket.escalationTarget
+    activeEscalateTicket.value.escalationHandoverState = updatedTicket.escalationHandoverState
+    emit('escalateTicket', updatedTicket.id, updatedTicket.escalationReason || '')
+  }
   activeEscalateTicket.value = null
 }
 
@@ -583,82 +586,13 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
       </div>
     </div>
 
-    <!-- ── Interactive Drawer: Escalate Ticket (Zero Overlay) ── -->
-    <div
-      v-if="activeEscalateTicket"
-      role="dialog"
-      class="fixed inset-y-0 right-0 z-40 w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
-    >
-      <div class="p-5 border-b border-border bg-rose-500/10 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-2.5 min-w-0">
-          <div class="p-2 rounded-xl bg-rose-500/20 text-rose-700 dark:text-rose-300 shrink-0">
-            <ShieldAlert class="size-5" />
-          </div>
-          <div class="min-w-0">
-            <h4 class="text-sm font-black uppercase tracking-wider text-foreground">
-              Escalate Ticket
-            </h4>
-            <p class="text-[10px] font-mono text-muted-foreground mt-0.5 truncate">
-              {{ activeEscalateTicket.ticketNumber }} &mdash; {{ activeEscalateTicket.stationName }}
-            </p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <NuxtLink
-            :to="`/dashboard/tickets/${activeEscalateTicket.id}`"
-            class="px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
-          >
-            <span>Open Full Investigation Page</span>
-            <ArrowRight class="size-3" />
-          </NuxtLink>
-          <Button
-            variant="ghost"
-            size="icon"
-            class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
-            @click="activeEscalateTicket = null"
-          >
-            <X class="size-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div class="p-5 space-y-4 flex-1 overflow-y-auto">
-        <p class="text-xs text-muted-foreground leading-relaxed">
-          Escalation flags this incident for priority management and engineering oversight. The ticket remains in its current status (<strong>{{ activeEscalateTicket.status }}</strong>) and can be de-escalated independently.
-        </p>
-
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Escalation Reason *
-          </label>
-          <textarea
-            v-model="escalateDraftReason"
-            rows="3"
-            placeholder="e.g. Critical machine downtime impacting Line 2 production. OEM support specialist required."
-            class="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-rose-500/50 resize-none"
-          />
-        </div>
-      </div>
-
-      <div class="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2 shrink-0">
-        <Button
-          variant="outline"
-          size="sm"
-          class="text-xs border-border cursor-pointer"
-          @click="activeEscalateTicket = null"
-        >
-          Cancel
-        </Button>
-        <Button
-          size="sm"
-          :disabled="!escalateDraftReason.trim()"
-          class="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-4 cursor-pointer shadow-xs disabled:opacity-50"
-          @click="applyEscalation"
-        >
-          Confirm Escalation
-        </Button>
-      </div>
-    </div>
+    <!-- ── Interactive Drawer: Escalation Tree Dispatcher (Zero Overlay) ── -->
+    <TicketEscalationTreeDrawer
+      :open="Boolean(activeEscalateTicket)"
+      :ticket="activeEscalateTicket"
+      @close="activeEscalateTicket = null"
+      @escalated="handleEscalated"
+    />
   </div>
 </template>
 

@@ -26,6 +26,9 @@ export default defineNuxtConfig({
     },
     server: {
       allowedHosts: true,
+      hmr: {
+        overlay: false
+      },
       proxy: {
         '/hubs': {
           target: process.env.BACKEND_API_URL || 'http://localhost:5099',
@@ -36,7 +39,8 @@ export default defineNuxtConfig({
     }
   },
   experimental: {
-    payloadExtraction: false
+    payloadExtraction: false,
+    appManifest: false
   },
   modules: [
     '@nuxtjs/i18n',

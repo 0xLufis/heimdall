@@ -25,6 +25,7 @@ import { useMaintenance } from '~/composables/useMaintenance'
 import { authClient } from '~/utils/auth-client'
 import { ANDON_STYLES, getAndonColorForStatus, getAndonPriorityStyle } from '~/utils/andonColors'
 import type { MaintenanceTicket, TicketStatus, PendingReason } from '~/types/maintenance'
+import TicketEscalationTreeDrawer from '~/components/tickets/TicketEscalationTreeDrawer.vue'
 
 const props = defineProps<{
   ticket: MaintenanceTicket | null
@@ -49,6 +50,7 @@ const isPostingComment = ref(false)
 const showPendingInput = ref(false)
 const pendingReason = ref<PendingReason>('Parts')
 const pendingNote = ref('')
+const showEscalateDrawer = ref(false)
 
 const currentUser = computed(() => {
   const session = (authClient as any).useSession?.()
@@ -121,6 +123,23 @@ async function onSelfAssign() {
   } catch {
     toast.error('Failed to claim ticket.')
   }
+}
+
+async function onResolveEscalation() {
+  if (!props.ticket) return
+  try {
+    const updated = await resolveEscalation(props.ticket.id, currentUser.value)
+    toast.success('Escalation resolved.')
+    if (updated) emit('updated', updated)
+    await fetchTickets()
+  } catch {
+    toast.error('Failed to resolve escalation.')
+  }
+}
+
+function handleEscalated(updated: MaintenanceTicket) {
+  showEscalateDrawer.value = false
+  emit('updated', updated)
 }
 
 async function onSubmitComment() {
@@ -219,6 +238,41 @@ async function onSubmitComment() {
 
     <!-- Scrollable Body -->
     <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+      <!-- Active Escalation Banner -->
+      <div
+        v-if="ticket.isEscalated"
+        class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-800 dark:text-rose-300 flex items-center justify-between gap-3 animate-in fade-in duration-150"
+      >
+        <div class="flex items-center gap-2.5 min-w-0">
+          <ShieldAlert class="size-5 text-rose-600 dark:text-rose-400 shrink-0 animate-pulse" />
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[10px] font-black uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                ESCALATED TO {{ ticket.escalationTarget || 'ENGINEERING' }}
+              </span>
+              <Badge v-if="ticket.escalationHandoverState" variant="outline" class="text-[9px] border-rose-500/30">
+                {{ ticket.escalationHandoverState }}
+              </Badge>
+            </div>
+            <p class="text-[11px] font-medium text-foreground truncate mt-0.5">
+              Reason: {{ ticket.escalationReason || 'Specialist intervention requested' }}
+              <span v-if="ticket.escalatedBy" class="text-muted-foreground ml-1">
+                (by {{ ticket.escalatedBy }})
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <Button
+          size="sm"
+          variant="outline"
+          @click="onResolveEscalation"
+          class="border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20 text-[10px] font-semibold h-7 px-2 shrink-0 cursor-pointer"
+        >
+          Clear
+        </Button>
+      </div>
+
       <!-- SLA Alert Bar -->
       <div
         v-if="slaText"
@@ -277,6 +331,19 @@ async function onSubmitComment() {
           >
             <CheckCircle2 class="size-3" />
             <span>Resolve</span>
+          </Button>
+
+          <!-- Escalate Action -->
+          <Button
+            v-if="!ticket.isEscalated && ticket.status !== 'Closed'"
+            size="sm"
+            variant="outline"
+            @click="showEscalateDrawer = true"
+            class="border-rose-500/40 text-rose-700 dark:text-rose-400 hover:bg-rose-500/10 text-xs h-7 px-2.5 rounded-lg gap-1 cursor-pointer"
+            title="Open Escalation Hierarchy Dispatcher"
+          >
+            <AlertTriangle class="size-3 text-rose-500" />
+            <span>Escalate</span>
           </Button>
 
           <NuxtLink :to="`/dashboard/tickets/${ticket.id}`" class="ml-auto">
@@ -424,5 +491,13 @@ async function onSubmitComment() {
         </div>
       </div>
     </div>
+
+    <!-- Escalation Tree Drawer (Zero Overlay) -->
+    <TicketEscalationTreeDrawer
+      :open="showEscalateDrawer"
+      :ticket="ticket"
+      @close="showEscalateDrawer = false"
+      @escalated="handleEscalated"
+    />
   </div>
 </template>
