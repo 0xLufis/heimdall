@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { useAlertRules } from '../../../frontend/web/app/composables/useAlertRules'
-import AlertRulesManager from '../../../frontend/web/app/components/analytics/AlertRulesManager.vue'
+import { useAlertRules } from '../../../src/frontend/web/app/composables/useAlertRules'
+import AlertRulesManager from '../../../src/frontend/web/app/components/analytics/AlertRulesManager.vue'
 
 // Mock useMaintenance
 const mockCreatedTickets: any[] = []
-vi.mock('../../../frontend/web/app/composables/useMaintenance', () => {
+vi.mock('../../../src/frontend/web/app/composables/useMaintenance', () => {
   return {
     useMaintenance: () => ({
       createTicket: vi.fn(async (input: any) => {

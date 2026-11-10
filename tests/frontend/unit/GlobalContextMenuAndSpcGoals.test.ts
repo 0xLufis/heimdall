@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { useGlobalContextMenu } from '../../../frontend/web/app/composables/useGlobalContextMenu'
-import GlobalContextMenu from '../../../frontend/web/app/components/common/GlobalContextMenu.vue'
+import { useGlobalContextMenu } from '../../../src/frontend/web/app/composables/useGlobalContextMenu'
+import GlobalContextMenu from '../../../src/frontend/web/app/components/common/GlobalContextMenu.vue'
 
 describe('Global Context Menu Test Suite', () => {
   beforeEach(() => {

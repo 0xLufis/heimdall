@@ -64,7 +64,7 @@ def build_agent_win64():
     os.makedirs(SHARED_AGENT_DIR, exist_ok=True)
     cmd = [
         "dotnet", "publish",
-        "agent/App.Agent.Daemon/App.Agent.Daemon.csproj",
+        "src/agent/App.Agent.Daemon/App.Agent.Daemon.csproj",
         "-r", "win-x64",
         "-c", "Release",
         "--self-contained", "true",

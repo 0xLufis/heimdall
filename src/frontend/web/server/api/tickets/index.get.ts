@@ -1,0 +1,168 @@
+import { defineEventHandler, getQuery } from 'h3'
+import { getTicketsStore, getStoppageStatsFromStore, mapBackendTicketToStore, upsertTicketsInStore } from '../../utils/ticketsStore'
+
+const BACKEND_BASE = process.env.BACKEND_API_URL || 'http://localhost:5099'
+
+const PRIORITY_WEIGHT: Record<string, number> = {
+  Critical: 4,
+  High: 3,
+  Medium: 2,
+  Low: 1
+}
+
+const LIFECYCLE_ORDER: Record<string, number> = {
+  Open: 1,
+  InProgress: 2,
+  Pending: 3,
+  Resolved: 4,
+  Closed: 5
+}
+
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event)
+  const statusFilter = (query.status as string || 'all').trim()
+  const priorityFilter = (query.priority as string || 'all').trim()
+  const searchQuery = (query.query as string || '').toLowerCase().trim()
+  const stationFilter = (query.stationId as string || '').trim()
+  const technicianFilter = (query.technicianId as string || '').trim()
+  const departmentFilter = (query.department as string || '').toLowerCase().trim()
+  const groupIdFilter = (query.groupId as string || '').trim()
+  const tagFilter = (query.tag as string || '').trim()
+  const sortBy = (query.sortBy as string || 'lifecycle').trim()
+  const sortOrder = (query.sortOrder as string || 'asc').trim()
+
+  let rawList: any[] = []
+  try {
+    const res = await $fetch<any[]>(`${BACKEND_BASE}/api/v1/tickets`, {
+      headers: event.headers as any
+    })
+    if (res && Array.isArray(res) && res.length > 0) {
+      rawList = res
+    }
+  } catch (err: any) {
+    try {
+      const res = await $fetch<any[]>('http://localhost:5001/api/v1/tickets', {
+        headers: event.headers as any
+      })
+      if (res && Array.isArray(res) && res.length > 0) {
+        rawList = res
+      }
+    } catch {
+      // Fallback to local ticketsStore
+    }
+  }
+
+  if (rawList.length > 0) {
+    const backendTickets = rawList.map((t: any) => mapBackendTicketToStore(t))
+    upsertTicketsInStore(backendTickets)
+  }
+
+  const allTickets = [...getTicketsStore()]
+
+  const now = new Date()
+  const overdueCount = allTickets.filter(
+    t => t.slaDueAt && new Date(t.slaDueAt) < now && t.status !== 'Closed' && t.status !== 'Resolved'
+  ).length
+  const slaCompliancePercent = allTickets.length > 0
+    ? Math.round(((allTickets.length - overdueCount) / allTickets.length) * 100)
+    : 100
+
+  let filtered = [...allTickets]
+
+  if (statusFilter !== 'all') {
+    filtered = filtered.filter(t => t.status === statusFilter)
+  }
+  if (priorityFilter !== 'all') {
+    filtered = filtered.filter(t => t.priority === priorityFilter)
+  }
+  if (departmentFilter) {
+    filtered = filtered.filter(t => (t.responsibleDepartment || '').toLowerCase() === departmentFilter)
+  }
+  if (stationFilter) {
+    filtered = filtered.filter(t =>
+      (t.stationId || '').toLowerCase().includes(stationFilter.toLowerCase()) ||
+      (t.stationName || '').toLowerCase().includes(stationFilter.toLowerCase())
+    )
+  }
+  if (technicianFilter) {
+    filtered = filtered.filter(t =>
+      t.assignedTechnicianId === technicianFilter || t.assignedTechnicianName === technicianFilter
+    )
+  }
+  if (groupIdFilter) {
+    filtered = filtered.filter(t => t.groupId === groupIdFilter)
+  }
+  if (tagFilter) {
+    filtered = filtered.filter(t => Array.isArray(t.tags) && t.tags.some((tag: string) => tag.toLowerCase() === tagFilter.toLowerCase()))
+  }
+  if (searchQuery) {
+    filtered = filtered.filter(t =>
+      (t.ticketNumber || '').toLowerCase().includes(searchQuery) ||
+      (t.title || '').toLowerCase().includes(searchQuery) ||
+      (t.description || '').toLowerCase().includes(searchQuery) ||
+      (t.stationName || '').toLowerCase().includes(searchQuery) ||
+      (t.responsibleDepartment || '').toLowerCase().includes(searchQuery) ||
+      (t.assignedTechnicianName || '').toLowerCase().includes(searchQuery) ||
+      (Array.isArray(t.tags) && t.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery)))
+    )
+  }
+
+  // Default sorting follows ticket lifecycle (Open -> InProgress -> Pending -> Resolved -> Closed),
+  // with tickets that are equal in primary sorting secondarily sorted by time opened (createdAt).
+  filtered.sort((a, b) => {
+    let primaryA = 0
+    let primaryB = 0
+
+    if (sortBy === 'lifecycle') {
+      primaryA = LIFECYCLE_ORDER[a.status] || 99
+      primaryB = LIFECYCLE_ORDER[b.status] || 99
+    } else if (sortBy === 'priority') {
+      primaryA = -(PRIORITY_WEIGHT[a.priority] || 0)
+      primaryB = -(PRIORITY_WEIGHT[b.priority] || 0)
+    } else if (sortBy === 'sla_due_at') {
+      primaryA = new Date(a.slaDueAt || 0).getTime()
+      primaryB = new Date(b.slaDueAt || 0).getTime()
+    } else if (sortBy === 'title') {
+      primaryA = (a.title || '').localeCompare(b.title || '')
+      primaryB = 0
+    } else if (sortBy === 'created_at') {
+      primaryA = new Date(a.createdAt).getTime()
+      primaryB = new Date(b.createdAt).getTime()
+    }
+
+    if (primaryA !== primaryB) {
+      if (sortOrder === 'desc') {
+        return primaryA > primaryB ? -1 : 1
+      }
+      return primaryA < primaryB ? -1 : 1
+    }
+
+    // Secondary sort: time opened (createdAt) descending
+    const timeA = new Date(a.createdAt).getTime()
+    const timeB = new Date(b.createdAt).getTime()
+    return timeB - timeA
+  })
+
+  const stoppageStats = getStoppageStatsFromStore()
+
+  return {
+    tickets: filtered,
+    metrics: {
+      totalTickets: allTickets.length,
+      filteredCount: filtered.length,
+      openCount: allTickets.filter(t => t.status === 'Open').length,
+      inProgressCount: allTickets.filter(t => t.status === 'InProgress').length,
+      pendingCount: allTickets.filter(t => t.status === 'Pending').length,
+      resolvedCount: allTickets.filter(t => t.status === 'Resolved').length,
+      closedCount: allTickets.filter(t => t.status === 'Closed').length,
+      escalatedCount: allTickets.filter(t => t.isEscalated).length,
+      criticalCount: allTickets.filter(
+        t => t.priority === 'Critical' && t.status !== 'Closed' && t.status !== 'Resolved'
+      ).length,
+      lineStopCount: allTickets.filter(t => t.isLineStop && t.status !== 'Closed' && t.status !== 'Resolved').length,
+      overdueCount,
+      slaCompliancePercent,
+      stoppageStats
+    }
+  }
+})

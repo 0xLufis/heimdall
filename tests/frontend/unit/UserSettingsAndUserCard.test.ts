@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { navMenuBottom } from '../../../frontend/web/app/constants/menus'
-import { authClient } from '../../../frontend/web/app/utils/auth-client'
-import { DEMO_PERSONAS } from '../../../frontend/web/app/composables/useAuthSession'
+import { navMenuBottom } from '../../../src/frontend/web/app/constants/menus'
+import { authClient } from '../../../src/frontend/web/app/utils/auth-client'
+import { DEMO_PERSONAS } from '../../../src/frontend/web/app/composables/useAuthSession'
 import {
   generateBase32Secret,
   generateTotpCode,
@@ -13,7 +13,7 @@ import {
   getBackupCodes,
   regenerateBackupCodes,
   disableUserMfa
-} from '../../../frontend/web/server/utils/userMfaStore'
+} from '../../../src/frontend/web/server/utils/userMfaStore'
 
 describe('User Card & Settings Page Navigation & State Suite', () => {
   it('includes User Settings in navMenuBottom pointing to /dashboard/settings', () => {

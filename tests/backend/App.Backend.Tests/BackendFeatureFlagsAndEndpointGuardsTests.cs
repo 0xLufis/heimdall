@@ -81,6 +81,48 @@ public class BackendFeatureFlagsAndEndpointGuardsTests
         Assert.True(flags.EnableDebugFeatures);
     }
 
+    [Fact]
+    public void BackendFeatureFlags_ModuleFlags_DefaultsToTrue()
+    {
+        var flags = BackendFeatureFlags.FromEnvironment("Production");
+        Assert.True(flags.EnableTicketing);
+        Assert.True(flags.EnableInventory);
+        Assert.True(flags.EnableTelemetry);
+    }
+
+    [Theory]
+    [InlineData("false", false)]
+    [InlineData("0", false)]
+    [InlineData("no", false)]
+    [InlineData("off", false)]
+    [InlineData("disabled", false)]
+    [InlineData("true", true)]
+    [InlineData("1", true)]
+    [InlineData("yes", true)]
+    [InlineData("on", true)]
+    [InlineData("enabled", true)]
+    public void BackendFeatureFlags_IsFalsy_And_IsTruthy_ParseModuleValues(string input, bool isTruthy)
+    {
+        Assert.Equal(isTruthy, BackendFeatureFlags.IsTruthy(input));
+        Assert.Equal(!isTruthy, BackendFeatureFlags.IsFalsy(input));
+    }
+
+    [Fact]
+    public void BackendFeatureFlags_FromProvider_CascadesModuleSettings()
+    {
+        var dict = new Dictionary<string, string?>
+        {
+            ["BackendFeatureFlags:EnableTicketing"] = "false",
+            ["BackendFeatureFlags:EnableInventory"] = "0",
+            ["BackendFeatureFlags:EnableTelemetry"] = "1"
+        };
+
+        var flags = BackendFeatureFlags.FromProvider(key => dict.GetValueOrDefault(key), "Production");
+        Assert.False(flags.EnableTicketing);
+        Assert.False(flags.EnableInventory);
+        Assert.True(flags.EnableTelemetry);
+    }
+
     // ==========================================
     // 2. ActiveDirectoryController Guard Tests
     // ==========================================

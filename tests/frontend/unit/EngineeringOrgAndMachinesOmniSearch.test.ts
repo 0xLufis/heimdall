@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { DEMO_PERSONAS, useAuthSession } from '../../../frontend/web/app/composables/useAuthSession'
-import { useHeimdallSearch } from '../../../frontend/web/app/composables/useHeimdallSearch'
-import filterHandler from '../../../frontend/web/server/api/inventory/filter'
+import { DEMO_PERSONAS, useAuthSession } from '../../../src/frontend/web/app/composables/useAuthSession'
+import { useHeimdallSearch } from '../../../src/frontend/web/app/composables/useHeimdallSearch'
+import filterHandler from '../../../src/frontend/web/server/api/inventory/filter'
 
 describe('Enterprise Engineering Org, Machines Views & OmniSearch Suite', () => {
   describe('Engineering Department Titles & Outside Approver Hierarchy', () => {

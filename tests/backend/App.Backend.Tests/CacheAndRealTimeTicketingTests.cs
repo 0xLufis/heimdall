@@ -50,20 +50,40 @@ public class TestMaintenanceClient : IMaintenanceClient
     public Task InventoryUpdated(string source, string hostname, string macAddress) => Task.CompletedTask;
     public Task TelemetryReceived(string hostname, string macAddress, object telemetrySummary) => Task.CompletedTask;
     public Task PlcMemoryReceived(string hostname, string machineIdentifier, string amsNetId, string symbolName, object memoryData) => Task.CompletedTask;
+    public List<(string StationId, App.Contracts.Telemetry.StationTelemetryBroadcastDto Kpi)> StationKpis { get; } = new();
+    public List<(string StationId, App.Contracts.Telemetry.StationOscillationBroadcastDto Data)> StationOscillations { get; } = new();
+
+    public Task StationTelemetryReceived(string stationId, App.Contracts.Telemetry.StationTelemetryBroadcastDto stationKpi)
+    {
+        StationKpis.Add((stationId, stationKpi));
+        return Task.CompletedTask;
+    }
+
+    public Task StationOscillationReceived(string stationId, App.Contracts.Telemetry.StationOscillationBroadcastDto oscillationData)
+    {
+        StationOscillations.Add((stationId, oscillationData));
+        return Task.CompletedTask;
+    }
 }
 
+/// <summary>Hub clients double that records every audience a publisher addressed.</summary>
 public class TestHubClients : IHubClients<IMaintenanceClient>
 {
     public TestMaintenanceClient TestClient { get; } = new();
-    public IMaintenanceClient All => TestClient;
-    public IMaintenanceClient AllExcept(IReadOnlyList<string> excludedConnectionIds) => TestClient;
-    public IMaintenanceClient Client(string connectionId) => TestClient;
-    public IMaintenanceClient Clients(IReadOnlyList<string> connectionIds) => TestClient;
-    public IMaintenanceClient Group(string groupName) => TestClient;
-    public IMaintenanceClient GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds) => TestClient;
-    public IMaintenanceClient Groups(IReadOnlyList<string> groupNames) => TestClient;
-    public IMaintenanceClient User(string userId) => TestClient;
-    public IMaintenanceClient Users(IReadOnlyList<string> userIds) => TestClient;
+    /// <summary>"All", "Group:{name}" or "Groups:{a},{b}" per addressing call, in order.</summary>
+    public List<string> Audiences { get; } = new();
+
+    private IMaintenanceClient Record(string audience) { Audiences.Add(audience); return TestClient; }
+
+    public IMaintenanceClient All => Record("All");
+    public IMaintenanceClient AllExcept(IReadOnlyList<string> excludedConnectionIds) => Record("All");
+    public IMaintenanceClient Client(string connectionId) => Record($"Client:{connectionId}");
+    public IMaintenanceClient Clients(IReadOnlyList<string> connectionIds) => Record($"Clients:{string.Join(",", connectionIds)}");
+    public IMaintenanceClient Group(string groupName) => Record($"Group:{groupName}");
+    public IMaintenanceClient GroupExcept(string groupName, IReadOnlyList<string> excludedConnectionIds) => Record($"Group:{groupName}");
+    public IMaintenanceClient Groups(IReadOnlyList<string> groupNames) => Record($"Groups:{string.Join(",", groupNames)}");
+    public IMaintenanceClient User(string userId) => Record($"User:{userId}");
+    public IMaintenanceClient Users(IReadOnlyList<string> userIds) => Record($"Users:{string.Join(",", userIds)}");
 }
 
 public class TestHubContext : IHubContext<MaintenanceHub, IMaintenanceClient>

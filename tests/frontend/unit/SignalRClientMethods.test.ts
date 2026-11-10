@@ -45,11 +45,30 @@ describe('SignalR Client Methods Registration & Unified Real-Time Live Sync', ()
       timestamp: new Date().toISOString()
     })
 
-    expect(receivedEvents.length).toBe(2)
+    // Simulate server pushing StationTelemetryReceived & StationOscillationReceived
+    notifyListeners({
+      type: 'StationTelemetryReceived',
+      stationName: 'L01-OP010',
+      summary: { oee: 92.5, partsPerHour: 148 },
+      timestamp: new Date().toISOString()
+    })
+
+    notifyListeners({
+      type: 'StationOscillationReceived',
+      stationName: 'L01-OP010',
+      summary: { vibrationMmS: 1.34, spindleRpm: 2850, powerKw: 4.8 },
+      timestamp: new Date().toISOString()
+    })
+
+    expect(receivedEvents.length).toBe(4)
     expect(receivedEvents[0].type).toBe('InventoryUpdated')
     expect(receivedEvents[0].hostname).toBe('CPC-011')
     expect(receivedEvents[1].type).toBe('TelemetryReceived')
     expect(receivedEvents[1].summary?.CpuUsage).toBe(18.5)
+    expect(receivedEvents[2].type).toBe('StationTelemetryReceived')
+    expect(receivedEvents[2].stationName).toBe('L01-OP010')
+    expect(receivedEvents[3].type).toBe('StationOscillationReceived')
+    expect(receivedEvents[3].summary?.vibrationMmS).toBe(1.34)
 
     unsub()
   })

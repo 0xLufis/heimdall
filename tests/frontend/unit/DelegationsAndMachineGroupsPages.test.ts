@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import DelegationsManager from '../../../frontend/web/app/components/tickets/DelegationsManager.vue'
-import MachineGroupManager from '../../../frontend/web/app/components/tickets/MachineGroupManager.vue'
-import { navMenu } from '../../../frontend/web/app/constants/menus'
+import DelegationsManager from '../../../src/frontend/web/app/components/tickets/DelegationsManager.vue'
+import MachineGroupManager from '../../../src/frontend/web/app/components/tickets/MachineGroupManager.vue'
+import { navMenu } from '../../../src/frontend/web/app/constants/menus'
 
 vi.stubGlobal('useAuthSession', () => ({
   user: { value: { id: 'usr-1', name: 'Plant Admin', email: 'admin@heimdall.dev' } },
@@ -61,7 +61,7 @@ describe('Frontend Reorganization: Delegations and Machine Groups', () => {
 
     // Maintenance items
     expect(maint.items.map(i => i.link)).toContain('/dashboard/tickets')
-    expect(maint.items.map(i => i.link)).toContain('/dashboard/delegations')
+    expect(maint.items.map(i => i.link)).not.toContain('/dashboard/delegations')
 
     // Settings items
     expect(settings.items.map(i => i.link)).toContain('/dashboard/users')

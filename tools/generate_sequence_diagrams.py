@@ -48,7 +48,7 @@ class CodebaseAnalyzer:
 
     def get_grpc_collector_methods(self) -> List[str]:
         """Parses RPC method signatures from system_info.proto."""
-        proto_file = self.root / "shared" / "App.Contracts" / "Protos" / "system_info.proto"
+        proto_file = self.root / "src" / "shared" / "App.Contracts" / "Protos" / "system_info.proto"
         if not proto_file.exists():
             return []
         content = proto_file.read_text(encoding="utf-8")
@@ -57,7 +57,7 @@ class CodebaseAnalyzer:
 
     def get_signalr_client_events(self) -> List[str]:
         """Parses SignalR client broadcast signatures from MaintenanceHub.cs."""
-        hub_file = self.root / "backend" / "App.Backend.Api" / "Hubs" / "MaintenanceHub.cs"
+        hub_file = self.root / "src" / "backend" / "App.Backend.Api" / "Hubs" / "MaintenanceHub.cs"
         if not hub_file.exists():
             return []
         content = hub_file.read_text(encoding="utf-8")

@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import UsePartModal from '../../../frontend/web/app/components/inventory/UsePartModal.vue'
-import BulkPartIntakeModal from '../../../frontend/web/app/components/inventory/BulkPartIntakeModal.vue'
-import LogPartModal from '../../../frontend/web/app/components/inventory/LogPartModal.vue'
-import AssetTemplatesManager from '../../../frontend/web/app/components/inventory/AssetTemplatesManager.vue'
-import MachineDocumentImportModal from '../../../frontend/web/app/components/inventory/MachineDocumentImportModal.vue'
-import SparePartsPolicyManager from '../../../frontend/web/app/components/inventory/SparePartsPolicyManager.vue'
-import InventoryCodeScannerModal from '../../../frontend/web/app/components/inventory/InventoryCodeScannerModal.vue'
-import type { InventoryPart, AssetTemplateDefinition, MachineSparePartItem, SparePartsReportingSummary } from '../../../frontend/web/app/types/inventory'
+import UsePartModal from '../../../src/frontend/web/app/components/inventory/UsePartModal.vue'
+import BulkPartIntakeModal from '../../../src/frontend/web/app/components/inventory/BulkPartIntakeModal.vue'
+import LogPartModal from '../../../src/frontend/web/app/components/inventory/LogPartModal.vue'
+import AssetTemplatesManager from '../../../src/frontend/web/app/components/inventory/AssetTemplatesManager.vue'
+import MachineDocumentImportModal from '../../../src/frontend/web/app/components/inventory/MachineDocumentImportModal.vue'
+import SparePartsPolicyManager from '../../../src/frontend/web/app/components/inventory/SparePartsPolicyManager.vue'
+import InventoryCodeScannerModal from '../../../src/frontend/web/app/components/inventory/InventoryCodeScannerModal.vue'
+import type { InventoryPart, AssetTemplateDefinition, MachineSparePartItem, SparePartsReportingSummary } from '../../../src/frontend/web/app/types/inventory'
 
 const mockPart: InventoryPart = {
   id: 'prt-test-1',
@@ -218,7 +218,7 @@ describe('Parts Inventory UI & Component Integration Tests', () => {
   // AssetTemplatesManager Tests
   // -------------------------------------------------------------------------
   describe('AssetTemplatesManager.vue', () => {
-    it('renders template inheritance, fixed specs, and instance tree view', () => {
+    it('renders template inheritance, fixed specs, and instance tree view upon expansion', async () => {
       const wrapper = mount(AssetTemplatesManager, {
         props: {
           templates: [mockBaseTemplate, mockTemplate]
@@ -229,6 +229,14 @@ describe('Parts Inventory UI & Component Integration Tests', () => {
       expect(wrapper.text()).toContain('Hardware')
       expect(wrapper.text()).toContain('Inherits: Base Industrial Hardware')
       expect(wrapper.text()).toContain('IPC-{number}')
+      // Collapsed by default
+      expect(wrapper.text()).not.toContain('IPC-1001')
+
+      // Click template header to expand instances tree
+      const headers = wrapper.findAll('.cursor-pointer')
+      const ipcHeader = headers.find(h => h.text().includes('Industrial PC Controller'))
+      await ipcHeader?.trigger('click')
+
       expect(wrapper.text()).toContain('IPC-1001')
     })
   })

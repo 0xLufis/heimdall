@@ -188,9 +188,52 @@ Heimdall renders factory floor AutoCAD DXF drawings as interactive, vector-based
 4. The canvas applies a pan-and-zoom transformation matrix with smooth mouse wheel and touch gesture support.
 
 ### 5.2 Spatial Asset Pinning
-* **Handle Linking**: Each machine block in the CAD drawing has an AutoCAD handle (e.g., `5A1F`).
+* **Handle Linking**: Each machine block in the CAD drawing has an AutoCAD handle (e.g., `5A1F` or `L01-OP010`).
 * **Station Association**: In the map editor, clicking a machine block binds its handle to a `ProductionStation.PinnedObjectHandle`.
 * **Hover Interaction**: Hovering over a computer row in `/dashboard/clients` highlights its physical machine bounding box on the map canvas.
+
+### 5.3 Real-Time Telemetry HUD Overlays & Expandable Bubbles (`StationTelemetryBubble.vue`)
+To eliminate context switching between separate analytics tabs and the physical shopfloor geography, Heimdall layers an interactive HTML HUD directly over the SVG CAD map canvas:
+
+1. **Synchronized Viewport Transform & Dynamic Boundary Clamping**:
+   A reactive coordinate transformation maps CAD SVG user coordinates $(x, y)$ into viewport screen pixels using the active viewBox and container bounds:
+   $$\text{screenX} = \text{offsetX} + (x - \text{viewBox.x}) \times \text{scale}$$
+   $$\text{screenY} = \text{offsetY} + (y - \text{viewBox.y}) \times \text{scale}$$
+   To guarantee bubbles and expanded cards remain 100% within the visible canvas viewport without being cut off by page headers, navigation toolbars, or screen edges:
+   * **Horizontal Viewport Clamping**: Bubble X coordinates are clamped between $X_{\min}$ (14px) and $X_{\max} - W_{\text{card}}$ (container width - 14px), preventing horizontal overflow.
+   * **Vertical Flip Strategy**: If placing the card above the station node overflows the upper boundary ($Y_0 - H - \text{gap} < Y_{\min}$, e.g. < 62px below the HUD toolbar), the placement dynamically flips below the station ($Y_0 + \text{gap}$).
+   * **Strict Height Bounding**: Cards are constrained to `max-h-[min(500px,calc(100vh-140px))]` with custom smooth scrollbars, ensuring complete legibility across smaller displays.
+   * **Accordion Single Focus**: Expanding an equipment card automatically collapses adjacent bubbles, eliminating card occlusion across dense workstation lines.
+
+2. **Compact Floating Bubble**:
+   * **OEE Pill**: Color-coded metric indicator ($\ge 85\%$ Emerald, $70-84\%$ Amber, $< 70\%$ Rose).
+   * **Yield & Throughput**: Displays first-pass yield percentage and parts/hour rate (e.g. `99.2% · 142/h`).
+   * **SLA Urgency Alert**: Shows active ticket count and warning status (e.g. `⚠️ 2 SLA`, `🚨 SLA Breached!`).
+
+3. **Expanded Glassmorphic HUD Card**:
+   Clicking any bubble expands it into an equipment inspection card:
+   * **Operational Status Pill**: `RUNNING`, `IDLE`, `WARNING`, `FAULTED` with animated pulse indicators.
+   * **OEE Breakdown**: Gauge and micro progress bars for Availability %, Performance %, and Quality %.
+   * **First-Pass Yield**: Total Conforming Parts vs Scrap Parts.
+   * **Output Cadence**: Parts / Hour vs target (150/h) and measured cycle tact time.
+   * **Active SLA Incidents**: Real-time list of open maintenance tickets with priority badge, status, and direct link to ticket resolution drawer.
+   * **Direct Actions**: "+ Ticket" incident creation button and "Select Node" inspector focus.
+
+4. **HUD Map Controls Bar**:
+   * **Telemetry HUD Toggle**: Master toggle to show/hide overlays with pulsing status indicator.
+   * **Filter Modes**:
+     * `Alerts & SLA`: Automatically focuses only on stations with active maintenance tickets, low OEE (< 85%), or SLA breaches.
+     * `All Nodes`: Shows telemetry bubbles across every station in the production hall.
+     * `Hover Focus`: Displays the HUD bubble only for the currently hovered or selected station.
+   * **Fleet Metric Ticker**: Real-time production hall aggregate of Average OEE, Average Yield, Fleet Output Rate, and Active SLA tickets count.
+
+5. **Sub-Second Dynamic Oscillation Streaming & 3D Digital Twin HUD Viewport**:
+   * **SignalR Live Stream**: Direct integration with `/hubs/maintenance` listening to `StationTelemetryReceived` and `StationOscillationReceived` events for sub-second machine oscillations.
+   * **SVG Sparkline Waveform**: Live rolling vibration RMS oscilloscope waveform with gradient fill and pulse dot rendered directly inside expanded HUD bubbles.
+   * **3D Three.js Projection**: `useCadModelViewer.ts` calculates real-time 2D screen coordinates from 3D mesh bounding boxes:
+     $$\text{screenX} = (v_{\text{ndc}}.x \times 0.5 + 0.5) \times W_{\text{canvas}}$$
+     $$\text{screenY} = (-v_{\text{ndc}}.y \times 0.5 + 0.5) \times H_{\text{canvas}}$$
+   * **3D Floating HUD Bubbles**: `Machine3dDigitalTwin.vue` displays interactive telemetry badges and expandable cards over mechanical component slots (`GANTRY-X-01`, `TOOL-HEAD-01`, `CONVEYOR-01`), supporting isometric camera resets, wireframe toggles, and health heatmaps.
 
 ---
 
@@ -345,5 +388,52 @@ Dedicated workspace for managing production envelopes:
 * **Technology Clusters A through X**: Real-time assignment of equipment specializations (Optical Inspection, Screwing, Soldering, Milling, Pressing, Manipulators).
 * **Engineering Ownership**: Dedicated lead engineer metadata, operational descriptions, and line capacity notes.
 * **Full CRUD Lifecycle**: Integrated with `/api/machine-groups` REST endpoints for real-time creation, editing, and reparenting.
+
+---
+
+## 12. Universal Tag-Context Omnisearch Engine
+
+The platform incorporates an omnipresent, tag-contextual fuzzy search architecture accessible via `Cmd+K` / `Ctrl+K` across all views:
+
+### 12.1 Scoping Syntaxes & Auto-Tagging
+* **Prefix Scoping Symbols**:
+  * `@station` or `@machine`: Scopes search strictly to machines and automated workstations (`[MCH]`).
+  * `#ticket`: Scopes to maintenance and incident tickets (`[TCK]`).
+  * `!controller` or `!host`: Scopes to IPC edge nodes and Soft-PLCs (`[IPC]`).
+  * `*part` or `*inventory`: Scopes to discrete spare parts and consumable stock (`[PRT]`).
+  * `%alarm`: Scopes to machines and tickets in warning, alarm, or line stop status.
+* **Key-Value Expressions**:
+  * Supports exact, negated, and multi-value tag syntax: `mfr:Siemens`, `tech:Robotics,Assembly`, `-status:offline`, `line:Line01`.
+* **Fuzzy Token Matching**:
+  * Powered by FZF-inspired Damerau-Levenshtein distance and N-gram scoring.
+  * Dynamically harvests known metadata keys and values across registered provider schemas via `searchRegistry.ts`.
+  * Suggests autocomplete chips with colored entity indicators (`[MCH]`, `[IPC]`, `[TCK]`, `[PRT]`, `[USR]`).
+
+### 12.2 Search Registry & Provider Extensibility (`searchRegistry.ts`)
+* Implements a decoupled provider architecture (`SearchProvider<T>`) registering data tables, search columns, metadata extractors, and routing links.
+* Defaults include `machines`, `client_pcs`, `tickets`, `inventory`, `users`, `templates`, and `telemetry`.
+* Supports cross-table search ranking: primary workspace items are scored with high relevance, while correlated secondary items appear in the "Cross-Domain Results" section.
+
+---
+
+## 13. Enterprise Notification Center, Optimistic UI & Unified Audit Trail
+
+### 13.1 Notification Center Popover & Toast Overlay
+* **`NotificationCenterPopover.vue`**: Mounted in the top header, displaying unread badges, multi-source alerts (machine alarms, ticket escalations, Copia Git staging, system policies), and one-click "Mark All as Read" actions.
+* **`NotificationToastOverlay.vue`**: Fixed top-right toast notification manager providing non-blocking visual feedback, duration timeouts, action triggers, and undo capabilities.
+* **Out-of-App Web Notifications**: Subscribes to HTML5 / Android Web Notification API for critical line-stop alarms when the browser tab is backgrounded.
+
+### 13.2 Optimistic Actions with Rollback (`runOptimisticAction`)
+* Industrial operations (e.g. ticket reservation, status change, equipment transfer) update the Vue reactive state immediately.
+* If the asynchronous network request fails or is rejected by backend RBAC:
+  1. Executes the provided `rollbackFn()` to restore previous state.
+  2. Surfaces a high-priority error toast alerting the operator.
+  3. Dispatches a system audit notification detailing the rollback reason.
+
+### 13.3 Unified Audit Log Visualizer (`AuditLogsVisualizer.vue`)
+* Integrated into `/dashboard/analytics` under the "Audit Logs" tab.
+* Ingests and renders unified audit records spanning tickets, machines, inventory stock movements, policy changes, and machine PLC auto-closures.
+* Provides search, entity filtering, severity badges, and an interactive cryptographic diff viewer displaying full JSON payloads.
+
 
 

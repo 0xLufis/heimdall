@@ -1,0 +1,383 @@
+import { randomUUID } from 'node:crypto'
+
+export interface ServerErrorTemplate {
+  id: string
+  category: 'Prevention' | 'Error' | 'Improvement' | 'ETC'
+  errorGroup: string
+  errorCode: string
+  shortDescription: string
+  detailedDescription: string
+  targetKanbanState: string
+  externalEscalationTarget?: string
+  defaultTags: string[]
+  sampleFbState?: {
+    blockName: string
+    state: string
+    subState?: string
+    errorCode?: string
+  }
+  sampleTelemetryKeys?: string[]
+  affectedMachineTypes?: string[]
+  assignedTechnologies?: string[]
+  assignedMachineGroups?: string[]
+  assignedMachineIds?: string[]
+}
+
+const INITIAL_TEMPLATES: ServerErrorTemplate[] = [
+  // ── CATEGORY: ERROR ──────────────────────────────────────────────────────
+  // Motion & Drive
+  {
+    id: 'E-MOT-01',
+    category: 'Error',
+    errorGroup: 'Motion & Drive',
+    errorCode: 'E-MOT-01',
+    shortDescription: 'Axis Position Divergence',
+    detailedDescription: 'Servo axis commanded position diverges from actual encoder feedback beyond the permitted following error window. Check drive amplifier, encoder cable integrity, and mechanical coupling.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Motion', '#Axis', '#Servo'],
+    sampleFbState: { blockName: 'FB_AxisControl', state: 'ERROR_STOP', subState: 'FollowingError', errorCode: '16#4330' },
+    sampleTelemetryKeys: ['following_error_mm', 'commanded_velocity', 'actual_velocity', 'motor_current_A'],
+    affectedMachineTypes: ['Milling', 'Manipulator', 'Pressing', 'Fitting'],
+    assignedTechnologies: ['Robotics', 'Assembly'],
+    assignedMachineGroups: ['grp-line01', 'grp-line02']
+  },
+  {
+    id: 'E-MOT-02',
+    category: 'Error',
+    errorGroup: 'Motion & Drive',
+    errorCode: 'E-MOT-02',
+    shortDescription: 'Servo Drive Over-Torque',
+    detailedDescription: 'Drive torque limit exceeded continuously for >500 ms. Possible mechanical jam, worn tooling, or incorrect work clamping. Check part fixture and toolpath.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Motion', '#Torque', '#Overload'],
+    sampleFbState: { blockName: 'FB_DriveControl', state: 'FAULT', subState: 'OverTorque', errorCode: '16#7300' },
+    sampleTelemetryKeys: ['torque_Nm', 'torque_limit_Nm', 'peak_current_A', 'ambient_temp_C'],
+    affectedMachineTypes: ['Milling', 'Pressing', 'Screwing Station'],
+    assignedTechnologies: ['Fastening', 'Assembly'],
+    assignedMachineGroups: ['grp-line01']
+  },
+  // Safety
+  {
+    id: 'E-SAFE-01',
+    category: 'Error',
+    errorGroup: 'Safety System',
+    errorCode: 'E-SAFE-01',
+    shortDescription: 'Light Curtain Muting Fault',
+    detailedDescription: 'Safety light curtain muting sequence failed or timed out. Dual-channel safety relay detected desynchronization >5 ms. Immediate escalation required — machine must remain halted until safety engineer signs off.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Safety', '#LightCurtain', '#SIL2'],
+    sampleFbState: { blockName: 'FB_SafetyDoor', state: 'SAFE_STOP_2', subState: 'MutingTimeout', errorCode: '16#F001' },
+    sampleTelemetryKeys: ['channel_A_ok', 'channel_B_ok', 'muting_lamp_ok', 'response_time_ms'],
+    affectedMachineTypes: ['Pressing', 'Manipulator', 'Milling', 'Fitting', 'Screwing Station'],
+    assignedTechnologies: ['Robotics', 'Assembly', 'Fastening']
+  },
+  {
+    id: 'E-SAFE-02',
+    category: 'Error',
+    errorGroup: 'Safety System',
+    errorCode: 'E-SAFE-02',
+    shortDescription: 'E-Stop Dual Channel Desync',
+    detailedDescription: 'Emergency stop button dual safety channels desynced beyond allowable 100 ms window. Safety PLC triggered category 0 stop. Do not reset without safety engineer verification.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Safety', '#EStop', '#DualChannel'],
+    sampleFbState: { blockName: 'FB_EStop', state: 'FAULT', subState: 'ChannelDesync', errorCode: '16#F002' },
+    sampleTelemetryKeys: ['ch_A_response_ms', 'ch_B_response_ms', 'delta_ms'],
+    affectedMachineTypes: ['Pressing', 'Manipulator', 'Milling', 'Fitting', 'Screwing Station', 'Soldering', 'Gap Filler'],
+    assignedTechnologies: ['Robotics', 'SMT', 'Assembly', 'Fastening', 'Welding']
+  },
+  // Fieldbus & Network
+  {
+    id: 'E-NET-01',
+    category: 'Error',
+    errorGroup: 'Fieldbus & Network',
+    errorCode: 'E-NET-01',
+    shortDescription: 'SAP MES RFC Sync Dropout',
+    detailedDescription: 'Remote Function Call to SAP Production Order module returned timeout after 3 retries. Workpiece SFC confirmation pending. SAP engineers must verify RFC destination and service user locks.',
+    targetKanbanState: 'Open',
+    externalEscalationTarget: 'SAP Engineers',
+    defaultTags: ['#MES', '#SAP', '#RFC', '#Network'],
+    sampleFbState: { blockName: 'FB_MES_Interface', state: 'COMM_ERROR', subState: 'RFC_Timeout', errorCode: '16#8001' },
+    sampleTelemetryKeys: ['rfc_latency_ms', 'retry_count', 'last_success_ts'],
+    affectedMachineTypes: ['Automatic Optical Inspection', 'Tester Cell', 'Screwing Station'],
+    assignedTechnologies: ['Test', 'SMT']
+  },
+  // Vision & Optical
+  {
+    id: 'E-VIS-01',
+    category: 'Error',
+    errorGroup: 'Vision & Optical',
+    errorCode: 'E-VIS-01',
+    shortDescription: 'AOI Blob Detection Reject Limit',
+    detailedDescription: 'Cognex In-Sight camera blob detection reject rate exceeded 3% of parts over last 100 cycle window. Possible lens contamination, illumination degradation, or component placement drift.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#AOI', '#Vision', '#Cognex', '#Reject'],
+    sampleFbState: { blockName: 'FB_CameraControl', state: 'RUNNING', subState: 'RejectLimitExceeded', errorCode: '16#3001' },
+    sampleTelemetryKeys: ['reject_rate_pct', 'good_parts', 'rejected_parts', 'last_defect_type'],
+    affectedMachineTypes: ['Automatic Optical Inspection'],
+    assignedTechnologies: ['Vision', 'SMT']
+  },
+  // Dispensing
+  {
+    id: 'E-DISP-01',
+    category: 'Error',
+    errorGroup: 'Dispensing',
+    errorCode: 'E-DISP-01',
+    shortDescription: 'Gap Filler Nozzle Pressure Sag',
+    detailedDescription: 'Dispensing nozzle outlet pressure dropped below lower control limit (3.2 bar). Possible nozzle clog, worn pump seal, or empty material cartridge. Replacement parts required.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#GapFiller', '#Dispensing', '#Pressure', '#Parts'],
+    sampleFbState: { blockName: 'FB_DispensingControl', state: 'MATERIAL_LOW', subState: 'PressureSag', errorCode: '16#5001' },
+    sampleTelemetryKeys: ['outlet_pressure_bar', 'setpoint_bar', 'flow_rate_ml_min', 'cartridge_weight_g'],
+    affectedMachineTypes: ['Gap Filler'],
+    assignedTechnologies: ['Dispensing']
+  },
+  // Screwing
+  {
+    id: 'E-SCRW-01',
+    category: 'Error',
+    errorGroup: 'Screwing & Fastening',
+    errorCode: 'E-SCRW-01',
+    shortDescription: 'Final Torque Angle Window Exceeded',
+    detailedDescription: 'Fastening cycle completed outside of the programmed angle window. Final torque achieved but seat angle is outside ±5° tolerance. Part requires rework inspection.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Screwing', '#Torque', '#Angle', '#NOK'],
+    sampleFbState: { blockName: 'FB_NutRunner', state: 'NOK', subState: 'AngleWindowExceeded', errorCode: '16#6001' },
+    sampleTelemetryKeys: ['final_torque_Nm', 'target_torque_Nm', 'seat_angle_deg', 'angle_window_deg'],
+    affectedMachineTypes: ['Screwing Station'],
+    assignedTechnologies: ['Fastening']
+  },
+  // Pressing
+  {
+    id: 'E-PRES-01',
+    category: 'Error',
+    errorGroup: 'Pressing & Joining',
+    errorCode: 'E-PRES-01',
+    shortDescription: 'Force-Displacement Envelope Violation',
+    detailedDescription: 'Servo press force-displacement curve fell outside the programmed upper/lower tolerance envelope at position 12.4 mm. Part likely has dimension variance or incorrect material grade.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Pressing', '#ForceDisplacement', '#NOK'],
+    sampleFbState: { blockName: 'FB_ServoPressControl', state: 'NOK', subState: 'EnvelopeViolation', errorCode: '16#7001' },
+    sampleTelemetryKeys: ['peak_force_kN', 'displacement_at_peak_mm', 'envelope_upper_kN', 'envelope_lower_kN'],
+    affectedMachineTypes: ['Pressing', 'Fitting'],
+    assignedTechnologies: ['Assembly']
+  },
+  // Soldering
+  {
+    id: 'E-SOLD-01',
+    category: 'Error',
+    errorGroup: 'Soldering & Thermal',
+    errorCode: 'E-SOLD-01',
+    shortDescription: 'Induction Heater Thermal Lag',
+    detailedDescription: 'Induction heater failed to reach target temperature of 280°C within 8 s ramp timeout. Possible coil gap mismatch, component heat-sink variance, or inverter output degradation.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Soldering', '#Thermal', '#Induction'],
+    sampleFbState: { blockName: 'FB_InductionHeater', state: 'FAULT', subState: 'RampTimeout', errorCode: '16#8002' },
+    sampleTelemetryKeys: ['actual_temp_C', 'target_temp_C', 'ramp_time_s', 'inverter_power_kW'],
+    affectedMachineTypes: ['Soldering'],
+    assignedTechnologies: ['Welding', 'SMT']
+  },
+  // Milling
+  {
+    id: 'E-MILL-01',
+    category: 'Error',
+    errorGroup: 'Milling & Machining',
+    errorCode: 'E-MILL-01',
+    shortDescription: 'Spindle Vibration Harmonic Peak',
+    detailedDescription: 'Spindle vibration harmonic peak exceeded 4.5 mm/s RMS at 3,200 Hz frequency band. Likely toolholder imbalance or tool wear. Spindle balance check and tool replacement required.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Milling', '#Vibration', '#Spindle', '#ToolWear'],
+    sampleFbState: { blockName: 'FB_SpindleControl', state: 'WARNING', subState: 'VibrationHigh', errorCode: '16#9001' },
+    sampleTelemetryKeys: ['vibration_rms_mm_s', 'spindle_rpm', 'dominant_freq_Hz', 'tool_life_pct'],
+    affectedMachineTypes: ['Milling'],
+    assignedTechnologies: ['Assembly']
+  },
+
+  // ── CATEGORY: PREVENTION ─────────────────────────────────────────────────
+  {
+    id: 'P-CAL-01',
+    category: 'Prevention',
+    errorGroup: 'Calibration & Measurement',
+    errorCode: 'P-CAL-01',
+    shortDescription: 'Load Cell & Force Transducer Calibration',
+    detailedDescription: 'Scheduled load cell and force transducer calibration cycle. Reference standard weights applied, calibration certificate required. Needs outside AOK sign-off before return to production.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Calibration', '#PM', '#ForceCell'],
+    sampleTelemetryKeys: ['zero_offset_mV', 'span_error_pct', 'ref_weight_kg'],
+    affectedMachineTypes: ['Pressing', 'Screwing Station', 'Fitting'],
+    assignedTechnologies: ['Assembly', 'Fastening']
+  },
+  {
+    id: 'P-OPT-01',
+    category: 'Prevention',
+    errorGroup: 'Optics & Vision Maintenance',
+    errorCode: 'P-OPT-01',
+    shortDescription: 'Vision Lighting & Lens Cleaning',
+    detailedDescription: 'Scheduled cleaning of strobe ring lights, telecentric lens front element, and diffuser panels on AOI station. Reject rate baseline recheck required after cleaning.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#PM', '#AOI', '#Optics', '#Cleaning'],
+    affectedMachineTypes: ['Automatic Optical Inspection'],
+    assignedTechnologies: ['Vision', 'SMT']
+  },
+  {
+    id: 'P-LUB-01',
+    category: 'Prevention',
+    errorGroup: 'Lubrication & Wear',
+    errorCode: 'P-LUB-01',
+    shortDescription: 'Ball Screw Automatic Greasing Cycle',
+    detailedDescription: 'Preventive lubrication of ball screw, linear guides, and Z-axis lead screw. Grease type: Klüber Isoflex NBU 15. Quantity per point: 2 g. Check wipers for wear after lubrication.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#PM', '#Lubrication', '#BallScrew'],
+    affectedMachineTypes: ['Milling', 'Manipulator', 'Pressing', 'Fitting'],
+    assignedTechnologies: ['Robotics', 'Assembly']
+  },
+
+  // ── CATEGORY: IMPROVEMENT ────────────────────────────────────────────────
+  {
+    id: 'I-CYC-01',
+    category: 'Improvement',
+    errorGroup: 'Cycle Time Optimization',
+    errorCode: 'I-CYC-01',
+    shortDescription: 'Robot Trajectory Cycle Reduction',
+    detailedDescription: 'Opportunity to reduce robot pick-and-place cycle time by 800 ms via optimised blend radius and reduced intermediate waypoints. Requires offline simulation sign-off before deployment.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Improvement', '#CycleTime', '#Robot'],
+    affectedMachineTypes: ['Manipulator'],
+    assignedTechnologies: ['Robotics']
+  },
+  {
+    id: 'I-REJ-01',
+    category: 'Improvement',
+    errorGroup: 'Quality & Vision AI',
+    errorCode: 'I-REJ-01',
+    shortDescription: 'Solder Joint Classifier Retraining',
+    detailedDescription: 'AOI solder joint defect classifier false positive rate increased to 1.8% after component reel change. Retraining with 500 new labelled images recommended. Model update requires IT and quality sign-off.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Improvement', '#AI', '#AOI', '#Quality'],
+    affectedMachineTypes: ['Automatic Optical Inspection', 'Soldering'],
+    assignedTechnologies: ['Vision', 'SMT']
+  },
+
+  // ── CATEGORY: ETC ────────────────────────────────────────────────────────
+  {
+    id: 'ETC-FW-01',
+    category: 'ETC',
+    errorGroup: 'Firmware & Software',
+    errorCode: 'ETC-FW-01',
+    shortDescription: 'TwinCAT PLC Runtime Firmware Rollup',
+    detailedDescription: 'Scheduled TwinCAT 3 runtime firmware update rollup. Version target: 4024.56 → 4026.10. Requires IT change request, controlled restart window, and verification of all function blocks post-upgrade.',
+    targetKanbanState: 'Open',
+    defaultTags: ['#Firmware', '#TwinCAT', '#PLC', '#IT'],
+    affectedMachineTypes: ['Milling', 'Pressing', 'Screwing Station', 'Manipulator', 'Gap Filler'],
+    assignedTechnologies: ['Assembly', 'Robotics', 'Test']
+  },
+]
+
+let templatesStore: ServerErrorTemplate[] = [...INITIAL_TEMPLATES]
+
+export function getTemplatesStore(): ServerErrorTemplate[] {
+  return templatesStore
+}
+
+export function getTemplateById(id: string): ServerErrorTemplate | undefined {
+  return templatesStore.find(t => t.id === id || t.errorCode.toLowerCase() === id.toLowerCase())
+}
+
+export function addTemplateToStore(template: Partial<ServerErrorTemplate>): ServerErrorTemplate {
+  const newTemplate: ServerErrorTemplate = {
+    id: template.id || template.errorCode || randomUUID(),
+    category: template.category || 'Error',
+    errorGroup: template.errorGroup || 'General',
+    errorCode: template.errorCode || `CUSTOM-${Date.now().toString().slice(-4)}`,
+    shortDescription: template.shortDescription || 'Custom Template',
+    detailedDescription: template.detailedDescription || '',
+    targetKanbanState: 'Open', // Ticket templates can only start in Open
+    externalEscalationTarget: template.externalEscalationTarget,
+    defaultTags: Array.isArray(template.defaultTags) ? template.defaultTags : [],
+    sampleFbState: template.sampleFbState,
+    sampleTelemetryKeys: Array.isArray(template.sampleTelemetryKeys) ? template.sampleTelemetryKeys : [],
+    affectedMachineTypes: Array.isArray(template.affectedMachineTypes) ? template.affectedMachineTypes : [],
+    assignedTechnologies: Array.isArray(template.assignedTechnologies) ? template.assignedTechnologies : [],
+    assignedMachineGroups: Array.isArray(template.assignedMachineGroups) ? template.assignedMachineGroups : [],
+    assignedMachineIds: Array.isArray(template.assignedMachineIds) ? template.assignedMachineIds : [],
+  }
+
+  // Prepend or replace if exists
+  const existingIdx = templatesStore.findIndex(t => t.id === newTemplate.id || t.errorCode === newTemplate.errorCode)
+  if (existingIdx >= 0) {
+    templatesStore[existingIdx] = newTemplate
+  } else {
+    templatesStore.unshift(newTemplate)
+  }
+
+  return newTemplate
+}
+
+export function updateTemplateInStore(id: string, updates: Partial<ServerErrorTemplate>): ServerErrorTemplate | null {
+  const existingIdx = templatesStore.findIndex(t => t.id === id || t.errorCode.toLowerCase() === id.toLowerCase())
+  if (existingIdx === -1) return null
+
+  const existing = templatesStore[existingIdx]
+  const updated: ServerErrorTemplate = {
+    ...existing,
+    ...updates,
+    id: existing.id,
+    targetKanbanState: 'Open', // Enforce strict Open state
+    defaultTags: updates.defaultTags ? (Array.isArray(updates.defaultTags) ? updates.defaultTags : []) : existing.defaultTags,
+    affectedMachineTypes: updates.affectedMachineTypes ? (Array.isArray(updates.affectedMachineTypes) ? updates.affectedMachineTypes : []) : existing.affectedMachineTypes,
+    assignedTechnologies: updates.assignedTechnologies !== undefined ? updates.assignedTechnologies : existing.assignedTechnologies,
+    assignedMachineGroups: updates.assignedMachineGroups !== undefined ? updates.assignedMachineGroups : existing.assignedMachineGroups,
+    assignedMachineIds: updates.assignedMachineIds !== undefined ? updates.assignedMachineIds : existing.assignedMachineIds,
+  }
+
+  templatesStore[existingIdx] = updated
+  return updated
+}
+
+export function deleteTemplateFromStore(id: string): boolean {
+  const initialLen = templatesStore.length
+  templatesStore = templatesStore.filter(t => t.id !== id && t.errorCode.toLowerCase() !== id.toLowerCase())
+  return templatesStore.length < initialLen
+}
+
+export function resetTemplatesStore(): void {
+  templatesStore = [...INITIAL_TEMPLATES]
+}
+
+/**
+ * Exports ticket templates to Beckhoff TwinCAT 3 .TcDUT format (IEC 61131-3 Enum).
+ */
+export function exportTwinCatDut(templates: ServerErrorTemplate[] = templatesStore): string {
+  const lines: string[] = []
+  lines.push(`{attribute 'qualified_only'}`)
+  lines.push(`{attribute 'strict'}`)
+  lines.push(`TYPE E_HeimdallErrorCode :`)
+  lines.push(`(`)
+  lines.push(`    NONE := 0, // No error`)
+
+  templates.forEach((t, idx) => {
+    // Sanitize identifier for IEC 61131-3
+    const identifier = t.errorCode.replace(/[^a-zA-Z0-9_]/g, '_')
+    let numVal: string
+    if (t.sampleFbState?.errorCode) {
+      numVal = t.sampleFbState.errorCode
+    } else {
+      numVal = (1000 + idx).toString()
+    }
+    const isLast = idx === templates.length - 1
+    const comma = isLast ? '' : ','
+    lines.push(`    ${identifier} := ${numVal}${comma} // [${t.category}] ${t.shortDescription.replace(/[\r\n]/g, ' ')}`)
+  })
+
+  lines.push(`) DINT;`)
+  lines.push(`END_TYPE`)
+
+  const declarationContent = lines.join('\n')
+
+  return `<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="E_HeimdallErrorCode" Id="{b17c8001-923f-4e00-8801-${Date.now().toString(16).padStart(12, '0').slice(-12)}}">
+    <Declaration><![CDATA[${declarationContent}
+]]></Declaration>
+  </DUT>
+</TcPlcObject>`
+}

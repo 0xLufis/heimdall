@@ -141,4 +141,77 @@ public class DatabaseTests
         Assert.Single(savedTicket.Attachments);
         Assert.Equal("High", savedTicket.Priority);
     }
+
+    [Fact]
+    public async Task Machine_DecommissionAndStatusFields_CanBePersistedAndRetrieved()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var machineId = Guid.NewGuid();
+        var decommissionDate = DateTimeOffset.UtcNow;
+        var machine = new Machine
+        {
+            Id = machineId,
+            Name = "Station-LaserWelder",
+            CustomIdentifier = "L05-OP030",
+            Status = "decommissioned",
+            DecommissionReason = "End of model lifecycle; parts salvaged for Line 03 donor units",
+            DecommissionDate = decommissionDate,
+            DecommissionDisposition = "salvage_donor"
+        };
+        context.Machines.Add(machine);
+        await context.SaveChangesAsync();
+
+        // Act
+        var retrieved = await context.Machines.FindAsync(machineId);
+
+        // Assert
+        Assert.NotNull(retrieved);
+        Assert.Equal("decommissioned", retrieved.Status);
+        Assert.Equal("salvage_donor", retrieved.DecommissionDisposition);
+        Assert.Equal("End of model lifecycle; parts salvaged for Line 03 donor units", retrieved.DecommissionReason);
+        Assert.Equal(decommissionDate, retrieved.DecommissionDate);
+    }
+
+    [Fact]
+    public async Task ControllerRepository_GetAllAsync_IncludesControlledMachinesWithDecommissionStatus()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var repository = new ControllerRepository(context);
+        var machine = new Machine
+        {
+            Id = Guid.NewGuid(),
+            Name = "OP010",
+            CustomIdentifier = "L01-OP010",
+            Status = "active"
+        };
+        var pc = new ClientPc
+        {
+            Id = Guid.NewGuid(),
+            Hostname = "IPC-LINE01",
+            MacAddress = "00:AA:BB:CC:DD:EE"
+        };
+        context.Machines.Add(machine);
+        context.ClientPcs.Add(pc);
+        await context.SaveChangesAsync();
+
+        var stationController = new StationController
+        {
+            MachineId = machine.Id,
+            ClientPcId = pc.Id,
+            Role = "Primary"
+        };
+        context.StationControllers.Add(stationController);
+        await context.SaveChangesAsync();
+
+        // Act
+        var controllers = await repository.GetAllAsync();
+
+        // Assert
+        var fetchedPc = controllers.FirstOrDefault(c => c.Id == pc.Id);
+        Assert.NotNull(fetchedPc);
+        Assert.Single(fetchedPc.ControlledMachines);
+        Assert.Equal("active", fetchedPc.ControlledMachines.First().Status);
+    }
 }

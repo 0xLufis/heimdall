@@ -1,0 +1,72 @@
+{
+  "$comment": "Plant-specific (non-builtin) generic templates. 'extends_code' is resolved by the loader to extends_template_id when the referenced builtin template exists. Template *instances* are stored where the entity keeps them: machine instances in inventory_items.metadata.template (NV-L1-OP060, NV-L2-OP060) and the drift ticket instance in maintenance_tickets.metadata.template.",
+  "generic_templates": [
+    {
+      "_key": "tmpl:NV-MCH-LASER-WELD",
+      "template_type": "machine",
+      "code": "NV-MCH-LASER-WELD",
+      "name": "NV Hairpin / Rotor Laser Welding Cell",
+      "description": "Plant blueprint for the NV1 laser welding fleet: power window, protective glass spec and seam tracking.",
+      "category": "Welding",
+      "icon": "Zap",
+      "version": "1.0.0",
+      "extends_code": "MCH-ROBOT-CELL-01",
+      "tags": ["Demo", "Laser", "Welding", "NV1"],
+      "schema_json": [
+        { "key": "laser_power_nominal_kw", "label": "Nominal Laser Power", "fieldType": "number", "required": true, "defaultValue": 6.0, "unit": "kW", "min": 1, "max": 12, "section": "Process", "order": 1, "isInherited": false },
+        { "key": "laser_power_min_kw", "label": "Power Alarm Limit (low)", "fieldType": "number", "required": true, "defaultValue": 5.7, "unit": "kW", "min": 1, "max": 12, "section": "Alarms", "order": 2, "isInherited": false },
+        { "key": "protective_glass_type", "label": "Protective Glass", "fieldType": "string", "required": true, "defaultValue": "D37 x 1.5 mm fused silica", "section": "Wear Parts", "order": 3, "isInherited": false },
+        { "key": "glass_temp_alarm_c", "label": "Protective Glass Temperature Alarm", "fieldType": "number", "required": false, "defaultValue": 55, "unit": "°C", "min": 30, "max": 90, "section": "Alarms", "order": 4, "isInherited": false },
+        { "key": "seam_tracking", "label": "Seam Tracking Enabled", "fieldType": "boolean", "required": false, "defaultValue": true, "section": "Process", "order": 5, "isInherited": false }
+      ],
+      "default_values_json": { "laser_power_nominal_kw": 6.0, "laser_power_min_kw": 5.7, "protective_glass_type": "D37 x 1.5 mm fused silica", "glass_temp_alarm_c": 55, "seam_tracking": true },
+      "is_active": true,
+      "is_builtin": false,
+      "organization_id": "demo-org-nordvik"
+    },
+    {
+      "_key": "tmpl:NV-TEL-LASER-HEALTH",
+      "template_type": "telemetry",
+      "code": "NV-TEL-LASER-HEALTH",
+      "name": "NV Laser Health Telemetry Profile",
+      "description": "Sampling profile for laser power, protective glass temperature and weld penetration (feeds the Laser Power Drift Watchdog Lua script).",
+      "category": "Thermal",
+      "icon": "Activity",
+      "version": "1.0.0",
+      "extends_code": "TEL-DRIVE-01",
+      "tags": ["Demo", "Laser", "Telemetry"],
+      "schema_json": [
+        { "key": "polling_interval_ms", "label": "Polling Interval", "fieldType": "number", "required": true, "defaultValue": 1000, "unit": "ms", "min": 100, "max": 60000, "section": "Sampling", "order": 1, "isInherited": false },
+        { "key": "power_alarm_low_kw", "label": "Laser Power Alarm (low)", "fieldType": "number", "required": true, "defaultValue": 5.7, "unit": "kW", "section": "Alarms", "order": 2, "isInherited": false },
+        { "key": "glass_temp_alarm_c", "label": "Glass Temperature Alarm", "fieldType": "number", "required": true, "defaultValue": 55, "unit": "°C", "section": "Alarms", "order": 3, "isInherited": false },
+        { "key": "moving_average_window", "label": "Moving Average Window", "fieldType": "number", "required": false, "defaultValue": 5, "unit": "samples", "min": 1, "max": 60, "section": "Filtering", "order": 4, "isInherited": false }
+      ],
+      "default_values_json": { "polling_interval_ms": 1000, "power_alarm_low_kw": 5.7, "glass_temp_alarm_c": 55, "moving_average_window": 5 },
+      "is_active": true,
+      "is_builtin": false,
+      "organization_id": "demo-org-nordvik"
+    },
+    {
+      "_key": "tmpl:NV-TCK-LASER-DRIFT",
+      "template_type": "ticket",
+      "code": "NV-TCK-LASER-DRIFT",
+      "name": "NV Laser Power Drift Fault",
+      "description": "Ticket recipe for laser power drift: classification, first action and escalation timing.",
+      "category": "Error",
+      "icon": "ShieldAlert",
+      "version": "1.0.0",
+      "extends_code": "TCK-POS-01",
+      "tags": ["Demo", "Ticket", "Laser", "Drift"],
+      "schema_json": [
+        { "key": "error_code", "label": "PLC Error Code", "fieldType": "string", "required": true, "defaultValue": "ALM-LSR-217", "section": "Classification", "order": 1, "isInherited": false },
+        { "key": "power_alarm_kw", "label": "Power Alarm Threshold", "fieldType": "number", "required": true, "defaultValue": 5.7, "unit": "kW", "section": "Classification", "order": 2, "isInherited": false },
+        { "key": "first_action", "label": "First Action", "fieldType": "textarea", "required": false, "defaultValue": "Inspect and clean protective glass", "section": "Remediation", "order": 3, "isInherited": false },
+        { "key": "escalate_after_minutes", "label": "Escalate After", "fieldType": "number", "required": false, "defaultValue": 20, "unit": "min", "section": "Workflow", "order": 4, "isInherited": false }
+      ],
+      "default_values_json": { "error_code": "ALM-LSR-217", "power_alarm_kw": 5.7, "first_action": "Inspect and clean protective glass", "escalate_after_minutes": 20 },
+      "is_active": true,
+      "is_builtin": false,
+      "organization_id": "demo-org-nordvik"
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import SearchableTargetCombobox from '../../../frontend/web/app/components/common/SearchableTargetCombobox.vue'
-import MachineSearchCombobox from '../../../frontend/web/app/components/tickets/MachineSearchCombobox.vue'
-import HeimdallSearchBar from '../../../frontend/web/app/components/search/HeimdallSearchBar.vue'
+import SearchableTargetCombobox from '../../../src/frontend/web/app/components/common/SearchableTargetCombobox.vue'
+import MachineSearchCombobox from '../../../src/frontend/web/app/components/tickets/MachineSearchCombobox.vue'
+import HeimdallSearchBar from '../../../src/frontend/web/app/components/search/HeimdallSearchBar.vue'
 
 describe('Search Functions - Lookup Behavior & Premature Save Prevention', () => {
   describe('SearchableTargetCombobox', () => {

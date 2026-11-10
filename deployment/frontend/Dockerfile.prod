@@ -1,0 +1,39 @@
+# Multi-Stage Production Build for Heimdall Nuxt 4 / Nitro Web Application
+# Targets unprivileged execution and minimal container footprint (< 120 MB)
+
+# Stage 1: Build & Prune
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Install build dependencies
+COPY src/frontend/web/package*.json ./
+RUN npm ci --ignore-scripts
+
+# Copy frontend source
+COPY src/frontend/web/ ./
+RUN npm run build
+
+# Stage 2: Minimal Unprivileged Runtime
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NITRO_HOST=0.0.0.0
+ENV NITRO_PORT=3000
+
+# Create unprivileged application user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S heimdall -u 1001 -G nodejs
+
+# Copy compiled Nitro output only
+COPY --from=builder --chown=heimdall:nodejs /app/.output ./.output
+
+USER heimdall
+
+EXPOSE 3000
+
+# Health check using native Nitro endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+
+ENTRYPOINT ["node", ".output/server/index.mjs"]

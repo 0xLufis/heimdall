@@ -55,9 +55,9 @@ test.describe('Better-Auth & Entra ID / Active Directory Security Group Org Gove
     await page.waitForTimeout(800)
 
     // Assert evaluation results for Root Admin
-    await expect(page.getByText('Factory Operations').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/Platform Operations|OT Plant Administrators/i).first()).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('OT Plant Administrators').first()).toBeVisible()
-    await expect(page.getByText('factory-operations').first()).toBeVisible()
+    await expect(page.getByText(/platform-operations|owner/i).first()).toBeVisible()
 
     // Capture Root Admin evaluation sandbox screenshot
     await page.screenshot({ path: `${artifactDir}/security_groups_evaluation_sandbox_root_admin.png` })

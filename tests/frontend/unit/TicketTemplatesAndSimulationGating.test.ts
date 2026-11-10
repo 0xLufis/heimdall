@@ -3,7 +3,9 @@ import {
   getTemplatesStore,
   getTemplateById,
   addTemplateToStore,
-  resetTemplatesStore
+  updateTemplateInStore,
+  resetTemplatesStore,
+  exportTwinCatDut
 } from '~~/server/utils/ticketTemplatesStore'
 import {
   getFeatureFlags,
@@ -13,6 +15,7 @@ import {
 import { useFeatureFlags, getAppFeatureFlags } from '~/composables/useFeatureFlags'
 import templatesGetHandler from '~~/server/api/tickets/templates.get'
 import templatesPostHandler from '~~/server/api/tickets/templates.post'
+import templatesPutHandler from '~~/server/api/tickets/templates.put'
 import simulatorHandler from '~~/server/api/simulator/[...action]'
 
 describe('Ticket Templates Catalog & Simulation Gating Suite', () => {
@@ -126,6 +129,50 @@ describe('Ticket Templates Catalog & Simulation Gating Suite', () => {
       const stored = getTemplateById('E-CUST-99')
       expect(stored).toBeDefined()
       expect(stored?.shortDescription).toBe('Pneumatic Gripper Pressure Loss')
+      // Enforced: Ticket templates can only start in Open state
+      expect(stored?.targetKanbanState).toBe('Open')
+    })
+
+    it('PUT /api/tickets/templates updates an existing template and enforces Open state', async () => {
+      const updatePayload = {
+        id: 'E-MOT-01',
+        shortDescription: 'Axis Position Divergence (Updated Checksum)',
+        assignedTechnologies: ['Robotics', 'Assembly', 'Vision'],
+        assignedMachineGroups: ['grp-line01', 'grp-line03'],
+        targetKanbanState: 'InProgress' // Attempting non-Open state
+      }
+
+      const event = {
+        method: 'PUT',
+        path: '/api/tickets/templates',
+        context: {},
+        node: {
+          req: {
+            method: 'PUT',
+            url: '/api/tickets/templates',
+            headers: { 'content-type': 'application/json' }
+          }
+        },
+        _body: updatePayload
+      } as any
+
+      const res = await templatesPutHandler(event)
+      expect(res.success).toBe(true)
+      expect(res.template.shortDescription).toBe('Axis Position Divergence (Updated Checksum)')
+      expect(res.template.assignedTechnologies).toContain('Vision')
+      expect(res.template.assignedMachineGroups).toContain('grp-line03')
+      // Must remain strictly Open
+      expect(res.template.targetKanbanState).toBe('Open')
+    })
+
+    it('exportTwinCatDut generates valid Beckhoff TwinCAT 3 .TcDUT XML with error enums', () => {
+      const dutXml = exportTwinCatDut()
+      expect(dutXml).toContain('<?xml version="1.0" encoding="utf-8"?>')
+      expect(dutXml).toContain('<DUT Name="E_HeimdallErrorCode"')
+      expect(dutXml).toContain('TYPE E_HeimdallErrorCode :')
+      expect(dutXml).toContain('NONE := 0')
+      expect(dutXml).toContain('E_MOT_01')
+      expect(dutXml).toContain('END_TYPE')
     })
   })
 

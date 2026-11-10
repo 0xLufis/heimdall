@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:fire="http://wixtoolset.org/schemas/v4/wxs/firewall">
+  <Package Name="Heimdall Backend Server"
+           Manufacturer="Heimdall Industrial IoT"
+           Version="1.0.0.0"
+           UpgradeCode="9F5E64B2-7A9B-4D1C-8A3F-9204A8F82C10"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Heimdall Backend Server is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Heimdall Backend">
+        <Component Id="BackendExecutable" Guid="3F8A7D92-1C2B-4E5F-8A90-1B2C3D4E5F6A">
+          <File Id="HeimdallBackendExe" Source="dist\backend\win-x64\heimdall-backend.exe" KeyPath="yes">
+            <fire:FirewallException Id="FW_Backend_5001" Name="Heimdall Backend API" Port="5001" Protocol="tcp" Scope="any" IgnoreFailure="yes" />
+            <fire:FirewallException Id="FW_Backend_5099" Name="Heimdall Backend SignalR" Port="5099" Protocol="tcp" Scope="any" IgnoreFailure="yes" />
+          </File>
+
+          <!-- Windows Service Installation -->
+          <ServiceInstall Id="ServiceInstaller"
+                          Type="ownProcess"
+                          Name="HeimdallBackend"
+                          DisplayName="Heimdall Industrial IoT Backend"
+                          Description="Core server API and telemetry coordinator for Heimdall IoT."
+                          Start="auto"
+                          Account="LocalSystem"
+                          ErrorControl="normal" />
+
+          <ServiceControl Id="StartService"
+                          Start="install"
+                          Stop="both"
+                          Remove="uninstall"
+                          Name="HeimdallBackend"
+                          Wait="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Standard CommonApplicationData (%ProgramData%\Heimdall) configuration directory -->
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="AppDataHeimdall" Name="Heimdall">
+        <Component Id="ConfigFolderComponent" Guid="A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D">
+          <CreateFolder />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="Heimdall Backend Server" Level="1">
+      <ComponentRef Id="BackendExecutable" />
+      <ComponentRef Id="ConfigFolderComponent" />
+    </Feature>
+  </Package>
+</Wix>

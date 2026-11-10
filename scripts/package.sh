@@ -56,7 +56,7 @@ package_agent_linux() {
     rm -rf "${out_dir}"
     mkdir -p "${out_dir}"
 
-    dotnet publish "${ROOT_DIR}/agent/App.Agent.Daemon/App.Agent.Daemon.csproj" \
+    dotnet publish "${ROOT_DIR}/src/agent/App.Agent.Daemon/App.Agent.Daemon.csproj" \
         -c Release \
         -r linux-x64 \
         --self-contained true \
@@ -92,7 +92,7 @@ package_agent_windows() {
     rm -rf "${out_dir}"
     mkdir -p "${out_dir}"
 
-    dotnet publish "${ROOT_DIR}/agent/App.Agent.Daemon/App.Agent.Daemon.csproj" \
+    dotnet publish "${ROOT_DIR}/src/agent/App.Agent.Daemon/App.Agent.Daemon.csproj" \
         -c Release \
         -r win-x64 \
         --self-contained true \
@@ -135,7 +135,7 @@ package_backend() {
     rm -rf "${out_dir}"
     mkdir -p "${out_dir}"
 
-    dotnet publish "${ROOT_DIR}/backend/App.Backend.Api/App.Backend.Api.csproj" \
+    dotnet publish "${ROOT_DIR}/src/backend/App.Backend.Api/App.Backend.Api.csproj" \
         -c Release \
         -o "${out_dir}" \
         /p:UseAppHost=false
@@ -153,8 +153,8 @@ package_frontend() {
     rm -rf "${out_dir}"
     mkdir -p "${out_dir}"
 
-    (cd "${ROOT_DIR}/frontend/web" && bun run build)
-    cp -r "${ROOT_DIR}/frontend/web/.output" "${out_dir}/"
+    (cd "${ROOT_DIR}/src/frontend/web" && bun run build)
+    cp -r "${ROOT_DIR}/src/frontend/web/.output" "${out_dir}/"
     
     local versioned_archive="${DIST_DIR}/heimdall-frontend-v${VERSION}.tar.gz"
     local unversioned_archive="${DIST_DIR}/heimdall-frontend.tar.gz"

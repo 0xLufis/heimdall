@@ -26,6 +26,37 @@ default:
 # Development Environment
 # ------------------------------------------------------------------------------
 
+# One-command dev setup: verify prerequisites, check ports, initialize DB and seed enterprise dataset
+dev-setup *ARGS:
+    @python3 tools/dev_setup.py {{ARGS}}
+
+# Launch optional pgAdmin 4 portal targeting local PostgreSQL development instance
+pgadmin ACTION="up":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{ACTION}}" in
+        up|start)
+            docker compose --profile pgadmin up -d pgadmin
+            echo "✓ pgAdmin 4 portal online at http://localhost:5050 (admin@heimdall.local / secret)."
+            ;;
+        down|stop)
+            docker compose --profile pgadmin stop pgadmin
+            echo "✓ pgAdmin 4 portal stopped."
+            ;;
+        restart)
+            docker compose --profile pgadmin stop pgadmin
+            sleep 1
+            docker compose --profile pgadmin up -d pgadmin
+            echo "✓ pgAdmin 4 portal restarted at http://localhost:5050."
+            ;;
+        logs)
+            docker compose --profile pgadmin logs -f --tail=50 pgadmin
+            ;;
+        *)
+            echo "Available pgadmin actions: up, down, restart, logs"
+            ;;
+    esac
+
 # Start development stack and launch TUI dashboard (pass --daemon for background)
 dev *ARGS:
     #!/usr/bin/env bash
@@ -145,7 +176,7 @@ start-service TARGET:
             just db-up
             if ! [ -f {{PID_DIR}}/backend.pid ] || ! kill -0 $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null; then
                 echo ">> Starting Backend REST API & gRPC Ingestion..."
-                setsid dotnet watch --project backend/App.Backend.Api run </dev/null > {{LOG_DIR}}/backend.log 2>&1 &
+                setsid dotnet watch --project src/backend/App.Backend.Api run </dev/null > {{LOG_DIR}}/backend.log 2>&1 &
                 echo $! > {{PID_DIR}}/backend.pid
                 ln -sf {{LOG_DIR}}/backend.log /tmp/heimdall-backend.log 2>/dev/null || true
             fi
@@ -153,7 +184,7 @@ start-service TARGET:
         frontend)
             if ! [ -f {{PID_DIR}}/frontend.pid ] || ! kill -0 $(cat {{PID_DIR}}/frontend.pid 2>/dev/null) 2>/dev/null; then
                 echo ">> Starting Nuxt 4 Web Frontend on http://localhost:3000..."
-                setsid bun run --cwd frontend/web dev </dev/null > {{LOG_DIR}}/frontend.log 2>&1 &
+                setsid bun run --cwd src/frontend/web dev </dev/null > {{LOG_DIR}}/frontend.log 2>&1 &
                 echo $! > {{PID_DIR}}/frontend.pid
                 ln -sf {{LOG_DIR}}/frontend.log /tmp/heimdall-nuxt.log 2>/dev/null || true
             fi
@@ -161,7 +192,7 @@ start-service TARGET:
         agent)
             if ! [ -f {{PID_DIR}}/agent.pid ] || ! kill -0 $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null; then
                 echo ">> Starting Host Linux Edge Agent Daemon..."
-                setsid dotnet watch --project agent/App.Agent.Daemon run </dev/null > {{LOG_DIR}}/agent.log 2>&1 &
+                setsid dotnet watch --project src/agent/App.Agent.Daemon run </dev/null > {{LOG_DIR}}/agent.log 2>&1 &
                 echo $! > {{PID_DIR}}/agent.pid
                 ln -sf {{LOG_DIR}}/agent.log /tmp/heimdall-agent.log 2>/dev/null || true
             fi
@@ -212,6 +243,7 @@ stop-service TARGET:
                 kill $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null || true
                 rm -f {{PID_DIR}}/backend.pid
             fi
+            pkill -f "dotnet watch.*src/backend/App.Backend.Api" 2>/dev/null || true
             pkill -f "dotnet watch.*backend/App.Backend.Api" 2>/dev/null || true
             pkill -f "App.Backend.Api" 2>/dev/null || true
             if command -v fuser >/dev/null 2>&1; then
@@ -237,6 +269,7 @@ stop-service TARGET:
                 kill $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null || true
                 rm -f {{PID_DIR}}/agent.pid
             fi
+            pkill -f "dotnet watch.*src/agent/App.Agent.Daemon" 2>/dev/null || true
             pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
             pkill -f "App.Agent.Daemon" 2>/dev/null || true
             if command -v fuser >/dev/null 2>&1; then
@@ -352,7 +385,7 @@ windows-build:
     set -euo pipefail
     echo ">> Publishing Windows Agent binary (win-x64, self-contained)..."
     mkdir -p {{SHARED_WIN_AGENT_DIR}}
-    dotnet publish agent/App.Agent.Daemon/App.Agent.Daemon.csproj \
+    dotnet publish src/agent/App.Agent.Daemon/App.Agent.Daemon.csproj \
         -r win-x64 \
         -c Release \
         --self-contained true \
@@ -398,11 +431,38 @@ db-seed:
     set -euo pipefail
     just db-up
     echo ">> Validating & applying seed data pipeline..."
-    python3 seed_data/seed_pipeline.py --validate
+    python3 seed_data/seed_pipeline.py --generate-all --validate
     if docker ps | grep -q "postgres_heimdall"; then
-        docker exec -i postgres_heimdall psql -U postgres -d heimdall_dev_db < seed_data/incremental_seed.sql >/dev/null
+        docker exec -i postgres_heimdall psql -v ON_ERROR_STOP=1 -U postgres -d heimdall_dev_db < seed_data/incremental_seed.sql >/dev/null
         echo "✓ Enterprise dataset (100 machines, 16 orgs, 550 spare parts) applied to heimdall_dev_db."
     fi
+
+# ARGS go to scripts/seed_demo_data.py, e.g. `just demo-seed --reset --unpin-conflicts` (see seed_data/demo/README.md)
+# Load the story-driven Nordvik NV1 demo dataset into the dev DB (idempotent, dev-only, demo logins)
+demo-seed *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just db-up
+    python3 scripts/seed_demo_data.py --with-logins {{ARGS}}
+
+# Validate the demo dataset offline (JSON, references, enums, SQL plan) and against the dev DB (rolled back)
+demo-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    python3 scripts/seed_demo_data.py --dry-run >/dev/null
+    if docker ps --format '{{{{.Names}}' | grep -qx "postgres_heimdall"; then
+        python3 scripts/seed_demo_data.py --check
+    else
+        echo "postgres_heimdall not running - offline validation only."
+    fi
+
+# Register the demo Lua scripts and replay demo telemetry into the running backend (repeat after each backend restart)
+demo-runtime:
+    @python3 scripts/seed_demo_data.py --skip-db --push-runtime
+
+# Remove all demo rows (ids de30de30-* / demo-*) from the dev database and reload them
+demo-reset *ARGS:
+    @python3 scripts/seed_demo_data.py --reset --with-logins {{ARGS}}
 
 # Seed staging database with the exact same enterprise seed data
 db-staging-seed:
@@ -410,7 +470,7 @@ db-staging-seed:
     set -euo pipefail
     just db-up
     echo ">> Seeding staging database (heimdall_staging_db) with enterprise seed data..."
-    python3 seed_data/seed_pipeline.py --validate
+    python3 seed_data/seed_pipeline.py --generate-all --validate
     if docker ps | grep -q "postgres_heimdall"; then
         docker exec postgres_heimdall psql -U postgres -c "CREATE DATABASE heimdall_staging_db TEMPLATE heimdall_dev_db OWNER ef_admin;" 2>/dev/null || true
         docker exec -i postgres_heimdall psql -U postgres -d heimdall_staging_db < seed_data/incremental_seed.sql >/dev/null
@@ -556,14 +616,26 @@ test-backend:
 # Run frontend unit tests (Vitest)
 test-frontend:
     @echo ">> Running Frontend Test Suite (Vitest)..."
-    @(cd frontend/web && bun run test)
+    @(cd src/frontend/web && bun run test)
 
 # Validate seed data pipeline and referential integrity
 test-seed:
     @echo ">> Validating Seed Data Pipeline & Referential Integrity..."
     @python3 seed_data/seed_pipeline.py --validate
+    @python3 scripts/seed_demo_data.py --dry-run >/dev/null && echo "✓ Demo dataset (seed_data/demo) valid"
 
 # Run edge fleet simulator smoke test
 test-smoke:
     @echo ">> Running Fleet Simulator Smoke Test..."
     @python3 simulators/fleet/fleet_simulator.py --smoke-test --count 5 || echo "Note: Smoke test requires active local gRPC service on port 5001."
+
+# Build mobile PWA production assets
+mobile-build:
+    @echo ">> Building Mobile PWA Production Assets..."
+    @(cd src/frontend/web && npm run build)
+
+# Package release Android APK via containerized build environment
+mobile-apk:
+    @echo ">> Packaging Android APK via Containerized Build..."
+    @docker build -t heimdall-android-builder -f deployment/android/Dockerfile.android-build .
+

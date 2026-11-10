@@ -55,7 +55,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: src/backend/Dockerfile
     container_name: heimdall_staging_backend
     hostname: backend
     ports:
@@ -87,7 +87,7 @@ services:
   # 4. Nuxt 4 Web Frontend & Nitro BFF (Staging Production Build: No Dev Features, Only Debug)
   frontend:
     build:
-      context: ./frontend/web
+      context: ./src/frontend/web
       dockerfile: Dockerfile
     container_name: heimdall_staging_frontend
     hostname: frontend
@@ -119,7 +119,7 @@ services:
   agent:
     build:
       context: .
-      dockerfile: agent/Dockerfile
+      dockerfile: src/agent/Dockerfile
     container_name: heimdall_staging_agent
     hostname: EDGE-AGENT-STAGING
     profiles:

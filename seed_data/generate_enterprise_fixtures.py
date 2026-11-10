@@ -20,7 +20,7 @@ def generate_fixtures():
         "plantName": "Smart Factory Giga-01 (AI Synthetic Facility)",
         "plantCode": "SF-GIGA-01",
         "domain": "fake-factory.internal",
-        "entraTenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+        "entraTenantId": "00000000-de70-4e1d-8000-00000000c0de",
         "createdAt": "2026-09-12T00:00:00Z",
         "description": "Canonical enterprise dataset for 100 automated stations across 8 lines, 56 IPC controllers with TwinCAT & MES, and 60 fake AI-generated users."
     }

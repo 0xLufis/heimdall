@@ -1,0 +1,314 @@
+import { createError } from 'h3'
+
+export interface AdCandidateHost {
+  hostname: string
+  name: string
+  ipAddress: string
+  macAddress: string
+  osVersion: string
+  machineIdentifier: string
+  alreadyImported?: boolean
+}
+
+export interface AdOuGovernance {
+  ouPath: string
+  accessLevel: 'read_write' | 'read_only' | 'unapproved'
+  isApproved: boolean
+  approvedBy?: string
+  approvedAt?: string
+  notes?: string
+}
+
+export interface AdOrganizationalUnit {
+  ouPath: string
+  name: string
+  vlanId: number
+  vlanName: string
+  subnet: string
+  location: string
+  purpose: string
+  machineType: string
+  hostCount: number
+  candidateHosts: AdCandidateHost[]
+  accessLevel?: 'read_write' | 'read_only' | 'unapproved'
+  isApproved?: boolean
+  approvedBy?: string
+  approvedAt?: string
+  approvalNotes?: string
+}
+
+export interface TagTemplateRule {
+  keyTemplate: string
+  valueTemplate: string
+}
+
+export interface AdImportPreviewRequest {
+  selectedOuPaths?: string[]
+  namingPattern?: string
+  tagTemplates?: Record<string, string>
+  tagRules?: TagTemplateRule[]
+}
+
+export interface AdHostPreviewItem {
+  hostname: string
+  name: string
+  macAddress: string
+  ipAddress: string
+  machineIdentifier: string
+  osVersion: string
+  vlanId: number
+  vlanName: string
+  subnet: string
+  adOuPath: string
+  ouTags: Record<string, string>
+}
+
+export interface AdHostImportRequest {
+  hosts: AdHostPreviewItem[]
+}
+
+import { getPlantActiveDirectoryOUs, getPlantClientPcs } from './datasetLoader'
+import { ensureBetterAuthProfile } from './authProfiles'
+
+function buildActiveDirectoryOus(): AdOrganizationalUnit[] {
+  try {
+    const rawOus = getPlantActiveDirectoryOUs()
+    const allPcs = getPlantClientPcs()
+    return rawOus.map(ou => ({
+      ouPath: ou.ouPath,
+      name: ou.name,
+      vlanId: ou.vlanId,
+      vlanName: ou.vlanName,
+      subnet: ou.subnet,
+      location: ou.location,
+      purpose: ou.purpose,
+      machineType: ou.machineType,
+      hostCount: ou.candidateHostnames.length,
+      candidateHosts: ou.candidateHostnames.map(hn => {
+        const pc = allPcs.find(p => p.hostname === hn)
+        return {
+          hostname: hn,
+          name: pc?.name || hn,
+          ipAddress: pc?.ipAddress || '10.0.0.1',
+          macAddress: pc?.macAddress || '00:00:00:00:00:00',
+          osVersion: pc?.osVersion || 'Windows 10 IoT Enterprise',
+          machineIdentifier: pc?.machineIdentifier || `HW-${hn}`,
+          alreadyImported: false
+        }
+      })
+    }))
+  } catch (err) {
+    console.warn('[activeDirectoryStore] Error loading from datasetLoader, returning empty fallback:', err)
+    return []
+  }
+}
+
+const AD_OUS: AdOrganizationalUnit[] = buildActiveDirectoryOus()
+const ouGovernanceMap = new Map<string, AdOuGovernance>()
+
+for (const ou of AD_OUS) {
+  ouGovernanceMap.set(ou.ouPath.toLowerCase(), {
+    ouPath: ou.ouPath,
+    accessLevel: 'read_write',
+    isApproved: true,
+    approvedBy: 'usr-itsiteadmin-1',
+    approvedAt: new Date().toISOString(),
+    notes: 'Default IT Admin automated approval'
+  })
+}
+
+const DEMO_OUS = [
+  'OU=Robotics,OU=VLAN10-Production,DC=factory,DC=corp',
+  'OU=Fastening,OU=VLAN50-Joining,DC=factory,DC=corp',
+  'OU=AOI-Vision,OU=VLAN20-Inspection,DC=factory,DC=corp',
+  'OU=Milling,OU=VLAN30-Machining,DC=factory,DC=corp',
+  'OU=Dispensing,OU=VLAN40-Chemical,DC=factory,DC=corp',
+]
+
+for (const p of DEMO_OUS) {
+  ouGovernanceMap.set(p.toLowerCase(), {
+    ouPath: p,
+    accessLevel: 'read_write',
+    isApproved: true,
+    approvedBy: 'usr-itsiteadmin-1',
+    approvedAt: new Date().toISOString(),
+    notes: 'Default IT Admin automated approval'
+  })
+}
+
+export function getOuGovernances(): AdOuGovernance[] {
+  return Array.from(ouGovernanceMap.values())
+}
+
+export function setOuGovernance(
+  ouPath: string,
+  accessLevel: 'read_write' | 'read_only' | 'unapproved',
+  approvedBy: string = 'usr-itsiteadmin-1',
+  notes?: string
+): AdOuGovernance {
+  const isApproved = accessLevel !== 'unapproved'
+  const record: AdOuGovernance = {
+    ouPath,
+    accessLevel,
+    isApproved,
+    approvedBy,
+    approvedAt: new Date().toISOString(),
+    notes
+  }
+  ouGovernanceMap.set(ouPath.toLowerCase(), record)
+  // Guarantee approver has a registered Better-Auth user profile
+  ensureBetterAuthProfile(approvedBy, { role: 'it_admin' }).catch(() => {})
+  return record
+}
+
+export function getActiveDirectoryOus(): AdOrganizationalUnit[] {
+  const list: AdOrganizationalUnit[] = JSON.parse(JSON.stringify(AD_OUS))
+  return list.map(ou => {
+    const gov = ouGovernanceMap.get(ou.ouPath.toLowerCase())
+    return {
+      ...ou,
+      accessLevel: gov?.accessLevel || 'unapproved',
+      isApproved: gov?.isApproved || false,
+      approvedBy: gov?.approvedBy,
+      approvedAt: gov?.approvedAt,
+      approvalNotes: gov?.notes
+    }
+  })
+}
+
+function extractOuTokens(ouPath: string): string[] {
+  const matches = ouPath.match(/OU=([^,]+)/g) || []
+  return matches.map(m => m.replace('OU=', ''))
+}
+
+export function resolvePattern(
+  pattern: string,
+  host: AdCandidateHost,
+  ou: AdOrganizationalUnit,
+): string {
+  const ouTokens = extractOuTokens(ou.ouPath)
+  let result = pattern
+    .replace(/{HOSTNAME}/g, host.hostname)
+    .replace(/{NAME}/g, host.name)
+    .replace(/{IP}/g, host.ipAddress)
+    .replace(/{MAC}/g, host.macAddress)
+    .replace(/{VLAN_ID}/g, String(ou.vlanId))
+    .replace(/{VLAN_NAME}/g, ou.vlanName)
+    .replace(/{SUBNET}/g, ou.subnet)
+    .replace(/{LOCATION}/g, ou.location)
+    .replace(/{PURPOSE}/g, ou.purpose)
+    .replace(/{MACHINE_TYPE}/g, ou.machineType)
+
+  for (let i = 0; i < ouTokens.length; i++) {
+    result = result.replace(new RegExp(`\\{OU\\[${i}\\]\\}`, 'g'), ouTokens[i])
+  }
+
+  return result
+}
+
+export function previewAdImport(request: AdImportPreviewRequest): {
+  totalFound: number
+  selectedOusCount: number
+  preview: AdHostPreviewItem[]
+} {
+  const allOus = AD_OUS
+  const selectedOus =
+    request.selectedOuPaths && request.selectedOuPaths.length > 0
+      ? allOus.filter(ou => request.selectedOuPaths!.includes(ou.ouPath))
+      : allOus
+
+  const tagTemplates = request.tagTemplates || {
+    location: '{LOCATION}',
+    purpose: '{PURPOSE}',
+    machine_type: '{MACHINE_TYPE}',
+    vlan: 'VLAN-{VLAN_ID}',
+  }
+
+  const preview: AdHostPreviewItem[] = []
+
+  for (const ou of selectedOus) {
+    for (const host of ou.candidateHosts) {
+      const ouTags: Record<string, string> = {}
+      if (request.tagRules && request.tagRules.length > 0) {
+        for (const rule of request.tagRules) {
+          if (!rule.keyTemplate) continue
+          const key = resolvePattern(rule.keyTemplate, host, ou)
+          const val = resolvePattern(rule.valueTemplate || '', host, ou)
+          if (key) {
+            ouTags[key] = val
+          }
+        }
+      } else {
+        for (const [tagKey, pattern] of Object.entries(tagTemplates)) {
+          ouTags[tagKey] = resolvePattern(pattern, host, ou)
+        }
+      }
+
+      preview.push({
+        hostname: host.hostname,
+        name: resolvePattern(request.namingPattern || '{NAME}', host, ou),
+        macAddress: host.macAddress,
+        ipAddress: host.ipAddress,
+        machineIdentifier: host.machineIdentifier,
+        osVersion: host.osVersion,
+        vlanId: ou.vlanId,
+        vlanName: ou.vlanName,
+        subnet: ou.subnet,
+        adOuPath: ou.ouPath,
+        ouTags,
+      })
+    }
+  }
+
+  return {
+    totalFound: preview.length,
+    selectedOusCount: selectedOus.length,
+    preview,
+  }
+}
+
+// In-memory imported hosts store for BFF fallback
+const importedHostsList: AdHostPreviewItem[] = []
+
+export function commitImportedHosts(hosts: AdHostPreviewItem[]): {
+  importedCount: number
+  updatedCount: number
+  totalProcessed: number
+} {
+  // Enforce IT Admin read_write approval check
+  for (const h of hosts) {
+    if (h.adOuPath) {
+      const gov = ouGovernanceMap.get(h.adOuPath.toLowerCase())
+      if (!gov || !gov.isApproved || gov.accessLevel !== 'read_write') {
+        throw createError({
+          statusCode: 403,
+          statusMessage: `Active Directory Organizational Unit '${h.adOuPath}' is not approved for Read/Write in Heimdall. Approval by an IT Administrator is required.`
+        })
+      }
+    }
+  }
+
+  let importedCount = 0
+  let updatedCount = 0
+
+  for (const h of hosts) {
+    const idx = importedHostsList.findIndex(x => x.macAddress === h.macAddress || x.hostname === h.hostname)
+    if (idx >= 0) {
+      importedHostsList[idx] = { ...h }
+      updatedCount++
+    } else {
+      importedHostsList.push({ ...h })
+      importedCount++
+    }
+  }
+
+  return {
+    importedCount,
+    updatedCount,
+    totalProcessed: hosts.length,
+  }
+}
+
+export function getImportedAdHosts(): AdHostPreviewItem[] {
+  return [...importedHostsList]
+}

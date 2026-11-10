@@ -6,20 +6,20 @@ import {
   getTemplatesByGroup,
   getTemplateById,
   applyTemplate
-} from '../../../frontend/web/app/utils/errorTemplateEngine'
+} from '../../../src/frontend/web/app/utils/errorTemplateEngine'
 import {
   resolvePreferredTechnician
-} from '../../../frontend/web/app/utils/technicianInheritance'
+} from '../../../src/frontend/web/app/utils/technicianInheritance'
 import {
   generateQrUri,
   parseQrUri
-} from '../../../frontend/web/app/utils/qrActionGenerator'
+} from '../../../src/frontend/web/app/utils/qrActionGenerator'
 import {
   getAllGroups,
   getAllMachineIdsInGroup,
   createGroup,
   deleteGroup
-} from '../../../frontend/web/server/utils/machineGroupsStore'
+} from '../../../src/frontend/web/server/utils/machineGroupsStore'
 import {
   getAllRules,
   createRule,
@@ -29,13 +29,13 @@ import {
   getTeamsOooStatuses,
   toggleSimulatedOoo,
   isPersonAvailable
-} from '../../../frontend/web/server/utils/technicianRulesStore'
+} from '../../../src/frontend/web/server/utils/technicianRulesStore'
 import {
   updateTicketStatus,
   addAttachmentToTicket,
   findTicketById,
   addTicketToStore
-} from '../../../frontend/web/server/utils/ticketsStore'
+} from '../../../src/frontend/web/server/utils/ticketsStore'
 
 describe('Maintenance Full Incident Lifecycle Suite', () => {
 
@@ -53,7 +53,7 @@ describe('Maintenance Full Incident Lifecycle Suite', () => {
       expect(eMot?.category).toBe('Error')
       expect(eMot?.errorGroup).toBe('Motion & Drive')
       expect(eMot?.errorCode).toBe('E-MOT-01')
-      expect(eMot?.targetKanbanState).toBe('InProgress')
+      expect(eMot?.targetKanbanState).toBe('Open')
       expect(eMot?.defaultTags).toContain('#Motion')
 
       const eSafe = getTemplateById('E-SAFE-01')
@@ -63,7 +63,7 @@ describe('Maintenance Full Incident Lifecycle Suite', () => {
       expect(eNet?.targetKanbanState).toBe('Open')
 
       const pCal = getTemplateById('P-CAL-01')
-      expect(pCal?.targetKanbanState).toBe('Pending')
+      expect(pCal?.targetKanbanState).toBe('Open')
     })
 
     it('filters templates by category and error group', () => {

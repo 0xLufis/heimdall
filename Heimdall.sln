@@ -5,21 +5,23 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{A88C8534-859A-4054-9B0F-DF3171B6DB31}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Shared", "shared\App.Shared\App.Shared.csproj", "{B4085D78-30B7-41D3-973B-5DA0460932E3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Shared", "src\shared\App.Shared\App.Shared.csproj", "{B4085D78-30B7-41D3-973B-5DA0460932E3}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{8B295A96-BA15-4FE3-B192-3E0878D9AC6C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Backend.Api", "backend\App.Backend.Api\App.Backend.Api.csproj", "{30E59D26-A325-453C-A585-F0F50C8BAFE6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Backend.Api", "src\backend\App.Backend.Api\App.Backend.Api.csproj", "{30E59D26-A325-453C-A585-F0F50C8BAFE6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Infrastructure", "backend\App.Infrastructure\App.Infrastructure.csproj", "{669AF5F8-D66F-4919-B7BA-0C9066385BDB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Infrastructure", "src\backend\App.Infrastructure\App.Infrastructure.csproj", "{669AF5F8-D66F-4919-B7BA-0C9066385BDB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "agent", "agent", "{EB4B5C6C-D949-4B30-A515-7EB18A01AFE1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Agent.Daemon", "agent\App.Agent.Daemon\App.Agent.Daemon.csproj", "{7AD1C2A4-B317-4ACB-9475-CD74FC1AC397}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Agent.Daemon", "src\agent\App.Agent.Daemon\App.Agent.Daemon.csproj", "{7AD1C2A4-B317-4ACB-9475-CD74FC1AC397}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Backend.Tests", "tests\backend\App.Backend.Tests\App.Backend.Tests.csproj", "{41A091C2-E46C-4461-B6B4-909E852E36A9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Contracts", "shared\App.Contracts\App.Contracts.csproj", "{41F22D15-0611-40A2-98B4-A4F1D7E54D6B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Contracts", "src\shared\App.Contracts\App.Contracts.csproj", "{41F22D15-0611-40A2-98B4-A4F1D7E54D6B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Shared.Lua", "src\shared\lua\App.Shared.Lua.csproj", "{8AADF3F0-7E94-4049-86AD-DEE629379632}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -103,6 +105,18 @@ Global
 		{41F22D15-0611-40A2-98B4-A4F1D7E54D6B}.Release|x64.Build.0 = Release|Any CPU
 		{41F22D15-0611-40A2-98B4-A4F1D7E54D6B}.Release|x86.ActiveCfg = Release|Any CPU
 		{41F22D15-0611-40A2-98B4-A4F1D7E54D6B}.Release|x86.Build.0 = Release|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Debug|x64.Build.0 = Debug|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Debug|x86.Build.0 = Debug|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Release|x64.ActiveCfg = Release|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Release|x64.Build.0 = Release|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Release|x86.ActiveCfg = Release|Any CPU
+		{8AADF3F0-7E94-4049-86AD-DEE629379632}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -113,5 +127,6 @@ Global
 		{669AF5F8-D66F-4919-B7BA-0C9066385BDB} = {8B295A96-BA15-4FE3-B192-3E0878D9AC6C}
 		{7AD1C2A4-B317-4ACB-9475-CD74FC1AC397} = {EB4B5C6C-D949-4B30-A515-7EB18A01AFE1}
 		{41F22D15-0611-40A2-98B4-A4F1D7E54D6B} = {A88C8534-859A-4054-9B0F-DF3171B6DB31}
+		{8AADF3F0-7E94-4049-86AD-DEE629379632} = {A88C8534-859A-4054-9B0F-DF3171B6DB31}
 	EndGlobalSection
 EndGlobal

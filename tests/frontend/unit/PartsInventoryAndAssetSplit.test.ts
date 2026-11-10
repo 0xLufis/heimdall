@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { partsInventoryStore, convertCurrency, LIVE_EXCHANGE_RATES } from '../../../frontend/web/server/utils/partsInventoryStore'
-import type { PartUsageCostCenter } from '../../../frontend/web/app/types/inventory'
+import { partsInventoryStore, convertCurrency, LIVE_EXCHANGE_RATES } from '../../../src/frontend/web/server/utils/partsInventoryStore'
+import type { PartUsageCostCenter } from '../../../src/frontend/web/app/types/inventory'
 
 describe('Parts Inventory and Asset Split (docs/TODO/inventory.TODO.md)', () => {
   beforeEach(() => {
@@ -573,6 +573,184 @@ Hope this helps! Let me know if you need further details.
       expect(updated.minQuantityScalar).toBe(1.2)
       expect(updated.effectiveMinQuantity).toBe(6)
       expect(updated.requiredSparesCalculated).toBeGreaterThanOrEqual(6)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // 9. Serialize on Use Functionality (docs/TODO/inventory.TODO.md Section 6)
+  // -------------------------------------------------------------------------
+  describe('Serialize on Use & Machine Linkage', () => {
+    it('converts bulk stock to a discrete serialized unit linked to a machine', () => {
+      // prt-blk-201 is Festo DSBC Cylinder, qty: 8
+      const bulkPart = partsInventoryStore.getPartByIdOrIdentifier('prt-blk-201')!
+      const initialQty = bulkPart.quantity
+      const actor = { id: 'usr-tech-1', name: 'Zoltán Kiss' }
+
+      const result = partsInventoryStore.serializeOnUse(
+        bulkPart.id,
+        {
+          machineId: 'mch-press-01',
+          machineName: 'Line 1 OP10 Stamping Press',
+          serialNumber: 'FST-SN-998822',
+          costCenter: { prodLine: 'Line 1' },
+          wbsElement: 'WBS-HU-2026-AUT-441'
+        },
+        actor
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.bulkPart.quantity).toBe(initialQty - 1)
+      expect(result.serializedPart.trackingType).toBe('serialized')
+      expect(result.serializedPart.quantity).toBe(1)
+      expect(result.serializedPart.isMachineLinked).toBe(true)
+      expect(result.serializedPart.linkedMachineId).toBe('mch-press-01')
+      expect(result.serializedPart.serialNumber).toBe('FST-SN-998822')
+      expect(result.serializedPart.condition).toBe('used')
+      expect(result.serializedPart.operationalState).toBe('working')
+
+      // Check audit record
+      expect(result.auditRecord.action).toBe('serialize_on_use')
+      expect(result.auditRecord.actorName).toBe('Zoltán Kiss')
+      expect(result.auditRecord.wbsElement).toBe('WBS-HU-2026-AUT-441')
+    })
+
+    it('allows serialization with documented text justification when machine is not indexed', () => {
+      const bulkPart = partsInventoryStore.getPartByIdOrIdentifier('prt-blk-201')!
+      const actor = { id: 'usr-tech-1', name: 'Zoltán Kiss' }
+
+      const result = partsInventoryStore.serializeOnUse(
+        bulkPart.id,
+        {
+          justification: 'Allocated to Offline Tooling Calibration Bench 4B'
+        },
+        actor
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.serializedPart.trackingType).toBe('serialized')
+      expect(result.serializedPart.location).toContain('Offline Tooling Calibration Bench 4B')
+    })
+
+    it('throws validation error when neither machineId nor justification is provided', () => {
+      const bulkPart = partsInventoryStore.getPartByIdOrIdentifier('prt-blk-201')!
+      const actor = { id: 'usr-tech-1', name: 'Zoltán Kiss' }
+
+      expect(() => {
+        partsInventoryStore.serializeOnUse(
+          bulkPart.id,
+          {
+            machineId: '',
+            justification: ''
+          },
+          actor
+        )
+      }).toThrow(/Mandatory linkage required/)
+    })
+
+    it('throws error when attempting to serialize an already serialized unit', () => {
+      const serializedPart = partsInventoryStore.getPartByIdOrIdentifier('IPC-1001')!
+      const actor = { id: 'usr-tech-1', name: 'Zoltán Kiss' }
+
+      expect(() => {
+        partsInventoryStore.serializeOnUse(
+          serializedPart.id,
+          { machineId: 'mch-press-01' },
+          actor
+        )
+      }).toThrow(/already a serialized unit/)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // 10. Post-Intake Part Editing & Field Indexing (docs/TODO/inventory.TODO.md Section 7)
+  // -------------------------------------------------------------------------
+  describe('Post-Intake Part Editing & Autocomplete Indexing', () => {
+    it('allows editing part metadata post-intake and appends audit log', () => {
+      const part = partsInventoryStore.getPartByIdOrIdentifier('IPC-1001')!
+      const actor = { id: 'usr-mgr-1', name: 'Bence Nagy' }
+
+      const updated = partsInventoryStore.editPart(
+        part.id,
+        {
+          location: 'Warehouse Central / Rack 9 / Bin 4',
+          wearDepreciationPercentage: 25,
+          tags: ['critical', 'beckhoff', 'ipc']
+        },
+        actor
+      )
+
+      expect(updated.location).toBe('Warehouse Central / Rack 9 / Bin 4')
+      expect(updated.wearDepreciationPercentage).toBe(25)
+      expect(updated.tags).toContain('critical')
+
+      const logs = partsInventoryStore.getAuditLog(part.id)
+      expect(logs[0].action).toBe('relocate')
+      expect(logs[0].actorName).toBe('Bence Nagy')
+    })
+
+    it('auto-indexes manufacturers, suppliers, categories, locations, and machines', () => {
+      const indexed = partsInventoryStore.getIndexedFields()
+
+      expect(indexed.manufacturers.length).toBeGreaterThan(0)
+      expect(indexed.suppliers.length).toBeGreaterThan(0)
+      expect(indexed.categories.length).toBeGreaterThan(0)
+      expect(indexed.locations.length).toBeGreaterThan(0)
+      expect(indexed.machines.length).toBeGreaterThan(0)
+      expect(indexed.manufacturers).toContain('Beckhoff Automation')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // 11. End-to-End Lifecycle State Machine (docs/TODO/inventory.TODO.md Section 8)
+  // -------------------------------------------------------------------------
+  describe('Part Lifecycle State Machine Transitions', () => {
+    it('transitions through in_machine, removed_from_machine, donor, and scrap states', () => {
+      const part = partsInventoryStore.getPartByIdOrIdentifier('IPC-1001')!
+      const actor = { id: 'usr-tech-2', name: 'András Horváth' }
+
+      // 1. Transition to in_machine
+      const step1 = partsInventoryStore.transitionLifecycle(
+        part.id,
+        'in_machine',
+        { machineId: 'mch-cnc-01', machineName: 'OP10 CNC Milling Cell' },
+        actor
+      )
+      expect(step1.part.isMachineLinked).toBe(true)
+      expect(step1.part.linkedMachineId).toBe('mch-cnc-01')
+      expect(step1.part.condition).toBe('used')
+      expect(step1.part.operationalState).toBe('working')
+
+      // 2. Transition to removed_from_machine
+      const step2 = partsInventoryStore.transitionLifecycle(
+        part.id,
+        'removed_from_machine',
+        {},
+        actor
+      )
+      expect(step2.part.isMachineLinked).toBe(false)
+      expect(step2.part.linkedMachineId).toBeUndefined()
+      expect(step2.part.operationalState).toBe('evaluation')
+
+      // 3. Transition to donor
+      const step3 = partsInventoryStore.transitionLifecycle(
+        part.id,
+        'donor',
+        {},
+        actor
+      )
+      expect(step3.part.condition).toBe('donor')
+
+      // 4. Transition to scrap
+      const step4 = partsInventoryStore.transitionLifecycle(
+        part.id,
+        'scrap',
+        {},
+        actor
+      )
+      expect(step4.part.condition).toBe('scrap')
+      expect(step4.part.operationalState).toBe('broken')
+      expect(step4.part.quantity).toBe(0)
+      expect(step4.part.stockAlertStatus).toBe('out_of_stock')
     })
   })
 })

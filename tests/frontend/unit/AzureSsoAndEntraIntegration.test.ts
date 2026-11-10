@@ -31,7 +31,7 @@ describe('Microsoft Entra ID (Azure SSO) Integration Suite', () => {
 
       const config = getAzureSsoConfig()
       expect(config.isConfigured).toBe(false)
-      expect(config.tenantId).toBe('72f988bf-86f1-41af-91ab-2d7cd011db47')
+      expect(config.tenantId).toBe('00000000-de70-4e1d-8000-00000000c0de')
       expect(config.clientId).toBeUndefined()
       expect(config.clientSecret).toBeUndefined()
     })
@@ -106,7 +106,7 @@ describe('Microsoft Entra ID (Azure SSO) Integration Suite', () => {
       expect(statusPayload.provider).toBe('microsoft')
       expect(statusPayload.providerName).toContain('Microsoft Entra ID')
       expect(statusPayload.allowMockSimulation).toBe(true)
-      expect(statusPayload.tenantId).toBe('72f988bf-86f1-41af-91ab-2d7cd011db47')
+      expect(statusPayload.tenantId).toBe('00000000-de70-4e1d-8000-00000000c0de')
     })
 
     it('disables mock simulation in production environment', () => {
@@ -203,7 +203,7 @@ describe('Microsoft Entra ID (Azure SSO) Integration Suite', () => {
       const plantUsers = getPlantUsers()
       const metadata = getPlantMetadata()
 
-      expect(metadata.entraTenantId).toBe('72f988bf-86f1-41af-91ab-2d7cd011db47')
+      expect(metadata.entraTenantId).toBe('00000000-de70-4e1d-8000-00000000c0de')
 
       const requestedEmail = 'synthetica.botman.ai@fake-factory.internal'
       const matched = plantUsers.find(u => u.email.toLowerCase() === requestedEmail)

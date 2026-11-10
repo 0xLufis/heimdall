@@ -34,7 +34,9 @@ public class FakeAssetRepository : IAssetRepository
     public Task<List<BaseInventoryItem>> GetPartsAsync() => Task.FromResult(Items.ToList());
     public Task<List<BaseInventoryItem>> GetStockAsync() => Task.FromResult(Items.ToList());
     public Task<StationComponentTreeDto?> GetStationComponentTreeAsync(Guid stationId) => Task.FromResult<StationComponentTreeDto?>(null);
+    public Task<StationComponentTreeDto?> GetStationComponentTreeAsync(string stationIdentifier) => Task.FromResult<StationComponentTreeDto?>(null);
     public Task<InventoryFilterResultDto> FilterInventoryAsync(InventoryFilterRequest request, CancellationToken cancellationToken = default) => Task.FromResult(new InventoryFilterResultDto());
+    public Task<BaseInventoryItem?> UpdateAsync(BaseInventoryItem item) => Task.FromResult<BaseInventoryItem?>(item);
 }
 
 public class FakeMaintenanceTicketRepository : IMaintenanceTicketRepository
@@ -53,10 +55,13 @@ public class FakeMaintenanceTicketRepository : IMaintenanceTicketRepository
     public Task<MaintenanceTicket?> SetPendingAsync(Guid id, App.Contracts.Enums.PendingReason reason, string? details) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<MaintenanceTicket?> ReserveAsync(Guid id, string technician) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<MaintenanceTicket?> QrPickupAsync(Guid id, string technician) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> AutoCloseAsync(Guid id, string actor, string reason, string? resolutionNotes = null) => Task.FromResult<MaintenanceTicket?>(null);
+    public Task<MaintenanceTicket?> RetractAsync(Guid id, string retractedBy, string reason) => Task.FromResult<MaintenanceTicket?>(null);
     public Task<bool> DeleteAsync(Guid id) => Task.FromResult(true);
     public Task<int> GetPendingAlertsCountAsync(TimeSpan timeSpan) => Task.FromResult(Tickets.Count(t => t.Status == "Open"));
     public Task<List<AgentEvent>> GetRecentAgentEventsAsync(int count) => Task.FromResult(new List<AgentEvent>());
 }
+
 
 public class FakeMemoryCacheService : ICacheService
 {
@@ -110,95 +115,74 @@ public class PredictiveMaintenanceAndAnalyticsTests
         Assert.Equal(1030.0, outlier.Value);
     }
 
-    [Fact]
-    public void CalculateHealthIndex_DeductsForAnomaliesAndClampsWithinBounds()
-    {
-        var service = new PredictiveMaintenanceService(
-            new FakeAssetRepository(),
+    private static PredictiveMaintenanceService CreateService(
+        FakeAssetRepository? assets = null,
+        FakeMaintenanceTicketRepository? tickets = null,
+        FakeMemoryCacheService? cache = null) =>
+        new(assets ?? new FakeAssetRepository(),
             new FakeControllerRepository(),
-            new FakeMaintenanceTicketRepository(),
-            new FakeMemoryCacheService(),
+            tickets ?? new FakeMaintenanceTicketRepository(),
+            cache ?? new FakeMemoryCacheService(),
             NullLogger<PredictiveMaintenanceService>.Instance);
 
-        double healthy = service.CalculateHealthIndex("m-healthy", 0, 0);
-        Assert.InRange(healthy, 80.0, 100.0);
+    [Fact]
+    public void CalculateHealthIndex_IsDerivedOnlyFromCountsAndClamped()
+    {
+        var service = CreateService();
 
-        double degraded = service.CalculateHealthIndex("m-degraded", 4, 3);
-        Assert.True(degraded < healthy);
-        Assert.InRange(degraded, 15.0, 80.0);
-
-        // Extreme stress testing clamping
-        double extreme = service.CalculateHealthIndex("m-broken", 20, 10);
-        Assert.Equal(15.0, extreme); // Clamped at 15% floor
+        Assert.Equal(100.0, service.CalculateHealthIndex("a", 0, 0));
+        // Identical inputs give identical results regardless of the machine id (no hash noise).
+        Assert.Equal(service.CalculateHealthIndex("m-1", 2, 1), service.CalculateHealthIndex("m-2", 2, 1));
+        Assert.Equal(100.0 - 2 * 6.5 - 12.0, service.CalculateHealthIndex("m-1", 2, 1));
+        Assert.Equal(0.0, service.CalculateHealthIndex("m-broken", 20, 10));
     }
 
     [Fact]
-    public void GetMachineTrends_GeneratesNominalTolerancesAndPoints()
+    public async Task GetMachineTrends_WithoutTelemetryHistory_ReturnsEmptySeriesWithCatalogLimits()
     {
-        var service = new PredictiveMaintenanceService(
-            new FakeAssetRepository(),
-            new FakeControllerRepository(),
-            new FakeMaintenanceTicketRepository(),
-            new FakeMemoryCacheService(),
-            NullLogger<PredictiveMaintenanceService>.Instance);
+        var service = CreateService();
 
-        var trends = service.GetMachineTrends("m-op20", "temperature", TimeSpan.FromHours(8));
+        var trends = await service.GetMachineTrendsAsync("m-op20", "temperature", TimeSpan.FromHours(8));
 
         Assert.Equal("m-op20", trends.MachineId);
         Assert.Equal("°C", trends.Unit);
         Assert.Equal(48.5, trends.NominalValue);
-        Assert.Equal(65.0, trends.UpperTolerance);
-        Assert.Equal(25.0, trends.LowerTolerance);
-        Assert.NotEmpty(trends.Points);
-        Assert.NotEmpty(trends.DetectedAnomalies);
+        Assert.Empty(trends.Points);
+        Assert.Empty(trends.DetectedAnomalies);
+        Assert.Null(trends.RecipeForecast);
+        Assert.Empty(trends.AvailableRecipes);
     }
 
     [Fact]
-    public void GetLineKpis_CalculatesValidOeeAndLineBreakdowns()
+    public async Task GetLineKpis_WithoutMachines_ReturnsEmpty()
     {
-        var service = new PredictiveMaintenanceService(
-            new FakeAssetRepository(),
-            new FakeControllerRepository(),
-            new FakeMaintenanceTicketRepository(),
-            new FakeMemoryCacheService(),
-            NullLogger<PredictiveMaintenanceService>.Instance);
-
-        var kpis = service.GetLineKpis();
-
-        Assert.Equal(8, kpis.Count);
-        foreach (var line in kpis)
-        {
-            Assert.InRange(line.Oee, 80.0, 99.0);
-            Assert.InRange(line.Availability, 90.0, 100.0);
-            Assert.InRange(line.Performance, 85.0, 100.0);
-            Assert.InRange(line.Quality, 95.0, 100.0);
-            Assert.True(line.MtbfHours > 200);
-            Assert.True(line.MttrMinutes > 15);
-        }
+        Assert.Empty(await CreateService().GetLineKpisAsync());
     }
 
     [Fact]
-    public async Task AnalyticsController_EndpointsReturnSuccess()
+    public async Task AnalyticsController_WithNoStoredData_ReturnsEmptyOrNullInsteadOfDemoData()
     {
-        var service = new PredictiveMaintenanceService(
-            new FakeAssetRepository(),
-            new FakeControllerRepository(),
-            new FakeMaintenanceTicketRepository(),
-            new FakeMemoryCacheService(),
-            NullLogger<PredictiveMaintenanceService>.Instance);
+        var service = CreateService();
+        var controller = new AnalyticsController(service, new ConfigurationBuilder().Build(), NullLogger<AnalyticsController>.Instance);
 
-        var config = new ConfigurationBuilder().Build();
-        var controller = new AnalyticsController(service, config, NullLogger<AnalyticsController>.Instance);
-
-        var fleetResult = await controller.GetFleetSummary(default);
-        var okFleet = Assert.IsType<OkObjectResult>(fleetResult.Result);
+        var okFleet = Assert.IsType<OkObjectResult>((await controller.GetFleetSummary(default)).Result);
         var fleetDto = Assert.IsType<FleetSummaryDto>(okFleet.Value);
-        Assert.True(fleetDto.AvailabilityPercentage > 90);
-        Assert.NotEmpty(fleetDto.TopFaultingMachines);
+        Assert.Equal(0, fleetDto.TotalMachines);
+        Assert.Null(fleetDto.AvailabilityPercentage);
+        Assert.Null(fleetDto.AverageMtbfHours);
+        Assert.Null(fleetDto.AverageMttrMinutes);
+        Assert.Null(fleetDto.SlaCompliancePercentage);
+        Assert.Empty(fleetDto.TopFaultingMachines);
+        Assert.Empty(fleetDto.StockDepletion);
+        Assert.Equal(0, fleetDto.MaintenanceBacklog.Under24Hours + fleetDto.MaintenanceBacklog.OneToThreeDays + fleetDto.MaintenanceBacklog.OverThreeDays);
 
-        var trendsResult = controller.GetMachineTrends("m-op10", "vibration", "1h");
-        var okTrends = Assert.IsType<OkObjectResult>(trendsResult.Result);
-        var trendsDto = Assert.IsType<MachineTrendSeriesDto>(okTrends.Value);
-        Assert.Equal("m-op10", trendsDto.MachineId);
+        var okTrends = Assert.IsType<OkObjectResult>((await controller.GetMachineTrends("m-op10", "vibration", "1h")).Result);
+        Assert.Empty(Assert.IsType<MachineTrendSeriesDto>(okTrends.Value).Points);
+
+        var okLines = Assert.IsType<OkObjectResult>((await controller.GetLineKpis()).Result);
+        Assert.Empty(Assert.IsType<List<LineKpiDto>>(okLines.Value));
+
+        var okStations = Assert.IsType<OkObjectResult>((await controller.GetStationKpis()).Result);
+        Assert.Empty(Assert.IsType<List<StationKpiDto>>(okStations.Value));
     }
 }

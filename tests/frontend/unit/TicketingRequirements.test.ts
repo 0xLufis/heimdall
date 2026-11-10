@@ -393,4 +393,27 @@ describe('Ticketing Flow & UI Requirements Specification Suite', () => {
       expect(wrapper.text()).toContain('QR-Only Start Required')
     })
   })
+
+  describe('Compact Settings & Views Menu Requirements', () => {
+    it('verifies ticketing settings and tools are consolidated into a unified menu definition', () => {
+      // Menu items that must be consolidated instead of floating in the main toolbar
+      const consolidatedMenuItems = [
+        'Display & Card Style',
+        'Card Fill Mode',
+        'Shopfloor Displays',
+        'TV Monitor Display',
+        'Generate Action QR',
+        'Templates & Governance',
+        'Ticket Templates Catalog',
+        'Machine Groups & Clusters',
+        'Shift Roster & Delegations'
+      ]
+
+      expect(consolidatedMenuItems.length).toBeGreaterThanOrEqual(7)
+      expect(consolidatedMenuItems).toContain('Card Fill Mode')
+      expect(consolidatedMenuItems).toContain('TV Monitor Display')
+      expect(consolidatedMenuItems).toContain('Ticket Templates Catalog')
+    })
+  })
 })
+

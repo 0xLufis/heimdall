@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { ref } from 'vue'
-import { useHeimdallSearch } from '../../../frontend/web/app/composables/useHeimdallSearch'
+import { useHeimdallSearch } from '../../../src/frontend/web/app/composables/useHeimdallSearch'
 import { 
   resolveSearchTemplate, 
   machineTemplate, 
@@ -8,14 +8,14 @@ import {
   inventoryTemplate, 
   userTemplate, 
   telemetryTemplate 
-} from '../../../frontend/web/app/utils/search/searchTemplates'
+} from '../../../src/frontend/web/app/utils/search/searchTemplates'
 import { 
   harvestDynamicKeyValues, 
   BASELINE_KNOWN_KEY_VALUES, 
   type RankedIndexingTable 
-} from '../../../frontend/web/app/utils/search/indexingTables'
-import { calculateFuzzyScore, isFuzzyMatch, rankByFuzzyScore } from '../../../frontend/web/app/utils/search/fuzzy'
-import { SearchDiagnosticsService } from '../../../frontend/web/app/utils/search/searchDiagnostics'
+} from '../../../src/frontend/web/app/utils/search/indexingTables'
+import { calculateFuzzyScore, isFuzzyMatch, rankByFuzzyScore } from '../../../src/frontend/web/app/utils/search/fuzzy'
+import { SearchDiagnosticsService } from '../../../src/frontend/web/app/utils/search/searchDiagnostics'
 
 describe('Parameterized useHeimdallSearch & GDPR Diagnostics Suite', () => {
   describe('Named Templates & Protobuf Schema Normalization', () => {

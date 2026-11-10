@@ -43,35 +43,47 @@ describe('IMaintenanceService & Provider Architecture', () => {
   })
 
   it('implements IMaintenanceService contract in RestFallbackMaintenanceProvider', async () => {
-    const provider: IMaintenanceService = new RestFallbackMaintenanceProvider()
-    const tickets = await provider.getTickets()
+    const provider = new RestFallbackMaintenanceProvider()
+    try {
+      const tickets = await provider.getTickets()
 
-    expect(tickets.length).toBe(2)
-    expect(tickets[0].id).toBe('tkt-1')
-    expect(tickets[0].priority).toBe('Critical')
+      expect(tickets.length).toBe(2)
+      expect(tickets[0].id).toBe('tkt-1')
+      expect(tickets[0].priority).toBe('Critical')
+    } finally {
+      provider.destroy()
+    }
   })
 
   it('creates maintenance ticket using provider interface', async () => {
-    const provider: IMaintenanceService = new RestFallbackMaintenanceProvider()
-    const created = await provider.createTicket({
-      title: 'Conveyor Jam',
-      priority: 'High',
-      stationId: 'OP40'
-    })
+    const provider = new RestFallbackMaintenanceProvider()
+    try {
+      const created = await provider.createTicket({
+        title: 'Conveyor Jam',
+        priority: 'High',
+        stationId: 'OP40'
+      })
 
-    expect(created.id).toBe('tkt-new-1')
-    expect(created.title).toBe('Conveyor Jam')
-    expect(created.status).toBe('Open')
+      expect(created.id).toBe('tkt-new-1')
+      expect(created.title).toBe('Conveyor Jam')
+      expect(created.status).toBe('Open')
+    } finally {
+      provider.destroy()
+    }
   })
 
   it('calculates metrics from live ticket data', async () => {
-    const provider: IMaintenanceService = new RestFallbackMaintenanceProvider()
-    const metrics = await provider.getMetrics()
+    const provider = new RestFallbackMaintenanceProvider()
+    try {
+      const metrics = await provider.getMetrics()
 
-    expect(metrics.totalTickets).toBe(2)
-    expect(metrics.openCount).toBe(1)
-    expect(metrics.inProgressCount).toBe(1)
-    expect(metrics.criticalCount).toBe(1)
+      expect(metrics.totalTickets).toBe(2)
+      expect(metrics.openCount).toBe(1)
+      expect(metrics.inProgressCount).toBe(1)
+      expect(metrics.criticalCount).toBe(1)
+    } finally {
+      provider.destroy()
+    }
   })
 
   it('supports pluggable ExternalEnterpriseMaintenanceAdapter', async () => {

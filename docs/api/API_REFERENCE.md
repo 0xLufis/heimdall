@@ -183,8 +183,98 @@ Updates status, priority, or technician assignment.
 * **Request Body**:
 ```json
 {
-  "status": "In_Progress",
-  "assignedTo": "user_2ab48a53"
+  "status": "InProgress",
+  "assignedTo": "Gábor Varga"
+}
+```
+
+#### `POST /api/v1/tickets/{id}/escalate`
+Escalates an incident orthogonally without modifying its Kanban status.
+* **Request Body**:
+```json
+{
+  "reason": "Spindle harmonic resonance critical risk — OEM specialist notified",
+  "escalatedBy": "Gábor Varga (Lead Tech)",
+  "handoverState": "Notification",
+  "target": "DedicatedEngineer"
+}
+```
+
+#### `POST /api/v1/tickets/{id}/de-escalate` (or `/deescalate`)
+Closes an escalation independently of the ticket lifecycle.
+* **Request Body**:
+```json
+{
+  "resolvedBy": "Senior Plant Manager",
+  "resolutionNotes": "OEM specialist reviewed telemetry. Clearance granted."
+}
+```
+
+#### `PATCH /api/v1/tickets/{id}/pending`
+Transitions ticket into `Pending` status with typed sub-reasons (`Parts`, `ExternalOk`, `Action`).
+* **Request Body**:
+```json
+{
+  "pendingReason": "Parts",
+  "pendingDetails": "Requisition PO #88219 ordered for replacement servo amplifier."
+}
+```
+
+#### `POST /api/v1/tickets/{id}/reserve`
+Reserves a ticket for a technician before commencing physical work.
+* **Request Body**:
+```json
+{
+  "technician": "Gábor Varga"
+}
+```
+
+#### `POST /api/v1/tickets/{id}/qr-pickup`
+Directly picks up a ticket at the physical machine via action QR scan, timestamping reaction time.
+* **Request Body**:
+```json
+{
+  "technician": "Gábor Varga"
+}
+```
+
+#### `POST /api/v1/tickets/{id}/auto-close`
+Automatically transitions an active ticket to `Closed` when a machine PLC or watchdog condition clears.
+* **Request Body**:
+```json
+{
+  "machineId": "STATION-OP10-01",
+  "controllerId": "ctrl-101",
+  "clearedReason": "Vibration harmonic envelope normalized (< 1.8 mm/s RMS)",
+  "resolutionNotes": "Self-cleared by edge daemon watchdog rule."
+}
+```
+
+#### `POST /api/v1/tickets/{id}/retract`
+Retracts a ticket directly from the workstation kiosk view.
+* **Request Body**:
+```json
+{
+  "retractedBy": "Kiosk Operator OP10",
+  "reason": "False alarm; workpiece realignment cleared sensor fault"
+}
+```
+
+#### `GET /api/v1/tickets/stoppage-stats`
+Aggregates weekly line stoppage downtime, departmental stoppage minutes, and top worst downtime machines.
+* **Response `200 OK`**:
+```json
+{
+  "totalStoppageMinutesThisWeek": 720.0,
+  "totalLineStopIncidents": 4,
+  "departmentBreakdown": [
+    { "department": "Motion & Drive", "stoppageMinutes": 360.0, "incidentCount": 2 },
+    { "department": "Mechanical", "stoppageMinutes": 240.0, "incidentCount": 1 },
+    { "department": "Robotics", "stoppageMinutes": 120.0, "incidentCount": 1 }
+  ],
+  "topWorstMachines": [
+    { "machineName": "Line 05 – Powertrain Sub-Assembly", "totalStoppageMinutes": 360.0, "incidentCount": 1 }
+  ]
 }
 ```
 
@@ -196,6 +286,7 @@ Appends a technician note or resolution observation.
   "content": "Lubrication replenished. Thermographic camera shows temperature drop to 54C."
 }
 ```
+
 
 ---
 
@@ -415,7 +506,127 @@ Returns high-level plant operational metrics (cached in L1 memory for 30 seconds
 
 ---
 
-### 1.7 Copia Automation Git Webhook (`/api/v1/integrations/copia/webhook`)
+### 1.9 Predictive Maintenance & Telemetry Analytics (`/api/v1/analytics`)
+
+Provides statistical Z-score anomaly detection, line and station-level OEE and Yield aggregations, and spatial floor plan telemetry feeds.
+
+All analytics endpoints require authentication and are tenant-scoped through the EF Core organization filter
+(`TenantScopeMiddleware`). Every value is computed from stored data; a value without a data source is `null`
+and a collection without data is `[]` — no demo values are returned.
+
+**Data sources**
+* Station production telemetry: PLC ADS blocks ingested over MQTT (`TelemetryIngestionService.ProcessPlcMemoryAsync`)
+  whose `structured_value` carries recognised station fields (e.g. `fVibrationRms`, `nPartsProduced`, `nScrapParts`,
+  `Availability`, `Performance`, `eState`). The block is attributed to the station bound to the sending IPC
+  (`StationControllers`; with several bound stations the block's `StationId`/`MachineId` metadata selects one). The merged
+  snapshot is kept in the distributed cache (`telemetry:station:{machineId}`, 24 h retention).
+* Tickets: `MaintenanceTickets` (incident counts, MTTR, MTBF, SLA). The backend SLA rule is *open Critical ticket older than 12 h*.
+* Trend series: the in-process Lua telemetry buffer fed by ingestion (last 200 samples per station metric).
+
+#### `GET /api/v1/analytics/station-kpis`
+One entry per visible machine. Production fields are `null` until the station's PLC reports them; ticket fields come from
+open maintenance tickets bound to the machine.
+* **Query Parameters**:
+  * `lineId` (`string`, optional): Line machine-group id or line name.
+  * `stationId` (`string`, optional): Machine id, floor-plan handle or custom identifier (exact match).
+* **Response `200 OK`**:
+```json
+[
+  {
+    "stationId": "6f0c2f7e-3a52-4f1c-9d55-1f4e2b9a0c11",
+    "handle": "3B4F",
+    "name": "L01-OP030",
+    "lineId": "a1d6c5f0-8a0e-4c1e-b0b3-9b3cf2d1e7aa",
+    "lineName": "Line 1 - Pre-Assembly",
+    "oee": 70.56,
+    "availability": 90.0,
+    "performance": 80.0,
+    "quality": 98.0,
+    "yield": 98.0,
+    "partsPerHour": 142.0,
+    "targetPartsPerHour": null,
+    "cycleTimeSeconds": 25.4,
+    "targetCycleTimeSeconds": null,
+    "totalPartsProduced": 1000,
+    "scrapParts": 20,
+    "operationalStatus": "RUNNING",
+    "activeTicketCount": 1,
+    "criticalTicketCount": 0,
+    "hasSlaBreach": false,
+    "lastTelemetryAt": "2026-11-09T10:00:00+00:00"
+  }
+]
+```
+`operationalStatus` is the PLC-reported state (`RUNNING`, `IDLE`, `WARNING`, `FAULTED`, `MAINTENANCE`), `MAINTENANCE` for machines
+whose status is `maintenance`, otherwise `UNKNOWN`. `yield` = (parts − scrap) / parts; `quality` falls back to `yield`;
+`oee` falls back to A × P × Q when all three are known. Returns `[]` when the caller sees no machines.
+
+Live updates for the same stations are pushed on `/hubs/maintenance` (see *Real-time events* below).
+
+#### `GET /api/v1/analytics/kpis`
+Line KPIs grouped by each machine's line group (lines without machines are omitted; `[]` without data).
+* `incidentCount`: tickets on the line's machines in the last 30 days.
+* `mttrMinutes`: mean `ResolvedAt − CreatedAt` of those tickets; `null` without resolved tickets.
+* `mtbfHours`: observed mean gap between consecutive incidents per machine (machines with ≥ 2 incidents); `null` otherwise.
+* `oee`, `availability`, `performance`, `quality`: mean over the line's stations reporting telemetry; `null` if none do.
+```json
+[
+  {
+    "lineId": "a1d6c5f0-8a0e-4c1e-b0b3-9b3cf2d1e7aa",
+    "lineName": "Line 1 - Pre-Assembly",
+    "oee": null,
+    "availability": null,
+    "performance": null,
+    "quality": null,
+    "mtbfHours": 24.0,
+    "mttrMinutes": 45.0,
+    "incidentCount": 3
+  }
+]
+```
+
+#### `GET /api/v1/analytics/trends`
+Telemetry points for one station metric from the ingested history, with Z-score anomalies, linear regression, moving
+averages and standard-deviation corridors. `points` is empty when nothing was ingested (or the machine is not visible to the caller).
+* **Query Parameters**:
+  * `machineId` (`string`): Machine id, custom identifier or name.
+  * `metric` (`string`, default: `cycle_time`): `temperature`, `vibration`, `cycle_time`, or a station metric key
+    (`vibration_mms`, `spindle_rpm`, `power_kw`, `temperature_c`, `cycle_time_ms`, `parts_per_hour`, `oee_pct`, ...).
+  * `range` (`string`, default: `8h`): `1h`, `8h`, `24h`, `7d`.
+  * `recipeId` (`string`, optional): Accepted for compatibility. Recipe forecasting has no data source, so
+    `recipeForecast` is `null` and `availableRecipes` is `[]`.
+* `nominalValue` / `upperTolerance` / `lowerTolerance` are the catalog limits of the metric (configuration, not measurements).
+
+#### `GET /api/v1/analytics/fleet-summary`
+* `totalMachines`: visible machines.
+* `availabilityPercentage`: share of controllers that reported within the last 5 minutes (`null` without controllers).
+* `averageMtbfHours`, `averageMttrMinutes`: as for line KPIs, over all tickets in the 30-day window.
+* `totalMachineHours`, `slaCompliancePercentage`: always `null` (no runtime counters / ticket due dates are stored yet).
+* `topFaultingMachines`: up to 5 machines by incident count (30 days) with reported line-stop downtime (`null` if none
+  reported), most frequent alarm code, and a health index (100 − 12 × open tickets, clamped 0–100).
+* `maintenanceBacklog`, `stockDepletion`: from open tickets and stock items at or below their minimum threshold.
+
+#### Real-time events (`/hubs/maintenance`)
+Connections are placed in groups by the server from the caller's claims: organization members join `org:{OrgId}`,
+platform administrators join `platform-admins`, callers without an organization join nothing. The hub has no
+client-invokable methods. Every server-side event is sent to the owning organization's group plus `platform-admins`;
+events for entities without an organization go to `platform-admins` only.
+
+| Event | Arguments | Source |
+| :--- | :--- | :--- |
+| `TicketCreated` / `TicketUpdated` / `TicketDeleted` / `StatusChanged` | ticket / id | Ticket controller |
+| `InventoryUpdated`, `TelemetryReceived` | IPC system info | MQTT system-info ingestion |
+| `PlcMemoryReceived` | PLC block summary | MQTT ADS ingestion |
+| `StationOscillationReceived` | `stationId`, `StationOscillationBroadcastDto` | ADS block with dynamics fields (vibration, rpm, power, temperature, cycle time, frequency) |
+| `StationTelemetryReceived` | `stationId`, `StationTelemetryBroadcastDto` | ADS block with production fields (merged snapshot values) |
+
+Station payloads carry `stationId` (machine id), `handle` (floor-plan handle) and only reported values; unreported
+fields are `null` and clients keep their previous value. `timestamp` is Unix epoch milliseconds of the PLC sample.
+Ingested station metrics are also fed to Lua `TelemetryChange` scripts (`ILuaAutomationService.EvaluateTelemetryChangeAsync`).
+
+---
+
+### 1.10 Copia Automation Git Webhook (`/api/v1/integrations/copia/webhook`)
 
 Receives automated Git commit notifications when PLC control logic or TwinCAT projects are pushed to Copia Automation repositories.
 * **Headers**: `X-Copia-Signature: sha256=...`
@@ -765,4 +976,94 @@ Installs and signs a plugin package bundle for edge distribution. Validates and 
   "status": "SignedAndQueued"
 }
 ```
+
+---
+
+## 7. Enterprise Notifications & Unified Audit Logging API
+
+The notification subsystem provides real-time in-app alerts, browser notifications, optimistic state rollback records, and comprehensive multi-entity audit event tracking.
+
+### 7.1 Notification Endpoints (`/api/notifications`)
+
+#### `GET /api/notifications`
+Retrieves in-app notifications for the active user session or system broadcast events.
+* **Query Parameters**:
+  * `unreadOnly` (`boolean`, default: `false`): Filter only unread notifications.
+  * `limit` (`int`, default: `50`, max: `100`): Maximum entries returned.
+* **Response `200 OK`**:
+```json
+{
+  "notifications": [
+    {
+      "id": "notif-001",
+      "title": "Spindle Vibration Harmonic Warning",
+      "message": "Machine STATION-OP10-01 exceeded harmonic vibration envelope threshold (4.5 mm/s RMS).",
+      "type": "critical",
+      "timestamp": "2026-10-04T19:45:00Z",
+      "read": false,
+      "source": "machine",
+      "link": "/dashboard/machines"
+    }
+  ],
+  "total": 1,
+  "unreadCount": 1
+}
+```
+
+#### `POST /api/notifications`
+Dispatches a new notification to the active user or system broadcast channel.
+* **Request Body**:
+```json
+{
+  "title": "Ticket Escalated to Field",
+  "message": "Ticket TKT-20260928-0001 escalated to Gábor Varga for toolholder inspection.",
+  "type": "warning",
+  "source": "ticket",
+  "link": "/dashboard/tickets"
+}
+```
+* **Response `200 OK`**: `{"success": true, "notification": { ... }}`
+
+#### `PATCH /api/notifications/{id}/read`
+Marks an individual notification as read.
+* **Response `200 OK`**: `{"success": true, "notification": { ... }}`
+
+#### `POST /api/notifications/mark-all-read`
+Marks all notifications as read for the active user.
+* **Response `200 OK`**: `{"success": true, "count": 3}`
+
+### 7.2 Unified Audit Trail (`/api/analytics/audit-logs`)
+
+#### `GET /api/analytics/audit-logs`
+Returns the consolidated cryptographic audit trail of all administrative and machine operations across the plant floor.
+* **Query Parameters**:
+  * `entityType` (`string`, default: `'all'`): Filter by entity (`Ticket`, `Machine`, `InventoryItem`, `SystemPolicy`, `SecurityGroup`, `ClientPc`).
+  * `query` (`string`, optional): Case-insensitive search query across summary, actor, entity ID, and action.
+  * `limit` (`int`, default: `50`, max: `100`): Maximum entries returned.
+* **Response `200 OK`**:
+```json
+{
+  "total": 42,
+  "entries": [
+    {
+      "id": "aud-esc-tkt-001",
+      "timestamp": "2026-10-04T19:30:00Z",
+      "action": "ESCALATION",
+      "entityType": "Ticket",
+      "entityId": "tkt-001",
+      "entityName": "TKT-20260928-0001",
+      "userId": "usr-tech-01",
+      "userName": "Gábor Varga (Lead Tech)",
+      "summary": "Escalated ticket TKT-20260928-0001 to DedicatedEngineer (HandOff): Spindle harmonic resonance critical risk",
+      "severity": "warning",
+      "details": {
+        "handoverState": "HandOff",
+        "target": "DedicatedEngineer",
+        "reason": "Spindle harmonic resonance critical risk"
+      }
+    }
+  ]
+}
+```
+
 
