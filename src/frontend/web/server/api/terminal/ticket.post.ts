@@ -1,4 +1,5 @@
 import { defineEventHandler, readBody, getHeader, createError } from 'h3'
+import { requireTerminalAuth } from '../../utils/terminalAuth'
 import { addTicketToStore, MaintenanceTicket } from '../../utils/ticketsStore'
 import { machinesStore } from '../../utils/machinesStore'
 
@@ -11,28 +12,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Workstation Authentication
-  const tokenFromHeader = getHeader(event, 'x-terminal-token') || getHeader(event, 'x-workstation-token')
-  const clientCertThumbprint = getHeader(event, 'x-client-cert-thumbprint') || getHeader(event, 'x-client-cert')
-  const authHeader = getHeader(event, 'authorization')
-  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined
-  const tokenFromBody = body.token as string | undefined
-
-  const effectiveToken = tokenFromHeader || bearerToken || tokenFromBody
-  const isMockAuth = body.mock_auth === true || effectiveToken === 'test-token' || effectiveToken === 'kiosk-token-op10'
-
-  const isAuthenticated = Boolean(
-    isMockAuth ||
-    clientCertThumbprint ||
-    (effectiveToken && effectiveToken.trim().length >= 4)
-  )
-
-  if (!isAuthenticated) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Workstation terminal authentication required to submit maintenance tickets.'
-    })
-  }
+  // Workstation Authentication (registered token, trusted mTLS thumbprint, or operator session)
+  await requireTerminalAuth(event, typeof body.token === 'string' ? body.token : undefined)
 
   // Mandatory fields for 2-click issue reporting
   const stationId = body.stationId || body.machineId

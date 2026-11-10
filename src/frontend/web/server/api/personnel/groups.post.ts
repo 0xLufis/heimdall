@@ -1,10 +1,10 @@
-import { defineEventHandler, readBody } from 'h3'
-import { componentsAndDelegationsStore, type PersonnelGroupEntry } from '../../utils/componentsAndDelegationsStore'
+import { defineEventHandler, readBody, createError } from 'h3'
+import { backendFetch } from '../../utils/backendFetch'
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody<Omit<PersonnelGroupEntry, 'id' | 'createdAt'>>(event)
-  if (!body || !body.name) {
-    throw createError({ statusCode: 400, message: 'Group name is required.' })
+  const body = await readBody(event)
+  if (!body?.name) {
+    throw createError({ statusCode: 400, statusMessage: 'Group name is required.' })
   }
-  return componentsAndDelegationsStore.createPersonnelGroup(body)
+  return backendFetch(event, 'delegation/groups', { method: 'POST', body })
 })

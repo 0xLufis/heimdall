@@ -1,33 +1,56 @@
 using App.Backend.Api.Dtos;
 using App.Infrastructure.Repositories;
 using App.Shared.Entities;
+using App.Shared.Lua.Bridge;
 
 namespace App.Backend.Api.Services;
 
 /// <summary>
-/// Service providing predictive maintenance analytics, statistical Z-score anomaly detection,
-/// MTBF/MTTR modeling, and fleet-wide KPI aggregations.
+/// Predictive maintenance analytics computed exclusively from stored data:
+/// <list type="bullet">
+///   <item>Machines, stock and controllers from the (tenant-filtered) repositories.</item>
+///   <item>Maintenance tickets for incident counts, MTTR, MTBF (observed inter-arrival of incidents) and backlog.</item>
+///   <item>Station telemetry snapshots (distributed cache, written by <see cref="TelemetryIngestionService"/>)
+///   for OEE / availability / performance / quality / throughput.</item>
+///   <item>The Lua telemetry ring buffer (<see cref="ILuaPlantDataProvider"/>, fed by ingestion) for trend series.</item>
+/// </list>
+/// Values without a data source are returned as null / empty collections; nothing is synthesized.
 /// </summary>
 public class PredictiveMaintenanceService : IPredictiveMaintenanceService
 {
+    /// <summary>Look-back window for incident-based KPIs (MTTR, MTBF, incident counts, top faulting).</summary>
+    public static readonly TimeSpan IncidentWindow = TimeSpan.FromDays(30);
+
+    /// <summary>
+    /// Backend SLA rule (the only one the backend has; tickets carry no due date): an open
+    /// Critical ticket older than this is breached. Same rule as the fleet backlog's CriticalBreached.
+    /// </summary>
+    public static readonly TimeSpan CriticalSlaWindow = TimeSpan.FromHours(12);
+
     private readonly IAssetRepository _assetRepository;
     private readonly IControllerRepository _controllerRepository;
     private readonly IMaintenanceTicketRepository _ticketRepository;
     private readonly ICacheService _cache;
     private readonly ILogger<PredictiveMaintenanceService> _logger;
+    private readonly IMachineGroupRepository? _groupRepository;
+    private readonly ILuaPlantDataProvider? _telemetryHistory;
 
     public PredictiveMaintenanceService(
         IAssetRepository assetRepository,
         IControllerRepository controllerRepository,
         IMaintenanceTicketRepository ticketRepository,
         ICacheService cache,
-        ILogger<PredictiveMaintenanceService> logger)
+        ILogger<PredictiveMaintenanceService> logger,
+        IMachineGroupRepository? groupRepository = null,
+        ILuaPlantDataProvider? telemetryHistory = null)
     {
         _assetRepository = assetRepository;
         _controllerRepository = controllerRepository;
         _ticketRepository = ticketRepository;
         _cache = cache;
         _logger = logger;
+        _groupRepository = groupRepository;
+        _telemetryHistory = telemetryHistory;
     }
 
     /// <summary>
@@ -71,208 +94,229 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
     }
 
     /// <summary>
-    /// Computes the Remaining Useful Life (RUL) / Health Index (0-100%) for a given machine.
+    /// Heuristic health score (0-100) from real counts: -6.5 per recent anomaly, -12 per open ticket.
     /// </summary>
     public double CalculateHealthIndex(string machineId, int recentAnomalyCount, int openTicketCount)
     {
-        double health = 100.0;
+        double health = 100.0 - Math.Max(0, recentAnomalyCount) * 6.5 - Math.Max(0, openTicketCount) * 12.0;
+        return Math.Clamp(Math.Round(health, 1), 0.0, 100.0);
+    }
 
-        // Deduct based on recent anomalies
-        health -= recentAnomalyCount * 6.5;
+    private static bool IsOpen(MaintenanceTicket t) => t.Status is not ("Closed" or "Resolved");
 
-        // Deduct based on active tickets
-        health -= openTicketCount * 12.0;
+    private static bool IsSlaBreached(MaintenanceTicket t, DateTimeOffset now) =>
+        IsOpen(t) && t.Priority == "Critical" && now - t.CreatedAt > CriticalSlaWindow;
 
-        // Deterministic offset based on machineId hash for stable realism
-        int hashOffset = Math.Abs(machineId.GetHashCode()) % 15;
-        health -= hashOffset;
+    private static string MachineLabel(Machine m) =>
+        m.DisplayName ?? (string.IsNullOrWhiteSpace(m.CustomIdentifier) ? m.Name : m.CustomIdentifier);
 
-        return Math.Clamp(Math.Round(health, 1), 15.0, 100.0);
+    /// <summary>Mean resolution time (minutes) of resolved tickets, null when none were resolved.</summary>
+    private static double? MttrMinutes(IEnumerable<MaintenanceTicket> tickets)
+    {
+        var durations = tickets
+            .Where(t => t.ResolvedAt.HasValue && t.ResolvedAt.Value >= t.CreatedAt)
+            .Select(t => (t.ResolvedAt!.Value - t.CreatedAt).TotalMinutes)
+            .ToList();
+        return durations.Count > 0 ? Math.Round(durations.Average(), 1) : null;
     }
 
     /// <summary>
-    /// Aggregates fleet-wide operational statistics, top-faulting machines, maintenance backlog,
-    /// and stock depletion warnings.
+    /// Observed MTBF (hours): mean gap between consecutive incidents on the same machine, averaged
+    /// over machines with at least two incidents. Null without such machines (no runtime counters exist).
+    /// </summary>
+    private static double? MtbfHours(IEnumerable<MaintenanceTicket> tickets)
+    {
+        var gaps = tickets
+            .Where(t => t.MachineId.HasValue)
+            .GroupBy(t => t.MachineId!.Value)
+            .Select(g => g.Select(t => t.CreatedAt).OrderBy(d => d).ToList())
+            .Where(times => times.Count >= 2)
+            .Select(times => (times[^1] - times[0]).TotalHours / (times.Count - 1))
+            .ToList();
+        return gaps.Count > 0 ? Math.Round(gaps.Average(), 1) : null;
+    }
+
+    private static double? MeanOrNull(IEnumerable<double?> values)
+    {
+        var list = values.Where(v => v.HasValue).Select(v => v!.Value).ToList();
+        return list.Count > 0 ? Math.Round(list.Average(), 1) : null;
+    }
+
+    private async Task<Dictionary<Guid, string>> LoadLineNamesAsync(CancellationToken cancellationToken)
+    {
+        if (_groupRepository == null) return new();
+        try
+        {
+            var groups = await _groupRepository.GetAllAsync(cancellationToken);
+            return groups.GroupBy(g => g.Id).ToDictionary(g => g.Key, g => g.First().Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load machine groups for analytics");
+            return new();
+        }
+    }
+
+    private async Task<StationTelemetrySnapshot?> GetSnapshotAsync(Guid machineId)
+    {
+        try
+        {
+            return await _cache.GetAsync<StationTelemetrySnapshot>(StationTelemetryStore.Key(machineId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read station telemetry snapshot for {Machine}", machineId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Fleet operational statistics. Not cached across requests: the repositories are tenant-scoped,
+    /// so a shared cache entry would leak one organization's summary to another.
     /// </summary>
     public async Task<FleetSummaryDto> GetFleetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        return await _cache.GetOrSetAsync("analytics:fleet-summary", async () =>
+        var machines = await _assetRepository.GetMachinesAsync();
+        var controllers = await _controllerRepository.GetAllAsync();
+        var tickets = await _ticketRepository.GetAllAsync();
+        var stockItems = await _assetRepository.GetStockAsync();
+        var lineNames = await LoadLineNamesAsync(cancellationToken);
+
+        var now = DateTimeOffset.UtcNow;
+        var openTickets = tickets.Where(IsOpen).ToList();
+        var windowTickets = tickets.Where(t => now - t.CreatedAt <= IncidentWindow).ToList();
+
+        // Share of controllers that reported within the last 5 minutes.
+        double? availability = controllers.Count > 0
+            ? Math.Round(controllers.Count(c => c.LastOnline.HasValue && now - c.LastOnline.Value < TimeSpan.FromMinutes(5)) * 100.0 / controllers.Count, 1)
+            : null;
+
+        var backlog = new BacklogAgeDto
         {
-            var machines = await _assetRepository.GetMachinesAsync();
-            var controllers = await _controllerRepository.GetAllAsync();
-            var tickets = await _ticketRepository.GetAllAsync();
-            var stockItems = await _assetRepository.GetStockAsync();
+            Under24Hours = openTickets.Count(t => (now - t.CreatedAt).TotalHours < 24),
+            OneToThreeDays = openTickets.Count(t => (now - t.CreatedAt).TotalHours >= 24 && (now - t.CreatedAt).TotalDays < 3),
+            OverThreeDays = openTickets.Count(t => (now - t.CreatedAt).TotalDays >= 3),
+            CriticalBreached = openTickets.Count(t => IsSlaBreached(t, now))
+        };
 
-            int totalMachines = machines.Count > 0 ? machines.Count : 100;
-            int onlineCount = controllers.Count(c => c.LastOnline.HasValue && (DateTimeOffset.UtcNow - c.LastOnline.Value) < TimeSpan.FromMinutes(5));
-            double availability = totalMachines > 0 ? ((double)(onlineCount > 0 ? onlineCount : 54) / (controllers.Count > 0 ? controllers.Count : 56)) * 100.0 : 96.4;
-
-            // Compute Backlog Age
-            var now = DateTime.UtcNow;
-            var openTickets = tickets.Where(t => t.Status != "Closed" && t.Status != "Resolved").ToList();
-
-            var backlog = new BacklogAgeDto
+        var depletedStock = stockItems
+            .Where(s => s.MinStockThreshold.HasValue && (s.StockQuantity ?? 0) <= s.MinStockThreshold.Value)
+            .Take(5)
+            .Select(s => new StockDepletionItemDto
             {
-                Under24Hours = openTickets.Count(t => (now - t.CreatedAt).TotalHours < 24),
-                OneToThreeDays = openTickets.Count(t => (now - t.CreatedAt).TotalHours >= 24 && (now - t.CreatedAt).TotalDays < 3),
-                OverThreeDays = openTickets.Count(t => (now - t.CreatedAt).TotalDays >= 3),
-                CriticalBreached = openTickets.Count(t => t.Priority == "Critical" && (now - t.CreatedAt).TotalHours > 12)
-            };
+                PartNumber = s.SerialNumber ?? s.Name,
+                Description = s.DisplayName ?? s.Name,
+                CurrentStock = s.StockQuantity ?? 0,
+                MinStockThreshold = s.MinStockThreshold ?? 0,
+                Criticality = (s.StockQuantity ?? 0) == 0 ? "Critical" : "Warning"
+            })
+            .ToList();
 
-            // If empty in dev, inject realistic demo backlog
-            if (openTickets.Count == 0)
+        var machineById = machines.ToDictionary(m => m.Id);
+        var topFaulting = windowTickets
+            .Where(t => t.MachineId.HasValue && machineById.ContainsKey(t.MachineId.Value))
+            .GroupBy(t => t.MachineId!.Value)
+            .OrderByDescending(g => g.Count())
+            .Take(5)
+            .Select(g =>
             {
-                backlog.Under24Hours = 8;
-                backlog.OneToThreeDays = 4;
-                backlog.OverThreeDays = 2;
-                backlog.CriticalBreached = 1;
-            }
-
-            // Stock Depletion
-            var depletedStock = stockItems
-                .Where(s => (s.StockQuantity ?? 0) <= (s.MinStockThreshold ?? 0))
-                .Take(5)
-                .Select(s => new StockDepletionItemDto
+                var m = machineById[g.Key];
+                var downtime = g.Where(t => t.LineStopDurationMinutes.HasValue).Select(t => t.LineStopDurationMinutes!.Value).ToList();
+                return new TopFaultingMachineDto
                 {
-                    PartNumber = s.SerialNumber ?? s.Name ?? "PART-GEN-01",
-                    Description = s.DisplayName ?? s.Name ?? "Stock Component",
-                    CurrentStock = s.StockQuantity ?? 0,
-                    MinStockThreshold = s.MinStockThreshold ?? 0,
-                    Criticality = (s.StockQuantity ?? 0) == 0 ? "Critical" : "Warning"
-                })
-                .ToList();
+                    MachineId = m.Id.ToString(),
+                    Name = MachineLabel(m),
+                    Line = m.LineGroupId.HasValue && lineNames.TryGetValue(m.LineGroupId.Value, out var ln) ? ln : string.Empty,
+                    IncidentCount = g.Count(),
+                    TotalDowntimeMinutes = downtime.Count > 0 ? Math.Round(downtime.Sum(), 1) : null,
+                    PrimaryAlarmCode = g.Where(t => !string.IsNullOrWhiteSpace(t.AlarmCode))
+                        .GroupBy(t => t.AlarmCode!)
+                        .OrderByDescending(a => a.Count())
+                        .Select(a => a.Key)
+                        .FirstOrDefault() ?? string.Empty,
+                    HealthIndex = CalculateHealthIndex(m.Id.ToString(), 0, g.Count(IsOpen))
+                };
+            })
+            .ToList();
 
-            if (depletedStock.Count == 0)
-            {
-                depletedStock.Add(new StockDepletionItemDto { PartNumber = "SEW-DRV-MDX61B", Description = "SEW Movidrive Inverter Module", CurrentStock = 1, MinStockThreshold = 3, Criticality = "Critical" });
-                depletedStock.Add(new StockDepletionItemDto { PartNumber = "BECK-EL2008", Description = "Beckhoff 8-ch Digital Output Slice", CurrentStock = 2, MinStockThreshold = 5, Criticality = "Warning" });
-                depletedStock.Add(new StockDepletionItemDto { PartNumber = "PNOZ-X3-24V", Description = "Pilz Safety Relay 24VDC", CurrentStock = 0, MinStockThreshold = 2, Criticality = "Critical" });
-            }
-
-            // Top-Faulting Machines Ranking
-            var topFaulting = new List<TopFaultingMachineDto>
-            {
-                new() { MachineId = "m-op20", Name = "OP20-Weld Laser Cell", Line = "Line 1 - Pre-Assembly", IncidentCount = 14, TotalDowntimeMinutes = 185, PrimaryAlarmCode = "F-WELD-OPTIC-DIRT", HealthIndex = 68.4 },
-                new() { MachineId = "m-op50", Name = "OP50-Fasten Screwing Station", Line = "Line 2 - Fastening", IncidentCount = 11, TotalDowntimeMinutes = 142, PrimaryAlarmCode = "E-TORQUE-OUT-OF-BOUNDS", HealthIndex = 74.2 },
-                new() { MachineId = "m-op10", Name = "OP10-Dispense Bonding Cell", Line = "Line 4 - Dispensing", IncidentCount = 9, TotalDowntimeMinutes = 98, PrimaryAlarmCode = "W-NOZZLE-PRESSURE-LOW", HealthIndex = 81.0 },
-                new() { MachineId = "m-op30", Name = "OP30-Robotic Weld Station B", Line = "Line 5 - Robotic Welding", IncidentCount = 7, TotalDowntimeMinutes = 84, PrimaryAlarmCode = "F-ROBOT-COLLISION-LIMIT", HealthIndex = 85.5 },
-                new() { MachineId = "m-op80", Name = "OP80-EOL Final High Voltage Test", Line = "Line 7 - Battery EOL", IncidentCount = 5, TotalDowntimeMinutes = 62, PrimaryAlarmCode = "E-HV-ISOLATION-FAULT", HealthIndex = 89.1 }
-            };
-
-            return new FleetSummaryDto
-            {
-                TotalMachineHours = Math.Round(totalMachines * 24.0 * 0.965, 0),
-                AvailabilityPercentage = Math.Round(availability, 1),
-                AverageMtbfHours = 342.5,
-                AverageMttrMinutes = 34.2,
-                SlaCompliancePercentage = 96.8,
-                TopFaultingMachines = topFaulting,
-                MaintenanceBacklog = backlog,
-                StockDepletion = depletedStock
-            };
-        }, TimeSpan.FromSeconds(30));
+        return new FleetSummaryDto
+        {
+            TotalMachines = machines.Count,
+            TotalMachineHours = null,
+            AvailabilityPercentage = availability,
+            AverageMtbfHours = MtbfHours(windowTickets),
+            AverageMttrMinutes = MttrMinutes(windowTickets),
+            SlaCompliancePercentage = null,
+            TopFaultingMachines = topFaulting,
+            MaintenanceBacklog = backlog,
+            StockDepletion = depletedStock
+        };
     }
 
     /// <summary>
-    /// Generates rolling timeseries trends for a target machine and metric with upper/lower limits,
-    /// statistical trend lines (linear regression, moving averages, std dev corridors), and recipe forecasting.
+    /// Catalog limits for the trend metrics (mirrors the BFF telemetry metric catalog). These are
+    /// configured engineering limits, not measurements.
     /// </summary>
-    public MachineTrendSeriesDto GetMachineTrends(string machineId, string metricName, TimeSpan timeRange, string? recipeId = null)
+    private static (string MetricKey, string Label, string Unit, double Nominal, double Upper, double Lower)? ResolveTrendMetric(string metricName)
     {
-        var now = DateTime.UtcNow;
-        int pointCount = timeRange.TotalHours <= 1 ? 30 : (timeRange.TotalHours <= 8 ? 48 : 60);
-        var intervalSeconds = (int)(timeRange.TotalSeconds / pointCount);
-
-        string unit = "ms";
-        double nominal = 1000.0;
-        double upper = 1050.0;
-        double lower = 950.0;
-
-        switch (metricName.ToLower())
+        switch ((metricName ?? string.Empty).ToLowerInvariant())
         {
             case "temperature":
             case "temp":
-                metricName = "Temperature Drift";
-                unit = "°C";
-                nominal = 48.5;
-                upper = 65.0;
-                lower = 25.0;
-                break;
+            case "temperature_c":
+                return ("temperature_c", "Temperature Drift", "°C", 48.5, 65.0, 25.0);
             case "vibration":
-                metricName = "Spindle Vibration Index";
-                unit = "mm/s";
-                nominal = 1.45;
-                upper = 2.80;
-                lower = 0.50;
-                break;
-            case "error_rate":
-            case "error":
-                metricName = "Micro-Fault Frequency";
-                unit = "faults/hr";
-                nominal = 0.4;
-                upper = 2.0;
-                lower = 0.0;
-                break;
+            case "vibration_mms":
+                return ("vibration_mms", "Spindle Vibration Index", "mm/s", 1.45, 2.80, 0.50);
+            case "cycle_time":
+            case "cycle_time_ms":
+                return ("cycle_time_ms", "Cycle Time", "ms", 1200.0, 1280.0, 1120.0);
             default:
-                metricName = "Cycle Time Jitter";
-                unit = "ms";
-                nominal = 1200.0;
-                upper = 1280.0;
-                lower = 1120.0;
-                break;
+                var known = StationTelemetryExtractor.MetricKeys.Values.FirstOrDefault(k => string.Equals(k, metricName, StringComparison.OrdinalIgnoreCase));
+                return known == null ? null : (known, known, string.Empty, 0, 0, 0);
         }
+    }
 
-        var availableRecipes = new List<RecipeItemDto>
+    /// <summary>
+    /// Trend series for a machine metric from the ingested telemetry history (Lua telemetry ring
+    /// buffer, last 200 samples per metric, in-process). Empty when no samples exist. Recipe-based
+    /// forecasting has no data source (recipes carry no tolerance or wear model), so
+    /// <see cref="MachineTrendSeriesDto.RecipeForecast"/> is null and no recipes are offered.
+    /// </summary>
+    public async Task<MachineTrendSeriesDto> GetMachineTrendsAsync(string machineId, string metricName, TimeSpan timeRange, string? recipeId = null, CancellationToken cancellationToken = default)
+    {
+        var metric = ResolveTrendMetric(metricName);
+        var result = new MachineTrendSeriesDto
         {
-            new() { RecipeId = "REC-ALU-01", RecipeName = "Aluminum Lightweight Weld 1.5mm", Description = "High-speed laser stitch welding on 6061-T6 aluminum sheet" },
-            new() { RecipeId = "REC-STL-02", RecipeName = "Structural Steel Bracket Fastening", Description = "Multi-spindle M8 class 10.9 torque-controlled torque-angle fastening" },
-            new() { RecipeId = "REC-COMP-03", RecipeName = "Carbon Composite Adhesive Dispense", Description = "2K structural polyurethane high-precision micro-bead bonding" }
+            MachineId = machineId,
+            MetricName = metric?.Label ?? metricName,
+            Unit = metric?.Unit ?? string.Empty,
+            NominalValue = metric?.Nominal ?? 0,
+            UpperTolerance = metric?.Upper ?? 0,
+            LowerTolerance = metric?.Lower ?? 0
         };
+        if (metric == null || _telemetryHistory == null || string.IsNullOrWhiteSpace(machineId)) return result;
 
-        var selectedRecipe = availableRecipes.FirstOrDefault(r => string.Equals(r.RecipeId, recipeId, StringComparison.OrdinalIgnoreCase))
-                             ?? availableRecipes[0];
+        // Resolve through the tenant-filtered repository so one tenant cannot read another's series.
+        var machines = await _assetRepository.GetMachinesAsync();
+        var machine = machines.FirstOrDefault(m =>
+            string.Equals(m.Id.ToString(), machineId, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(m.CustomIdentifier, machineId, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(m.Name, machineId, StringComparison.OrdinalIgnoreCase));
+        if (machine == null) return result;
 
-        // Adjust nominal & tolerances if recipe is explicitly selected
-        if (selectedRecipe.RecipeId == "REC-ALU-01" && metricName.Contains("Cycle Time"))
-        {
-            nominal = 1160.0;
-            upper = 1240.0;
-            lower = 1080.0;
-        }
-        else if (selectedRecipe.RecipeId == "REC-STL-02" && metricName.Contains("Cycle Time"))
-        {
-            nominal = 1290.0;
-            upper = 1360.0;
-            lower = 1210.0;
-        }
+        var since = DateTimeOffset.UtcNow - timeRange;
+        var history = await _telemetryHistory.GetTelemetryHistoryAsync(machine.Id.ToString(), metric.Value.MetricKey, 200, cancellationToken);
+        var points = history
+            .Where(h => h.Timestamp >= since)
+            .OrderBy(h => h.Timestamp)
+            .Select(h => new TelemetryPointDto { Timestamp = h.Timestamp.UtcDateTime, Value = Math.Round(h.Value, 3) })
+            .ToList();
+        result.Points = points;
+        if (points.Count == 0) return result;
 
-        var rand = new Random(machineId.GetHashCode() ^ metricName.GetHashCode());
-        var points = new List<TelemetryPointDto>();
-
-        for (int i = pointCount; i >= 0; i--)
-        {
-            var timestamp = now.AddSeconds(-i * intervalSeconds);
-            // Noise + slight upward drift
-            double progress = 1.0 - ((double)i / pointCount);
-            double drift = (progress * 0.15 * (upper - nominal));
-            double noise = (rand.NextDouble() - 0.48) * ((upper - nominal) * 0.35);
-            double value = nominal + drift + noise;
-
-            // Inject intentional outlier near recent end for anomaly detection testing
-            if (i == 4)
-            {
-                value = upper + (upper - nominal) * 0.8; // Outlier spike
-            }
-
-            points.Add(new TelemetryPointDto
-            {
-                Timestamp = timestamp,
-                Value = Math.Round(value, 2),
-                IsAnomaly = false,
-                ZScore = 0.0
-            });
-        }
-
+        var nominal = result.NominalValue;
+        metricName = result.MetricName;
         var anomalies = DetectAnomalies(metricName, points);
 
         // Compute rolling statistical trends (Linear Regression, Moving Averages, Std Dev Corridors)
@@ -350,197 +394,121 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
             TrendDirection = direction
         };
 
-        // Compute Recipe-Based Forecast
-        double latestVal = points.Count > 0 ? points[^1].Value : nominal;
-        double driftPct = nominal != 0 ? Math.Round(((latestVal - nominal) / nominal) * 100.0, 2) : 0.0;
-        int cyclesRemaining = 1200;
-        string wearStatus = "Nominal";
-        string action = "Operating within normal recipe tolerance envelope.";
-
-        if (Math.Abs(driftPct) >= 8.0 || Math.Abs(latestVal - nominal) > (upper - nominal) * 0.75)
-        {
-            cyclesRemaining = Math.Max(45, (int)(450 - Math.Abs(driftPct) * 18));
-            wearStatus = "CriticalImpendingFailure";
-            action = "Impending process failure detected: Schedule electrode/tool tip replacement before next shift.";
-        }
-        else if (Math.Abs(driftPct) >= 3.5 || Math.Abs(latestVal - nominal) > (upper - nominal) * 0.45)
-        {
-            cyclesRemaining = Math.Max(250, (int)(850 - Math.Abs(driftPct) * 40));
-            wearStatus = "Warning";
-            action = "Accelerated tool degradation: Inspect calibration and lubrication parameters during scheduled break.";
-        }
-
-        var recipeForecast = new RecipeForecastDto
-        {
-            RecipeId = selectedRecipe.RecipeId,
-            RecipeName = selectedRecipe.RecipeName,
-            TargetBaseline = nominal,
-            UpperTolerance = upper,
-            LowerTolerance = lower,
-            DriftPercentage = driftPct,
-            ForecastCyclesUntilFailure = cyclesRemaining,
-            ToolWearStatus = wearStatus,
-            RecommendedAction = action
-        };
-
-        return new MachineTrendSeriesDto
-        {
-            MachineId = machineId,
-            MetricName = metricName,
-            Unit = unit,
-            NominalValue = nominal,
-            UpperTolerance = upper,
-            LowerTolerance = lower,
-            Points = points,
-            DetectedAnomalies = anomalies,
-            StatisticalTrends = rollingTrends,
-            RecipeForecast = recipeForecast,
-            AvailableRecipes = availableRecipes
-        };
+        result.DetectedAnomalies = anomalies;
+        result.StatisticalTrends = rollingTrends;
+        return result;
     }
 
     /// <summary>
-    /// Generates line-level OEE, Availability, Performance, and Quality metrics.
+    /// Line KPIs grouped by each machine's line group. Incident metrics come from tickets in the
+    /// last <see cref="IncidentWindow"/>; OEE / A / P / Q are the mean over the line's stations that
+    /// report them (null when none do). Lines without machines are not listed.
     /// </summary>
-    public List<LineKpiDto> GetLineKpis()
+    public async Task<List<LineKpiDto>> GetLineKpisAsync(CancellationToken cancellationToken = default)
     {
-        return new List<LineKpiDto>
+        var machines = (await _assetRepository.GetMachinesAsync()).Where(m => m.LineGroupId.HasValue).ToList();
+        if (machines.Count == 0) return new();
+
+        var lineNames = await LoadLineNamesAsync(cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        var tickets = (await _ticketRepository.GetAllAsync())
+            .Where(t => t.MachineId.HasValue && now - t.CreatedAt <= IncidentWindow)
+            .ToList();
+
+        var result = new List<LineKpiDto>();
+        foreach (var line in machines.GroupBy(m => m.LineGroupId!.Value))
         {
-            new() { LineId = "L01", LineName = "Line 1 - Pre-Assembly", Availability = 97.2, Performance = 94.5, Quality = 99.4, Oee = 91.3, MtbfHours = 380, MttrMinutes = 28, IncidentCount = 12 },
-            new() { LineId = "L02", LineName = "Line 2 - Screwing & Fastening", Availability = 95.8, Performance = 92.1, Quality = 98.9, Oee = 87.3, MtbfHours = 310, MttrMinutes = 35, IncidentCount = 18 },
-            new() { LineId = "L03", LineName = "Line 3 - Vision & Optical Quality", Availability = 98.5, Performance = 96.8, Quality = 99.8, Oee = 95.1, MtbfHours = 520, MttrMinutes = 22, IncidentCount = 6 },
-            new() { LineId = "L04", LineName = "Line 4 - Dispensing & Bonding", Availability = 94.2, Performance = 91.5, Quality = 98.2, Oee = 84.6, MtbfHours = 265, MttrMinutes = 42, IncidentCount = 21 },
-            new() { LineId = "L05", LineName = "Line 5 - Robotic Welding Cell", Availability = 96.4, Performance = 93.8, Quality = 99.1, Oee = 89.6, MtbfHours = 340, MttrMinutes = 32, IncidentCount = 14 },
-            new() { LineId = "L06", LineName = "Line 6 - Mechanical Subassembly", Availability = 98.0, Performance = 95.2, Quality = 99.5, Oee = 92.8, MtbfHours = 440, MttrMinutes = 26, IncidentCount = 9 },
-            new() { LineId = "L07", LineName = "Line 7 - High Voltage Battery Pack", Availability = 95.1, Performance = 93.0, Quality = 99.6, Oee = 88.1, MtbfHours = 295, MttrMinutes = 38, IncidentCount = 16 },
-            new() { LineId = "L08", LineName = "Line 8 - Powertrain Cell Integration", Availability = 97.6, Performance = 95.0, Quality = 99.2, Oee = 91.9, MtbfHours = 410, MttrMinutes = 30, IncidentCount = 10 }
-        };
+            var ids = line.Select(m => m.Id).ToHashSet();
+            var lineTickets = tickets.Where(t => ids.Contains(t.MachineId!.Value)).ToList();
+            var snapshots = new List<StationTelemetrySnapshot>();
+            foreach (var m in line)
+            {
+                var snap = await GetSnapshotAsync(m.Id);
+                if (snap != null) snapshots.Add(snap);
+            }
+
+            result.Add(new LineKpiDto
+            {
+                LineId = line.Key.ToString(),
+                LineName = lineNames.TryGetValue(line.Key, out var name) ? name : line.Key.ToString(),
+                Oee = MeanOrNull(snapshots.Select(s => s.EffectiveOee)),
+                Availability = MeanOrNull(snapshots.Select(s => s.Availability)),
+                Performance = MeanOrNull(snapshots.Select(s => s.Performance)),
+                Quality = MeanOrNull(snapshots.Select(s => s.EffectiveQuality)),
+                MtbfHours = MtbfHours(lineTickets),
+                MttrMinutes = MttrMinutes(lineTickets),
+                IncidentCount = lineTickets.Count
+            });
+        }
+        return result.OrderBy(l => l.LineName, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>
-    /// Generates station-level telemetry KPIs for production floor plan overlays (OEE, Yield, Parts/Hour, SLA tickets).
+    /// Station overlays for the plant map: one entry per (tenant-visible) machine. Production
+    /// values come from the station's telemetry snapshot and are null until its PLC reports them;
+    /// ticket counts and SLA breach come from stored maintenance tickets.
     /// </summary>
-    public List<StationKpiDto> GetStationTelemetryKpis(string? lineId = null, string? stationId = null)
+    public async Task<List<StationKpiDto>> GetStationTelemetryKpisAsync(string? lineId = null, string? stationId = null, CancellationToken cancellationToken = default)
     {
-        var lineKpis = GetLineKpis();
-        var results = new List<StationKpiDto>();
+        var machines = await _assetRepository.GetMachinesAsync();
+        if (machines.Count == 0) return new();
 
-        var stationTypeMap = new Dictionary<int, string>
-        {
-            [10] = "Infeed Conveyor",
-            [20] = "CNC Machining Center",
-            [30] = "Dispensing & Bonding Cell",
-            [40] = "Robotic Transfer Cell",
-            [50] = "Automated Screwing Station",
-            [60] = "Laser Welding Cell",
-            [70] = "EOL Test Bench",
-            [80] = "Robot Deburring & Polishing",
-            [90] = "Vision Inspection Cell",
-            [100] = "Secondary Fastening Unit",
-            [110] = "Buffer Conveyor Bed",
-            [120] = "Outfeed Conveyor Bed",
-            [130] = "Packaging & Palletizing Cell"
-        };
+        var lineNames = await LoadLineNamesAsync(cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        var openByMachine = (await _ticketRepository.GetAllAsync())
+            .Where(t => t.MachineId.HasValue && IsOpen(t))
+            .GroupBy(t => t.MachineId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
-        var lineStationCounts = new Dictionary<string, int>
+        var result = new List<StationKpiDto>();
+        foreach (var m in machines)
         {
-            ["L01"] = 12,
-            ["L02"] = 13,
-            ["L03"] = 12,
-            ["L04"] = 12,
-            ["L05"] = 12,
-            ["L06"] = 13,
-            ["L07"] = 13,
-            ["L08"] = 13
-        };
+            var handle = TelemetryIngestionService.StationHandle(m);
+            string? lineName = m.LineGroupId.HasValue && lineNames.TryGetValue(m.LineGroupId.Value, out var ln) ? ln : null;
 
-        foreach (var line in lineKpis)
-        {
-            if (!string.IsNullOrEmpty(lineId) && !string.Equals(line.LineId, lineId, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(lineId) &&
+                !string.Equals(m.LineGroupId?.ToString(), lineId, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(lineName, lineId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            if (!string.IsNullOrWhiteSpace(stationId) &&
+                !string.Equals(m.Id.ToString(), stationId, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(handle, stationId, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(m.CustomIdentifier, stationId, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            int count = lineStationCounts.GetValueOrDefault(line.LineId, 12);
-            for (int op = 1; op <= count; op++)
+            var snap = await GetSnapshotAsync(m.Id);
+            var open = openByMachine.TryGetValue(m.Id, out var list) ? list : new List<MaintenanceTicket>();
+
+            result.Add(new StationKpiDto
             {
-                int opNum = op * 10;
-                string handle = $"{line.LineId}-OP{opNum:D3}";
-
-                if (!string.IsNullOrEmpty(stationId) &&
-                    !string.Equals(handle, stationId, StringComparison.OrdinalIgnoreCase) &&
-                    !stationId.Contains(handle, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                int hash = Math.Abs((handle).GetHashCode());
-                double varA = ((hash % 11) - 5) * 0.4;
-                double varP = (((hash / 11) % 11) - 5) * 0.6;
-                double varQ = (((hash / 121) % 7) - 3) * 0.15;
-
-                double avail = Math.Clamp(Math.Round(line.Availability + varA, 1), 76.0, 99.8);
-                double perf = Math.Clamp(Math.Round(line.Performance + varP, 1), 72.0, 99.6);
-                double qual = Math.Clamp(Math.Round(line.Quality + varQ, 1), 95.0, 99.9);
-                double oee = Math.Round((avail * perf * qual) / 10000.0, 1);
-                double yieldVal = Math.Clamp(Math.Round(qual - 0.2 + ((hash % 5) * 0.08), 1), 94.0, 99.9);
-
-                double partsPerHour = Math.Round(142.0 * (perf / 94.0), 0);
-                double targetPartsPerHour = 150.0;
-                double cycleTimeSec = partsPerHour > 0 ? Math.Round(3600.0 / partsPerHour, 1) : 0.0;
-                double targetCycleTimeSec = 24.0;
-
-                int produced = 1000 + (hash % 500);
-                int scrap = Math.Max(0, (int)Math.Round(produced * (1.0 - yieldVal / 100.0)));
-
-                // Deterministic active SLA tickets for high-profile stations
-                int activeTickets = 0;
-                int criticalTickets = 0;
-                bool slaBreach = false;
-
-                if (handle is "L01-OP030" or "L02-OP060" or "L04-OP040" or "L05-OP060" or "L07-OP020")
-                {
-                    activeTickets = (hash % 3) + 1;
-                    if (handle is "L02-OP060" or "L04-OP040")
-                    {
-                        criticalTickets = 1;
-                        slaBreach = (handle == "L02-OP060");
-                    }
-                }
-
-                string status = "RUNNING";
-                if (slaBreach || oee < 78.0) status = "FAULTED";
-                else if (criticalTickets > 0 || oee < 85.0) status = "WARNING";
-                else if (perf < 82.0) status = "IDLE";
-
-                string typeName = stationTypeMap.GetValueOrDefault(opNum, "Automation Cell");
-
-                results.Add(new StationKpiDto
-                {
-                    StationId = handle,
-                    Handle = handle,
-                    Name = $"{handle} {typeName}",
-                    LineId = line.LineId,
-                    LineName = line.LineName,
-                    Oee = oee,
-                    Availability = avail,
-                    Performance = perf,
-                    Quality = qual,
-                    Yield = yieldVal,
-                    PartsPerHour = partsPerHour,
-                    TargetPartsPerHour = targetPartsPerHour,
-                    CycleTimeSeconds = cycleTimeSec,
-                    TargetCycleTimeSeconds = targetCycleTimeSec,
-                    TotalPartsProduced = produced,
-                    ScrapParts = scrap,
-                    OperationalStatus = status,
-                    ActiveTicketCount = activeTickets,
-                    CriticalTicketCount = criticalTickets,
-                    HasSlaBreach = slaBreach
-                });
-            }
+                StationId = m.Id.ToString(),
+                Handle = handle,
+                Name = MachineLabel(m),
+                LineId = m.LineGroupId?.ToString(),
+                LineName = lineName,
+                Oee = snap?.EffectiveOee,
+                Availability = snap?.Availability,
+                Performance = snap?.Performance,
+                Quality = snap?.EffectiveQuality,
+                Yield = snap?.Yield,
+                PartsPerHour = snap?.PartsPerHour,
+                TargetPartsPerHour = snap?.TargetPartsPerHour,
+                CycleTimeSeconds = snap?.EffectiveCycleTimeSeconds,
+                TargetCycleTimeSeconds = snap?.TargetCycleTimeSeconds,
+                TotalPartsProduced = snap?.TotalPartsProduced,
+                ScrapParts = snap?.ScrapParts,
+                OperationalStatus = snap?.OperationalStatus
+                    ?? (string.Equals(m.Status, "maintenance", StringComparison.OrdinalIgnoreCase) ? "MAINTENANCE" : "UNKNOWN"),
+                ActiveTicketCount = open.Count,
+                CriticalTicketCount = open.Count(t => t.Priority == "Critical"),
+                HasSlaBreach = open.Any(t => IsSlaBreached(t, now)),
+                LastTelemetryAt = snap?.LastTelemetryAt
+            });
         }
-
-        return results;
+        return result;
     }
 }

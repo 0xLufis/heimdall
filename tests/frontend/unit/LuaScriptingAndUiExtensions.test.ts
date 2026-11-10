@@ -168,3 +168,55 @@ describe('DynamicUiExtensions component', () => {
     expect(wrapper.text()).toContain('SLA Warning')
   })
 })
+
+describe('Lua UI extension hardening', () => {
+  it('URL-encodes extension ids and sends the zone as a query parameter', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ success: true, output: '' })
+    ;(globalThis as any).$fetch = fetchMock
+    const { invokeAction, fetchExtensions } = useLuaExtensions()
+
+    await invokeAction('../../scripts/x')
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/lua/ui-extensions/..%2F..%2Fscripts%2Fx/invoke')
+
+    fetchMock.mockResolvedValue([])
+    await fetchExtensions('TicketDetails')
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/lua/ui-extensions')
+    expect(fetchMock.mock.calls[1][1]).toEqual({ query: { zone: 'TicketDetails' } })
+  })
+
+  it('renders script-provided text as plain text (no HTML injection)', async () => {
+    ;(globalThis as any).$fetch = vi.fn().mockResolvedValue([
+      {
+        id: 'banner-xss',
+        title: '<img src=x onerror="window.__pwned=1">',
+        description: '<script>window.__pwned=1</script>',
+        targetZone: 'MachineDetails',
+        extensionType: 'BannerAlert',
+        icon: 'i-lucide-sparkles'
+      }
+    ])
+
+    const wrapper = mount(DynamicUiExtensions, { props: { zone: 'MachineDetails' } })
+    await new Promise(resolve => setTimeout(resolve, 50))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('script').exists()).toBe(false)
+    expect(wrapper.text()).toContain('<img src=x onerror=')
+    expect((globalThis as any).__pwned).toBeUndefined()
+  })
+})
+
+describe('Lua BFF proxy route', () => {
+  it('delegates to the shared path-validating backend proxy under the v1/lua prefix', async () => {
+    const proxyToBackend = vi.fn().mockResolvedValue('proxied')
+    vi.doMock('~~/server/utils/backendProxy', () => ({ proxyToBackend }))
+    ;(globalThis as any).defineEventHandler = (handler: unknown) => handler
+
+    const { default: handler } = await import('~~/server/api/v1/lua/[...path]')
+    const event = { context: { params: { path: '..%2F..%2Fadmin' } } }
+    await (handler as (e: unknown) => Promise<unknown>)(event)
+
+    expect(proxyToBackend).toHaveBeenCalledWith(event, 'v1/lua', '..%2F..%2Fadmin', 'LuaProxy')
+  })
+})

@@ -1,10 +1,10 @@
 namespace App.Shared.Lua.Apis;
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using App.Shared.Lua.Bridge;
+using App.Shared.Lua.Core;
 using MoonSharp.Interpreter;
 
 /// <summary>
@@ -14,8 +14,9 @@ using MoonSharp.Interpreter;
 /// </summary>
 public class TelemetryLuaApi
 {
+    private const int MaxChangeHandlers = 100;
+    private const int MaxHistoryPoints = 1000;
     private readonly ILuaPlantDataProvider _provider;
-    private readonly ConcurrentDictionary<string, List<Closure>> _changeHandlers = new(StringComparer.OrdinalIgnoreCase);
 
     public TelemetryLuaApi(ILuaPlantDataProvider provider)
     {
@@ -25,6 +26,9 @@ public class TelemetryLuaApi
     public void Register(Script script)
     {
         var table = new Table(script);
+        // Handlers are scoped to this script run (see EventsLuaApi for rationale).
+        var changeHandlers = new Dictionary<string, List<Closure>>(StringComparer.OrdinalIgnoreCase);
+        int handlerCount = 0;
 
         table["get_latest"] = (Func<string, string, DynValue>)((machineId, metric) =>
         {
@@ -38,7 +42,7 @@ public class TelemetryLuaApi
             if (string.IsNullOrWhiteSpace(machineId) || string.IsNullOrWhiteSpace(metric))
                 return DynValue.NewTable(new Table(script));
 
-            int limit = count <= 0 ? 20 : count;
+            int limit = count <= 0 ? 20 : Math.Min(count, MaxHistoryPoints);
             var history = _provider.GetTelemetryHistoryAsync(machineId, metric, limit).GetAwaiter().GetResult();
 
             var result = new Table(script);
@@ -63,7 +67,8 @@ public class TelemetryLuaApi
                 metaDict = new Dictionary<string, object?>();
                 foreach (var pair in metadata.Pairs)
                 {
-                    metaDict[pair.Key.String] = pair.Value.ToObject();
+                    if (pair.Key.Type != DataType.String) continue;
+                    metaDict[pair.Key.String] = LuaScriptEngine.ConvertDynValue(pair.Value, maxNodes: 256);
                 }
             }
 
@@ -141,19 +146,22 @@ public class TelemetryLuaApi
         table["on_change"] = (Func<string, Closure, bool>)((metric, handler) =>
         {
             if (string.IsNullOrWhiteSpace(metric) || handler == null) return false;
-            var list = _changeHandlers.GetOrAdd(metric, _ => new List<Closure>());
-            lock (list)
+            if (handlerCount >= MaxChangeHandlers) return false;
+            if (!changeHandlers.TryGetValue(metric, out var list))
             {
-                list.Add(handler);
+                changeHandlers[metric] = list = new List<Closure>();
             }
+            list.Add(handler);
+            handlerCount++;
             return true;
         });
 
         // Dispatch a telemetry change event to registered handlers
         table["process_change"] = (Func<string, string, double, double, DynValue>)((machineId, metric, oldVal, newVal) =>
         {
-            if (!_changeHandlers.TryGetValue(metric, out var handlers) &&
-                !_changeHandlers.TryGetValue("*", out handlers))
+            if (string.IsNullOrWhiteSpace(metric) ||
+                (!changeHandlers.TryGetValue(metric, out var handlers) &&
+                 !changeHandlers.TryGetValue("*", out handlers)))
             {
                 return DynValue.Nil;
             }
@@ -166,18 +174,15 @@ public class TelemetryLuaApi
             changeEvent["delta"] = newVal - oldVal;
             changeEvent["timestamp"] = DateTimeOffset.UtcNow.ToString("o");
 
-            lock (handlers)
+            foreach (var h in handlers.ToArray())
             {
-                foreach (var h in handlers)
+                try
                 {
-                    try
-                    {
-                        h.Call(changeEvent);
-                    }
-                    catch
-                    {
-                        // Protect loop from single handler failure
-                    }
+                    LuaSandboxGuard.Call(h, DynValue.NewTable(changeEvent));
+                }
+                catch (ScriptRuntimeException)
+                {
+                    // Protect loop from single handler failure; sandbox violations still propagate.
                 }
             }
 

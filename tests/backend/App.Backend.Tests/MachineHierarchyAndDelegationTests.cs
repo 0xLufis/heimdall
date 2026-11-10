@@ -3,8 +3,10 @@ namespace App.Backend.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using App.Contracts.Enums;
@@ -427,9 +429,10 @@ public class MachineHierarchyAndDelegationTests
             Spoc = "Sarah Dial"
         };
 
-        await repository.AddSubMachineAsync(roundtable.Id, station1);
-        await repository.AddSubMachineAsync(roundtable.Id, station2);
-        await repository.AddSubMachineAsync(roundtable.Id, station3);
+        // The repository persists a sanitized copy (server-assigned id), so use the returned entities.
+        station1 = (await repository.AddSubMachineAsync(roundtable.Id, station1))!;
+        station2 = (await repository.AddSubMachineAsync(roundtable.Id, station2))!;
+        station3 = (await repository.AddSubMachineAsync(roundtable.Id, station3))!;
 
         // Assert sub-machines query returns 3 stations ordered by SubMachineIndex
         var subMachines = await repository.GetSubMachinesAsync(roundtable.Id);
@@ -666,5 +669,124 @@ public class MachineHierarchyAndDelegationTests
         Assert.Contains(dedicationsAfterRemove.DirectDedications, d => d.Technology == "Mechanical");
         Assert.Contains(dedicationsAfterRemove.DirectDedications, d => d.Technology == "Vision");
     }
-}
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Security & correctness regression tests
+    // ─────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DedicateToMachine_UnknownMachine_ThrowsAndDoesNotCreatePhantomMachine()
+    {
+        using var context = CreateContext();
+        var service = new DelegationRecipeService(context);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.DedicateToMachineAsync("NOT-A-MACHINE", new DedicationAssignmentRequest
+        {
+            TargetType = "person",
+            TargetId = "usr-1",
+            TargetName = "User One"
+        }));
+        Assert.False(await service.DedicateUserToMachineAsync("usr-1", "NOT-A-MACHINE"));
+
+        Assert.Equal(0, await context.Machines.CountAsync());
+        Assert.Equal(0, await context.TechnicianRules.CountAsync());
+    }
+
+    [Fact]
+    public async Task BindRecipe_UnknownMachineOrRecipe_ThrowsKeyNotFound()
+    {
+        using var context = CreateContext();
+        var machine = new Machine { Id = Guid.NewGuid(), Name = "M1", CustomIdentifier = "M1" };
+        var recipe = new DelegationRecipe { Id = Guid.NewGuid(), Name = "R1" };
+        context.Machines.Add(machine);
+        context.DelegationRecipes.Add(recipe);
+        await context.SaveChangesAsync();
+        var service = new DelegationRecipeService(context);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.BindRecipeToMachineAsync(Guid.NewGuid(), recipe.Id, DelegationDiscipline.General));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.BindRecipeToMachineAsync(machine.Id, Guid.NewGuid(), DelegationDiscipline.General));
+
+        var bound = await service.BindRecipeToMachineAsync(machine.Id, recipe.Id, DelegationDiscipline.General);
+        Assert.Equal("R1", bound.DelegationRecipeName);
+        var rebound = await service.BindRecipeToMachineAsync(machine.Id, recipe.Id, DelegationDiscipline.General);
+        Assert.Equal(bound.Id, rebound.Id);
+        Assert.Equal("R1", rebound.DelegationRecipeName);
+    }
+
+    [Fact]
+    public async Task UpdateMachine_ParentAssignment_RejectsSelfAndDescendantCycles()
+    {
+        using var context = CreateContext();
+        var repository = new StationRepository(context);
+        var cell = new Machine { Id = Guid.NewGuid(), Name = "CELL", CustomIdentifier = "CELL" };
+        var station = new Machine { Id = Guid.NewGuid(), Name = "ST", CustomIdentifier = "ST", ParentMachineId = cell.Id };
+        var nested = new Machine { Id = Guid.NewGuid(), Name = "NESTED", CustomIdentifier = "NESTED", ParentMachineId = station.Id };
+        context.Machines.AddRange(cell, station, nested);
+        await context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            repository.UpdateAsync(cell.Id, null, null, null, null, null, parentMachineId: cell.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            repository.UpdateAsync(cell.Id, null, null, null, null, null, parentMachineId: nested.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            repository.UpdateAsync(cell.Id, null, null, null, null, null, parentMachineId: Guid.NewGuid()));
+
+        // A legitimate re-parenting still works.
+        var other = new Machine { Id = Guid.NewGuid(), Name = "OTHER", CustomIdentifier = "OTHER" };
+        context.Machines.Add(other);
+        await context.SaveChangesAsync();
+        var updated = await repository.UpdateAsync(nested.Id, null, null, null, null, null, parentMachineId: other.Id);
+        Assert.Equal(other.Id, updated!.ParentMachineId);
+    }
+
+    [Fact]
+    public async Task AddSubMachine_IgnoresClientControlledIdentityTenantAndGraph()
+    {
+        using var context = CreateContext();
+        var repository = new StationRepository(context);
+        var parent = new Machine { Id = Guid.NewGuid(), Name = "RT", CustomIdentifier = "RT", OrganizationId = "Plant-A" };
+        var victim = new Machine { Id = Guid.NewGuid(), Name = "VICTIM", CustomIdentifier = "VICTIM", OrganizationId = "Plant-B" };
+        context.Machines.AddRange(parent, victim);
+        await context.SaveChangesAsync();
+
+        var payload = new Machine
+        {
+            Id = victim.Id,
+            Name = "ST-01",
+            CustomIdentifier = "RT-ST01",
+            OrganizationId = "Plant-B",
+            ParentMachineId = victim.Id,
+            SubMachineIndex = 1,
+            CellType = "Standard",
+            SubMachines = new List<Machine> { new() { Id = Guid.NewGuid(), Name = "SMUGGLED", CustomIdentifier = "SMUGGLED" } }
+        };
+
+        var created = await repository.AddSubMachineAsync(parent.Id, payload);
+
+        Assert.NotNull(created);
+        Assert.NotEqual(victim.Id, created!.Id);
+        Assert.Equal(parent.Id, created.ParentMachineId);
+        Assert.Equal("Plant-A", created.OrganizationId);
+        Assert.Equal(1, created.SubMachineIndex);
+        Assert.Equal(3, await context.Machines.CountAsync());
+        Assert.False(await context.Machines.AnyAsync(m => m.Name == "SMUGGLED"));
+    }
+
+    [Theory]
+    [InlineData(typeof(App.Backend.Api.Controllers.V1.MachineController), new[] { "AddSubMachine", "RemoveSubMachine", "CreateMachine", "UpdateMachine", "UpdateMachineStatus", "DecommissionMachine", "UpdateOrganizationMachineTypes" })]
+    [InlineData(typeof(App.Backend.Api.Controllers.V1.DelegationController), new[] { "BindRecipe", "UnbindRecipe", "CreateOrUpdateRecipe", "CreatePersonnelGroup", "DedicateToMachine", "RemoveMachineDedication", "DedicateUserToMachine", "RemoveUserDedicationFromMachine" })]
+    public void MutatingEndpoints_DeclareAuthorizationPolicies(Type controller, string[] actions)
+    {
+        Assert.NotNull(controller.GetCustomAttribute<AuthorizeAttribute>());
+        foreach (var name in actions)
+        {
+            var routed = controller.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(m => m.Name == name && m.GetCustomAttribute<Microsoft.AspNetCore.Mvc.NonActionAttribute>() == null)
+                .ToList();
+            Assert.NotEmpty(routed);
+            Assert.All(routed, m => Assert.False(
+                string.IsNullOrEmpty(m.GetCustomAttribute<AuthorizeAttribute>()?.Policy),
+                $"{controller.Name}.{name} must declare an authorization policy."));
+        }
+    }
+}

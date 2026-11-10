@@ -30,7 +30,7 @@ onMounted(async () => {
       enabled: true,
       provider: 'microsoft',
       providerName: 'Microsoft Entra ID (Azure SSO)',
-      tenantId: '72f988bf-86f1-41af-91ab-2d7cd011db47',
+      tenantId: '00000000-de70-4e1d-8000-00000000c0de',
       isConfigured: false,
       allowMockSimulation: true
     }

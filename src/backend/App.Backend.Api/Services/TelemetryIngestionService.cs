@@ -45,6 +45,7 @@ public class TelemetryIngestionService : ITelemetryIngestionService
     private readonly IConfiguration _configuration;
     private readonly IHubContext<MaintenanceHub, IMaintenanceClient>? _hubContext;
     private readonly ICacheService? _cache;
+    private readonly ILuaAutomationService? _luaAutomation;
 
     public TelemetryIngestionService(
         ILogger<TelemetryIngestionService> logger,
@@ -53,7 +54,8 @@ public class TelemetryIngestionService : ITelemetryIngestionService
         IHostEnvironment environment,
         IConfiguration configuration,
         IHubContext<MaintenanceHub, IMaintenanceClient>? hubContext = null,
-        ICacheService? cache = null)
+        ICacheService? cache = null,
+        ILuaAutomationService? luaAutomation = null)
     {
         _logger = logger;
         _repository = repository;
@@ -62,6 +64,7 @@ public class TelemetryIngestionService : ITelemetryIngestionService
         _configuration = configuration;
         _hubContext = hubContext;
         _cache = cache;
+        _luaAutomation = luaAutomation;
     }
 
     public bool ValidateCallerAuthentication(string? callerAuthKey)
@@ -319,8 +322,9 @@ public class TelemetryIngestionService : ITelemetryIngestionService
             {
                 try
                 {
-                    await _hubContext.Clients.All.InventoryUpdated("MQTT_Telemetry", request.Hostname, request.MacAddress);
-                    await _hubContext.Clients.All.TelemetryReceived(request.Hostname, request.MacAddress, new TelemetryBroadcastDto
+                    var tenantClients = MaintenanceHubGroups.ForOrganization(_hubContext.Clients, dbClientPc.OrganizationId);
+                    await tenantClients.InventoryUpdated("MQTT_Telemetry", request.Hostname, request.MacAddress);
+                    await tenantClients.TelemetryReceived(request.Hostname, request.MacAddress, new TelemetryBroadcastDto
                     {
                         Hostname = request.Hostname,
                         MacAddress = request.MacAddress,
@@ -495,7 +499,7 @@ public class TelemetryIngestionService : ITelemetryIngestionService
                         RawBytesCount = memoryBlock.RawMemory.Length
                     };
 
-                    await _hubContext.Clients.All.PlcMemoryReceived(
+                    await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, pc.OrganizationId).PlcMemoryReceived(
                         pc.Hostname ?? machineIdentifier,
                         machineIdentifier,
                         memoryBlock.AmsNetId,
@@ -507,6 +511,8 @@ public class TelemetryIngestionService : ITelemetryIngestionService
                     _logger.LogWarning(ex, "Failed to broadcast PLC memory update over SignalR");
                 }
             }
+
+            await PublishStationTelemetryAsync(db, pc, memoryBlock);
 
             return true;
         }
@@ -581,4 +587,176 @@ public class TelemetryIngestionService : ITelemetryIngestionService
             Message = $"Batch from {batchRequest.Hostname} processed successfully."
         };
     }
+
+    /// <summary>
+    /// Station telemetry path: PLC block with station fields → merged snapshot in the distributed
+    /// cache (read by GET /api/v1/analytics/station-kpis) → SignalR StationOscillationReceived /
+    /// StationTelemetryReceived to the station's organization group → Lua TelemetryChange scripts.
+    /// Every stage is failure-isolated: none of them can fail the ingestion itself.
+    /// </summary>
+    private async Task PublishStationTelemetryAsync(AppDbContext db, ClientPc pc, AdsPlcMemoryBlock block)
+    {
+        StationTelemetrySnapshot? sample;
+        List<(string Metric, double Value)> metrics;
+        try
+        {
+            sample = StationTelemetryExtractor.Extract(block, out metrics);
+            if (sample == null) return;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract station telemetry from {Symbol}", block.SymbolName);
+            return;
+        }
+
+        Machine? machine;
+        try
+        {
+            machine = await ResolveStationAsync(db, pc, block);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to resolve station for PLC block {Symbol} on {Pc}", block.SymbolName, pc.MachineIdentifier);
+            return;
+        }
+        if (machine == null)
+        {
+            _logger.LogDebug("PLC block {Symbol} on {Pc} carries station telemetry but no unique station is bound", block.SymbolName, pc.MachineIdentifier);
+            return;
+        }
+
+        var handle = StationHandle(machine);
+        var snapshot = new StationTelemetrySnapshot { MachineId = machine.Id };
+        if (_cache != null)
+        {
+            try
+            {
+                snapshot = await _cache.GetAsync<StationTelemetrySnapshot>(StationTelemetryStore.Key(machine.Id)) ?? snapshot;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to read station telemetry snapshot for {Machine}", machine.Id);
+            }
+        }
+        snapshot.MachineId = machine.Id;
+        snapshot.OrganizationId = machine.OrganizationId;
+        snapshot.MergeFrom(sample);
+
+        if (_cache != null)
+        {
+            try
+            {
+                await _cache.SetAsync(StationTelemetryStore.Key(machine.Id), snapshot, StationTelemetryStore.Retention);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to store station telemetry snapshot for {Machine}", machine.Id);
+            }
+        }
+
+        if (_hubContext != null)
+        {
+            try
+            {
+                var clients = MaintenanceHubGroups.ForOrganization(_hubContext.Clients, machine.OrganizationId);
+                var stationId = machine.Id.ToString();
+                var sampleTime = sample.LastTelemetryAt ?? DateTimeOffset.UtcNow;
+                if (sample.HasDynamics)
+                {
+                    await clients.StationOscillationReceived(stationId, new StationOscillationBroadcastDto
+                    {
+                        StationId = stationId,
+                        Handle = handle,
+                        VibrationMmS = sample.VibrationMmS,
+                        SpindleRpm = sample.SpindleRpm,
+                        CycleTimeMs = sample.CycleTimeMs,
+                        PowerKw = sample.PowerKw,
+                        TemperatureC = sample.TemperatureC,
+                        FrequencyHz = sample.FrequencyHz,
+                        OperationalStatus = sample.OperationalStatus,
+                        Timestamp = sampleTime.ToUnixTimeMilliseconds()
+                    });
+                }
+                if (sample.HasProduction)
+                {
+                    await clients.StationTelemetryReceived(stationId, new StationTelemetryBroadcastDto
+                    {
+                        StationId = stationId,
+                        Handle = handle,
+                        Name = machine.DisplayName ?? machine.Name,
+                        Oee = snapshot.EffectiveOee,
+                        Availability = snapshot.Availability,
+                        Performance = snapshot.Performance,
+                        Quality = snapshot.EffectiveQuality,
+                        Yield = snapshot.Yield,
+                        PartsPerHour = snapshot.PartsPerHour,
+                        TargetPartsPerHour = snapshot.TargetPartsPerHour,
+                        CycleTimeSeconds = snapshot.EffectiveCycleTimeSeconds,
+                        TargetCycleTimeSeconds = snapshot.TargetCycleTimeSeconds,
+                        TotalPartsProduced = snapshot.TotalPartsProduced,
+                        ScrapParts = snapshot.ScrapParts,
+                        OperationalStatus = snapshot.OperationalStatus,
+                        LastTelemetryAt = snapshot.LastTelemetryAt
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to broadcast station telemetry for {Machine}", machine.Id);
+            }
+        }
+
+        if (_luaAutomation != null)
+        {
+            var machineKey = machine.Id.ToString();
+            foreach (var (metric, value) in metrics)
+            {
+                try
+                {
+                    // Feeds the Lua telemetry ring buffer and runs TelemetryChange-triggered scripts.
+                    await _luaAutomation.EvaluateTelemetryChangeAsync(machineKey, metric, value);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Lua telemetry evaluation failed for {Machine}/{Metric}", machine.Id, metric);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// The station a PLC block belongs to: the controlled machine named by the block's
+    /// <c>StationId</c>/<c>MachineId</c> metadata, otherwise the PC's only controlled machine.
+    /// Ambiguous blocks (several machines, no metadata) are not attributed.
+    /// </summary>
+    private static async Task<Machine?> ResolveStationAsync(AppDbContext db, ClientPc pc, AdsPlcMemoryBlock block)
+    {
+        var machines = await db.Machines
+            .Where(m => m.StationControllers.Any(sc => sc.ClientPcId == pc.Id))
+            .ToListAsync();
+        if (machines.Count == 0) return null;
+
+        string? requested = null;
+        foreach (var key in new[] { "StationId", "MachineId", "Station", "stationId", "machineId" })
+        {
+            if (block.Metadata.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v)) { requested = v.Trim(); break; }
+        }
+
+        if (requested != null)
+        {
+            return machines.FirstOrDefault(m =>
+                string.Equals(m.Id.ToString(), requested, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(m.CustomIdentifier, requested, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(m.PinnedObjectHandle, requested, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(m.Name, requested, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return machines.Count == 1 ? machines[0] : null;
+    }
+
+    /// <summary>Identity the plant map uses for a station: floor-plan handle, else custom identifier, else name.</summary>
+    public static string StationHandle(Machine machine) =>
+        !string.IsNullOrWhiteSpace(machine.PinnedObjectHandle) ? machine.PinnedObjectHandle!
+        : !string.IsNullOrWhiteSpace(machine.CustomIdentifier) ? machine.CustomIdentifier
+        : machine.Name;
 }

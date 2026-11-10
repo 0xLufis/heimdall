@@ -28,32 +28,13 @@ onMounted(async () => {
   await fetchExtensions(props.zone)
 })
 
-const zoneExtensions = computed(() => {
-  return extensions.value.filter(e => {
-    return (
-      e.targetZone === props.zone ||
-      String(e.targetZone).toLowerCase() === String(props.zone).toLowerCase()
-    )
-  })
-})
+const zoneExtensions = computed(() => extensions.value.filter(e => e.targetZone === props.zone))
 
-const actionButtons = computed(() =>
-  zoneExtensions.value.filter(
-    e => e.extensionType === 'ActionButton' || (e.extensionType as any) === 0
-  )
-)
+const actionButtons = computed(() => zoneExtensions.value.filter(e => e.extensionType === 'ActionButton'))
 
-const badges = computed(() =>
-  zoneExtensions.value.filter(
-    e => e.extensionType === 'Badge' || (e.extensionType as any) === 1
-  )
-)
+const badges = computed(() => zoneExtensions.value.filter(e => e.extensionType === 'Badge'))
 
-const banners = computed(() =>
-  zoneExtensions.value.filter(
-    e => e.extensionType === 'BannerAlert' || (e.extensionType as any) === 3
-  )
-)
+const banners = computed(() => zoneExtensions.value.filter(e => e.extensionType === 'BannerAlert'))
 
 async function handleActionClick(ext: LuaUiExtension) {
   activeActionId.value = ext.id
@@ -67,7 +48,9 @@ async function handleActionClick(ext: LuaUiExtension) {
         success: true,
         message: typeof res.returnValue === 'string'
           ? res.returnValue
-          : (res.returnValue?.status || 'Action dispatched successfully via Lua')
+          : (typeof (res.returnValue as { status?: unknown } | null)?.status === 'string'
+              ? (res.returnValue as { status: string }).status
+              : 'Action dispatched successfully via Lua')
       }
     } else {
       invocationFeedback.value = {

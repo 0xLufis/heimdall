@@ -431,11 +431,38 @@ db-seed:
     set -euo pipefail
     just db-up
     echo ">> Validating & applying seed data pipeline..."
-    python3 seed_data/seed_pipeline.py --validate
+    python3 seed_data/seed_pipeline.py --generate-all --validate
     if docker ps | grep -q "postgres_heimdall"; then
-        docker exec -i postgres_heimdall psql -U postgres -d heimdall_dev_db < seed_data/incremental_seed.sql >/dev/null
+        docker exec -i postgres_heimdall psql -v ON_ERROR_STOP=1 -U postgres -d heimdall_dev_db < seed_data/incremental_seed.sql >/dev/null
         echo "✓ Enterprise dataset (100 machines, 16 orgs, 550 spare parts) applied to heimdall_dev_db."
     fi
+
+# ARGS go to scripts/seed_demo_data.py, e.g. `just demo-seed --reset --unpin-conflicts` (see seed_data/demo/README.md)
+# Load the story-driven Nordvik NV1 demo dataset into the dev DB (idempotent, dev-only, demo logins)
+demo-seed *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just db-up
+    python3 scripts/seed_demo_data.py --with-logins {{ARGS}}
+
+# Validate the demo dataset offline (JSON, references, enums, SQL plan) and against the dev DB (rolled back)
+demo-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    python3 scripts/seed_demo_data.py --dry-run >/dev/null
+    if docker ps --format '{{{{.Names}}' | grep -qx "postgres_heimdall"; then
+        python3 scripts/seed_demo_data.py --check
+    else
+        echo "postgres_heimdall not running - offline validation only."
+    fi
+
+# Register the demo Lua scripts and replay demo telemetry into the running backend (repeat after each backend restart)
+demo-runtime:
+    @python3 scripts/seed_demo_data.py --skip-db --push-runtime
+
+# Remove all demo rows (ids de30de30-* / demo-*) from the dev database and reload them
+demo-reset *ARGS:
+    @python3 scripts/seed_demo_data.py --reset --with-logins {{ARGS}}
 
 # Seed staging database with the exact same enterprise seed data
 db-staging-seed:
@@ -443,7 +470,7 @@ db-staging-seed:
     set -euo pipefail
     just db-up
     echo ">> Seeding staging database (heimdall_staging_db) with enterprise seed data..."
-    python3 seed_data/seed_pipeline.py --validate
+    python3 seed_data/seed_pipeline.py --generate-all --validate
     if docker ps | grep -q "postgres_heimdall"; then
         docker exec postgres_heimdall psql -U postgres -c "CREATE DATABASE heimdall_staging_db TEMPLATE heimdall_dev_db OWNER ef_admin;" 2>/dev/null || true
         docker exec -i postgres_heimdall psql -U postgres -d heimdall_staging_db < seed_data/incremental_seed.sql >/dev/null
@@ -595,6 +622,7 @@ test-frontend:
 test-seed:
     @echo ">> Validating Seed Data Pipeline & Referential Integrity..."
     @python3 seed_data/seed_pipeline.py --validate
+    @python3 scripts/seed_demo_data.py --dry-run >/dev/null && echo "✓ Demo dataset (seed_data/demo) valid"
 
 # Run edge fleet simulator smoke test
 test-smoke:

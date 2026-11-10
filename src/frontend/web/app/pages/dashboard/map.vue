@@ -11,7 +11,7 @@ import { useStations } from '~/composables/useStations'
 import { useControllers } from '~/composables/useControllers'
 import { useGlobalContextMenu, type ContextMenuContextData } from '~/composables/useGlobalContextMenu'
 import { useMaintenance } from '~/composables/useMaintenance'
-import { useStationTelemetry } from '~/composables/useStationTelemetry'
+import { useStationTelemetry, type StationTelemetryKpi } from '~/composables/useStationTelemetry'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
 import { Activity, Flame, Gauge, Clock, ChevronRight, AlertTriangle, CheckCircle2, Radio, Zap } from 'lucide-vue-next'
 
@@ -24,7 +24,7 @@ const { stations, fetchStations, updateStationPin } = useStations()
 const { controllers, fetchControllers, updateControllerPin } = useControllers()
 const { openContextMenu } = useGlobalContextMenu()
 const { tickets, fetchTickets } = useMaintenance()
-const { stationKpis, fetchStationKpis, getStationKpi, getStationSla, getStationOscillation } = useStationTelemetry()
+const { stationKpis, stationKpiList, stationKpisError, fetchStationKpis, getStationKpi, getStationSla, getStationOscillation } = useStationTelemetry()
 
 // Overlay Controls
 const showTelemetryOverlays = ref(true)
@@ -63,20 +63,28 @@ const activeStationOscillation = computed(() => {
 })
 
 const fleetKpiSummary = computed(() => {
-  const kpis = Object.values(stationKpis.value)
+  // stationKpis is indexed by handle *and* stationId; use the de-duplicated list for aggregates.
+  const kpis = stationKpiList.value
   const allTickets = tickets.value || []
   const openTkts = allTickets.filter(t => t.status !== 'Resolved' && t.status !== 'Closed')
   const breachedCount = openTkts.filter(t => t.slaDueAt && new Date(t.slaDueAt).getTime() < Date.now()).length
 
   if (kpis.length === 0) {
-    return { avgOee: 91.2, avgYield: 99.1, totalThroughput: 1140, totalSlaTickets: openTkts.length, breachedCount }
+    // No reported telemetry: show an explicit empty state rather than placeholder numbers.
+    return { hasData: false, avgOee: null, avgYield: null, totalThroughput: null, totalSlaTickets: openTkts.length, breachedCount }
   }
 
-  const avgOee = Number((kpis.reduce((acc, k) => acc + k.oee, 0) / kpis.length).toFixed(1))
-  const avgYield = Number((kpis.reduce((acc, k) => acc + k.yield, 0) / kpis.length).toFixed(1))
-  const totalThroughput = Math.round(kpis.reduce((acc, k) => acc + k.partsPerHour, 0))
+  // Aggregate only over stations that actually reported each value.
+  const reported = (pick: (k: StationTelemetryKpi) => number | null) =>
+    kpis.map(pick).filter((v): v is number => v !== null)
+  const mean = (vals: number[]) => (vals.length ? Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)) : null)
+  const avgOee = mean(reported(k => k.oee))
+  const avgYield = mean(reported(k => k.yield))
+  const rates = reported(k => k.partsPerHour)
+  const totalThroughput = rates.length ? Math.round(rates.reduce((a, b) => a + b, 0)) : null
 
-  return { avgOee, avgYield, totalThroughput, totalSlaTickets: openTkts.length, breachedCount }
+  const hasData = avgOee !== null || avgYield !== null || totalThroughput !== null
+  return { hasData, avgOee, avgYield, totalThroughput, totalSlaTickets: openTkts.length, breachedCount }
 })
 
 const resetMapView = () => {
@@ -454,19 +462,28 @@ onMounted(() => {
 
           <!-- Right: Fleet Stats Ticker -->
           <div class="hidden md:flex items-center gap-3 px-3 py-1 bg-slate-950/90 backdrop-blur-md rounded-xl border border-slate-800 shadow-xl text-xs font-mono">
-            <div class="flex items-center gap-1.5 text-slate-300">
-              <span class="text-slate-500">OEE:</span>
-              <span class="font-bold text-emerald-400">{{ fleetKpiSummary.avgOee }}%</span>
-            </div>
-            <span class="text-slate-700">•</span>
-            <div class="flex items-center gap-1.5 text-slate-300">
-              <span class="text-slate-500">Yield:</span>
-              <span class="font-bold text-cyan-400">{{ fleetKpiSummary.avgYield }}%</span>
-            </div>
-            <span class="text-slate-700">•</span>
-            <div class="flex items-center gap-1.5 text-slate-300">
-              <span class="text-slate-500">Rate:</span>
-              <span class="font-bold text-indigo-400">{{ fleetKpiSummary.totalThroughput }} pcs/h</span>
+            <template v-if="fleetKpiSummary.hasData">
+              <div class="flex items-center gap-1.5 text-slate-300">
+                <span class="text-slate-500">OEE:</span>
+                <span class="font-bold text-emerald-400">{{ fleetKpiSummary.avgOee ?? '—' }}%</span>
+              </div>
+              <span class="text-slate-700">•</span>
+              <div class="flex items-center gap-1.5 text-slate-300">
+                <span class="text-slate-500">Yield:</span>
+                <span class="font-bold text-cyan-400">{{ fleetKpiSummary.avgYield ?? '—' }}%</span>
+              </div>
+              <span class="text-slate-700">•</span>
+              <div class="flex items-center gap-1.5 text-slate-300">
+                <span class="text-slate-500">Rate:</span>
+                <span class="font-bold text-indigo-400">{{ fleetKpiSummary.totalThroughput ?? '—' }} pcs/h</span>
+              </div>
+            </template>
+            <div
+              v-else
+              class="flex items-center gap-1.5 text-slate-400"
+              :title="stationKpisError || 'The backend has not reported any station KPIs yet'"
+            >
+              <span>{{ stationKpisError ? 'Telemetry unavailable' : 'No station telemetry' }}</span>
             </div>
             <span class="text-slate-700">•</span>
             <div class="flex items-center gap-1.5">
@@ -526,6 +543,10 @@ onMounted(() => {
           </CardHeader>
 
           <!-- Active Station Live Telemetry Inspection Card -->
+          <div v-if="activePin && !activeStationKpi" class="p-3 bg-muted/60 border-b border-border text-[11px] text-muted-foreground">
+            <span class="font-mono font-bold text-foreground">{{ activePin }}</span>
+            — no production telemetry reported for this station.
+          </div>
           <div v-if="activeStationKpi" class="p-3 bg-muted/60 border-b border-border flex flex-col gap-2">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-foreground font-mono">{{ activePin }}</span>
@@ -546,15 +567,15 @@ onMounted(() => {
             <div class="grid grid-cols-3 gap-1.5 p-2 bg-card rounded-lg border border-border text-center">
               <div>
                 <span class="text-[9px] text-muted-foreground uppercase font-semibold">OEE</span>
-                <p class="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">{{ activeStationKpi.oee }}%</p>
+                <p class="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">{{ activeStationKpi.oee ?? '—' }}%</p>
               </div>
               <div class="border-l border-border">
                 <span class="text-[9px] text-muted-foreground uppercase font-semibold">Yield</span>
-                <p class="text-xs font-bold font-mono text-cyan-600 dark:text-cyan-400">{{ activeStationKpi.yield }}%</p>
+                <p class="text-xs font-bold font-mono text-cyan-600 dark:text-cyan-400">{{ activeStationKpi.yield ?? '—' }}%</p>
               </div>
               <div class="border-l border-border">
                 <span class="text-[9px] text-muted-foreground uppercase font-semibold">Rate</span>
-                <p class="text-xs font-bold font-mono text-indigo-600 dark:text-indigo-400">{{ activeStationKpi.partsPerHour }}/h</p>
+                <p class="text-xs font-bold font-mono text-indigo-600 dark:text-indigo-400">{{ activeStationKpi.partsPerHour ?? '—' }}/h</p>
               </div>
             </div>
 
@@ -564,7 +585,7 @@ onMounted(() => {
                 <Radio class="size-3 animate-pulse text-cyan-500 shrink-0" />
                 <span>Vib: <strong>{{ activeStationOscillation.vibrationMmS.toFixed(2) }}</strong> mm/s</span>
               </div>
-              <span class="text-muted-foreground">{{ Math.round(activeStationOscillation.spindleRpm) }} RPM</span>
+              <span class="text-muted-foreground">{{ activeStationOscillation.spindleRpm !== null ? Math.round(activeStationOscillation.spindleRpm) : '—' }} RPM</span>
             </div>
 
             <!-- Active SLA Section -->

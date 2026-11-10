@@ -5,7 +5,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const testCookie = useCookie('heimdall_test_session')
   const isClientBypass = typeof window !== 'undefined' && window.location.search.includes('mock_auth=true')
   const reqCookie = import.meta.server ? (useRequestHeader('cookie') || '') : ''
-  const hasTestSession = testCookie.value === 'true' || reqCookie.includes('heimdall_test_session=true') || to.query.mock_auth === 'true' || isClientBypass
+  // E2E/mock bypass only skips this client-side route guard (API calls still need a real
+  // session server-side). It is restricted to builds with dev features enabled.
+  const devBypassAllowed = useRuntimeConfig().public.enableDevFeatures === true
+  const hasTestSession = devBypassAllowed && (testCookie.value === 'true' || reqCookie.includes('heimdall_test_session=true') || to.query.mock_auth === 'true' || isClientBypass)
 
   // 1. Test session bypass for E2E tests & mock auth
   if (hasTestSession) {

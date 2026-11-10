@@ -1,6 +1,4 @@
 import { defineEventHandler } from 'h3'
-import { componentsAndDelegationsStore } from '../../utils/componentsAndDelegationsStore'
+import { backendFetch } from '../../utils/backendFetch'
 
-export default defineEventHandler(() => {
-  return componentsAndDelegationsStore.getRecipes()
-})
+export default defineEventHandler((event) => backendFetch(event, 'component/recipes'))

@@ -61,6 +61,18 @@ public interface IDelegationRecipeService
     Task<bool> UnbindRecipeFromMachineAsync(Guid bindingId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes a delegation recipe together with its machine bindings and group junction rows.
+    /// Returns false when the recipe does not exist (or is outside the caller's tenant scope).
+    /// </summary>
+    Task<bool> DeleteRecipeAsync(Guid recipeId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a personnel group and its memberships. Refuses (<see cref="PersonnelGroupDeleteResult.InUse"/>)
+    /// while any delegation recipe still routes work to the group, so on-call routing is never silently dropped.
+    /// </summary>
+    Task<PersonnelGroupDeleteResult> DeletePersonnelGroupAsync(Guid groupId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets all direct, inherited, and automatic technological dedications for a machine.
     /// </summary>
     Task<MachineDedicationsDto> GetMachineDedicationsAsync(Guid machineId, CancellationToken cancellationToken = default);
@@ -94,4 +106,11 @@ public interface IDelegationRecipeService
     /// </summary>
     Task<bool> RemoveUserDedicationFromMachineAsync(string userId, Guid machineId, string? technology = null, CancellationToken cancellationToken = default);
     Task<bool> RemoveUserDedicationFromMachineAsync(string userId, string machineIdentifier, string? technology = null, CancellationToken cancellationToken = default);
+}
+
+public enum PersonnelGroupDeleteResult
+{
+    Deleted,
+    NotFound,
+    InUse
 }

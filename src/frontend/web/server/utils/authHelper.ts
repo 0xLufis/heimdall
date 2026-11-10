@@ -1,6 +1,6 @@
 import { H3Event, getHeader, getCookie, createError } from 'h3'
 import { auth } from './auth'
-import { featureFlags } from './featureFlags'
+import { isExplicitDevMode } from './terminalAuth'
 
 export async function getAuthenticatedUser(event: H3Event, requireAuth = false) {
   let user = (event.context as any)?.auth?.user
@@ -19,8 +19,10 @@ export async function getAuthenticatedUser(event: H3Event, requireAuth = false) 
     }
   }
 
-  // Fallback for dev / test environments when explicit token or dev mode is active
-  if (!user && (featureFlags.enableDevFeatures || process.env.NODE_ENV !== 'production' || process.env.VITEST === 'true')) {
+  // Synthetic admin fallback ONLY under an explicit opt-in (HEIMDALL_ENABLE_DEV=true, set by
+  // .env.dev) or Vitest. Previously any NODE_ENV other than "production" (including an unset
+  // NODE_ENV) silently granted anonymous callers admin rights.
+  if (!user && isExplicitDevMode()) {
     user = {
       id: 'usr-admin-primary',
       name: 'System Administrator',

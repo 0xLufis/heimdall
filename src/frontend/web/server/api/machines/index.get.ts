@@ -1,27 +1,28 @@
 import { defineEventHandler, getQuery } from 'h3'
-import { machinesStore } from '../../utils/machinesStore'
+import { backendFetch } from '../../utils/backendFetch'
 
+/**
+ * Machines visible to the caller's active organization (backend: MachineController.GetMachines).
+ * The backend has no server-side filters for these, so the legacy query options are applied here.
+ */
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const status = query.status as string | undefined
-  const includeDecommissioned = query.includeDecommissioned === 'true' || query.includeDecommissioned === '1'
-  const groupId = query.groupId as string | undefined
+  const status = typeof query.status === 'string' ? query.status : undefined
+  const includeDecommissioned = query.includeDecommissioned === 'true' || query.includeDecommissioned === '1' || query.includeDecommissioned === true
+  const groupId = typeof query.groupId === 'string' ? query.groupId : undefined
 
-  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
-  try {
-    const data = await $fetch<any[]>(`${backendBase}/api/v1/machine`, {
-      headers: event.headers as any
-    })
-    if (data && Array.isArray(data) && data.length > 0) {
-      return data
-    }
-  } catch {
-    // Backend offline / development mode
+  const machines = await backendFetch<any[]>(event, 'machine')
+  let result = Array.isArray(machines) ? machines : []
+
+  if (status) {
+    result = result.filter(m => (m.status || 'active') === status)
+  } else if (!includeDecommissioned) {
+    result = result.filter(m => !['decommissioned', 'dismantled'].includes(m.status || 'active'))
   }
-
-  return machinesStore.getAllMachines({
-    status,
-    includeDecommissioned,
-    groupId
-  })
+  if (groupId) {
+    result = result.filter(m =>
+      [m.groupId, m.subLineGroupId, m.lineGroupId, m.projectGroupId, m.businessUnitGroupId].includes(groupId)
+    )
+  }
+  return result
 })

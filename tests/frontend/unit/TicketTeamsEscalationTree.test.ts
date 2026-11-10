@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TicketEscalationTreeDrawer from '~/components/tickets/TicketEscalationTreeDrawer.vue'
 import type { MaintenanceTicket } from '~/types/maintenance'
+import { parseQrUri, generateQrUri } from '~/utils/qrActionGenerator'
+import { generateQrSvg } from '~/utils/qrSvgRenderer'
+import { fromBackendGroup, toBackendGroup } from '~~/server/utils/machineGroupBackend'
 
 // Mock toast
 vi.mock('vue-sonner', () => ({
@@ -274,5 +277,43 @@ describe('Escalation Tree Drawer Unit Tests', () => {
     // Verify emits
     expect(wrapper.emitted('escalated')).toBeTruthy()
     expect(wrapper.emitted('close')).toBeTruthy()
+  })
+})
+
+describe('QR action payload hardening', () => {
+  it('rejects unknown actions and invalid priorities from scanned payloads', () => {
+    expect(parseQrUri('https://evil.example/mobile/action?action=delete-everything&stationId=X')).toBeNull()
+    const parsed = parseQrUri('/mobile/action?action=report-incident&stationId=L06&prefillPriority=<script>')
+    expect(parsed?.action).toBe('report-incident')
+    expect(parsed?.prefillPriority).toBeUndefined()
+  })
+
+  it('ignores non-http(s) host overrides when generating URIs', () => {
+    const uri = generateQrUri({ action: 'check-in', stationId: 'L06' }, 'javascript:alert(1)//')
+    expect(uri.startsWith('javascript:')).toBe(false)
+    expect(generateQrUri({ action: 'check-in' }, 'https://heimdall.plant/')).toBe('https://heimdall.plant/mobile/action?action=check-in')
+  })
+
+  it('never interpolates unsafe color strings into the generated SVG', () => {
+    const svg = generateQrSvg('HELLO', { darkColor: '"/><script>alert(1)</script>', lightColor: '#fff' })
+    expect(svg).not.toContain('<script>')
+    expect(svg).toContain('fill="#000000"')
+  })
+})
+
+describe('machine group BFF <-> backend mapping', () => {
+  it('serialises arrays to JSON columns and strips server-managed fields', () => {
+    const out = toBackendGroup({ id: 'x', organizationId: 'other-org', name: 'Line 1', machineIds: ['a'], machineTypes: ['AOI'] })
+    expect(out).not.toHaveProperty('organizationId')
+    expect(out).not.toHaveProperty('id')
+    expect(out.machineIdsJson).toBe('["a"]')
+    expect(out.machineTypesJson).toBe('["AOI"]')
+  })
+
+  it('parses JSON columns back into arrays and tolerates malformed JSON', () => {
+    expect(fromBackendGroup({ name: 'g', machineIdsJson: '["m1"]', machineTypesJson: 'not-json' })).toMatchObject({
+      machineIds: ['m1'],
+      machineTypes: []
+    })
   })
 })

@@ -136,8 +136,6 @@ builder.Services.AddSingleton<App.Backend.Api.Services.Plugins.IPluginService>(s
         sp.GetRequiredService<IServiceScopeFactory>(),
         sp.GetRequiredService<ILogger<App.Backend.Api.Services.Plugins.PluginService>>()));
 builder.Services.AddScoped<App.Shared.Lua.Bridge.ILuaPlantDataProvider, App.Infrastructure.Services.DbPlantDataProvider>();
-builder.Services.AddScoped<App.Shared.Lua.Core.ILuaScriptEngine>(sp => 
-    new App.Shared.Lua.Core.LuaScriptEngine(sp.GetRequiredService<App.Shared.Lua.Bridge.ILuaPlantDataProvider>()));
 builder.Services.AddSingleton<App.Backend.Api.Services.ILuaAutomationService>(sp =>
     new App.Backend.Api.Services.LuaAutomationService(
         sp.GetRequiredService<IServiceScopeFactory>(),
@@ -343,6 +341,8 @@ else
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+// Activates the EF Core multi-tenant query filters (AppDbContext.CurrentOrganizationId) per request.
+app.UseMiddleware<App.Backend.Api.Security.TenantScopeMiddleware>();
 
 app.UseWebSockets();
 

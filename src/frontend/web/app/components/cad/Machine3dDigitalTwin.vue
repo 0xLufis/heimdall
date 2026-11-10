@@ -18,8 +18,9 @@ import {
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useCadModelViewer } from '~/composables/useCadModelViewer'
+import { useCadModelViewer, DEFAULT_CAD_MODEL_URL, type CadNodeStatus } from '~/composables/useCadModelViewer'
 import { useStationTelemetry } from '~/composables/useStationTelemetry'
+import { computeOverlayPlacement } from '~/utils/telemetryOverlayPlacement'
 
 const props = withDefaults(
   defineProps<{
@@ -27,14 +28,15 @@ const props = withDefaults(
     selectedSlot?: string | null
     components?: any[]
     height?: string
-    stationId?: string
+    /** Station whose live telemetry is shown in the HUD; without it no telemetry is displayed. */
+    stationId?: string | null
   }>(),
   {
-    modelUrl: '/sample/station_digital_twin.glb',
+    modelUrl: DEFAULT_CAD_MODEL_URL,
     selectedSlot: null,
     components: () => [],
     height: '540px',
-    stationId: 'L01-OP010'
+    stationId: null
   }
 )
 
@@ -50,42 +52,76 @@ const expandedNode = ref<string | null>(null)
 
 const { getStationOscillation } = useStationTelemetry()
 
-const getNodeTelemetry = (nodeName: string) => {
-  const osc = getStationOscillation(props.stationId || 'L01-OP010')
-  let hash = 0
-  for (let i = 0; i < nodeName.length; i++) {
-    hash = (hash << 5) - hash + nodeName.charCodeAt(i)
-    hash |= 0
-  }
-  hash = Math.abs(hash)
-  const vibOffset = ((hash % 7) - 3) * 0.08
-  const vib = Math.max(0.4, Number((osc.vibrationMmS + vibOffset).toFixed(2)))
-  const temp = Math.round(osc.temperatureC + ((hash % 5) - 2) * 2)
-  const isHealthy = vib < 2.5
-  return { vib, temp, isHealthy, osc }
+/** Vibration RMS above which the station is flagged (ISO 10816 class II "unsatisfactory" boundary). */
+const VIBRATION_ALERT_MM_S = 2.8
+
+/**
+ * Live dynamics for the station hosting this model. Telemetry is reported per station, not per
+ * CAD node, so the HUD labels it as station-level; null when nothing has been received.
+ */
+const stationOscillation = computed(() => (props.stationId ? getStationOscillation(props.stationId) : null))
+
+const findComponentForNode = (nodeName: string) => {
+  const target = nodeName.toUpperCase()
+  return props.components.find((c: any) =>
+    c?.functionalSlotIdentifier?.toUpperCase() === target ||
+    c?.cad3dNodePath?.toUpperCase() === target
+  ) ?? null
 }
 
-const getClamped3dPlacement = (proj: any, nodeName: string) => {
-  const isExp = expandedNode.value === nodeName
-  const w = isExp ? 240 : 160
-  const h = isExp ? 150 : 28
-
-  const cw = containerRef.value?.clientWidth || 800
-  const ch = containerRef.value?.clientHeight || 540
-
-  let left = proj.x - w / 2
-  left = Math.max(12, Math.min(left, cw - 12 - w))
-
-  let top = proj.y - h - 8
-  if (top < 48) {
-    top = proj.y + 12
+/** Maps backend EquipmentStatus (App.Contracts.Enums.EquipmentStatus) onto a CAD tint. */
+const equipmentStatusToNodeStatus = (status: unknown): CadNodeStatus | null => {
+  switch (String(status ?? '').toLowerCase()) {
+    case 'inmachine':
+    case 'active':
+      return 'healthy'
+    case 'underrepair':
+      return 'warning'
+    case 'instorage':
+    case 'decommissioned':
+    case 'scrapped':
+      return 'fault'
+    default:
+      return null
   }
-  top = Math.max(48, Math.min(top, ch - 12 - h))
+}
+
+const nodeStatusMap = computed(() => {
+  const map: Record<string, CadNodeStatus> = {}
+  for (const c of props.components || []) {
+    const status = equipmentStatusToNodeStatus(c?.equipmentStatus)
+    if (!status) continue
+    for (const key of [c?.cad3dNodePath, c?.functionalSlotIdentifier]) {
+      if (typeof key === 'string' && key) map[key.toUpperCase()] = status
+    }
+  }
+  return map
+})
+
+const getNodeStatus = (nodeName: string): CadNodeStatus | null => nodeStatusMap.value[nodeName.toUpperCase()] ?? null
+
+const getClamped3dPlacement = (proj: { x: number; y: number }, nodeName: string) => {
+  const isExp = expandedNode.value === nodeName
+  const placement = computeOverlayPlacement({
+    anchorX: proj.x,
+    anchorY: proj.y,
+    containerWidth: containerRef.value?.clientWidth || 800,
+    containerHeight: containerRef.value?.clientHeight || 540,
+    size: isExp ? { width: 240, height: 170 } : { width: 180, height: 28 },
+    insets: { top: 48, right: 12, bottom: 12, left: 12 },
+    gapAbove: 8,
+    gapBelow: 12
+  })
 
   return {
-    left: `${Math.round(left)}px`,
-    top: `${Math.round(top)}px`,
-    zIndex: selectedNodeName.value === nodeName ? 40 : 20
+    visible: placement.visible,
+    style: {
+      left: `${placement.left}px`,
+      top: `${placement.top}px`,
+      width: `${placement.width}px`,
+      maxHeight: `${placement.height}px`,
+      zIndex: selectedNodeName.value === nodeName ? 40 : 20
+    }
   }
 }
 
@@ -104,6 +140,7 @@ const {
   focusComponent,
   selectComponent,
   hoverComponent,
+  setNodeStatuses,
   toggleWireframe,
   toggleStatusOverlay,
   resetCamera,
@@ -117,6 +154,7 @@ let didMove = false
 
 onMounted(async () => {
   if (containerRef.value && canvasRef.value) {
+    setNodeStatuses(nodeStatusMap.value)
     await initViewer(containerRef.value, canvasRef.value, {
       modelUrl: props.modelUrl,
       enableGrid: true
@@ -132,17 +170,21 @@ onUnmounted(() => {
   dispose()
 })
 
-// Watch modelUrl changes
-watch(
-  () => props.modelUrl,
-  async (newUrl) => {
-    if (newUrl && containerRef.value && canvasRef.value) {
-      const THREE = await import('three')
-      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
-      await loadModel(newUrl, THREE, GLTFLoader)
-    }
+watch(nodeStatusMap, (statuses) => setNodeStatuses(statuses))
+
+const reloadModel = async (url: string) => {
+  if (!url || !containerRef.value || !canvasRef.value) return
+  try {
+    const THREE = await import('three')
+    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
+    await loadModel(url, THREE, GLTFLoader)
+  } catch {
+    // loadModel already surfaced the failure through `error`
   }
-)
+}
+
+// Watch modelUrl changes
+watch(() => props.modelUrl, (newUrl) => reloadModel(newUrl))
 
 // Watch incoming selectedSlot prop
 watch(
@@ -164,15 +206,15 @@ const activeSlotData = computed(() => {
   const comp = props.components.find((c: any) =>
     (c.functionalSlotIdentifier && c.functionalSlotIdentifier.toUpperCase() === targetName.toUpperCase()) ||
     (c.cad3dNodePath && c.cad3dNodePath.toUpperCase() === targetName.toUpperCase()) ||
-    (c.name && c.name.toUpperCase().includes(targetName.toUpperCase()))
+    (c.name && c.name.toUpperCase() === targetName.toUpperCase())
   )
 
   return {
     nodeName: targetName,
     componentName: comp?.displayName || comp?.name || targetName,
     serialNumber: comp?.serialNumber,
-    technology: comp?.technology || 'Mechanical/Pneumatic',
-    equipmentStatus: comp?.equipmentStatus || 'InMachine'
+    technology: comp?.technology || null,
+    equipmentStatus: comp?.equipmentStatus || 'Unbound'
   }
 })
 
@@ -183,7 +225,7 @@ const handleMouseDown = (e: MouseEvent) => {
   dragStartPos = { x: e.clientX, y: e.clientY }
 }
 
-const handleMouseMove = async (e: MouseEvent) => {
+const handleMouseMove = (e: MouseEvent) => {
   if (isMouseDown) {
     const dx = Math.abs(e.clientX - dragStartPos.x)
     const dy = Math.abs(e.clientY - dragStartPos.y)
@@ -192,7 +234,7 @@ const handleMouseMove = async (e: MouseEvent) => {
     }
   } else {
     // Hover raycasting
-    const hitNode = await raycastFromEvent(e)
+    const hitNode = raycastFromEvent(e)
     if (hitNode !== hoveredNodeName.value) {
       hoverComponent(hitNode)
       emit('hover-slot', hitNode)
@@ -200,11 +242,11 @@ const handleMouseMove = async (e: MouseEvent) => {
   }
 }
 
-const handleMouseUp = async (e: MouseEvent) => {
+const handleMouseUp = (e: MouseEvent) => {
   isMouseDown = false
   if (didMove) return // was an orbit drag, not a click
 
-  const hitNode = await raycastFromEvent(e)
+  const hitNode = raycastFromEvent(e)
   if (hitNode) {
     emit('select-slot', hitNode)
     focusComponent(hitNode)
@@ -299,15 +341,17 @@ const handleMouseLeave = () => {
     >
       <template v-for="(proj, nodeName) in projectedNodes" :key="`hud-3d-${nodeName}`">
         <div
-          v-if="proj.isVisible"
-          class="absolute pointer-events-auto transition-transform duration-75 select-none"
-          :style="getClamped3dPlacement(proj, nodeName)"
+          v-if="proj.isVisible && getClamped3dPlacement(proj, String(nodeName)).visible"
+          class="absolute pointer-events-none flex justify-center transition-transform duration-75 select-none"
+          :style="getClamped3dPlacement(proj, String(nodeName)).style"
         >
           <!-- Compact 3D Pill Badge -->
           <div
             v-if="expandedNode !== nodeName"
+            @mousedown.stop
+            @mouseup.stop
             @click.stop="focusComponent(String(nodeName)); emit('select-slot', String(nodeName)); expandedNode = String(nodeName)"
-            class="group flex items-center gap-1.5 px-2 py-1 bg-slate-950/90 hover:bg-slate-900 border rounded-full shadow-xl backdrop-blur-md cursor-pointer transition-all duration-150 transform hover:scale-105"
+            class="hud-3d-pill pointer-events-auto max-w-full overflow-hidden group flex items-center gap-1.5 px-2 py-1 bg-slate-950/90 hover:bg-slate-900 border rounded-full shadow-xl backdrop-blur-md cursor-pointer transition-all duration-150 transform hover:scale-105"
             :class="[
               selectedNodeName === nodeName
                 ? 'border-cyan-400 ring-2 ring-cyan-400/50 bg-slate-900'
@@ -315,28 +359,29 @@ const handleMouseLeave = () => {
                 ? 'border-amber-400 ring-1 ring-amber-400/40'
                 : 'border-slate-700/80 hover:border-cyan-500/60'
             ]"
-            :title="`Slot ${nodeName}: Click to focus in 3D & view telemetry`"
+            :title="`Slot ${nodeName}: Click to focus in 3D & view details`"
           >
             <span
               class="w-1.5 h-1.5 rounded-full shrink-0"
-              :class="getNodeTelemetry(String(nodeName)).isHealthy ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'"
+              :class="{
+                'bg-emerald-400': getNodeStatus(String(nodeName)) === 'healthy',
+                'bg-amber-400': getNodeStatus(String(nodeName)) === 'warning',
+                'bg-rose-500': getNodeStatus(String(nodeName)) === 'fault',
+                'bg-slate-500': !getNodeStatus(String(nodeName))
+              }"
             />
-            <span class="text-[10px] font-mono font-bold text-slate-200 group-hover:text-cyan-300 transition-colors">
+            <span class="text-[10px] font-mono font-bold text-slate-200 group-hover:text-cyan-300 transition-colors truncate">
               {{ nodeName }}
-            </span>
-            <span
-              class="text-[9px] font-mono px-1 py-0.2 rounded font-semibold border"
-              :class="getNodeTelemetry(String(nodeName)).isHealthy ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' : 'bg-amber-500/15 text-amber-400 border-amber-500/30'"
-            >
-              {{ getNodeTelemetry(String(nodeName)).vib }} mm/s
             </span>
           </div>
 
-          <!-- Expanded 3D HUD Telemetry Card -->
+          <!-- Expanded 3D HUD Card -->
           <div
             v-else
+            @mousedown.stop
+            @mouseup.stop
             @click.stop
-            class="w-60 bg-slate-950/95 border border-cyan-500/60 shadow-2xl rounded-xl p-2.5 backdrop-blur-xl text-slate-100 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-150"
+            class="hud-3d-card pointer-events-auto w-full max-h-full overflow-y-auto bg-slate-950/95 border border-cyan-500/60 shadow-2xl rounded-xl p-2.5 backdrop-blur-xl text-slate-100 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-150"
           >
             <div class="flex items-center justify-between pb-1.5 border-b border-slate-800">
               <div class="flex items-center gap-1.5 truncate">
@@ -353,16 +398,26 @@ const handleMouseLeave = () => {
               </button>
             </div>
 
-            <!-- Mini Telemetry Stat Grid -->
-            <div class="grid grid-cols-2 gap-1.5 text-center">
+            <div class="text-[10px] text-slate-300 truncate">
+              {{ findComponentForNode(String(nodeName))?.displayName || findComponentForNode(String(nodeName))?.name || 'No component bound to this slot' }}
+            </div>
+
+            <!-- Station-level live dynamics (telemetry is reported per station, not per CAD node) -->
+            <div v-if="stationOscillation" class="grid grid-cols-2 gap-1.5 text-center">
               <div class="bg-slate-900/80 p-1 rounded border border-slate-800 text-[10px] font-mono">
-                <span class="text-[8px] uppercase text-slate-400 block font-sans">Vibration</span>
-                <span class="font-bold text-cyan-300">{{ getNodeTelemetry(String(nodeName)).vib }} mm/s</span>
+                <span class="text-[8px] uppercase text-slate-400 block font-sans">Station vibration</span>
+                <span
+                  class="font-bold"
+                  :class="stationOscillation.vibrationMmS > VIBRATION_ALERT_MM_S ? 'text-amber-300' : 'text-cyan-300'"
+                >{{ stationOscillation.vibrationMmS.toFixed(2) }} mm/s</span>
               </div>
               <div class="bg-slate-900/80 p-1 rounded border border-slate-800 text-[10px] font-mono">
-                <span class="text-[8px] uppercase text-slate-400 block font-sans">Temperature</span>
-                <span class="font-bold text-amber-300">{{ getNodeTelemetry(String(nodeName)).temp }} °C</span>
+                <span class="text-[8px] uppercase text-slate-400 block font-sans">Station temp.</span>
+                <span class="font-bold text-amber-300">{{ stationOscillation.temperatureC !== null ? stationOscillation.temperatureC.toFixed(1) : '—' }} °C</span>
               </div>
+            </div>
+            <div v-else class="hud-3d-no-telemetry text-[10px] text-slate-400">
+              No live telemetry received for this station.
             </div>
 
             <div class="flex items-center justify-between gap-1 pt-0.5">
@@ -413,8 +468,8 @@ const handleMouseLeave = () => {
 
       <div class="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
         <span v-if="activeSlotData.serialNumber">S/N: {{ activeSlotData.serialNumber }}</span>
-        <span>•</span>
-        <span>{{ activeSlotData.technology }}</span>
+        <span v-if="activeSlotData.serialNumber && activeSlotData.technology">•</span>
+        <span v-if="activeSlotData.technology">{{ activeSlotData.technology }}</span>
       </div>
     </div>
 
@@ -442,9 +497,9 @@ const handleMouseLeave = () => {
       <AlertCircle class="w-8 h-8 text-destructive mb-2" />
       <span class="text-sm font-semibold text-destructive mb-1">Failed to Load CAD Model</span>
       <span class="text-xs text-muted-foreground max-w-md mb-4">{{ error }}</span>
-      <Button variant="outline" size="sm" @click="resetCamera">
+      <Button variant="outline" size="sm" @click="reloadModel(props.modelUrl)">
         <RotateCcw class="w-3.5 h-3.5 mr-1.5" />
-        Retry View
+        Retry Load
       </Button>
     </div>
   </div>

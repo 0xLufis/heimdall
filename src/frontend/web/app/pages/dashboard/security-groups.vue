@@ -133,7 +133,7 @@ async function fetchSsoStatus() {
       enabled: true,
       provider: 'microsoft',
       providerName: 'Microsoft Entra ID (Azure SSO)',
-      tenantId: '72f988bf-86f1-41af-91ab-2d7cd011db47',
+      tenantId: '00000000-de70-4e1d-8000-00000000c0de',
       isConfigured: false,
       allowMockSimulation: true
     }
@@ -661,7 +661,7 @@ onMounted(() => {
               </Badge>
             </div>
             <div class="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span>Tenant: <code class="font-mono text-[11px] text-foreground font-semibold">{{ ssoStatus?.tenantId || '72f988bf-86f1-41af-91ab-2d7cd011db47' }}</code></span>
+              <span>Tenant: <code class="font-mono text-[11px] text-foreground font-semibold">{{ ssoStatus?.tenantId || '00000000-de70-4e1d-8000-00000000c0de' }}</code></span>
               <span>•</span>
               <span>Transformer: <span class="text-emerald-500 font-medium">DynamicSecurityGroupClaimsTransformer</span></span>
               <span>•</span>

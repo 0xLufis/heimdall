@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { resolveSameOriginModelUrl, useCadModelViewer } from '~/composables/useCadModelViewer'
+import Machine3dDigitalTwin from '~/components/cad/Machine3dDigitalTwin.vue'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { EplanCadReference, StationInstalledPartDto } from '~/types/inventory'
@@ -136,25 +139,60 @@ describe('3D CAD Digital Twin & Component Identity Linking Suite', () => {
     })
   })
 
-  describe('3D CAD HUD Telemetry Overlay & Projected Node Coordinates', () => {
-    it('calculates screen projection from 3D camera coordinates', () => {
-      // Linear screen space projection formula verification:
-      // screenX = (projected.x * 0.5 + 0.5) * width
-      // screenY = (-projected.y * 0.5 + 0.5) * height
-      const width = 800
-      const height = 600
+  describe('3D model URL trust boundary', () => {
+    const origin = 'https://heimdall.example'
 
-      // Center point (NDC: 0, 0, 0.5)
-      const centerX = (0 * 0.5 + 0.5) * width
-      const centerY = (-0 * 0.5 + 0.5) * height
-      expect(centerX).toBe(400)
-      expect(centerY).toBe(300)
+    it('accepts relative and same-origin model URLs', () => {
+      expect(resolveSameOriginModelUrl('/sample/station_digital_twin.glb', origin)).toBe(`${origin}/sample/station_digital_twin.glb`)
+      expect(resolveSameOriginModelUrl('models/a.glb', origin)).toBe(`${origin}/models/a.glb`)
+      expect(resolveSameOriginModelUrl(`${origin}/x.glb`, origin)).toBe(`${origin}/x.glb`)
+    })
 
-      // Top-right point (NDC: 0.5, 0.5, 0.2)
-      const trX = (0.5 * 0.5 + 0.5) * width
-      const trY = (-0.5 * 0.5 + 0.5) * height
-      expect(trX).toBe(600)
-      expect(trY).toBe(150)
+    it('rejects cross-origin, protocol-relative and non-http model URLs', () => {
+      expect(resolveSameOriginModelUrl('https://evil.example/model.glb', origin)).toBeNull()
+      expect(resolveSameOriginModelUrl('//evil.example/model.glb', origin)).toBeNull()
+      expect(resolveSameOriginModelUrl('javascript:alert(1)', origin)).toBeNull()
+      expect(resolveSameOriginModelUrl('file:///etc/passwd', origin)).toBeNull()
+      expect(resolveSameOriginModelUrl('', origin)).toBeNull()
+      expect(resolveSameOriginModelUrl(undefined, origin)).toBeNull()
+    })
+
+    it('surfaces an error instead of fetching an untrusted model', async () => {
+      const viewer = useCadModelViewer()
+      const load = vi.fn()
+      class FakeLoader { load = load }
+      await expect(viewer.loadModel('https://evil.example/m.glb', {}, FakeLoader)).rejects.toThrow()
+      expect(load).not.toHaveBeenCalled()
+      expect(viewer.error.value).toMatch(/untrusted/i)
+    })
+  })
+
+  describe('Viewer lifecycle', () => {
+    it('never starts a render loop when disposed while Three.js is still loading', async () => {
+      const raf = vi.spyOn(window, 'requestAnimationFrame')
+      const viewer = useCadModelViewer()
+      const container = document.createElement('div')
+      const canvas = document.createElement('canvas')
+      const pending = viewer.initViewer(container, canvas, {})
+      viewer.dispose()
+      await pending
+      expect(raf).not.toHaveBeenCalled()
+      expect(viewer.error.value).toBeNull()
+    })
+  })
+
+  describe('Machine3dDigitalTwin component', () => {
+    it('mounts, degrades to an error state without WebGL and never shows fabricated telemetry', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const wrapper = mount(Machine3dDigitalTwin, {
+        props: { components: [{ cad3dNodePath: 'GANTRY-X-01', equipmentStatus: 'UnderRepair', name: 'Axis' }] }
+      })
+      await flushPromises()
+      await vi.dynamicImportSettled()
+      await flushPromises()
+      expect(wrapper.text()).toContain('Failed to Load CAD Model')
+      expect(wrapper.text()).not.toContain('mm/s')
+      wrapper.unmount()
     })
   })
 })

@@ -20,7 +20,7 @@ describe('Enterprise Plant Dataset Loader Suite', () => {
     expect(meta.plantName).toBe('Smart Factory Giga-01 (AI Synthetic Facility)')
     expect(meta.plantCode).toBe('SF-GIGA-01')
     expect(meta.domain).toBe('fake-factory.internal')
-    expect(meta.entraTenantId).toBe('72f988bf-86f1-41af-91ab-2d7cd011db47')
+    expect(meta.entraTenantId).toBe('00000000-de70-4e1d-8000-00000000c0de')
   })
 
   it('loads predefined enterprise organizations', () => {

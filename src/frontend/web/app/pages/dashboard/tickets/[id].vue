@@ -101,10 +101,9 @@ const commentAttachments = ref<TicketAttachment[]>([])
 const previewImage = ref<{ url: string; name: string } | null>(null)
 
 // Current User
-const currentUser = computed(() => {
-  const session = (authClient as any).useSession?.()
-  return session?.data?.value?.user?.name || 'On-Duty Specialist'
-})
+// Subscribe once at setup; calling useSession() inside a computed re-subscribes on every evaluation.
+const authSession = (authClient as any).useSession?.()
+const currentUser = computed(() => authSession?.data?.value?.user?.name || 'On-Duty Specialist')
 
 // ── Fetching Data ───────────────────────────────────────────────────────────
 async function loadTicket() {
@@ -119,7 +118,7 @@ async function loadTicket() {
 
   // 2. Fetch fresh from API
   try {
-    const res = await $fetch<{ ticket: MaintenanceTicket }>(`/api/tickets/${ticketId.value}`)
+    const res = await $fetch<{ ticket: MaintenanceTicket }>(`/api/tickets/${encodeURIComponent(ticketId.value)}`)
     if (res && res.ticket) {
       localTicket.value = res.ticket
       // Sync into global state if missing

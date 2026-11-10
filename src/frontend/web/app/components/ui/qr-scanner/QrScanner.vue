@@ -42,6 +42,10 @@ const lastScannedCode = ref<string | null>(null)
 let mediaStream: MediaStream | null = null
 let scanInterval: any = null
 let simulationAnimFrame: number | null = null
+// Incremented whenever the stream is torn down so a late getUserMedia resolution
+// (e.g. permission prompt answered after unmount/close) is released instead of leaking.
+let streamGeneration = 0
+let isUnmounted = false
 
 // Quick one-click test codes for factory floor simulation
 const quickTestPresets = [
@@ -67,6 +71,7 @@ async function startScanner() {
 
     // Stop existing stream if running
     stopMediaStream()
+    const generation = streamGeneration
 
     // Resilient camera constraints: try ideal facingMode, fallback to generic video
     try {
@@ -84,6 +89,13 @@ async function startScanner() {
         video: true,
         audio: false
       })
+    }
+
+    if (generation !== streamGeneration || isUnmounted || !isScanning.value) {
+      // Scanner was stopped/unmounted while waiting for camera permission
+      mediaStream?.getTracks().forEach(track => track.stop())
+      mediaStream = null
+      return
     }
 
     if (videoElement.value && mediaStream) {
@@ -232,6 +244,7 @@ function startSimulatedVisionFeed() {
 }
 
 function stopMediaStream() {
+  streamGeneration++
   if (scanInterval) {
     clearInterval(scanInterval)
     scanInterval = null
@@ -323,6 +336,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  isUnmounted = true
   stopScanner()
 })
 </script>

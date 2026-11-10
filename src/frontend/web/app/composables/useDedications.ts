@@ -12,7 +12,7 @@ export function useDedications() {
     loading.value = true
     error.value = null
     try {
-      const data = await $fetch<MachineDedications>(`/api/proxy/v1/Delegation/machine/${machineId}/dedications`)
+      const data = await $fetch<MachineDedications>(`/api/proxy/v1/Delegation/machine/${encodeURIComponent(machineId)}/dedications`)
       return data
     } catch (err: any) {
       // Return structured default if offline/proxy not reachable
@@ -33,7 +33,7 @@ export function useDedications() {
     loading.value = true
     error.value = null
     try {
-      const data = await $fetch<MachineDedications>(`/api/proxy/v1/Delegation/machine/${machineId}/dedicate`, {
+      const data = await $fetch<MachineDedications>(`/api/proxy/v1/Delegation/machine/${encodeURIComponent(machineId)}/dedicate`, {
         method: 'POST',
         body: {
           targetType,
@@ -63,7 +63,7 @@ export function useDedications() {
       if (options?.targetId) query.targetId = options.targetId
       if (options?.technology) query.technology = options.technology
 
-      await $fetch(`/api/proxy/v1/Delegation/machine/${machineId}/dedicate`, {
+      await $fetch(`/api/proxy/v1/Delegation/machine/${encodeURIComponent(machineId)}/dedicate`, {
         method: 'DELETE',
         query
       })
@@ -80,7 +80,7 @@ export function useDedications() {
     loading.value = true
     error.value = null
     try {
-      const data = await $fetch<UserDedications>(`/api/proxy/v1/Delegation/user/${userId}/dedications`)
+      const data = await $fetch<UserDedications>(`/api/proxy/v1/Delegation/user/${encodeURIComponent(userId)}/dedications`)
       return data
     } catch (err: any) {
       return null
@@ -96,7 +96,7 @@ export function useDedications() {
       const query: Record<string, string> = {}
       if (technology) query.technology = technology
 
-      await $fetch(`/api/proxy/v1/Delegation/user/${userId}/dedicate-machine/${machineId}`, {
+      await $fetch(`/api/proxy/v1/Delegation/user/${encodeURIComponent(userId)}/dedicate-machine/${encodeURIComponent(machineId)}`, {
         method: 'POST',
         query
       })
@@ -116,7 +116,7 @@ export function useDedications() {
       const query: Record<string, string> = {}
       if (technology) query.technology = technology
 
-      await $fetch(`/api/proxy/v1/Delegation/user/${userId}/dedicate-machine/${machineId}`, {
+      await $fetch(`/api/proxy/v1/Delegation/user/${encodeURIComponent(userId)}/dedicate-machine/${encodeURIComponent(machineId)}`, {
         method: 'DELETE',
         query
       })

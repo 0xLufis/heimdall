@@ -158,8 +158,10 @@ public class SubMachineSummaryDto
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string? DisplayName { get; set; }
     public string CustomIdentifier { get; set; } = string.Empty;
     public int? SubMachineIndex { get; set; }
+    public string? CellType { get; set; }
     public string? MachineType { get; set; }
     public string Status { get; set; } = "active";
     public string? Spoc { get; set; }

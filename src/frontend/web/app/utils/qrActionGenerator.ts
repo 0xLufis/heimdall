@@ -12,6 +12,27 @@ export type QrAction =
   | 'inspect-machine'
   | 'verify-pm'
 
+export const QR_ACTIONS: readonly QrAction[] = [
+  'report-incident',
+  'view-station',
+  'check-in',
+  'view-ticket',
+  'inspect-machine',
+  'verify-pm'
+] as const
+
+const QR_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'] as const
+
+export function isQrAction(value: unknown): value is QrAction {
+  return typeof value === 'string' && (QR_ACTIONS as readonly string[]).includes(value)
+}
+
+function asPriority(value: string | null): QrActionParams['prefillPriority'] {
+  return value && (QR_PRIORITIES as readonly string[]).includes(value)
+    ? (value as QrActionParams['prefillPriority'])
+    : undefined
+}
+
 export interface QrActionParams {
   action: QrAction
   stationId?: string
@@ -29,8 +50,9 @@ export interface QrActionParams {
  */
 export function generateQrUri(params: QrActionParams, hostOverride?: string): string {
   let base: string
-  if (hostOverride && hostOverride.trim()) {
-    base = `${hostOverride.trim().replace(/\/$/, '')}/mobile/action`
+  // Only accept http(s) host overrides so a typo/paste cannot produce e.g. a javascript: payload
+  if (hostOverride && /^https?:\/\/[^\s/?#]+/i.test(hostOverride.trim())) {
+    base = `${hostOverride.trim().replace(/\/+$/, '')}/mobile/action`
   } else if (typeof window !== 'undefined' && window.location.origin) {
     base = `${window.location.origin}/mobile/action`
   } else {
@@ -85,7 +107,9 @@ export function parseQrUri(raw: string): QrActionParams | null {
     const url = new URL(urlStr, 'http://localhost')
     
     // 1. Explicit action query param
-    const action = url.searchParams.get('action') as QrAction
+    const rawAction = url.searchParams.get('action')
+    if (rawAction && !isQrAction(rawAction)) return null
+    const action = rawAction as QrAction | null
     if (action) {
       return {
         action,
@@ -94,7 +118,7 @@ export function parseQrUri(raw: string): QrActionParams | null {
         groupId: url.searchParams.get('groupId') || undefined,
         ticketId: url.searchParams.get('ticketId') || undefined,
         prefillTitle: url.searchParams.get('prefillTitle') || undefined,
-        prefillPriority: (url.searchParams.get('prefillPriority') as any) || undefined
+        prefillPriority: asPriority(url.searchParams.get('prefillPriority'))
       }
     }
 
@@ -106,7 +130,7 @@ export function parseQrUri(raw: string): QrActionParams | null {
         machineType: url.searchParams.get('machineType') || undefined,
         groupId: url.searchParams.get('groupId') || undefined,
         prefillTitle: url.searchParams.get('title') || url.searchParams.get('prefillTitle') || undefined,
-        prefillPriority: (url.searchParams.get('priority') as any) || undefined
+        prefillPriority: asPriority(url.searchParams.get('priority'))
       }
     }
 
@@ -114,7 +138,7 @@ export function parseQrUri(raw: string): QrActionParams | null {
     if (ticketMatch && ticketMatch[1] && ticketMatch[1] !== 'new' && ticketMatch[1] !== 'templates') {
       return {
         action: 'view-ticket',
-        ticketId: ticketMatch[1]
+        ticketId: decodeURIComponent(ticketMatch[1])
       }
     }
 

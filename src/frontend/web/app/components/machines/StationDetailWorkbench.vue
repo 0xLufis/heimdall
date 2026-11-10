@@ -68,15 +68,9 @@ const on3dSlotSelected = (slotId: string) => {
   selected3dSlot.value = slotId
 }
 
-const default3dParts = [
-  { id: 'part-frame-01', name: 'Precision Base Enclosure Frame', cad3dNodePath: 'FRAME-BASE-01', functionalSlotIdentifier: 'FRAME-BASE-01', technology: 'Structural', equipmentStatus: 'InMachine' },
-  { id: 'part-conv-01', name: 'Dual-Lane SMEMA Belt Conveyor', cad3dNodePath: 'CONVEYOR-01', functionalSlotIdentifier: 'CONVEYOR-01', technology: 'Pneumatics', equipmentStatus: 'InMachine' },
-  { id: 'part-gantry-x', name: 'High-Speed Linear X-Carriage Beam', cad3dNodePath: 'GANTRY-X-01', functionalSlotIdentifier: 'GANTRY-X-01', technology: 'Kinematics', equipmentStatus: 'InMachine' },
-  { id: 'part-gantry-z', name: 'Precision Vertical Z-Slide Axis', cad3dNodePath: 'GANTRY-Z-01', functionalSlotIdentifier: 'GANTRY-Z-01', technology: 'Kinematics', equipmentStatus: 'InMachine' },
-  { id: 'part-tool-01', name: 'Piezo Jetting Dispenser / Spindle Head', cad3dNodePath: 'TOOL-HEAD-01', functionalSlotIdentifier: 'TOOL-HEAD-01', technology: 'Dispensing', equipmentStatus: 'InMachine' },
-  { id: 'part-cam-01', name: 'VisionPro GigE Camera & Ring Light', cad3dNodePath: 'VISION-CAM-01', functionalSlotIdentifier: 'VISION-CAM-01', technology: 'Optics', equipmentStatus: 'InMachine' },
-  { id: 'part-status-01', name: '3-Tier Industrial Status Beacon', cad3dNodePath: 'PANEL-STATUS-01', functionalSlotIdentifier: 'PANEL-STATUS-01', technology: 'Safety', equipmentStatus: 'InMachine' }
-]
+// Only real installed parts bind to CAD meshes; an empty list leaves meshes unbound rather than
+// presenting a fabricated bill of materials.
+const installed3dParts = computed<any[]>(() => treeData.value?.installedParts ?? [])
 
 // Dedications state
 const { fetchMachineDedications, dedicateToMachine, removeMachineDedication } = useDedications()
@@ -206,54 +200,23 @@ const fetchStationTopology = async (stationId: string) => {
   if (!stationId) return
   treeLoading.value = true
   try {
-    const res = await $fetch<any>(`/api/proxy/v1/inventory/station-tree/${stationId}`)
+    const res = await $fetch<any>(`/api/proxy/v1/inventory/station-tree/${encodeURIComponent(stationId)}`)
     if (res) {
       treeData.value = res
       expandAll()
       return
     }
-  } catch {
-    // Fallback from machine props
+  } catch (err) {
+    // Backend topology unavailable: show what we know from the machine record only,
+    // never fabricated controllers/IPs/parts.
+    console.warn('Failed to load station topology', err)
     treeData.value = {
       stationId: props.machine?.id || stationId,
       stationName: props.machine?.displayName || props.machine?.name || 'Station ' + stationId,
-      lineName: props.machine?.groupId || 'Line 1',
-      technology: props.machine?.machineType || 'Assembly',
-      controllers: props.machine?.controllers || [
-        {
-          id: 'ctrl-ipc-01',
-          hostname: props.machine?.customIdentifier ? `${props.machine.customIdentifier}-IPC01` : 'IPC-MAIN-01',
-          ipAddress: '192.168.10.45',
-          macAddress: '00:1B:21:9A:43:02',
-          isOnline: true,
-          hardware: [
-            { id: 'hw-1', name: 'EtherCAT Master Bridge', technology: 'Fieldbus', isSigned: true },
-            { id: 'hw-2', name: 'GigE Vision Frame Grabber', technology: 'Optics', isSigned: true }
-          ]
-        }
-      ],
-      parts: [
-        {
-          id: 'prt-101',
-          name: 'Kinematic Servo Drive Motor',
-          serialNumber: 'SRV-88942-X',
-          equipmentStatus: 'InMachine',
-          technology: 'Kinematics',
-          manufacturer: 'Siemens Industrial',
-          storageLocation: 'Slot Axis-Z',
-          costInHUF: 1450000
-        },
-        {
-          id: 'prt-102',
-          name: 'Pneumatic Proportional Valve Manifold',
-          serialNumber: 'PNU-44021-M',
-          equipmentStatus: 'InMachine',
-          technology: 'Pneumatics',
-          manufacturer: 'Festo Automation',
-          storageLocation: 'Manifold Rack 2',
-          costInHUF: 680000
-        }
-      ]
+      lineName: props.machine?.lineGroupName || props.machine?.groupId || '',
+      technology: props.machine?.machineType || '',
+      controllers: props.machine?.controllers || [],
+      parts: []
     }
     expandAll()
   } finally {
@@ -362,8 +325,8 @@ const handleLifecycleSubmit = async () => {
     lifecycleFeedback.value = 'Station lifecycle disposition updated successfully.'
     emit('refresh')
   } catch (err: any) {
-    lifecycleFeedback.value = `Operation logged: ${targetDisposition.value} scheduled for ${props.machine.name}.`
-    emit('refresh')
+    // Surface the failure instead of reporting a fake "logged" success.
+    lifecycleFeedback.value = `Failed to update lifecycle disposition: ${err?.data?.statusMessage || err?.statusMessage || err?.message || 'unknown error'}`
   } finally {
     isSubmittingLifecycle.value = false
   }
@@ -629,7 +592,8 @@ const handleLifecycleSubmit = async () => {
               <Machine3dDigitalTwin
                 :model-url="treeData?.model3dUrl || '/sample/station_digital_twin.glb'"
                 :selected-slot="selected3dSlot"
-                :components="(treeData?.installedParts && treeData.installedParts.length > 0) ? treeData.installedParts : default3dParts"
+                :station-id="machine?.id || machine?.customIdentifier || null"
+                :components="installed3dParts"
                 height="560px"
                 @select-slot="on3dSlotSelected"
               />
@@ -651,7 +615,7 @@ const handleLifecycleSubmit = async () => {
                   <span>CAD Component Slots</span>
                 </div>
                 <Badge variant="outline" class="text-[10px] font-mono">
-                  {{ ((treeData?.installedParts && treeData.installedParts.length > 0) ? treeData.installedParts : default3dParts).length }} Nodes
+                  {{ installed3dParts.length }} Nodes
                 </Badge>
               </div>
               <p class="text-[11px] text-muted-foreground leading-relaxed mb-3">
@@ -661,7 +625,7 @@ const handleLifecycleSubmit = async () => {
               <!-- Scrollable Slot List -->
               <div class="space-y-1.5 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
                 <div
-                  v-for="part in ((treeData?.installedParts && treeData.installedParts.length > 0) ? treeData.installedParts : default3dParts)"
+                  v-for="part in installed3dParts"
                   :key="part.id || part.cad3dNodePath"
                   class="p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between"
                   :class="[

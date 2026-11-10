@@ -1,10 +1,10 @@
-import { defineEventHandler, readBody } from 'h3'
-import { componentsAndDelegationsStore } from '../../utils/componentsAndDelegationsStore'
+import { defineEventHandler, readBody, createError } from 'h3'
+import { backendFetch } from '../../utils/backendFetch'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  if (!body.recipeCode || !body.name) {
-    throw createError({ statusCode: 400, message: 'recipeCode and name are required.' })
+  if (!body?.recipeCode || !body?.name) {
+    throw createError({ statusCode: 400, statusMessage: 'recipeCode and name are required.' })
   }
-  return componentsAndDelegationsStore.createRecipe(body)
+  return backendFetch(event, 'component/recipes', { method: 'POST', body })
 })

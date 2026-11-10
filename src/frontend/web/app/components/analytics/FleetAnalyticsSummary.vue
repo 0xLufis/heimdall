@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/** Renders nullable backend metrics: "—" when the backend has no data source for the value. */
+const fmt = (value: number | null | undefined, suffix = ''): string =>
+  value === null || value === undefined || Number.isNaN(value) ? '—' : `${Math.round(value * 10) / 10}${suffix}`
+
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
@@ -78,7 +82,7 @@ const totalBacklog = computed(() => {
           <Activity class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
         </div>
         <div class="flex items-baseline gap-3 my-3">
-          <span class="text-3xl font-bold font-mono text-foreground">{{ summary.availabilityPercentage }}%</span>
+          <span class="text-3xl font-bold font-mono text-foreground">{{ fmt(summary.availabilityPercentage, '%') }}</span>
           <Badge variant="outline" class="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
             +0.4% this week
           </Badge>
@@ -91,7 +95,7 @@ const totalBacklog = computed(() => {
             ></div>
           </div>
           <div class="flex justify-between text-[11px] text-muted-foreground font-mono">
-            <span>Operating: {{ summary.totalMachineHours }} hrs</span>
+            <span>Operating: {{ fmt(summary.totalMachineHours) }} hrs</span>
             <span>Target: 95.0%</span>
           </div>
         </div>
@@ -104,7 +108,7 @@ const totalBacklog = computed(() => {
           <Clock class="w-4 h-4 text-teal-600 dark:text-teal-400" />
         </div>
         <div class="flex items-baseline gap-2 my-3">
-          <span class="text-3xl font-bold font-mono text-foreground">{{ summary.averageMtbfHours }}</span>
+          <span class="text-3xl font-bold font-mono text-foreground">{{ fmt(summary.averageMtbfHours) }}</span>
           <span class="text-sm font-medium text-muted-foreground">Hours</span>
         </div>
         <div class="text-xs text-muted-foreground flex items-center gap-1.5 font-mono">
@@ -120,7 +124,7 @@ const totalBacklog = computed(() => {
           <TrendingDown class="w-4 h-4 text-muted-foreground" />
         </div>
         <div class="flex items-baseline gap-2 my-3">
-          <span class="text-3xl font-bold font-mono text-foreground">{{ summary.averageMttrMinutes }}</span>
+          <span class="text-3xl font-bold font-mono text-foreground">{{ fmt(summary.averageMttrMinutes) }}</span>
           <span class="text-sm font-medium text-muted-foreground">Minutes</span>
         </div>
         <div class="text-xs text-muted-foreground flex items-center gap-1.5 font-mono">
@@ -136,7 +140,7 @@ const totalBacklog = computed(() => {
           <CheckCircle2 class="w-4 h-4 text-amber-600 dark:text-amber-400" />
         </div>
         <div class="flex items-baseline gap-3 my-3">
-          <span class="text-3xl font-bold font-mono text-foreground">{{ summary.slaCompliancePercentage }}%</span>
+          <span class="text-3xl font-bold font-mono text-foreground">{{ fmt(summary.slaCompliancePercentage, '%') }}</span>
           <Badge
             :class="summary.slaCompliancePercentage >= 95 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'"
             class="text-[10px] border"

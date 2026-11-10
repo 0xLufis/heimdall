@@ -16,6 +16,12 @@ export interface QrSvgOptions {
   margin?: number
 }
 
+/** Only allow plain CSS color tokens (hex, rgb()/hsl(), named) in SVG attributes. */
+function sanitizeColor(value: string | undefined, fallback: string): string {
+  if (!value) return fallback
+  return /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|(rgb|hsl)a?\([0-9.,%\s]+\))$/.test(value.trim()) ? value.trim() : fallback
+}
+
 /**
  * Encodes text into a standard QR code matrix (2D boolean array where true = dark module).
  */
@@ -42,11 +48,11 @@ export function generateQrSvg(text: string, options: QrSvgOptions = {}): string 
   const qr = QRCode.create(text, { errorCorrectionLevel: 'M' })
   const dim = qr.modules.size
   // Standard quiet zone is 4 modules minimum for phone camera optical recognition
-  const margin = options.margin ?? 4
+  const margin = Number.isFinite(Number(options.margin)) ? Math.max(0, Math.floor(Number(options.margin))) : 4
   const totalSize = dim + margin * 2
-  const width = options.width ?? 280
-  const dark = options.darkColor ?? '#000000'
-  const light = options.lightColor ?? '#ffffff'
+  const width = Number.isFinite(Number(options.width)) ? Number(options.width) : 280
+  const dark = sanitizeColor(options.darkColor, '#000000')
+  const light = sanitizeColor(options.lightColor, '#ffffff')
 
   let pathData = ''
   for (let r = 0; r < dim; r++) {

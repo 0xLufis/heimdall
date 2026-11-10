@@ -2,12 +2,17 @@ namespace App.Backend.Tests;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 using App.Contracts.Inventory;
 using App.Contracts.Machine;
 using App.Contracts.Templates;
+using App.Infrastructure.Repositories;
 using App.Infrastructure.Services;
+using App.Shared.Data;
 using App.Shared.Entities;
 
 public class Cad3dComponentBindingTests
@@ -114,5 +119,40 @@ public class Cad3dComponentBindingTests
         Assert.Equal("TOOL-HEAD-01", tree.InstalledParts[1].Cad3dNodePath);
         Assert.NotNull(tree.InstalledParts[0].CadReference);
         Assert.Equal("=LINE1+OP20-M1", tree.InstalledParts[0].CadReference!.DeviceTag);
+    }
+
+    [Fact]
+    public async Task StationComponentTree_BindsOnlyFromEngineeringData_AndUnknownStationIsNull()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase($"Cad3dTreeDb_{Guid.NewGuid():N}")
+            .Options;
+        using var context = new AppDbContext(options);
+
+        var station = new Machine { Id = Guid.NewGuid(), Name = "OP20", CustomIdentifier = "OP20" };
+        var servo = new HardwareComponent { Id = Guid.NewGuid(), Name = "Servo Drive", MachineId = station.Id, EquipmentStatus = "InMachine" };
+        var camera = new HardwareComponent { Id = Guid.NewGuid(), Name = "Camera", MachineId = station.Id, EquipmentStatus = "InMachine" };
+        context.Machines.Add(station);
+        context.InventoryItems.AddRange(servo, camera);
+        context.MachineComponents.Add(new MachineComponent
+        {
+            MachineId = station.Id,
+            Name = "X axis",
+            FunctionalSlotIdentifier = "SLOT-X",
+            CurrentPartId = servo.Id,
+            EplanCadRefJson = JsonSerializer.Serialize(new EplanCadReference { Cad3dNodePath = "GANTRY-X-01" })
+        });
+        await context.SaveChangesAsync();
+
+        var repository = new AssetRepository(context);
+
+        Assert.Null(await repository.GetStationComponentTreeAsync("UNKNOWN-STATION"));
+
+        var tree = await repository.GetStationComponentTreeAsync(station.Id);
+        Assert.NotNull(tree);
+        Assert.Equal("GANTRY-X-01", tree!.InstalledParts.Single(p => p.Id == servo.Id).Cad3dNodePath);
+        Assert.Equal("SLOT-X", tree.InstalledParts.Single(p => p.Id == servo.Id).FunctionalSlotIdentifier);
+        // No engineering reference: no guessed mesh binding from the part name.
+        Assert.Null(tree.InstalledParts.Single(p => p.Id == camera.Id).Cad3dNodePath);
     }
 }

@@ -1,11 +1,11 @@
-import { defineEventHandler, getRouterParam, createError } from 'h3'
-import { componentsAndDelegationsStore } from '../../../utils/componentsAndDelegationsStore'
+import { defineEventHandler, getRouterParam, createError, setResponseStatus } from 'h3'
+import { backendFetch } from '../../../utils/backendFetch'
 
-export default defineEventHandler((event) => {
+/** Deletes a recipe via `DELETE /api/v1/delegation/recipes/{id}` (backend enforces DelegationManagement + tenant scope). */
+export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
-  if (!id) {
-    throw createError({ statusCode: 400, message: 'Recipe ID is required.' })
-  }
-  const deleted = componentsAndDelegationsStore.deleteDelegationRecipe(id)
-  return { success: deleted }
+  if (!id) throw createError({ statusCode: 400, statusMessage: 'Identifier is required.' })
+  await backendFetch(event, `delegation/recipes/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  setResponseStatus(event, 204)
+  return null
 })

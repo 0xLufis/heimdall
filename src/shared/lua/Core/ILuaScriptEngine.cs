@@ -1,35 +1,21 @@
 namespace App.Shared.Lua.Core;
 
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using App.Shared.Lua.Apis;
+using App.Shared.Entities;
 using App.Shared.Lua.Bridge;
-using App.Shared.Lua.Models;
 
 /// <summary>
 /// Core contract for the Heimdall sandboxed Lua scripting platform.
-/// Exposes safe execution, timeout enforcement, domain API injection,
-/// and dynamic UI extensions.
+/// Exposes safe execution with time/memory/re-entrancy budgets and domain API injection.
 /// </summary>
 public interface ILuaScriptEngine
 {
     ILuaPlantDataProvider DataProvider { get; }
-    MachinesLuaApi MachinesApi { get; }
-    GroupingsLuaApi GroupingsApi { get; }
-    TelemetryLuaApi TelemetryApi { get; }
-    TicketsLuaApi TicketsApi { get; }
-    UiLuaApi UiApi { get; }
-    EventsLuaApi EventsApi { get; }
 
     /// <summary>
-    /// Configures a clean sandboxed MoonSharp script environment with domain APIs and log capture.
-    /// </summary>
-    MoonSharp.Interpreter.Script CreateSandboxedScript(List<string> logs);
-
-    /// <summary>
-    /// Executes arbitrary Lua source code inside the isolated sandbox.
+    /// Executes arbitrary Lua source code inside a fresh isolated sandbox.
     /// </summary>
     Task<LuaExecutionResult> ExecuteAsync(
         string code,
@@ -37,7 +23,7 @@ public interface ILuaScriptEngine
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Executes a registered LuaScriptRecord and records execution telemetry.
+    /// Executes a stored script and records last-execution telemetry on the record (caller persists it).
     /// </summary>
     Task<LuaExecutionResult> ExecuteScriptRecordAsync(
         LuaScriptRecord scriptRecord,
@@ -45,14 +31,11 @@ public interface ILuaScriptEngine
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns dynamic UI extensions registered by plant Lua scripts.
-    /// </summary>
-    IReadOnlyCollection<LuaUiExtension> GetUiExtensions(LuaUiTargetZone? zone = null);
-
-    /// <summary>
-    /// Invokes the registered Lua callback for a dynamic UI action.
+    /// Re-executes <paramref name="ownerScript"/> in a fresh sandbox and invokes the handler it registers
+    /// for <paramref name="extensionId"/> with the given context, within the same execution budget.
     /// </summary>
     Task<LuaExecutionResult> InvokeUiActionAsync(
+        LuaScriptRecord ownerScript,
         string extensionId,
         Dictionary<string, object?>? context = null,
         CancellationToken cancellationToken = default);

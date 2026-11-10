@@ -2,6 +2,8 @@ namespace App.Shared.Lua.Core;
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using App.Shared.Lua.Models;
 
 /// <summary>
 /// Result of a Lua script execution inside the sandbox.
@@ -25,6 +27,10 @@ public record LuaExecutionResult
 
     /// <summary>List of logs captured during execution.</summary>
     public List<string> Logs { get; init; } = new();
+
+    /// <summary>UI extensions declared by the script during this run (consumed by the automation service).</summary>
+    [JsonIgnore]
+    public IReadOnlyList<LuaUiExtension> UiExtensions { get; init; } = Array.Empty<LuaUiExtension>();
 
     public static LuaExecutionResult FromError(string error, List<string>? logs = null)
     {
@@ -62,9 +68,28 @@ public record LuaSandboxOptions
     /// <summary>Maximum output buffer length in characters to prevent memory exhaustion.</summary>
     public int MaxOutputLength { get; init; } = 100_000;
 
+    /// <summary>Maximum number of captured print lines.</summary>
+    public int MaxOutputLines { get; init; } = 500;
+
     /// <summary>Maximum allowed script length in characters.</summary>
     public int MaxScriptLength { get; init; } = 65_536;
 
-    /// <summary>Default plant or organization context ID.</summary>
-    public string? DefaultOrganizationId { get; init; }
+    /// <summary>
+    /// Maximum bytes the script may allocate on its executing thread (cumulative). Bounds memory
+    /// bombs such as repeated string doubling or unbounded table growth.
+    /// </summary>
+    public long MaxAllocatedBytes { get; init; } = 128L * 1024 * 1024;
+
+    /// <summary>Maximum nesting of CLR→Lua callbacks (sort comparators, gsub functions, API handlers).</summary>
+    public int MaxCallbackDepth { get; init; } = 8;
+
+    /// <summary>Maximum length of a string produced by string.rep.</summary>
+    public int MaxStringLength { get; init; } = 1_000_000;
+
+    /// <summary>Maximum number of values (table entries) converted when returning results to the host.</summary>
+    public int MaxReturnValueNodes { get; init; } = 10_000;
+
+    /// <summary>Extra time the host waits beyond <see cref="MaxExecutionTime"/> before abandoning a run
+    /// that is stuck inside a single CLR call the instruction guard cannot interrupt.</summary>
+    public TimeSpan AbandonGracePeriod { get; init; } = TimeSpan.FromSeconds(2);
 }

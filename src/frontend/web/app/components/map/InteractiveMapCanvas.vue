@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useDxfMap } from '~/composables/useDxfMap'
 import { useStationTelemetry, type StationTelemetryKpi, type StationSlaSummary } from '~/composables/useStationTelemetry'
 import type { MaintenanceTicket } from '~/types/maintenance'
 import StationTelemetryBubble from '~/components/map/StationTelemetryBubble.vue'
 import { ZoomIn, ZoomOut, Maximize2, Loader2, AlertCircle } from 'lucide-vue-next'
+import {
+  computeOverlayPlacement,
+  projectSvgPointToScreen,
+  PLANT_MAP_CARD_SIZE,
+  PLANT_MAP_OVERLAY_INSETS,
+  PLANT_MAP_PILL_SIZE,
+  type OverlayPlacement
+} from '~/utils/telemetryOverlayPlacement'
 
 const props = withDefaults(
   defineProps<{
@@ -73,11 +81,9 @@ const toggleExpand = (handle: string) => {
   }
 }
 
-const resolveKpi = (handle: string): StationTelemetryKpi => {
-  if (props.stationKpis && props.stationKpis[handle.toUpperCase()]) {
-    return props.stationKpis[handle.toUpperCase()]
-  }
-  return getStationKpi(handle)
+const resolveKpi = (handle: string): StationTelemetryKpi | null => {
+  const fromProps = props.stationKpis?.[handle.toUpperCase()]
+  return fromProps ?? getStationKpi(handle)
 }
 
 const resolveSla = (handle: string): StationSlaSummary => {
@@ -88,158 +94,75 @@ const stationInsertEntities = computed(() => {
   return parsedEntities.value.filter(e => e.type === 'INSERT' && e.position && (e.handle || e.name))
 })
 
-const getScreenPosition = (entity: any) => {
-  if (!svgContainer.value || !entity.position) return { x: 0, y: 0, visible: false }
+// Reactive overlay-layer size: placements must be recomputed on container resize,
+// not only on pan / zoom (clientWidth reads inside render are not reactive).
+const containerSize = ref({ width: 0, height: 0 })
+let containerResizeObserver: ResizeObserver | null = null
 
-  const cw = svgContainer.value.clientWidth || 800
-  const ch = svgContainer.value.clientHeight || 600
-  const vb = viewBox.value
-
-  if (!vb.width || !vb.height) return { x: 0, y: 0, visible: false }
-
-  const scaleX = cw / vb.width
-  const scaleY = ch / vb.height
-  const scale = Math.min(scaleX, scaleY)
-
-  const offsetX = (cw - vb.width * scale) / 2
-  const offsetY = (ch - vb.height * scale) / 2
-
-  const screenX = offsetX + (entity.position.x - vb.x) * scale
-  const screenY = offsetY + (entity.position.y - vb.y) * scale
-
-  const visible = screenX >= -120 && screenX <= cw + 120 && screenY >= -120 && screenY <= ch + 120
-
-  return { x: Math.round(screenX), y: Math.round(screenY), visible }
+const measureContainer = () => {
+  const el = mapContainerRef.value
+  if (!el) return
+  containerSize.value = { width: el.clientWidth, height: el.clientHeight }
 }
 
-const getBubblePlacement = (entity: any) => {
-  const handle = entity.handle || entity.name
-  const expanded = isExpanded(handle)
-  const pos = getScreenPosition(entity)
-
-  if (!pos.visible) {
-    return {
-      left: 0,
-      top: 0,
-      visible: false,
-      isFlippedBottom: false,
-      zIndex: 20
-    }
-  }
-
-  // Get viewport dimensions from container or SVG canvas
-  const container = mapContainerRef.value || svgContainer.value?.parentElement
-  const cw = container?.clientWidth || svgContainer.value?.clientWidth || 800
-  const ch = container?.clientHeight || svgContainer.value?.clientHeight || 600
-
-  // Viewport padding bounds: guarantee bubbles stay 100% inside visible canvas
-  const minX = 14
-  const maxX = cw - 14
-  // Top padding accounts for floating Telemetry HUD toolbar (~54px)
-  const minY = 62
-  // Bottom padding accounts for bottom legend and zoom buttons (~24px)
-  const maxY = ch - 20
-
-  const anchorX = pos.x
-  const anchorY = pos.y
-
-  if (!expanded) {
-    // --- COMPACT PILL MODE ---
-    const pillW = 200
-    const pillH = 30
-
-    // Horizontal clamping: center on anchorX, keep strictly within [minX, maxX]
-    let left = anchorX - pillW / 2
-    left = Math.max(minX, Math.min(left, maxX - pillW))
-
-    // Vertical placement: default above station (-8px gap), flip below (+14px gap) if too close to top
-    let top = anchorY - pillH - 8
-    let isFlipped = false
-    if (top < minY) {
-      top = anchorY + 14
-      isFlipped = true
-    }
-    // Safety clamp
-    top = Math.max(minY, Math.min(top, maxY - pillH))
-
-    return {
-      left: Math.round(left),
-      top: Math.round(top),
-      visible: true,
-      isFlippedBottom: isFlipped,
-      zIndex: 30
-    }
-  } else {
-    // --- EXPANDED HUD CARD MODE ---
-    // Expanded card dimensions: max 320px width, max 390px height
-    const cardW = Math.min(320, cw - 28)
-    const availableHeight = Math.max(260, maxY - minY)
-    const cardH = Math.min(390, availableHeight)
-
-    // Horizontal clamping: center on anchorX, keep strictly within [minX, maxX]
-    let left = anchorX - cardW / 2
-    left = Math.max(minX, Math.min(left, maxX - cardW))
-
-    // Vertical placement & Flip strategy:
-    const topAbove = anchorY - cardH - 12
-    const topBelow = anchorY + 16
-
-    let top: number
-    let isFlipped = false
-
-    if (topAbove >= minY) {
-      // Comfortably fits above
-      top = topAbove
-      isFlipped = false
-    } else if (topBelow + cardH <= maxY) {
-      // Comfortably fits below
-      top = topBelow
-      isFlipped = true
-    } else {
-      // If doesn't fit completely on either side, choose side with more vertical room and clamp
-      const roomAbove = anchorY - minY
-      const roomBelow = maxY - anchorY
-      if (roomAbove >= roomBelow) {
-        top = Math.max(minY, topAbove)
-        isFlipped = false
-      } else {
-        top = Math.min(maxY - cardH, topBelow)
-        isFlipped = true
-      }
-    }
-
-    // Strict containment clamp inside [minY, maxY - cardH]
-    top = Math.max(minY, Math.min(top, maxY - cardH))
-
-    return {
-      left: Math.round(left),
-      top: Math.round(top),
-      visible: true,
-      isFlippedBottom: isFlipped,
-      zIndex: 60
-    }
-  }
-}
-
-const shouldRenderBubble = (entity: any) => {
+const shouldRenderBubble = (handle: string) => {
   if (!props.showTelemetryOverlays) return false
-  const h = entity.handle || entity.name
-  if (isExpanded(h)) return true
-  if (props.activePin === h || hoveredEntity.value === h) return true
+  if (isExpanded(handle)) return true
+  if (props.activePin === handle || hoveredEntity.value === handle) return true
 
   if (props.overlayFilterMode === 'hover_only') {
     return false
   }
 
   if (props.overlayFilterMode === 'alerts_only') {
-    const sla = resolveSla(h)
-    const kpi = resolveKpi(h)
-    return (sla && sla.openTickets > 0) || kpi.oee < 85 || kpi.operationalStatus === 'FAULTED' || kpi.operationalStatus === 'WARNING'
+    const sla = resolveSla(handle)
+    if (sla.openTickets > 0) return true
+    const kpi = resolveKpi(handle)
+    // Stations without reported telemetry are not alerts.
+    if (!kpi) return false
+    return (kpi.oee !== null && kpi.oee < 85) || kpi.operationalStatus === 'FAULTED' || kpi.operationalStatus === 'WARNING'
   }
 
   // 'all' mode: render all on-screen stations
   return true
 }
+
+/** One placement per rendered bubble, computed once per reactive change (pan/zoom/resize/expand). */
+const bubbleOverlays = computed(() => {
+  const { width: cw, height: ch } = containerSize.value
+  if (!props.showTelemetryOverlays || cw <= 0 || ch <= 0) return []
+  const vb = viewBox.value
+
+  const result: Array<{
+    handle: string
+    name: string
+    expanded: boolean
+    placement: OverlayPlacement
+    kpi: StationTelemetryKpi | null
+    sla: StationSlaSummary
+  }> = []
+
+  for (const entity of stationInsertEntities.value) {
+    const handle: string = entity.handle || entity.name
+    if (!shouldRenderBubble(handle)) continue
+    const screen = projectSvgPointToScreen(entity.position, vb, cw, ch)
+    if (!screen) continue
+    const expanded = isExpanded(handle)
+    const placement = computeOverlayPlacement({
+      anchorX: screen.x,
+      anchorY: screen.y,
+      containerWidth: cw,
+      containerHeight: ch,
+      size: expanded ? PLANT_MAP_CARD_SIZE : PLANT_MAP_PILL_SIZE,
+      insets: PLANT_MAP_OVERLAY_INSETS,
+      gapAbove: expanded ? 12 : 8,
+      gapBelow: expanded ? 16 : 14
+    })
+    if (!placement.visible) continue
+    result.push({ handle, name: entity.name, expanded, placement, kpi: resolveKpi(handle), sla: resolveSla(handle) })
+  }
+  return result
+})
 
 let isDragging = false
 let startDrag = { x: 0, y: 0 }
@@ -340,6 +263,16 @@ const getBadgeWidth = (text: string) => {
 
 onMounted(() => {
   loadAndParseDxf(props.dxfUrl)
+  measureContainer()
+  if (typeof ResizeObserver !== 'undefined' && mapContainerRef.value) {
+    containerResizeObserver = new ResizeObserver(measureContainer)
+    containerResizeObserver.observe(mapContainerRef.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  containerResizeObserver?.disconnect()
+  containerResizeObserver = null
 })
 
 watch(() => props.dxfUrl, (newUrl) => {
@@ -596,35 +529,40 @@ watch(() => props.dxfUrl, (newUrl) => {
       v-if="showTelemetryOverlays && !isLoading && !error"
       class="absolute inset-0 pointer-events-none overflow-hidden z-20"
     >
-      <template v-for="entity in stationInsertEntities" :key="`bubble-${entity.handle || entity.name}`">
-        <div
-          v-if="shouldRenderBubble(entity) && getBubblePlacement(entity).visible"
-          class="absolute transition-all duration-75 pointer-events-auto"
-          :style="{
-            left: `${getBubblePlacement(entity).left}px`,
-            top: `${getBubblePlacement(entity).top}px`,
-            zIndex: getBubblePlacement(entity).zIndex
-          }"
-        >
-          <StationTelemetryBubble
-            :handle="entity.handle || entity.name"
-            :name="entity.name"
-            :kpi="resolveKpi(entity.handle || entity.name)"
-            :sla="resolveSla(entity.handle || entity.name)"
-            :is-expanded="isExpanded(entity.handle || entity.name)"
-            :is-flipped-bottom="getBubblePlacement(entity).isFlippedBottom"
-            :show-oee="showOee"
-            :show-yield="showYield"
-            :show-parts-hour="showPartsHour"
-            :show-sla="showSla"
-            :show-oscillation="showOscillation"
-            @toggle-expand="toggleExpand(entity.handle || entity.name)"
-            @select-station="emit('object-clicked', entity.handle || entity.name, entity.name || 'Station')"
-            @create-ticket="emit('create-ticket', entity.handle || entity.name)"
-            @view-ticket="(id) => emit('view-ticket', id)"
-          />
-        </div>
-      </template>
+      <div
+        v-for="bubble in bubbleOverlays"
+        :key="`bubble-${bubble.handle}`"
+        class="absolute transition-all duration-75 pointer-events-none flex"
+        :class="bubble.expanded ? 'items-start' : 'justify-center'"
+        :data-overlay-handle="bubble.handle"
+        :style="{
+          left: `${bubble.placement.left}px`,
+          top: `${bubble.placement.top}px`,
+          width: `${bubble.placement.width}px`,
+          zIndex: bubble.expanded ? 60 : 30
+        }"
+      >
+        <StationTelemetryBubble
+          :handle="bubble.handle"
+          :name="bubble.name"
+          :kpi="bubble.kpi"
+          :sla="bubble.sla"
+          :is-expanded="bubble.expanded"
+          :is-flipped-bottom="bubble.placement.isFlippedBottom"
+          :max-width-px="bubble.placement.width"
+          :max-height-px="bubble.expanded ? bubble.placement.height : undefined"
+          :arrow-offset-px="bubble.placement.arrowOffset"
+          :show-oee="showOee"
+          :show-yield="showYield"
+          :show-parts-hour="showPartsHour"
+          :show-sla="showSla"
+          :show-oscillation="showOscillation"
+          @toggle-expand="toggleExpand(bubble.handle)"
+          @select-station="emit('object-clicked', bubble.handle, bubble.name || 'Station')"
+          @create-ticket="emit('create-ticket', bubble.handle)"
+          @view-ticket="(id) => emit('view-ticket', id)"
+        />
+      </div>
     </div>
 
     <!-- Floating CAD Controls -->

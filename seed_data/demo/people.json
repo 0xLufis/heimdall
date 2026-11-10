@@ -1,0 +1,75 @@
+{
+  "$comment": "Skills, maintenance groups, delegation recipes (dispatch rules) and technician dedications for the Nordvik NV1 demo plant (FICTIONAL people, example.com addresses).",
+  "skill_definitions": [
+    { "_key": "skill:NV-LASER-CL4", "code": "NV-LASER-CL4", "name": "Class 4 Laser Safety & Optics Service", "description": "May open laser cells, replace protective glass and align optics (fictional internal certificate)", "category": "SafetyClearance", "issuer": "NV1 EHS Office (Demo)", "validity_months": 24 },
+    { "_key": "skill:NV-PLC-61131", "code": "NV-PLC-61131", "name": "IEC 61131-3 PLC Troubleshooting", "description": "Online diagnosis and controlled changes on line PLC programs", "category": "TechnologyKnowHow", "issuer": "Kontrol Automation Academy (Demo)", "validity_months": 36 },
+    { "_key": "skill:NV-EL-QUAL", "code": "NV-EL-QUAL", "name": "Electrically Qualified Person", "description": "Work on energized 400 V cabinets under supervision rules", "category": "SafetyClearance", "issuer": "NV1 EHS Office (Demo)", "validity_months": 12 },
+    { "_key": "skill:NV-ROBOT-L2", "code": "NV-ROBOT-L2", "name": "Robot Cell Programming Authorization (Line 2)", "description": "Teach-pendant authorization for Line 2 robot cells", "category": "MachineAuthorization", "issuer": "Axion Robotics Training (Demo)", "validity_months": 24 },
+    { "_key": "skill:NV-CNC-SPINDLE", "code": "NV-CNC-SPINDLE", "name": "CNC Spindle Service", "description": "Spindle run-in, vibration diagnosis and bearing replacement", "category": "MachineAuthorization", "issuer": "Spindelwerk Service School (Demo)", "validity_months": 36 },
+    { "_key": "skill:NV-VISION", "code": "NV-VISION", "name": "Vision Recipe Engineering", "description": "Camera recipe changes, lighting and calibration for quality gates", "category": "Certification", "issuer": "OptiQ Vision Learning (Demo)", "validity_months": 24 }
+  ],
+  "personnel_skills": [
+    { "_key": "ps:ada:laser", "user_id": "demo-usr-ada", "skill_id": "@skill:NV-LASER-CL4", "certified_at": "~now-200d", "expires_at": "~now+530d", "certificate_number": "NV-DEMO-CERT-0101", "verified_by": "Greta Gauss (Demo)" },
+    { "_key": "ps:ada:elq", "user_id": "demo-usr-ada", "skill_id": "@skill:NV-EL-QUAL", "certified_at": "~now-340d", "expires_at": "~now+25d", "certificate_number": "NV-DEMO-CERT-0102", "verified_by": "Greta Gauss (Demo)" },
+    { "_key": "ps:otto:elq", "user_id": "demo-usr-otto", "skill_id": "@skill:NV-EL-QUAL", "certified_at": "~now-100d", "expires_at": "~now+265d", "certificate_number": "NV-DEMO-CERT-0201", "verified_by": "Greta Gauss (Demo)" },
+    { "_key": "ps:otto:laser", "user_id": "demo-usr-otto", "skill_id": "@skill:NV-LASER-CL4", "certified_at": "~now-760d", "expires_at": "~now-30d", "certificate_number": "NV-DEMO-CERT-0202", "verified_by": "Greta Gauss (Demo)" },
+    { "_key": "ps:vera:plc", "user_id": "demo-usr-vera", "skill_id": "@skill:NV-PLC-61131", "certified_at": "~now-400d", "expires_at": "~now+695d", "certificate_number": "NV-DEMO-CERT-0301", "verified_by": "Iris Joule (Demo)" },
+    { "_key": "ps:vera:robot", "user_id": "demo-usr-vera", "skill_id": "@skill:NV-ROBOT-L2", "certified_at": "~now-150d", "expires_at": "~now+580d", "certificate_number": "NV-DEMO-CERT-0302", "verified_by": "Iris Joule (Demo)" },
+    { "_key": "ps:nils:cnc", "user_id": "demo-usr-nils", "skill_id": "@skill:NV-CNC-SPINDLE", "certified_at": "~now-300d", "expires_at": "~now+795d", "certificate_number": "NV-DEMO-CERT-0401", "verified_by": "Kurt Kelvin (Demo)" },
+    { "_key": "ps:paul:robot", "user_id": "demo-usr-paul", "skill_id": "@skill:NV-ROBOT-L2", "certified_at": "~now-90d", "expires_at": "~now+640d", "certificate_number": "NV-DEMO-CERT-0501", "verified_by": "Kurt Kelvin (Demo)" },
+    { "_key": "ps:iris:plc", "user_id": "demo-usr-iris", "skill_id": "@skill:NV-PLC-61131", "certified_at": "~now-500d", "expires_at": "~now+595d", "certificate_number": "NV-DEMO-CERT-0601", "verified_by": "Greta Gauss (Demo)" },
+    { "_key": "ps:iris:laser", "user_id": "demo-usr-iris", "skill_id": "@skill:NV-LASER-CL4", "certified_at": "~now-120d", "expires_at": "~now+610d", "certificate_number": "NV-DEMO-CERT-0602", "verified_by": "Greta Gauss (Demo)" },
+    { "_key": "ps:lars:vision", "user_id": "demo-usr-lars", "skill_id": "@skill:NV-VISION", "certified_at": "~now-60d", "expires_at": "~now+670d", "certificate_number": "NV-DEMO-CERT-0701", "verified_by": "Greta Gauss (Demo)" }
+  ],
+  "personnel_groups": [
+    { "_key": "pg:laser", "name": "Laser & Process Specialists (Demo)", "description": "Technicians cleared for Class 4 laser cells", "discipline": "Process", "shift_pattern": "Shift 1", "organization_id": "demo-org-nordvik" },
+    { "_key": "pg:controls-oncall", "name": "Controls & Electrical On-Call (Demo)", "description": "24/7 on-call rota for PLC and electrical faults", "discipline": "Controls", "shift_pattern": "24/7 Continental", "organization_id": "demo-org-nordvik" },
+    { "_key": "pg:mech-shift-a", "name": "Mechanical Maintenance Shift A (Demo)", "description": "Mechanical, pneumatic and CNC maintenance - shift A", "discipline": "Mechanical", "shift_pattern": "Shift 1", "organization_id": "demo-org-nordvik" },
+    { "_key": "pg:escalation", "name": "Plant Engineering Escalation (Demo)", "description": "Second-level escalation: engineers and the plant engineering manager", "discipline": "General", "shift_pattern": "OfficeHours", "organization_id": "demo-org-nordvik" }
+  ],
+  "personnel_group_members": [
+    { "_key": "pgm:laser:ada", "personnel_group_id": "@pg:laser", "user_id": "demo-usr-ada", "user_name": "Ada Ampere (Demo)" },
+    { "_key": "pgm:laser:iris", "personnel_group_id": "@pg:laser", "user_id": "demo-usr-iris", "user_name": "Iris Joule (Demo)" },
+    { "_key": "pgm:ctrl:vera", "personnel_group_id": "@pg:controls-oncall", "user_id": "demo-usr-vera", "user_name": "Vera Volt (Demo)" },
+    { "_key": "pgm:ctrl:otto", "personnel_group_id": "@pg:controls-oncall", "user_id": "demo-usr-otto", "user_name": "Otto Ohm (Demo)" },
+    { "_key": "pgm:mech:nils", "personnel_group_id": "@pg:mech-shift-a", "user_id": "demo-usr-nils", "user_name": "Nils Newton (Demo)" },
+    { "_key": "pgm:mech:paul", "personnel_group_id": "@pg:mech-shift-a", "user_id": "demo-usr-paul", "user_name": "Paul Pascal (Demo)" },
+    { "_key": "pgm:esc:iris", "personnel_group_id": "@pg:escalation", "user_id": "demo-usr-iris", "user_name": "Iris Joule (Demo)" },
+    { "_key": "pgm:esc:greta", "personnel_group_id": "@pg:escalation", "user_id": "demo-usr-greta", "user_name": "Greta Gauss (Demo)" },
+    { "_key": "pgm:esc:kurt", "personnel_group_id": "@pg:escalation", "user_id": "demo-usr-kurt", "user_name": "Kurt Kelvin (Demo)" }
+  ],
+  "delegation_recipes": [
+    { "_key": "dr:laser", "name": "Laser Welding - Process & Optics Dispatch", "description": "Any fault on a laser welding cell goes to the laser specialists first; on-call electrical fallback outside shift 1; escalate to plant engineering after 20 minutes without pickup.", "discipline": "Process", "trigger_event_category": "Error", "allowed_schedules": 7, "required_skill_ids_json": ["@skill:NV-LASER-CL4"], "required_skill_codes_json": ["NV-LASER-CL4"], "primary_personnel_group_id": "@pg:laser", "primary_user_id": "demo-usr-ada", "primary_user_name": "Ada Ampere (Demo)", "on_call_fallback_user_id": "demo-usr-otto", "on_call_fallback_user_name": "Otto Ohm (Demo)", "escalation_group_id": "@pg:escalation", "escalation_timeout_minutes": 20, "is_active": true, "technology": "Welding", "is_technology_primary": true, "is_complete_machine_dedication": false, "maintenance_group_ids_json": ["@pg:laser"], "machine_group_ids_json": ["@grp:tech-laser"] },
+    { "_key": "dr:controls", "name": "Controls / PLC Incident Dispatch (all lines)", "description": "PLC, fieldbus and HMI incidents on NV lines 1-3 route to the controls on-call rota.", "discipline": "Controls", "trigger_event_category": "Error", "allowed_schedules": 7, "required_skill_ids_json": ["@skill:NV-PLC-61131"], "required_skill_codes_json": ["NV-PLC-61131"], "primary_personnel_group_id": "@pg:controls-oncall", "primary_user_id": "demo-usr-vera", "primary_user_name": "Vera Volt (Demo)", "on_call_fallback_user_id": "demo-usr-otto", "on_call_fallback_user_name": "Otto Ohm (Demo)", "escalation_group_id": "@pg:escalation", "escalation_timeout_minutes": 30, "is_active": true, "technology": "Controls", "is_technology_primary": true, "is_complete_machine_dedication": false, "maintenance_group_ids_json": ["@pg:controls-oncall"], "machine_group_ids_json": ["@grp:l1", "@grp:l2", "@grp:l3"] },
+    { "_key": "dr:cnc", "name": "Housing CNC - Complete Machine Dedication", "description": "Nils Newton owns every discipline on the housing CNC centre (mechanical, spindle, coolant).", "discipline": "Mechanical", "trigger_event_category": null, "allowed_schedules": 3, "required_skill_ids_json": ["@skill:NV-CNC-SPINDLE"], "required_skill_codes_json": ["NV-CNC-SPINDLE"], "primary_personnel_group_id": "@pg:mech-shift-a", "primary_user_id": "demo-usr-nils", "primary_user_name": "Nils Newton (Demo)", "on_call_fallback_user_id": "demo-usr-paul", "on_call_fallback_user_name": "Paul Pascal (Demo)", "escalation_group_id": "@pg:escalation", "escalation_timeout_minutes": 45, "is_active": true, "technology": "Machining", "is_technology_primary": false, "is_complete_machine_dedication": true, "maintenance_group_ids_json": ["@pg:mech-shift-a"], "machine_group_ids_json": ["@grp:l3"] }
+  ],
+  "delegation_maintenance_groups": [
+    { "_key": "dmg:laser:laser", "delegation_recipe_id": "@dr:laser", "maintenance_group_id": "@pg:laser" },
+    { "_key": "dmg:controls:oncall", "delegation_recipe_id": "@dr:controls", "maintenance_group_id": "@pg:controls-oncall" },
+    { "_key": "dmg:cnc:mech", "delegation_recipe_id": "@dr:cnc", "maintenance_group_id": "@pg:mech-shift-a" }
+  ],
+  "delegation_machine_groups": [
+    { "_key": "dmgr:laser:tech", "delegation_recipe_id": "@dr:laser", "machine_group_id": "@grp:tech-laser" },
+    { "_key": "dmgr:controls:l1", "delegation_recipe_id": "@dr:controls", "machine_group_id": "@grp:l1" },
+    { "_key": "dmgr:controls:l2", "delegation_recipe_id": "@dr:controls", "machine_group_id": "@grp:l2" },
+    { "_key": "dmgr:controls:l3", "delegation_recipe_id": "@dr:controls", "machine_group_id": "@grp:l3" },
+    { "_key": "dmgr:cnc:l3", "delegation_recipe_id": "@dr:cnc", "machine_group_id": "@grp:l3" }
+  ],
+  "machine_delegation_bindings": [
+    { "_key": "mdb:L1-OP060:laser", "machine_id": "@st:NV-L1-OP060", "delegation_recipe_id": "@dr:laser", "discipline": "Process", "is_active": true, "bound_at": "~now-90d" },
+    { "_key": "mdb:L2-OP060:laser", "machine_id": "@st:NV-L2-OP060", "delegation_recipe_id": "@dr:laser", "discipline": "Process", "is_active": true, "bound_at": "~now-90d" },
+    { "_key": "mdb:L2-OP060:controls", "machine_id": "@st:NV-L2-OP060", "delegation_recipe_id": "@dr:controls", "discipline": "Controls", "is_active": true, "bound_at": "~now-90d" },
+    { "_key": "mdb:L2-OP040:controls", "machine_id": "@st:NV-L2-OP040", "delegation_recipe_id": "@dr:controls", "discipline": "Controls", "is_active": true, "bound_at": "~now-90d" },
+    { "_key": "mdb:L3-OP020:cnc", "machine_id": "@st:NV-L3-OP020", "delegation_recipe_id": "@dr:cnc", "discipline": "Mechanical", "is_active": true, "bound_at": "~now-60d" }
+  ],
+  "technician_rules": [
+    { "_key": "tr:ada:welding", "name": "Laser Welding Technology Specialist (Demo)", "technician_id": "demo-usr-ada", "technician_name": "Ada Ampere (Demo)", "technician_email": "ada.ampere@nordvik-demo.example.com", "scope_type": "technology", "target_id": "LaserWelder", "category_filter": "Process", "backup_technician_id": "demo-usr-iris", "backup_technician_name": "Iris Joule (Demo)", "assigned_by_role": "group_leader" },
+    { "_key": "tr:vera:l2", "name": "Line 2 Controls Owner (Demo)", "technician_id": "demo-usr-vera", "technician_name": "Vera Volt (Demo)", "technician_email": "vera.volt@nordvik-demo.example.com", "scope_type": "group", "target_id": "@grp:l2", "category_filter": "Controls", "backup_technician_id": "demo-usr-otto", "backup_technician_name": "Otto Ohm (Demo)", "assigned_by_role": "group_leader" },
+    { "_key": "tr:nils:cnc", "name": "Housing CNC Machine Dedication (Demo)", "technician_id": "demo-usr-nils", "technician_name": "Nils Newton (Demo)", "technician_email": "nils.newton@nordvik-demo.example.com", "scope_type": "machine", "target_id": "@st:NV-L3-OP020", "category_filter": null, "backup_technician_id": "demo-usr-paul", "backup_technician_name": "Paul Pascal (Demo)", "assigned_by_role": "plant_engineering_manager" },
+    { "_key": "tr:paul:fastening", "name": "Fastening & Pneumatics Specialist (Demo)", "technician_id": "demo-usr-paul", "technician_name": "Paul Pascal (Demo)", "technician_email": "paul.pascal@nordvik-demo.example.com", "scope_type": "technology", "target_id": "FasteningStation", "category_filter": "Mechanical", "backup_technician_id": "demo-usr-nils", "backup_technician_name": "Nils Newton (Demo)", "assigned_by_role": "group_leader" }
+  ],
+  "shift_absences": [
+    { "_key": "abs:otto:training", "technician_id": "demo-usr-otto", "technician_name": "Otto Ohm (Demo)", "reason": "Training", "start_date": "~now-4h", "end_date": "~now+1d4h", "marked_by": "Kurt Kelvin (Demo)", "backup_technician_id": "demo-usr-vera", "backup_technician_name": "Vera Volt (Demo)", "active": true },
+    { "_key": "abs:paul:vacation", "technician_id": "demo-usr-paul", "technician_name": "Paul Pascal (Demo)", "reason": "Vacation", "start_date": "~now+5d", "end_date": "~now+12d", "marked_by": "Kurt Kelvin (Demo)", "backup_technician_id": "demo-usr-nils", "backup_technician_name": "Nils Newton (Demo)", "active": true }
+  ]
+}

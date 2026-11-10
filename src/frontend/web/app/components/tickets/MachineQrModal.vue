@@ -72,26 +72,29 @@ const actionOptions: { id: QrAction; label: string; desc: string }[] = [
   { id: 'verify-pm', label: 'Verify PM Task', desc: 'Validates preventive maintenance checklist completion' }
 ]
 
-// Query function for station search combobox
+// Query function for station search combobox (machines from the backend, filtered locally)
+let machinesCache: any[] | null = null
 async function queryStations(q: string): Promise<TargetItem[]> {
-  try {
-    const res = await $fetch<any[]>('/api/proxy/v1/Machine').catch(() => [])
-    if (res && res.length > 0) {
-      return res.map(m => ({
-        id: m.customIdentifier || m.name || m.id,
-        label: m.displayName || m.name || m.customIdentifier,
-        sublabel: `${m.organizationId || 'Plant Floor'} • ${m.machineType || 'Machining'}`,
-        badge: m.machineType,
-        raw: m
-      }))
+  if (!machinesCache) {
+    try {
+      const res = await $fetch<any[]>('/api/proxy/v1/Machine')
+      machinesCache = Array.isArray(res) ? res : []
+    } catch (err) {
+      console.warn('Failed to load machines for QR station search:', err)
+      return []
     }
-  } catch {}
-  return [
-    { id: 'STATION-OP10-01', label: 'OP10 Machining Cell', sublabel: 'Battery Assembly Plant • Milling', badge: 'Milling' },
-    { id: 'L06-OP150', label: 'Line 06 - Automated Battery Station 150', sublabel: 'Line 06 • Screwing Station', badge: 'Screwing Station' },
-    { id: 'L09-OP270', label: 'Line 09 - AOI Optical Inspection 270', sublabel: 'Line 09 • Automatic Optical Inspection', badge: 'AOI' },
-    { id: 'ROBOT-CELL-01', label: 'Robotic Welding Cell 01', sublabel: 'Battery Assembly Plant • Manipulator', badge: 'Manipulator' }
-  ]
+  }
+  const needle = (q || '').trim().toLowerCase()
+  return machinesCache
+    .filter(m => !needle || [m.customIdentifier, m.name, m.displayName, m.machineType]
+      .some(v => typeof v === 'string' && v.toLowerCase().includes(needle)))
+    .map(m => ({
+      id: m.customIdentifier || m.name || m.id,
+      label: m.displayName || m.name || m.customIdentifier,
+      sublabel: `${m.organizationId || 'Plant Floor'} • ${m.machineType || 'Machining'}`,
+      badge: m.machineType,
+      raw: m
+    }))
 }
 
 function handleStationSelect(item: TargetItem | { id: string; label: string; isCustom: true; raw?: any }) {

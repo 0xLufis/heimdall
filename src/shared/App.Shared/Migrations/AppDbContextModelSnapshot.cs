@@ -804,6 +804,70 @@ namespace App.Shared.Migrations
                     b.ToTable("component_recipes", "backend");
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.DelegationMachineGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<Guid>("DelegationRecipeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delegation_recipe_id");
+
+                    b.Property<Guid>("MachineGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("machine_group_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_delegation_machine_groups");
+
+                    b.HasIndex("MachineGroupId")
+                        .HasDatabaseName("ix_delegation_machine_groups_machine_group_id");
+
+                    b.HasIndex("DelegationRecipeId", "MachineGroupId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_delegation_machine_groups_delegation_recipe_id_machine_grou");
+
+                    b.ToTable("delegation_machine_groups", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.DelegationMaintenanceGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<Guid>("DelegationRecipeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delegation_recipe_id");
+
+                    b.Property<Guid>("MaintenanceGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("maintenance_group_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_delegation_maintenance_groups");
+
+                    b.HasIndex("MaintenanceGroupId")
+                        .HasDatabaseName("ix_delegation_maintenance_groups_maintenance_group_id");
+
+                    b.HasIndex("DelegationRecipeId", "MaintenanceGroupId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_delegation_maintenance_groups_delegation_recipe_id_maintena");
+
+                    b.ToTable("delegation_maintenance_groups", "backend");
+                });
+
             modelBuilder.Entity("App.Shared.Entities.DelegationRecipe", b =>
                 {
                     b.Property<Guid>("Id")
@@ -840,6 +904,24 @@ namespace App.Shared.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsCompleteMachineDedication")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_complete_machine_dedication");
+
+                    b.Property<bool>("IsTechnologyPrimary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_technology_primary");
+
+                    b.Property<string>("MachineGroupIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("machine_group_ids_json");
+
+                    b.Property<string>("MaintenanceGroupIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("maintenance_group_ids_json");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -880,6 +962,11 @@ namespace App.Shared.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("required_skill_ids_json");
+
+                    b.Property<string>("Technology")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("technology");
 
                     b.Property<string>("TriggerEventCategory")
                         .HasMaxLength(128)
@@ -1121,6 +1208,119 @@ namespace App.Shared.Migrations
                     b.ToTable("functional_settings", "backend");
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.GenericTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DefaultValuesJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("default_values_json");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid?>("ExtendsTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("extends_template_id");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("icon");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsBuiltin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_builtin");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("SchemaJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("schema_json");
+
+                    b.PrimitiveCollection<List<string>>("Tags")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("tags");
+
+                    b.Property<string>("TemplateType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("template_type");
+
+                    b.Property<string>("UiConfigJson")
+                        .HasColumnType("text")
+                        .HasColumnName("ui_config_json");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_generic_templates");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("ix_generic_templates_category");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_generic_templates_code");
+
+                    b.HasIndex("ExtendsTemplateId")
+                        .HasDatabaseName("ix_generic_templates_extends_template_id");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_generic_templates_organization_id");
+
+                    b.HasIndex("TemplateType")
+                        .HasDatabaseName("ix_generic_templates_template_type");
+
+                    b.ToTable("generic_templates", "backend");
+                });
+
             modelBuilder.Entity("App.Shared.Entities.InventoryItemTag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1270,6 +1470,77 @@ namespace App.Shared.Migrations
                         .HasDatabaseName("ix_license_assets_machine_id");
 
                     b.ToTable("license_assets", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.LuaScriptRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTimeOffset?>("LastExecutedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_executed_at");
+
+                    b.Property<string>("LastExecutionError")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("last_execution_error");
+
+                    b.Property<bool?>("LastExecutionSuccess")
+                        .HasColumnType("boolean")
+                        .HasColumnName("last_execution_success");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("text")
+                        .HasColumnName("metadata_json");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("TriggerType")
+                        .HasColumnType("integer")
+                        .HasColumnName("trigger_type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_lua_scripts");
+
+                    b.HasIndex("TriggerType", "IsActive")
+                        .HasDatabaseName("ix_lua_scripts_trigger_type_is_active");
+
+                    b.ToTable("lua_scripts", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.MachineComponent", b =>
@@ -1536,6 +1807,9 @@ namespace App.Shared.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_machine_groups");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("ix_machine_groups_parent_id");
 
                     b.ToTable("machine_groups", "backend");
                 });
@@ -2872,6 +3146,15 @@ namespace App.Shared.Migrations
                 {
                     b.HasBaseType("App.Shared.Entities.BaseInventoryItem");
 
+                    b.Property<Guid?>("BusinessUnitGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("business_unit_group_id");
+
+                    b.Property<string>("CellType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("cell_type");
+
                     b.Property<string>("CustomIdentifier")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -2895,9 +3178,27 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("group_id");
 
+                    b.Property<Guid?>("LineGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("line_group_id");
+
                     b.Property<string>("MachineType")
                         .HasColumnType("text")
                         .HasColumnName("machine_type");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("owner");
+
+                    b.Property<string>("OwnerUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<Guid?>("ParentMachineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_machine_id");
 
                     b.Property<string>("PinnedObjectHandle")
                         .HasColumnType("text")
@@ -2911,11 +3212,52 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("preferred_technician_name");
 
+                    b.Property<Guid?>("ProjectGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_group_id");
+
+                    b.Property<string>("Spoc")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("spoc");
+
+                    b.Property<string>("SpocUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("spoc_user_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("status");
+
+                    b.Property<Guid?>("SubLineGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sub_line_group_id");
+
+                    b.Property<int?>("SubMachineIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("sub_machine_index");
+
+                    b.PrimitiveCollection<List<string>>("Technologies")
+                        .HasColumnType("text[]")
+                        .HasColumnName("technologies");
+
+                    b.HasIndex("BusinessUnitGroupId")
+                        .HasDatabaseName("ix_stations_business_unit_group_id");
+
+                    b.HasIndex("LineGroupId")
+                        .HasDatabaseName("ix_stations_line_group_id");
+
+                    b.HasIndex("ParentMachineId")
+                        .HasDatabaseName("ix_stations_parent_machine_id");
+
+                    b.HasIndex("ProjectGroupId")
+                        .HasDatabaseName("ix_stations_project_group_id");
+
+                    b.HasIndex("SubLineGroupId")
+                        .HasDatabaseName("ix_stations_sub_line_group_id");
 
                     b.ToTable("stations", "backend");
                 });
@@ -3097,6 +3439,48 @@ namespace App.Shared.Migrations
                     b.Navigation("ExtendsRecipe");
                 });
 
+            modelBuilder.Entity("App.Shared.Entities.DelegationMachineGroup", b =>
+                {
+                    b.HasOne("App.Shared.Entities.DelegationRecipe", "DelegationRecipe")
+                        .WithMany("MachineGroups")
+                        .HasForeignKey("DelegationRecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_delegation_machine_groups_delegation_recipes_delegation_rec");
+
+                    b.HasOne("App.Shared.Entities.MachineGroup", "MachineGroup")
+                        .WithMany()
+                        .HasForeignKey("MachineGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_delegation_machine_groups_machine_groups_machine_group_id");
+
+                    b.Navigation("DelegationRecipe");
+
+                    b.Navigation("MachineGroup");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.DelegationMaintenanceGroup", b =>
+                {
+                    b.HasOne("App.Shared.Entities.DelegationRecipe", "DelegationRecipe")
+                        .WithMany("MaintenanceGroups")
+                        .HasForeignKey("DelegationRecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_delegation_maintenance_groups_delegation_recipes_delegation");
+
+                    b.HasOne("App.Shared.Entities.PersonnelGroup", "MaintenanceGroup")
+                        .WithMany()
+                        .HasForeignKey("MaintenanceGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_delegation_maintenance_groups_personnel_groups_maintenance_");
+
+                    b.Navigation("DelegationRecipe");
+
+                    b.Navigation("MaintenanceGroup");
+                });
+
             modelBuilder.Entity("App.Shared.Entities.DelegationRecipe", b =>
                 {
                     b.HasOne("App.Shared.Entities.PersonnelGroup", "EscalationGroup")
@@ -3147,6 +3531,17 @@ namespace App.Shared.Migrations
                     b.Navigation("SourceEquipment");
 
                     b.Navigation("TargetEquipment");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.GenericTemplate", b =>
+                {
+                    b.HasOne("App.Shared.Entities.GenericTemplate", "ExtendsTemplate")
+                        .WithMany()
+                        .HasForeignKey("ExtendsTemplateId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_generic_templates_generic_templates_extends_template_id");
+
+                    b.Navigation("ExtendsTemplate");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.InventoryItemTag", b =>
@@ -3232,6 +3627,17 @@ namespace App.Shared.Migrations
                         .HasConstraintName("fk_machine_documents_stations_machine_id");
 
                     b.Navigation("Machine");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.MachineGroup", b =>
+                {
+                    b.HasOne("App.Shared.Entities.MachineGroup", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_machine_groups_machine_groups_parent_id");
+
+                    b.Navigation("Parent");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.MachineGroupMembership", b =>
@@ -3450,12 +3856,52 @@ namespace App.Shared.Migrations
 
             modelBuilder.Entity("App.Shared.Entities.Machine", b =>
                 {
+                    b.HasOne("App.Shared.Entities.MachineGroup", "BusinessUnitGroup")
+                        .WithMany()
+                        .HasForeignKey("BusinessUnitGroupId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_stations_machine_groups_business_unit_group_id");
+
                     b.HasOne("App.Shared.Entities.BaseInventoryItem", null)
                         .WithOne()
                         .HasForeignKey("App.Shared.Entities.Machine", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_stations_inventory_items_id");
+
+                    b.HasOne("App.Shared.Entities.MachineGroup", "LineGroup")
+                        .WithMany()
+                        .HasForeignKey("LineGroupId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_stations_machine_groups_line_group_id");
+
+                    b.HasOne("App.Shared.Entities.Machine", "ParentMachine")
+                        .WithMany("SubMachines")
+                        .HasForeignKey("ParentMachineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stations_stations_parent_machine_id");
+
+                    b.HasOne("App.Shared.Entities.MachineGroup", "ProjectGroup")
+                        .WithMany()
+                        .HasForeignKey("ProjectGroupId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_stations_machine_groups_project_group_id");
+
+                    b.HasOne("App.Shared.Entities.MachineGroup", "SubLineGroup")
+                        .WithMany()
+                        .HasForeignKey("SubLineGroupId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_stations_machine_groups_sub_line_group_id");
+
+                    b.Navigation("BusinessUnitGroup");
+
+                    b.Navigation("LineGroup");
+
+                    b.Navigation("ParentMachine");
+
+                    b.Navigation("ProjectGroup");
+
+                    b.Navigation("SubLineGroup");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.PcHardware", b =>
@@ -3528,6 +3974,10 @@ namespace App.Shared.Migrations
             modelBuilder.Entity("App.Shared.Entities.DelegationRecipe", b =>
                 {
                     b.Navigation("Bindings");
+
+                    b.Navigation("MachineGroups");
+
+                    b.Navigation("MaintenanceGroups");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.MachineComponent", b =>
@@ -3537,6 +3987,8 @@ namespace App.Shared.Migrations
 
             modelBuilder.Entity("App.Shared.Entities.MachineGroup", b =>
                 {
+                    b.Navigation("Children");
+
                     b.Navigation("Memberships");
                 });
 
@@ -3573,6 +4025,8 @@ namespace App.Shared.Migrations
                     b.Navigation("ServiceLogs");
 
                     b.Navigation("StationControllers");
+
+                    b.Navigation("SubMachines");
                 });
 #pragma warning restore 612, 618
         }

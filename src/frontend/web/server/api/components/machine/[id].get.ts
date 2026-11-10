@@ -1,21 +1,21 @@
-import { defineEventHandler, getRouterParam } from 'h3'
-import { componentsAndDelegationsStore } from '../../../utils/componentsAndDelegationsStore'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
+import { backendFetch } from '../../../utils/backendFetch'
 
-export default defineEventHandler((event) => {
+/**
+ * Component slots for a machine (backend: ComponentController.GetMachineComponents).
+ * Software, license, document and service-log quadrants have no backend endpoint yet and are
+ * returned empty rather than served from fabricated in-memory seed data.
+ */
+export default defineEventHandler(async (event) => {
   const machineId = getRouterParam(event, 'id')
-  if (!machineId) return { slots: [], software: [], licenses: [], documents: [], serviceLogs: [] }
+  if (!machineId) throw createError({ statusCode: 400, statusMessage: 'Machine ID is required.' })
 
-  const slots = componentsAndDelegationsStore.getSlotsByMachineId(machineId)
-  const software = componentsAndDelegationsStore.getSoftwareAssets(machineId)
-  const licenses = componentsAndDelegationsStore.getLicenses(machineId)
-  const documents = componentsAndDelegationsStore.getDocuments(machineId)
-  const serviceLogs = componentsAndDelegationsStore.getServiceLogs(machineId)
-
+  const slots = await backendFetch<unknown[]>(event, `component/machine/${machineId}`)
   return {
-    slots,
-    software,
-    licenses,
-    documents,
-    serviceLogs
+    slots: Array.isArray(slots) ? slots : [],
+    software: [],
+    licenses: [],
+    documents: [],
+    serviceLogs: []
   }
 })

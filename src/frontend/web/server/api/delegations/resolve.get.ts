@@ -1,15 +1,16 @@
-import { defineEventHandler, getQuery } from 'h3'
-import { componentsAndDelegationsStore } from '../../utils/componentsAndDelegationsStore'
+import { defineEventHandler, getQuery, createError } from 'h3'
+import { backendFetch } from '../../utils/backendFetch'
 
 export default defineEventHandler((event) => {
   const query = getQuery(event)
-  const machineId = query.machineId as string
-  const discipline = (query.discipline as string) || 'General'
-  const scheduleType = (query.scheduleType as 'Shift' | 'OfficeTime' | 'OnCall') || 'Shift'
-
+  const machineId = typeof query.machineId === 'string' ? query.machineId : ''
   if (!machineId) {
-    throw createError({ statusCode: 400, message: 'machineId query parameter is required.' })
+    throw createError({ statusCode: 400, statusMessage: 'machineId query parameter is required.' })
   }
-
-  return componentsAndDelegationsStore.resolveResponder(machineId, discipline, scheduleType)
+  const forwarded: Record<string, string> = {
+    discipline: typeof query.discipline === 'string' && query.discipline ? query.discipline : 'General',
+    scheduleType: typeof query.scheduleType === 'string' && query.scheduleType ? query.scheduleType : 'Shift'
+  }
+  if (typeof query.technology === 'string' && query.technology) forwarded.technology = query.technology
+  return backendFetch(event, `delegation/resolve/${machineId}`, { query: forwarded })
 })

@@ -317,31 +317,19 @@ public class AssetRepository : IAssetRepository
                                       m.CustomIdentifier == stationIdentifier ||
                                       m.Name == stationIdentifier);
 
-        if (station == null)
-        {
-            return new StationComponentTreeDto
-            {
-                StationId = targetGuid ?? Guid.Empty,
-                StationName = stationIdentifier,
-                DisplayName = stationIdentifier,
-                CustomIdentifier = stationIdentifier,
-                MachineType = "General",
-                GroupId = "Line 1",
-                Model3dUrl = "/sample/station_digital_twin.glb",
-                Controllers = new(),
-                InstalledParts = new(),
-                TotalComponentsCount = 0
-            };
-        }
+        // Unknown stations are a 404 for the caller, never a synthesized placeholder tree.
+        if (station == null) return null;
 
         var machineComponents = await _context.MachineComponents
             .AsNoTracking()
             .Where(mc => mc.MachineId == station.Id)
             .ToListAsync();
 
+        // A part should sit in a single slot, but tolerate inconsistent data instead of throwing on duplicate keys.
         var machineComponentMap = machineComponents
             .Where(mc => mc.CurrentPartId.HasValue)
-            .ToDictionary(mc => mc.CurrentPartId!.Value);
+            .GroupBy(mc => mc.CurrentPartId!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
 
         var installedParts = await _context.InventoryItems
             .AsNoTracking()
@@ -363,30 +351,9 @@ public class AssetRepository : IAssetRepository
                 }
             }
 
-            var nodePath = cadRef?.Cad3dNodePath;
-            if (string.IsNullOrEmpty(nodePath))
-            {
-                if (!string.IsNullOrEmpty(slotId))
-                {
-                    nodePath = slotId;
-                }
-                else if (i.Technology?.Contains("Kinematics", StringComparison.OrdinalIgnoreCase) == true || i.Name.Contains("Servo", StringComparison.OrdinalIgnoreCase))
-                {
-                    nodePath = "GANTRY-X-01";
-                }
-                else if (i.Technology?.Contains("Pneumatics", StringComparison.OrdinalIgnoreCase) == true || i.Name.Contains("Conveyor", StringComparison.OrdinalIgnoreCase))
-                {
-                    nodePath = "CONVEYOR-01";
-                }
-                else if (i.Technology?.Contains("Vision", StringComparison.OrdinalIgnoreCase) == true || i.Technology?.Contains("Optics", StringComparison.OrdinalIgnoreCase) == true || i.Name.Contains("Camera", StringComparison.OrdinalIgnoreCase))
-                {
-                    nodePath = "VISION-CAM-01";
-                }
-                else if (i.Name.Contains("Valve", StringComparison.OrdinalIgnoreCase) || i.Name.Contains("Dispenser", StringComparison.OrdinalIgnoreCase) || i.Name.Contains("Screw", StringComparison.OrdinalIgnoreCase))
-                {
-                    nodePath = "TOOL-HEAD-01";
-                }
-            }
+            // Bind to a CAD mesh only via real engineering data (EPLAN/CAD reference or functional slot);
+            // guessing node names from part names would silently mis-bind hardware on real models.
+            var nodePath = !string.IsNullOrEmpty(cadRef?.Cad3dNodePath) ? cadRef!.Cad3dNodePath : slotId;
 
             return new StationInstalledPartDto
             {
@@ -439,7 +406,8 @@ public class AssetRepository : IAssetRepository
             CustomIdentifier = station.CustomIdentifier,
             MachineType = station.MachineType,
             GroupId = station.GroupId,
-            Model3dUrl = "/sample/station_digital_twin.glb",
+            // No per-station CAD model is persisted yet; the client decides on a fallback model.
+            Model3dUrl = null,
             Controllers = controllers,
             InstalledParts = installedPartDtos,
             TotalComponentsCount = installedPartDtos.Count + controllers.Sum(ctrl => ctrl.InternalComponents.Count)

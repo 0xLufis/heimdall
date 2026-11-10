@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 using App.Shared.Entities;
 
 /// <summary>
-/// Thread-safe in-memory implementation of ILuaPlantDataProvider,
-/// ideal for standalone script evaluation, unit testing, and sandbox verification.
+/// Thread-safe in-memory implementation of ILuaPlantDataProvider with seeded sample data.
+/// Test/dev double only: production DI registers DbPlantDataProvider and nothing falls back to this type.
 /// </summary>
 public class InMemoryPlantDataProvider : ILuaPlantDataProvider
 {

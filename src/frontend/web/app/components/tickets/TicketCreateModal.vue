@@ -17,6 +17,7 @@ import {
   getTemplatesByGroup, getTemplateById
 } from '~/utils/errorTemplateEngine'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
+import { parseQrUri } from '~/utils/qrActionGenerator'
 import type { TicketAttachment, TechnicianRule, ShiftAbsenceRecord, TicketIssueType, TicketOriginatorType, ResponsibleDepartment } from '~/types/maintenance'
 
 const props = defineProps<{
@@ -176,8 +177,15 @@ async function queryCandidateTechnicians(q: string): Promise<TargetItem[]> {
 // ── Handlers ───────────────────────────────────────────────────────────────
 function onQrScanned(code: string) {
   showScanner.value = false
-  form.value.stationId = code
-  form.value.stationName = `Station ${code}`
+  // Scanned content may be a full Heimdall action URI; extract the station instead of
+  // storing the whole URL as the station identifier.
+  const parsed = parseQrUri(code)
+  const stationId = (parsed ? parsed.stationId : code)?.trim().slice(0, 128) || ''
+  if (!stationId) return
+  form.value.stationId = stationId
+  form.value.stationName = `Station ${stationId}`
+  if (parsed?.machineType) form.value.machineType = parsed.machineType
+  if (parsed?.groupId) form.value.groupId = parsed.groupId
 }
 
 function onMachineSelected(m: any) {

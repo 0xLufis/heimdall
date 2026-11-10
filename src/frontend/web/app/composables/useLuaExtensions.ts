@@ -18,8 +18,9 @@ export function useLuaExtensions() {
     loading.value = true
     error.value = null
     try {
-      const url = zone ? `/api/v1/lua/ui-extensions?zone=${zone}` : '/api/v1/lua/ui-extensions'
-      const data = await $fetch<LuaUiExtension[]>(url)
+      const data = await $fetch<LuaUiExtension[]>('/api/v1/lua/ui-extensions', {
+        query: zone ? { zone } : undefined
+      })
       extensions.value = data || []
     } catch (err: any) {
       error.value = err?.message || 'Failed to fetch Lua UI extensions'
@@ -35,7 +36,7 @@ export function useLuaExtensions() {
     executing.value = true
     try {
       const res = await $fetch<LuaExecutionResult>(
-        `/api/v1/lua/ui-extensions/${extensionId}/invoke`,
+        `/api/v1/lua/ui-extensions/${encodeURIComponent(extensionId)}/invoke`,
         {
           method: 'POST',
           body: { context }
@@ -74,7 +75,7 @@ export function useLuaExtensions() {
     error.value = null
     try {
       if (script.id) {
-        const updated = await $fetch<LuaScriptRecord>(`/api/v1/lua/scripts/${script.id}`, {
+        const updated = await $fetch<LuaScriptRecord>(`/api/v1/lua/scripts/${encodeURIComponent(script.id)}`, {
           method: 'PUT',
           body: script
         })
@@ -100,7 +101,7 @@ export function useLuaExtensions() {
   const deleteScript = async (id: string) => {
     loading.value = true
     try {
-      await $fetch(`/api/v1/lua/scripts/${id}`, { method: 'DELETE' })
+      await $fetch(`/api/v1/lua/scripts/${encodeURIComponent(id)}`, { method: 'DELETE' })
       scripts.value = scripts.value.filter(s => s.id !== id)
     } catch (err: any) {
       error.value = err?.message || 'Failed to delete Lua script'
@@ -113,7 +114,7 @@ export function useLuaExtensions() {
   const runScript = async (id: string, context?: Record<string, any>) => {
     executing.value = true
     try {
-      const res = await $fetch<LuaExecutionResult>(`/api/v1/lua/scripts/${id}/run`, {
+      const res = await $fetch<LuaExecutionResult>(`/api/v1/lua/scripts/${encodeURIComponent(id)}/run`, {
         method: 'POST',
         body: context || {}
       })
@@ -155,15 +156,11 @@ export function useLuaExtensions() {
   }
 
   const machineExtensions = computed(() =>
-    extensions.value.filter(
-      e => e.targetZone === 'MachineDetails' || (e.targetZone as any) === 0
-    )
+    extensions.value.filter(e => e.targetZone === 'MachineDetails')
   )
 
   const ticketExtensions = computed(() =>
-    extensions.value.filter(
-      e => e.targetZone === 'TicketDetails' || (e.targetZone as any) === 1
-    )
+    extensions.value.filter(e => e.targetZone === 'TicketDetails')
   )
 
   return {

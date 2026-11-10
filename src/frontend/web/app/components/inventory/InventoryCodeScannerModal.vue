@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import {
   X,
   QrCode,
@@ -54,6 +54,10 @@ const QUICK_TEST_CODES = [
 ]
 
 let scanInterval: any = null
+// Bumped on every stopCamera() so a getUserMedia promise that resolves after the
+// drawer closed/unmounted releases its tracks instead of leaking the camera.
+let streamGeneration = 0
+let lastScannedCode: string | null = null
 
 const startScanningLoop = () => {
   if (scanInterval) clearInterval(scanInterval)
@@ -71,7 +75,9 @@ const startScanningLoop = () => {
       const imgData = ctx.getImageData(0, 0, w, h)
       if (imgData) {
         const result = jsQR(imgData.data, w, h, { inversionAttempts: 'attemptBoth' })
-        if (result && result.data) {
+        // Avoid re-triggering lookups every tick for the same code in front of the lens
+        if (result && result.data && !isSearching.value && result.data !== lastScannedCode) {
+          lastScannedCode = result.data
           handleCodeScan(result.data)
         }
       }
@@ -81,6 +87,7 @@ const startScanningLoop = () => {
 
 const startCamera = async () => {
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
+  const generation = streamGeneration
   try {
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -91,6 +98,15 @@ const startCamera = async () => {
         video: true
       })
     }
+
+    if (generation !== streamGeneration || !props.open) {
+      mediaStream?.getTracks().forEach(track => track.stop())
+      mediaStream = null
+      return
+    }
+
+    // The <video> lives inside a v-if="open" block; wait for it to render.
+    await nextTick()
 
     if (videoRef.value && mediaStream) {
       videoRef.value.srcObject = mediaStream
@@ -114,6 +130,8 @@ const startCamera = async () => {
 }
 
 const stopCamera = () => {
+  streamGeneration++
+  lastScannedCode = null
   if (scanInterval) {
     clearInterval(scanInterval)
     scanInterval = null

@@ -1,0 +1,33 @@
+{
+  "$comment": "Demo Lua automation scripts. triggerType follows App.Shared.Lua.Models.LuaScriptTriggerType (0 Manual, 1 TelemetryChange, 2 MachineStateChange, 3 SlaPreventiveCheck, 4 UiExtension, 5 Scheduled). Scripts are stored in the backend's in-memory LuaAutomationService (not in PostgreSQL), so they are (re)registered with `just demo-runtime` after every backend start. Ids are deterministic demo UUIDs derived from '_key'.",
+  "scripts": [
+    {
+      "_key": "lua:telemetry-threshold-watchdog",
+      "name": "NV Demo - Telemetry Threshold & Drift Watchdog",
+      "description": "Moving-average limit check with time-to-alarm projection for laser power, glass temperature, resin flow and spindle vibration. Creates at most one ticket per machine and alarm code.",
+      "triggerType": 1,
+      "isActive": true,
+      "file": "telemetry_threshold_watchdog.lua",
+      "metadata": { "demo": "true", "effects": "creates-ticket-deduplicated" }
+    },
+    {
+      "_key": "lua:sla-risk-report",
+      "name": "NV Demo - SLA Risk Report",
+      "description": "Read-only report of breached and at-risk unresolved tickets using tickets.check_sla.",
+      "triggerType": 0,
+      "isActive": true,
+      "file": "sla_risk_report.lua",
+      "metadata": { "demo": "true", "effects": "read-only" }
+    },
+    {
+      "_key": "lua:laser-fleet-ui",
+      "name": "NV Demo - Laser Fleet UI Extensions",
+      "description": "Registers a Laser Fleet badge, a dashboard banner and a read-only 'Laser health snapshot' machine action.",
+      "triggerType": 4,
+      "isActive": true,
+      "file": "laser_fleet_ui_extensions.lua",
+      "metadata": { "demo": "true", "effects": "read-only" }
+    }
+  ],
+  "replay": { "file": "replay_telemetry.lua" }
+}

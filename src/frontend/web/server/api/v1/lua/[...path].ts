@@ -1,53 +1,9 @@
-import { getCookie, getHeader, proxyRequest, getQuery } from 'h3'
-import { auth } from '../../../utils/auth'
+import { proxyToBackend } from '../../../utils/backendProxy'
 
-export default defineEventHandler(async (event) => {
-  const path = event.context.params?.path || ''
-  const query = getQuery(event)
-  const queryParams = new URLSearchParams(query as Record<string, string>).toString()
-  const queryString = queryParams ? `?${queryParams}` : ''
-  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
-  const target = `${backendBase}/api/v1/lua${path ? `/${path}` : ''}${queryString}`
-
-  let rawToken = getCookie(event, 'better-auth.session_token') || getHeader(event, 'authorization')?.replace(/^Bearer\s+/i, '')
-  let sessionToken = rawToken ? rawToken.trim().split('.')[0] : undefined
-  let activeOrgId = getHeader(event, 'x-organization-id') as string | undefined
-
-  if (rawToken) {
-    try {
-      const sessionData = await auth.api.getSession({ headers: event.headers })
-      if (!activeOrgId) {
-        activeOrgId = (sessionData?.session as any)?.activeOrganizationId
-      }
-      if (sessionData?.session?.token) {
-        sessionToken = sessionData.session.token
-      }
-    } catch {
-      // Continue without active org
-    }
-  }
-
-  const headers: Record<string, string | undefined> = {
-    Authorization: sessionToken ? `Bearer ${sessionToken}` : undefined,
-    'X-Organization-Id': activeOrgId || undefined
-  }
-
-  try {
-    return await proxyRequest(event, target, { headers })
-  } catch (err: any) {
-    // Transient retry for backend restarts
-    await new Promise(resolve => setTimeout(resolve, 250))
-    try {
-      return await proxyRequest(event, target, { headers })
-    } catch (retryErr: any) {
-      console.warn(`[LuaProxy] Target ${target} unreachable:`, retryErr?.message || retryErr)
-      setResponseStatus(event, 502)
-      return {
-        statusCode: 502,
-        error: 'Bad Gateway',
-        message: `Heimdall backend at ${target} is currently unavailable.`,
-        timestamp: new Date().toISOString()
-      }
-    }
-  }
+/**
+ * BFF → backend proxy for the Lua automation API: `/api/v1/lua/<path>` → `${BACKEND_API_URL}/api/v1/lua/<path>`.
+ * Path traversal rejection, session-derived tenant header and retry policy live in `backendProxy.ts`.
+ */
+export default defineEventHandler((event) => {
+  return proxyToBackend(event, 'v1/lua', event.context.params?.path, 'LuaProxy')
 })

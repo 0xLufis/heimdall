@@ -68,10 +68,9 @@ const emit = defineEmits<{
 const { escalateTicket, fetchTickets } = useMaintenance()
 
 // Current logged in user
-const currentUser = computed(() => {
-  const session = (authClient as any).useSession?.()
-  return session?.data?.value?.user?.name || 'On-Duty Specialist'
-})
+// Subscribe once at setup; calling useSession() inside a computed re-subscribes on every evaluation.
+const authSession = (authClient as any).useSession?.()
+const currentUser = computed(() => authSession?.data?.value?.user?.name || 'On-Duty Specialist')
 
 // Search query
 const searchQuery = ref('')

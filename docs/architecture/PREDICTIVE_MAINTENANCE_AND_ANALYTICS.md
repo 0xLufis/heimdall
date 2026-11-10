@@ -42,14 +42,15 @@ $$z_i = \frac{x_i - \mu}{\sigma}$$
 
 ## 3. Remaining Useful Life (RUL) & Machine Health Index
 
-The Machine Health Index $H_m \in [15\%, 100\%]$ represents the operational integrity of machine $m$:
+The Machine Health Index $H_m \in [0\%, 100\%]$ is a heuristic score computed only from stored counts:
 
-$$H_m = \max\left(15\%, 100\% - (\Delta_{\text{anomalies}} \times 6.5\%) - (N_{\text{tickets}} \times 12.0\%) - \Delta_{\text{drift}}\right)$$
+$$H_m = \operatorname{clamp}_{[0,100]}\left(100\% - (\Delta_{\text{anomalies}} \times 6.5\%) - (N_{\text{tickets}} \times 12.0\%)\right)$$
 
 Where:
-- $\Delta_{\text{anomalies}}$ is the count of statistical anomalies detected within the rolling 24-hour window.
-- $N_{\text{tickets}}$ is the number of unresolved maintenance tickets associated with the machine or its controlling IPC.
-- $\Delta_{\text{drift}}$ is the normalized variance from factory-calibrated nominal parameters.
+- $\Delta_{\text{anomalies}}$ is the count of statistical anomalies detected for the machine (0 where no telemetry series exists).
+- $N_{\text{tickets}}$ is the number of open maintenance tickets on the machine.
+
+Remaining-useful-life forecasting is not implemented: no wear model or runtime counters are stored, so no RUL value is reported.
 
 ---
 
@@ -67,43 +68,70 @@ $$\text{OEE} = A \times P \times Q$$
 
 ## 5. Station-Level Real-Time Telemetry & Plant Map HUD Overlays
 
-To empower shopfloor supervisors and controls engineers with immediate contextual insight directly on the factory floor layout, Heimdall computes station-level operational telemetry aligned with CAD drawing block handles (e.g. `L01-OP010` to `L08-OP130`):
+Station overlays on the plant map and the 3D digital twin show only measured data. There is no
+simulator or fallback generator in the backend, the BFF or the browser: a station without telemetry
+renders an explicit "No telemetry" / `—` state.
 
-### 5.1 Station Telemetry Metrics Matrix
+### 5.1 Data Path
 
-* **Station OEE**: Real-time Overall Equipment Effectiveness percentage calculated per machine node, broken down by Availability, Performance, and Quality components.
-* **First-Pass Quality Yield**: Ratio of conforming products produced on first pass without requiring rework, scrap, or re-testing:
-  $$\text{Yield} = \frac{\text{Conforming Parts}}{\text{Total Parts Produced}} \times 100\%$$
-* **Production Throughput (Parts / Hour)**: Instantaneous production rate extrapolated from active operating cycles:
-  $$\text{Parts/Hour} = \frac{3600}{\text{Current Tact Time (s)}}$$
-* **SLA Incident Tracking**: Real-time correlation with active maintenance tickets. Monitors ticket severity, earliest breach deadlines, and SLA compliance health (`healthy`, `warning`, `breached`, `none`).
+```
+PLC (TwinCAT ADS struct)  ──MQTT──▶  TelemetryIngestionService.ProcessPlcMemoryAsync
+                                       │ StationTelemetryExtractor (field-name matching)
+                                       │ station = machine bound to the sending IPC (StationControllers)
+                                       ├─▶ Redis / ICacheService  telemetry:station:{machineId}  (merged snapshot, 24 h)
+                                       ├─▶ SignalR /hubs/maintenance → group org:{OrganizationId} (+ platform-admins)
+                                       │     StationOscillationReceived / StationTelemetryReceived
+                                       └─▶ ILuaAutomationService.EvaluateTelemetryChangeAsync (Lua ring buffer + scripts)
 
-### 5.2 Operational Status Classification
+GET /api/v1/analytics/station-kpis  ◀── machines (tenant-filtered) + snapshots + open tickets
+        ▲
+Nitro BFF /api/telemetry/station-kpis (proxyToBackend: session token + session org only)
+        ▲
+useStationTelemetry (REST load + hub events) ──▶ StationTelemetryBubble / map.vue / Machine3dDigitalTwin
+```
 
-Station operational state is dynamically evaluated based on telemetry limits and ticket severity:
-* **`RUNNING`**: Machine is cycling within nominal tact time and OEE envelope with zero critical alarms.
-* **`IDLE`**: Performance index drops below 82% or parts infeed is starvation-paused.
-* **`WARNING`**: OEE drops below 85% or an open High/Critical ticket has an impending SLA breach (< 2 hours).
-* **`FAULTED`**: Immediate line stop, emergency stop (E-stop), hardware fault, or breached SLA incident active.
-* **`MAINTENANCE`**: Station reserved or undergoing technician on-site diagnostics.
+Recognised PLC fields (case-insensitive, separators and a one-letter IEC prefix ignored, any struct depth):
+vibration (`VibrationRms`, `VibrationMmS`), spindle speed (`SpindleRpm`), power (`PowerKw`), temperature
+(`MotorTemp`, `TemperatureC`), cycle time (`CycleTimeMs`, `CycleTimeSeconds`), frequency, `Availability`,
+`Performance`, `Quality`, `Oee`, `PartsPerHour`, `TargetPartsPerHour`, `TactTime`, `PartsProduced`, `ScrapParts`
+and the station state (`State`, `MachineState`; string or device-state label). See `StationTelemetrySnapshot.cs`.
 
-### 5.3 Sub-Second Real-Time Dynamics & 60Hz SignalR Oscillation Streaming
+### 5.2 Station Metrics
 
-For high-speed spindle operations, robotics, and precision mechanical assembly, Heimdall captures sub-second mechanical dynamics broadcasted over SignalR (`/hubs/maintenance`):
-* **Vibration RMS ($v_{\text{rms}}$)**: Evaluated per ISO 10816-3 (Class II industrial machinery):
-  * Good / Nominal: $< 2.5\text{ mm/s}$
-  * Warning / Elevated: $2.5 - 4.5\text{ mm/s}$
-  * Critical / Damaging: $> 4.5\text{ mm/s}$
-* **Harmonic Frequency & Speed**: Spindle RPM oscillations and power draw (kW) correlated with cutting loads and feeder kinematics.
-* **Dynamic Sparkline Waveforms**: Circular buffer rolling histories projected onto animated SVG polylines directly within both DXF plant map bubbles and 3D digital twin HUD overlays.
+* **Yield** = (parts produced − scrap) / parts produced, from PLC counters.
+* **Quality** = reported quality, else yield. **OEE** = reported OEE, else A × P × Q when all three are reported.
+* **Throughput, cycle/target times** are taken as reported; nothing is extrapolated.
+* **Tickets / SLA**: open tickets bound to the machine; `hasSlaBreach` uses the backend rule (open Critical ticket
+  older than 12 h). The UI additionally evaluates each ticket's `slaDueAt` where present.
 
-### 5.4 3D Digital Twin HUD Telemetry Overlays
+### 5.3 Operational Status
 
-In the 3D Digital Twin viewport (`Machine3dDigitalTwin.vue`), component node bounding boxes are projected in real-time from Three.js object world space into 2D viewport coordinates:
+Reported by the PLC state field and mapped to `RUNNING`, `IDLE`, `WARNING`, `FAULTED`, `MAINTENANCE`; machines whose
+status is `maintenance` show `MAINTENANCE`; otherwise `UNKNOWN`. Status is not inferred from OEE thresholds.
+
+### 5.4 Live Dynamics
+
+`StationOscillationReceived` carries the dynamics present in each ingested block (vibration RMS, spindle RPM, power,
+temperature, cycle time, frequency; absent quantities are `null`). The client keeps a 24-sample vibration history per
+station for the sparkline. Vibration above 2.8 mm/s (ISO 10816 class II "unsatisfactory" boundary) is highlighted.
+The update rate is the PLC publish rate; the hub adds no interpolation.
+
+### 5.5 3D Digital Twin HUD
+
+Component node bounding boxes are projected from Three.js world space into viewport coordinates:
 $$\mathbf{v}_{\text{ndc}} = \mathbf{P} \cdot \mathbf{V} \cdot \begin{pmatrix} x \\ y_{\text{max}} + \Delta y \\ z \\ 1 \end{pmatrix}$$
-$$\text{screenX} = \left(\frac{v_{\text{ndc}}.x + 1}{2}\right) \times W_{\text{canvas}}$$
-$$\text{screenY} = \left(\frac{1 - v_{\text{ndc}}.y}{2}\right) \times H_{\text{canvas}}$$
-This binds interactive HUD telemetry bubbles directly over physical CAD subassemblies (e.g. `GANTRY-X-01`, `TOOL-HEAD-01`, `CONVEYOR-01`), tracking spatial orientation seamlessly across orbit, pan, and zoom interactions.
+$$\text{screenX} = \left(\frac{v_{\text{ndc}}.x + 1}{2}\right) \times W_{\text{canvas}}, \quad \text{screenY} = \left(\frac{1 - v_{\text{ndc}}.y}{2}\right) \times H_{\text{canvas}}$$
+Node tint reflects the bound component's stored `EquipmentStatus`; live values are station-level (telemetry is not
+reported per CAD node).
+
+### 5.6 Line & Fleet KPIs
+
+* Line KPIs group machines by line group: incidents (30 days), MTTR from resolved tickets, observed MTBF (mean gap
+  between consecutive incidents per machine), and A/P/Q/OEE averaged over stations that report them.
+* Fleet summary: controller online share, backlog, stock depletion, top-faulting machines from tickets.
+  `totalMachineHours` and `slaCompliancePercentage` are `null` until runtime counters / ticket due dates are stored.
+* Trend series come from ingested station metrics (Lua telemetry buffer, in-process, last 200 samples per metric).
+  Recipe-based wear forecasting has no data source and returns no forecast.
 
 ---
 

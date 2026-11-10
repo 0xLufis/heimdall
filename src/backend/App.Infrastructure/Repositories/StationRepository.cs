@@ -6,6 +6,9 @@ namespace App.Infrastructure.Repositories;
 
 public class StationRepository : IStationRepository
 {
+    /// <summary>Upper bound on parent-machine chain traversal (cells inside cells are at most a few levels deep).</summary>
+    internal const int MaxMachineHierarchyDepth = 32;
+
     private readonly AppDbContext _context;
 
     public StationRepository(AppDbContext context)
@@ -28,6 +31,7 @@ public class StationRepository : IStationRepository
                 .ThenInclude(c => c.ComponentRecipe)
             .Include(m => m.DelegationBindings)
                 .ThenInclude(b => b.DelegationRecipe)
+            .AsSplitQuery()
             .ToListAsync();
     }
 
@@ -48,6 +52,7 @@ public class StationRepository : IStationRepository
                 .ThenInclude(c => c.PartHistory)
             .Include(m => m.DelegationBindings)
                 .ThenInclude(b => b.DelegationRecipe)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(m => m.Id == id);
     }
 
@@ -97,7 +102,11 @@ public class StationRepository : IStationRepository
         if (lineGroupId.HasValue) machine.LineGroupId = lineGroupId;
         if (projectGroupId.HasValue) machine.ProjectGroupId = projectGroupId;
         if (businessUnitGroupId.HasValue) machine.BusinessUnitGroupId = businessUnitGroupId;
-        if (parentMachineId.HasValue) machine.ParentMachineId = parentMachineId;
+        if (parentMachineId.HasValue && parentMachineId != machine.ParentMachineId)
+        {
+            await EnsureValidParentAsync(machine.Id, parentMachineId.Value);
+            machine.ParentMachineId = parentMachineId;
+        }
         if (subMachineIndex.HasValue) machine.SubMachineIndex = subMachineIndex;
         if (cellType != null) machine.CellType = cellType;
 
@@ -169,20 +178,77 @@ public class StationRepository : IStationRepository
         var parent = await _context.Machines.FindAsync(parentMachineId);
         if (parent == null) return null;
 
-        subMachine.ParentMachineId = parentMachineId;
-        if (string.IsNullOrWhiteSpace(subMachine.OrganizationId))
-            subMachine.OrganizationId = parent.OrganizationId;
-        if (!subMachine.LineGroupId.HasValue)
-            subMachine.LineGroupId = parent.LineGroupId;
-        if (!subMachine.SubLineGroupId.HasValue)
-            subMachine.SubLineGroupId = parent.SubLineGroupId;
+        // The request body is bound to the entity type, so copy only the descriptive scalars.
+        // Identity, tenant, hierarchy links and navigation graphs (controllers, components,
+        // bindings, tickets, ...) must never be taken from the client.
+        var created = new Machine
+        {
+            Id = Guid.NewGuid(),
+            Name = subMachine.Name,
+            DisplayName = subMachine.DisplayName,
+            CustomIdentifier = subMachine.CustomIdentifier,
+            Barcode = subMachine.Barcode,
+            SerialNumber = subMachine.SerialNumber,
+            MachineType = subMachine.MachineType,
+            Technologies = subMachine.Technologies ?? new List<string>(),
+            Criticality = subMachine.Criticality,
+            Spoc = subMachine.Spoc,
+            SpocUserId = subMachine.SpocUserId,
+            Owner = subMachine.Owner,
+            OwnerUserId = subMachine.OwnerUserId,
+            SubMachineIndex = subMachine.SubMachineIndex,
+            CellType = subMachine.CellType,
+            PreferredTechnicianId = subMachine.PreferredTechnicianId,
+            PreferredTechnicianName = subMachine.PreferredTechnicianName,
+            Status = "active",
+            ParentMachineId = parent.Id,
+            OrganizationId = parent.OrganizationId,
+            GroupId = parent.GroupId,
+            LineGroupId = parent.LineGroupId,
+            SubLineGroupId = parent.SubLineGroupId,
+            ProjectGroupId = parent.ProjectGroupId,
+            BusinessUnitGroupId = parent.BusinessUnitGroupId,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
 
-        if (subMachine.Id == Guid.Empty)
-            subMachine.Id = Guid.NewGuid();
-
-        _context.Machines.Add(subMachine);
+        _context.Machines.Add(created);
         await _context.SaveChangesAsync();
-        return subMachine;
+        return created;
+    }
+
+    /// <summary>
+    /// Rejects parent assignments that reference a missing machine, the machine itself, or one of its
+    /// descendants (which would create a cycle in the cell/roundtable hierarchy).
+    /// </summary>
+    private async Task EnsureValidParentAsync(Guid machineId, Guid parentMachineId)
+    {
+        if (parentMachineId == machineId)
+            throw new InvalidOperationException("A machine cannot be its own parent.");
+
+        Guid? cursor = parentMachineId;
+        var visited = new HashSet<Guid>();
+        var first = true;
+        while (cursor.HasValue)
+        {
+            if (cursor.Value == machineId)
+                throw new InvalidOperationException("Assigning this parent would create a cycle in the machine hierarchy.");
+            if (!visited.Add(cursor.Value) || visited.Count > MaxMachineHierarchyDepth)
+                throw new InvalidOperationException("The machine hierarchy is too deep or already contains a cycle.");
+
+            var current = cursor.Value;
+            var next = await _context.Machines
+                .Where(m => m.Id == current)
+                .Select(m => new { m.ParentMachineId })
+                .FirstOrDefaultAsync();
+            if (next == null)
+            {
+                if (first) throw new InvalidOperationException($"Parent machine '{parentMachineId}' was not found.");
+                break;
+            }
+            first = false;
+            cursor = next.ParentMachineId;
+        }
     }
 
     public async Task<bool> RemoveSubMachineAsync(Guid parentMachineId, Guid subMachineId)

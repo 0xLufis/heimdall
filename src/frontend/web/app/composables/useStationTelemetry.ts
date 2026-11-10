@@ -1,27 +1,43 @@
 import { ref, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue'
-import type { MaintenanceTicket } from '~/types/maintenance'
+import type { MaintenanceEvent, MaintenanceTicket } from '~/types/maintenance'
 
+/**
+ * Station-level production KPIs.
+ *
+ * Shape mirrors the backend `StationKpiDto` (GET /api/v1/analytics/station-kpis, camelCase JSON)
+ * and the `StationTelemetryBroadcastDto` pushed over SignalR (`StationTelemetryReceived`).
+ *
+ * Data path: backend ingestion → backend API / SignalR hub → BFF proxy (`/api/telemetry/station-kpis`)
+ * → this composable → UI. Nothing in here fabricates values: a station without data resolves to
+ * `null` and the UI renders an explicit "no telemetry" state.
+ */
 export interface StationTelemetryKpi {
+  /** Backend machine id. */
   stationId: string
+  /** Floor-plan (DXF) handle, else the machine's custom identifier. */
   handle: string
   name: string
   lineId: string
   lineName: string
-  oee: number
-  availability: number
-  performance: number
-  quality: number
-  yield: number
-  partsPerHour: number
-  targetPartsPerHour: number
-  cycleTimeSeconds: number
-  targetCycleTimeSeconds: number
-  totalPartsProduced: number
-  scrapParts: number
-  operationalStatus: 'RUNNING' | 'IDLE' | 'WARNING' | 'FAULTED' | 'MAINTENANCE'
+  // Production values: null until the station's PLC has reported them.
+  oee: number | null
+  availability: number | null
+  performance: number | null
+  quality: number | null
+  yield: number | null
+  partsPerHour: number | null
+  targetPartsPerHour: number | null
+  cycleTimeSeconds: number | null
+  targetCycleTimeSeconds: number | null
+  totalPartsProduced: number | null
+  scrapParts: number | null
+  /** UNKNOWN: no telemetry-reported state. */
+  operationalStatus: 'RUNNING' | 'IDLE' | 'WARNING' | 'FAULTED' | 'MAINTENANCE' | 'UNKNOWN'
   activeTicketCount: number
   criticalTicketCount: number
   hasSlaBreach: boolean
+  /** ISO timestamp of the last ingested telemetry for this station, null if never. */
+  lastTelemetryAt: string | null
 }
 
 export interface StationSlaSummary {
@@ -35,116 +51,248 @@ export interface StationSlaSummary {
   tickets: MaintenanceTicket[]
 }
 
+/**
+ * Live machine dynamics for one station. Mirrors `StationOscillationBroadcastDto`
+ * (SignalR `StationOscillationReceived`); `history` is a client-side ring buffer of the
+ * last {@link OSCILLATION_HISTORY_LIMIT} received vibration samples.
+ */
 export interface StationOscillationData {
   stationId: string
+  /** Floor-plan handle the sample was published for (also used as a lookup key). */
+  handle: string
   vibrationMmS: number
-  spindleRpm: number
-  cycleTimeMs: number
-  powerKw: number
-  temperatureC: number
-  frequencyHz: number
+  // Null when the PLC does not report the quantity.
+  spindleRpm: number | null
+  cycleTimeMs: number | null
+  powerKw: number | null
+  temperatureC: number | null
+  frequencyHz: number | null
+  /** Epoch milliseconds of the sample as reported by the backend (receive time if absent). */
   timestamp: number
-  history: number[] // Rolling vibration RMS values (20-30 points) for sparklines
+  history: number[]
+}
+
+export const OSCILLATION_HISTORY_LIMIT = 24
+
+const OPERATIONAL_STATUSES: ReadonlyArray<StationTelemetryKpi['operationalStatus']> = [
+  'RUNNING', 'IDLE', 'WARNING', 'FAULTED', 'MAINTENANCE', 'UNKNOWN'
+]
+
+/** Finite number, else the fallback (null / undefined / garbage never become 0). */
+function toNumber(value: unknown, fallback: number): number
+function toNumber(value: unknown, fallback: number | null): number | null
+function toNumber(value: unknown, fallback: number | null): number | null {
+  const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value
+  return typeof n === 'number' && Number.isFinite(n) ? n : fallback
+}
+
+const toText = (value: unknown, fallback: string): string =>
+  typeof value === 'string' && value.length > 0 ? value : fallback
+
+const toEpochMs = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value
+  if (typeof value === 'string' && value) {
+    const parsed = Date.parse(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return Date.now()
+}
+
+const stationKey = (handleOrId: string | null | undefined) => (handleOrId || '').trim().toUpperCase()
+
+/**
+ * Normalizes a backend KPI payload (REST `StationKpiDto` or partial SignalR
+ * `StationTelemetryBroadcastDto`) onto the TS shape. Missing / null fields keep the previous
+ * value (partial live updates) or stay null. Returns null when the payload has no identity.
+ */
+export function normalizeStationKpi(raw: unknown, previous?: StationTelemetryKpi | null): StationTelemetryKpi | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const handle = toText(r.handle, previous?.handle || toText(r.stationId, ''))
+  const stationId = toText(r.stationId, previous?.stationId || handle)
+  if (!handle && !stationId) return null
+
+  const statusRaw = typeof r.operationalStatus === 'string' ? r.operationalStatus.toUpperCase() : ''
+  const operationalStatus = (OPERATIONAL_STATUSES as readonly string[]).includes(statusRaw)
+    ? (statusRaw as StationTelemetryKpi['operationalStatus'])
+    : (previous?.operationalStatus ?? 'UNKNOWN')
+
+  const p = previous
+  return {
+    stationId: stationId || handle,
+    handle: handle || stationId,
+    name: toText(r.name, p?.name || handle || stationId),
+    lineId: toText(r.lineId, p?.lineId || ''),
+    lineName: toText(r.lineName, p?.lineName || ''),
+    oee: toNumber(r.oee, p?.oee ?? null),
+    availability: toNumber(r.availability, p?.availability ?? null),
+    performance: toNumber(r.performance, p?.performance ?? null),
+    quality: toNumber(r.quality, p?.quality ?? null),
+    yield: toNumber(r.yield, p?.yield ?? null),
+    partsPerHour: toNumber(r.partsPerHour, p?.partsPerHour ?? null),
+    targetPartsPerHour: toNumber(r.targetPartsPerHour, p?.targetPartsPerHour ?? null),
+    cycleTimeSeconds: toNumber(r.cycleTimeSeconds, p?.cycleTimeSeconds ?? null),
+    targetCycleTimeSeconds: toNumber(r.targetCycleTimeSeconds, p?.targetCycleTimeSeconds ?? null),
+    totalPartsProduced: toNumber(r.totalPartsProduced, p?.totalPartsProduced ?? null),
+    scrapParts: toNumber(r.scrapParts, p?.scrapParts ?? null),
+    operationalStatus,
+    activeTicketCount: toNumber(r.activeTicketCount, p?.activeTicketCount ?? 0),
+    criticalTicketCount: toNumber(r.criticalTicketCount, p?.criticalTicketCount ?? 0),
+    hasSlaBreach: typeof r.hasSlaBreach === 'boolean' ? r.hasSlaBreach : (p?.hasSlaBreach ?? false),
+    lastTelemetryAt: toText(r.lastTelemetryAt, p?.lastTelemetryAt ?? '') || null
+  }
+}
+
+/**
+ * Normalizes an oscillation sample and appends its vibration value to the bounded history.
+ */
+export function normalizeStationOscillation(
+  raw: unknown,
+  fallbackStationId: string,
+  previous?: StationOscillationData | null
+): StationOscillationData | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const vibration = toNumber(r.vibrationMmS, Number.NaN)
+  const p = previous
+  const vibrationMmS = Number.isFinite(vibration) ? vibration : (p?.vibrationMmS ?? Number.NaN)
+  // A sample without a vibration reading and no prior state carries nothing to display.
+  if (!Number.isFinite(vibrationMmS)) return null
+
+  const history = Number.isFinite(vibration)
+    ? [...(p?.history ?? []), vibration].slice(-OSCILLATION_HISTORY_LIMIT)
+    : (p?.history ?? [])
+
+  return {
+    stationId: toText(r.stationId, p?.stationId || fallbackStationId),
+    handle: toText(r.handle, p?.handle || ''),
+    vibrationMmS,
+    spindleRpm: toNumber(r.spindleRpm, p?.spindleRpm ?? null),
+    cycleTimeMs: toNumber(r.cycleTimeMs, p?.cycleTimeMs ?? null),
+    powerKw: toNumber(r.powerKw, p?.powerKw ?? null),
+    temperatureC: toNumber(r.temperatureC, p?.temperatureC ?? null),
+    frequencyHz: toNumber(r.frequencyHz, p?.frequencyHz ?? null),
+    timestamp: toEpochMs(r.timestamp),
+    history
+  }
 }
 
 const globalStationKpis = ref<Record<string, StationTelemetryKpi>>({})
 const globalStationOscillations = ref<Record<string, StationOscillationData>>({})
 const isStationKpisLoading = ref(false)
-const isSignalRConnected = ref(false)
-const lastRefreshedAt = ref<Date>(new Date())
-let simTimer: any = null
-let oscillationTimer: any = null
+const stationKpisError = ref<string | null>(null)
+const isLiveStreamSubscribed = ref(false)
+const lastRefreshedAt = ref<Date | null>(null)
 let unsubscribeMaintenanceEvents: (() => void) | null = null
+// Incremented on every stop so a subscription that resolves after stop is discarded.
+let liveStreamGeneration = 0
+let liveStreamStarting = false
 let activeSubscribers = 0
+
+const indexKpi = (map: Record<string, StationTelemetryKpi>, kpi: StationTelemetryKpi) => {
+  map[stationKey(kpi.handle)] = kpi
+  if (kpi.stationId) map[stationKey(kpi.stationId)] = kpi
+}
+
+const applyLiveKpi = (rawKpi: unknown, fallbackKey: string) => {
+  const raw = (rawKpi && typeof rawKpi === 'object') ? rawKpi as Record<string, unknown> : null
+  if (!raw) return
+  const key = stationKey(toText(raw.handle, '') || toText(raw.stationId, '') || fallbackKey)
+  if (!key) return
+  const previous = globalStationKpis.value[key] ?? null
+  const merged = normalizeStationKpi({ stationId: fallbackKey, ...raw }, previous)
+  if (!merged) return
+  const next = { ...globalStationKpis.value }
+  indexKpi(next, merged)
+  globalStationKpis.value = next
+  lastRefreshedAt.value = new Date()
+}
+
+const applyLiveOscillation = (rawOsc: unknown, fallbackKey: string) => {
+  const raw = (rawOsc && typeof rawOsc === 'object') ? rawOsc as Record<string, unknown> : null
+  if (!raw) return
+  const key = stationKey(toText(raw.stationId, '') || fallbackKey)
+  if (!key) return
+  const handleKey = stationKey(toText(raw.handle, ''))
+  const previous = globalStationOscillations.value[key] ?? (handleKey ? globalStationOscillations.value[handleKey] : undefined) ?? null
+  const next = normalizeStationOscillation(raw, key, previous)
+  if (!next) return
+  // Index by machine id (3D twin) and floor-plan handle (plant map).
+  const map = { ...globalStationOscillations.value, [key]: next }
+  const nextHandleKey = stationKey(next.handle)
+  if (nextHandleKey) map[nextHandleKey] = next
+  globalStationOscillations.value = map
+}
+
+/** Routes a maintenance-hub event into the telemetry store. Exported for tests. */
+export const handleStationTelemetryEvent = (ev: MaintenanceEvent) => {
+  if (ev.type === 'StationTelemetryReceived') {
+    applyLiveKpi(ev.summary, ev.stationName || '')
+  } else if (ev.type === 'StationOscillationReceived') {
+    applyLiveOscillation(ev.summary, ev.stationName || '')
+  }
+}
 
 export const useStationTelemetry = () => {
   const stationKpis = globalStationKpis
   const isLoading = isStationKpisLoading
   const lastUpdated = lastRefreshedAt
 
+  /** Unique KPI records (the map is indexed by both handle and stationId). */
+  const stationKpiList = computed(() => Array.from(new Set(Object.values(globalStationKpis.value))))
+  const hasStationKpiData = computed(() => stationKpiList.value.length > 0)
+
   const fetchStationKpis = async (lineId?: string) => {
     isLoading.value = true
     try {
       const url = lineId ? `/api/telemetry/station-kpis?lineId=${encodeURIComponent(lineId)}` : '/api/telemetry/station-kpis'
-      const data = await $fetch<StationTelemetryKpi[]>(url)
-      if (Array.isArray(data)) {
-        const map: Record<string, StationTelemetryKpi> = { ...stationKpis.value }
-        for (const item of data) {
-          map[item.handle.toUpperCase()] = item
-          if (item.stationId) map[item.stationId.toUpperCase()] = item
-        }
-        stationKpis.value = map
-        lastRefreshedAt.value = new Date()
+      const data = await $fetch<unknown>(url)
+      if (!Array.isArray(data)) {
+        throw new Error('Unexpected station KPI response shape')
       }
-    } catch {
-      // Fallback: generate local fallback if offline
+      // A full fetch is authoritative; a line-filtered fetch only refreshes that line.
+      const map: Record<string, StationTelemetryKpi> = lineId ? { ...stationKpis.value } : {}
+      if (lineId) {
+        for (const [k, v] of Object.entries(map)) {
+          if (v.lineId.toUpperCase() === lineId.toUpperCase()) delete map[k]
+        }
+      }
+      for (const item of data) {
+        const kpi = normalizeStationKpi(item)
+        if (kpi) indexKpi(map, kpi)
+      }
+      stationKpis.value = map
+      stationKpisError.value = null
+      lastRefreshedAt.value = new Date()
+    } catch (err: any) {
+      // Keep the last known-good data; surface the failure instead of inventing values.
+      stationKpisError.value = err?.data?.message || err?.message || 'Station telemetry unavailable'
     } finally {
       isLoading.value = false
     }
   }
 
-  // Fast synchronous getter with deterministic fallback
-  const getStationKpi = (handleOrId: string): StationTelemetryKpi => {
-    const key = (handleOrId || '').toUpperCase()
-    if (stationKpis.value[key]) {
-      return stationKpis.value[key]
-    }
-
-    // Deterministic algorithmic fallback if not yet fetched
-    let hash = 0
-    for (let i = 0; i < key.length; i++) {
-      hash = (hash << 5) - hash + key.charCodeAt(i)
-      hash |= 0
-    }
-    hash = Math.abs(hash)
-
-    const avail = Math.min(99.5, Math.max(80.0, 96.0 + ((hash % 11) - 5) * 0.4))
-    const perf = Math.min(99.0, Math.max(75.0, 94.0 + (((Math.floor(hash / 11)) % 11) - 5) * 0.5))
-    const qual = Math.min(99.9, Math.max(95.0, 99.2 + (((Math.floor(hash / 121)) % 7) - 3) * 0.1))
-    const oee = Number(((avail * perf * qual) / 10000).toFixed(1))
-    const yieldPct = Math.min(99.9, Math.max(94.0, Number((qual - 0.2 + (hash % 5) * 0.08).toFixed(1))))
-    const partsPerHour = Math.round(142.0 * (perf / 94.0))
-    const cycleTimeSec = partsPerHour > 0 ? Number((3600.0 / partsPerHour).toFixed(1)) : 0.0
-
-    const fallback: StationTelemetryKpi = {
-      stationId: handleOrId,
-      handle: handleOrId,
-      name: `${handleOrId} Machine Cell`,
-      lineId: handleOrId.startsWith('L0') ? handleOrId.substring(0, 3) : 'L01',
-      lineName: 'Production Line',
-      oee,
-      availability: Number(avail.toFixed(1)),
-      performance: Number(perf.toFixed(1)),
-      quality: Number(qual.toFixed(1)),
-      yield: yieldPct,
-      partsPerHour,
-      targetPartsPerHour: 150.0,
-      cycleTimeSeconds: cycleTimeSec,
-      targetCycleTimeSeconds: 24.0,
-      totalPartsProduced: 1100 + (hash % 400),
-      scrapParts: Math.max(0, Math.round(1100 * (1.0 - yieldPct / 100.0))),
-      operationalStatus: oee < 80 ? 'WARNING' : 'RUNNING',
-      activeTicketCount: 0,
-      criticalTicketCount: 0,
-      hasSlaBreach: false
-    }
-
-    // Cache fallback into map
-    stationKpis.value = { ...stationKpis.value, [key]: fallback }
-    return fallback
+  /** Returns the station's last reported KPIs, or null when no telemetry exists for it. */
+  const getStationKpi = (handleOrId: string): StationTelemetryKpi | null => {
+    return stationKpis.value[stationKey(handleOrId)] ?? null
   }
 
   // Correlate tickets to compute real-time SLA metrics for any station
   const getStationSla = (handleOrId: string, allTickets: MaintenanceTicket[] = []): StationSlaSummary => {
-    const key = (handleOrId || '').toUpperCase()
+    const key = stationKey(handleOrId)
     const now = Date.now()
 
-    const matching = (allTickets || []).filter(t => {
-      const matchStation = t.stationId && t.stationId.toUpperCase().includes(key)
-      const matchTag = t.tags && t.tags.some(tag => tag.toUpperCase().includes(key))
-      const matchTitle = t.title && t.title.toUpperCase().includes(key)
-      return matchStation || matchTag || matchTitle
-    })
+    // Exact identity matches only (a substring match made 'L01-OP01' claim 'L01-OP010' tickets);
+    // titles must contain the handle as a whole token.
+    const titleToken = key ? new RegExp(`(^|[^A-Z0-9-])${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^A-Z0-9-])`) : null
+    const matching = key
+      ? (allTickets || []).filter(t => {
+        const matchStation = t.stationId && t.stationId.toUpperCase() === key
+        const matchTag = t.tags && t.tags.some(tag => tag.toUpperCase() === key)
+        const matchTitle = !!t.title && !!titleToken && titleToken.test(t.title.toUpperCase())
+        return matchStation || matchTag || matchTitle
+      })
+      : []
 
     const open = matching.filter(t => t.status !== 'Resolved' && t.status !== 'Closed')
     const critical = open.filter(t => t.priority === 'Critical')
@@ -156,6 +304,7 @@ export const useStationTelemetry = () => {
     for (const t of open) {
       if (t.slaDueAt) {
         const due = new Date(t.slaDueAt).getTime()
+        if (!Number.isFinite(due)) continue
         if (due < now) {
           breached++
         } else {
@@ -205,196 +354,64 @@ export const useStationTelemetry = () => {
     }
   }
 
-  // Fast synchronous getter for sub-second oscillation data
-  const getStationOscillation = (handleOrId: string): StationOscillationData => {
-    const key = (handleOrId || '').toUpperCase()
-    if (globalStationOscillations.value[key]) {
-      return globalStationOscillations.value[key]
-    }
-
-    // Deterministic algorithmic baseline based on key hash
-    let hash = 0
-    for (let i = 0; i < key.length; i++) {
-      hash = (hash << 5) - hash + key.charCodeAt(i)
-      hash |= 0
-    }
-    hash = Math.abs(hash)
-
-    const baseVib = 0.85 + (hash % 12) * 0.11 // 0.85 to ~2.06 mm/s
-    const baseRpm = 2200 + (hash % 15) * 80  // 2200 to 3400 RPM
-    const basePower = 3.2 + (hash % 10) * 0.4 // 3.2 to 6.8 kW
-    const baseTemp = 42.0 + (hash % 8) * 1.5 // 42.0 to 52.5 C
-
-    // Seed 20 historical points with minor harmonic fluctuation
-    const history: number[] = []
-    for (let i = 0; i < 20; i++) {
-      const harmonic = 0.12 * Math.sin((i / 20) * Math.PI * 4) + 0.04 * Math.cos((i / 20) * Math.PI * 8)
-      history.push(Number((baseVib + harmonic).toFixed(3)))
-    }
-
-    const fallback: StationOscillationData = {
-      stationId: handleOrId,
-      vibrationMmS: Number(baseVib.toFixed(2)),
-      spindleRpm: baseRpm,
-      cycleTimeMs: 24000,
-      powerKw: Number(basePower.toFixed(1)),
-      temperatureC: Number(baseTemp.toFixed(1)),
-      frequencyHz: 50.0 + ((hash % 5) - 2) * 0.05,
-      timestamp: Date.now(),
-      history
-    }
-
-    globalStationOscillations.value = { ...globalStationOscillations.value, [key]: fallback }
-    return fallback
+  /** Returns the last received oscillation sample for a station, or null when none was received. */
+  const getStationOscillation = (handleOrId: string): StationOscillationData | null => {
+    return globalStationOscillations.value[stationKey(handleOrId)] ?? null
   }
 
+  /** Applies a (partial) oscillation sample, e.g. from the SignalR hub. */
   const updateStationOscillation = (stationId: string, partial: Partial<StationOscillationData>) => {
-    const key = (stationId || '').toUpperCase()
-    const current = getStationOscillation(key)
-    const newVib = partial.vibrationMmS !== undefined ? partial.vibrationMmS : current.vibrationMmS
-    const updatedHistory = [...(current.history || []), newVib].slice(-24)
-
-    globalStationOscillations.value = {
-      ...globalStationOscillations.value,
-      [key]: {
-        ...current,
-        ...partial,
-        vibrationMmS: newVib,
-        history: updatedHistory,
-        timestamp: Date.now()
-      }
-    }
+    applyLiveOscillation({ ...partial, stationId: partial.stationId || stationId }, stationId)
   }
 
+  /**
+   * Subscribes to live `StationTelemetryReceived` / `StationOscillationReceived` hub events.
+   * Values only ever come from the backend; there is no client-side signal generator.
+   */
   const startOscillationStream = () => {
     if (typeof window === 'undefined') return
-    if (oscillationTimer) return
+    if (unsubscribeMaintenanceEvents || liveStreamStarting) return
+    liveStreamStarting = true
+    const generation = liveStreamGeneration
 
-    // 1. Connect or listen to Maintenance Service SignalR events if available
-    try {
-      if (!unsubscribeMaintenanceEvents) {
-        import('~/services/maintenance').then(({ getMaintenanceService }) => {
-          const svc = getMaintenanceService()
-          if (svc && typeof svc.subscribeToEvents === 'function') {
-            unsubscribeMaintenanceEvents = svc.subscribeToEvents((ev: any) => {
-              if (ev.type === 'StationTelemetryReceived' && ev.summary) {
-                const kpi = ev.summary
-                const key = (kpi.handle || ev.stationName || '').toUpperCase()
-                if (key) {
-                  globalStationKpis.value = { ...globalStationKpis.value, [key]: { ...getStationKpi(key), ...kpi } }
-                }
-              } else if (ev.type === 'StationOscillationReceived' && ev.summary) {
-                const osc = ev.summary
-                const key = (osc.stationId || ev.stationName || '').toUpperCase()
-                if (key) {
-                  updateStationOscillation(key, osc)
-                }
-              }
-            })
-            isSignalRConnected.value = true
-          }
-        }).catch(() => {})
+    import('~/services/maintenance').then(({ getMaintenanceService }) => {
+      liveStreamStarting = false
+      // Stopped (or restarted) while the import was pending: do not leak a listener.
+      if (generation !== liveStreamGeneration || unsubscribeMaintenanceEvents) return
+      const svc = getMaintenanceService()
+      if (svc && typeof svc.subscribeToEvents === 'function') {
+        unsubscribeMaintenanceEvents = svc.subscribeToEvents(handleStationTelemetryEvent)
+        isLiveStreamSubscribed.value = true
       }
-    } catch {
-      // Fallback in headless/isolated test environments
-    }
-
-    // 2. High performance sub-second oscillation generator (300ms)
-    let tickCount = 0
-    oscillationTimer = setInterval(() => {
-      tickCount++
-      const currentMap = { ...globalStationOscillations.value }
-      const keys = Object.keys(currentMap)
-      if (keys.length === 0) return
-
-      for (const k of keys) {
-        const item = currentMap[k]
-        if (!item) continue
-        const t = tickCount * 0.3
-        // Harmonic synthesis: f1 = 0.7Hz, f2 = 1.9Hz + slight noise
-        const harmonic = 0.14 * Math.sin(2 * Math.PI * 0.7 * t) + 0.05 * Math.sin(2 * Math.PI * 1.9 * t) + (Math.random() - 0.5) * 0.03
-        const newVib = Math.max(0.2, Number((item.vibrationMmS + harmonic * 0.25).toFixed(3)))
-        const rpmJitter = Math.round((Math.random() - 0.5) * 16)
-
-        const hist = [...(item.history || []), newVib].slice(-24)
-        currentMap[k] = {
-          ...item,
-          vibrationMmS: newVib,
-          spindleRpm: Math.max(800, item.spindleRpm + rpmJitter),
-          history: hist,
-          timestamp: Date.now()
-        }
-      }
-      globalStationOscillations.value = currentMap
-    }, 300)
+    }).catch(() => {
+      liveStreamStarting = false
+    })
   }
 
   const stopOscillationStream = () => {
-    if (oscillationTimer) {
-      clearInterval(oscillationTimer)
-      oscillationTimer = null
-    }
+    liveStreamGeneration++
+    liveStreamStarting = false
     if (unsubscribeMaintenanceEvents) {
       try {
         unsubscribeMaintenanceEvents()
-      } catch {}
+      } catch { /* listener already gone */ }
       unsubscribeMaintenanceEvents = null
     }
-    isSignalRConnected.value = false
-  }
-
-  const startLiveSimulation = () => {
-    if (typeof window === 'undefined') return
-    if (simTimer) return
-
-    simTimer = setInterval(() => {
-      const current = { ...stationKpis.value }
-      let changed = false
-
-      // Slightly perturb parts count / rate for stations with simulation
-      for (const [key, item] of Object.entries(current)) {
-        if (item.operationalStatus === 'RUNNING' && Math.random() < 0.25) {
-          const jitter = (Math.random() - 0.48) * 1.5
-          const newParts = item.totalPartsProduced + 1
-          const newRate = Math.min(180, Math.max(90, Math.round(item.partsPerHour + jitter)))
-          current[key] = {
-            ...item,
-            totalPartsProduced: newParts,
-            partsPerHour: newRate,
-            cycleTimeSeconds: Number((3600.0 / newRate).toFixed(1))
-          }
-          changed = true
-        }
-      }
-
-      if (changed) {
-        stationKpis.value = current
-        lastRefreshedAt.value = new Date()
-      }
-    }, 4000)
-  }
-
-  const stopLiveSimulation = () => {
-    if (simTimer) {
-      clearInterval(simTimer)
-      simTimer = null
-    }
+    isLiveStreamSubscribed.value = false
   }
 
   if (getCurrentInstance()) {
     onMounted(() => {
       activeSubscribers++
-      if (Object.keys(stationKpis.value).length === 0) {
+      if (!hasStationKpiData.value && !isLoading.value) {
         fetchStationKpis()
       }
-      startLiveSimulation()
       startOscillationStream()
     })
 
     onUnmounted(() => {
       activeSubscribers = Math.max(0, activeSubscribers - 1)
       if (activeSubscribers === 0) {
-        stopLiveSimulation()
         stopOscillationStream()
       }
     })
@@ -402,17 +419,18 @@ export const useStationTelemetry = () => {
 
   return {
     stationKpis,
+    stationKpiList,
+    hasStationKpiData,
+    stationKpisError,
     stationOscillations: globalStationOscillations,
     isLoading,
-    isSignalRConnected,
+    isLiveStreamSubscribed,
     lastUpdated,
     fetchStationKpis,
     getStationKpi,
     getStationSla,
     getStationOscillation,
     updateStationOscillation,
-    startLiveSimulation,
-    stopLiveSimulation,
     startOscillationStream,
     stopOscillationStream
   }

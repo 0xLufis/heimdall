@@ -2,7 +2,7 @@ namespace App.Shared.Lua.Examples;
 
 using System;
 using System.Collections.Generic;
-using App.Shared.Lua.Models;
+using App.Shared.Entities;
 
 /// <summary>
 /// Pre-seeded plant automation scripts illustrating the four core features
@@ -26,7 +26,10 @@ public static class DefaultPlantScripts
                 TriggerType = LuaScriptTriggerType.TelemetryChange,
                 IsActive = true,
                 Code = @"-- Telemetry custom logic and change handling
-local machine_id = context_machine_id or '11111111-1111-1111-1111-111111111111'
+local machine_id = context_machine_id
+if machine_id == nil then
+    return 'No machine context supplied'
+end
 local vib = telemetry.get_latest(machine_id, 'spindle_vibration')
 local temp = telemetry.get_latest(machine_id, 'temperature')
 

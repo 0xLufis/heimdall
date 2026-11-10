@@ -96,7 +96,7 @@ public class MaintenanceTicketController : ControllerBase
             var ticket = await _repository.GetByIdAsync(response.TicketId);
             if (ticket != null)
             {
-                await _hubContext.Clients.All.TicketCreated(ticket);
+                await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, ticket.OrganizationId).TicketCreated(ticket);
             }
             return CreatedAtAction(nameof(GetTicket), new { id = response.TicketId }, response);
         }
@@ -184,7 +184,7 @@ public class MaintenanceTicketController : ControllerBase
         var created = await _repository.CreateAsync(ticket);
         await InvalidateTicketCachesAsync(created.Id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(created.Id), created, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.TicketCreated(created);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, created.OrganizationId).TicketCreated(created);
         return CreatedAtAction(nameof(GetTicket), new { id = created.Id }, created);
     }
 
@@ -198,7 +198,7 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return NoContent();
     }
 
@@ -211,8 +211,8 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.StatusChanged(id, status);
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).StatusChanged(id, status);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return NoContent();
     }
 
@@ -229,7 +229,7 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return Ok(updated);
     }
 
@@ -242,7 +242,7 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return Ok(updated);
     }
 
@@ -255,8 +255,8 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.StatusChanged(id, "InProgress");
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).StatusChanged(id, "InProgress");
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return Ok(updated);
     }
 
@@ -321,7 +321,7 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return Ok(updated);
     }
 
@@ -339,8 +339,8 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.StatusChanged(id, "Closed");
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).StatusChanged(id, "Closed");
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return Ok(updated);
     }
 
@@ -356,8 +356,8 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.StatusChanged(id, "Closed");
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).StatusChanged(id, "Closed");
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return Ok(updated);
     }
 
@@ -374,8 +374,8 @@ public class MaintenanceTicketController : ControllerBase
 
         await InvalidateTicketCachesAsync(id);
         await _cache.SetAsync(CacheKeyFactory.Tickets.Item(id), updated, TimeSpan.FromMinutes(5));
-        await _hubContext.Clients.All.StatusChanged(id, "Pending");
-        await _hubContext.Clients.All.TicketUpdated(updated);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).StatusChanged(id, "Pending");
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, updated.OrganizationId).TicketUpdated(updated);
         return Ok(updated);
     }
 
@@ -383,11 +383,13 @@ public class MaintenanceTicketController : ControllerBase
     [Authorize(Policy = AuthorizationPolicies.MaintenanceOperations)]
     public async Task<IActionResult> DeleteTicket(Guid id)
     {
+        // Read the owner before deleting so the event goes to that tenant's group only.
+        var existing = await _repository.GetByIdAsync(id);
         var success = await _repository.DeleteAsync(id);
         if (!success) return NotFound(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.TicketNotFound));
 
         await InvalidateTicketCachesAsync(id);
-        await _hubContext.Clients.All.TicketDeleted(id);
+        await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, existing?.OrganizationId).TicketDeleted(id);
         return NoContent();
     }
 

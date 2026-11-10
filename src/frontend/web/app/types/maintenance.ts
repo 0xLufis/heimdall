@@ -142,13 +142,37 @@ export interface MachineGroup {
   technologyKey?: string
 }
 
+/**
+ * Wire values of App.Contracts.Enums.DelegationDiscipline. The backend has no global
+ * JsonStringEnumConverter, so enums are serialized as integers.
+ */
+export const DelegationDisciplineValue = {
+  Mechanical: 1,
+  Controls: 2,
+  Electrical: 3,
+  Safety: 4,
+  Quality: 5,
+  Process: 6,
+  Tooling: 7,
+  General: 99
+} as const
+
+/** Wire values of the App.Contracts.Enums.WorkerScheduleType [Flags] enum (bitwise OR of these). */
+export const WorkerScheduleFlag = {
+  Shift: 1,
+  OfficeTime: 2,
+  OnCall: 4
+} as const
+
 export interface DelegationRecipe {
   id: string
   name: string
   description?: string
-  discipline: string
+  /** Integer DelegationDiscipline value (see DelegationDisciplineValue). */
+  discipline: number
   triggerEventCategory?: string
-  allowedSchedules: string[]
+  /** Bitmask of WorkerScheduleFlag values (e.g. 7 = Shift | OfficeTime | OnCall). */
+  allowedSchedules: number
   requiredSkillIds: string[]
   requiredSkillCodes: string[]
   primaryPersonnelGroupId?: string

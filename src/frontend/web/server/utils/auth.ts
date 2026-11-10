@@ -19,7 +19,7 @@ export function getAzureSsoConfig() {
    const tenantId = process.env.AZURE_AD_TENANT_ID 
       || process.env.MICROSOFT_ENTRA_ID_TENANT_ID 
       || process.env.AZURE_TENANT_ID 
-      || "72f988bf-86f1-41af-91ab-2d7cd011db47"; // canonical enterprise plant tenant
+      || "00000000-de70-4e1d-8000-00000000c0de"; // fictitious demo tenant; set AZURE_AD_TENANT_ID for real SSO
 
    const isConfigured = !!(clientId && clientSecret);
 

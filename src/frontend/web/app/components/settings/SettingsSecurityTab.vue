@@ -583,7 +583,7 @@ onMounted(() => {
           <div class="p-3 rounded-lg bg-background/80 border border-border">
             <div class="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Configured Tenant ID</div>
             <div class="font-mono text-[11px] text-foreground font-semibold truncate">
-              {{ ssoStatus?.tenantId || '72f988bf-86f1-41af-91ab-2d7cd011db47' }}
+              {{ ssoStatus?.tenantId || '00000000-de70-4e1d-8000-00000000c0de' }}
             </div>
             <div class="text-[11px] text-muted-foreground mt-0.5">Multi-tenant Plant Partition</div>
           </div>

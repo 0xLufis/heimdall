@@ -243,7 +243,7 @@ function onQrScanned(code: string) {
       })
       return
     } else if (actionPayload.action === 'view-ticket' && actionPayload.ticketId) {
-      router.push(`/dashboard/tickets/${actionPayload.ticketId}`)
+      router.push(`/dashboard/tickets/${encodeURIComponent(actionPayload.ticketId)}`)
       return
     }
   }

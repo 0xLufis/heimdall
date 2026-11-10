@@ -1,8 +1,8 @@
-import { defineEventHandler, getRouterParam } from 'h3'
-import { componentsAndDelegationsStore } from '../../../utils/componentsAndDelegationsStore'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
+import { backendFetch } from '../../../utils/backendFetch'
 
 export default defineEventHandler((event) => {
   const componentId = getRouterParam(event, 'id')
-  if (!componentId) return []
-  return componentsAndDelegationsStore.getPartHistory(componentId)
+  if (!componentId) throw createError({ statusCode: 400, statusMessage: 'Component ID is required.' })
+  return backendFetch(event, `component/${componentId}/history`)
 })

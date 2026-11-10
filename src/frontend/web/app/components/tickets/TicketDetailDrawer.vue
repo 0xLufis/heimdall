@@ -161,10 +161,9 @@ watch(() => props.ticket, (newVal) => {
 }, { immediate: true, deep: true })
 
 // ─── Computed ────────────────────────────────────────────────────────────────
-const currentUser = computed(() => {
-  const session = (authClient as any).useSession?.()
-  return session?.data?.value?.user?.name || 'On-Duty Tech'
-})
+// Subscribe once at setup; calling useSession() inside a computed re-subscribes on every evaluation.
+const authSession = (authClient as any).useSession?.()
+const currentUser = computed(() => authSession?.data?.value?.user?.name || 'On-Duty Tech')
 
 const ticketLevelAttachments = computed<TicketAttachment[]>(() => {
   return (localTicket.value?.attachments ?? []).filter(a => !a.commentId)

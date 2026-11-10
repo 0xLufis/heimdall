@@ -1,7 +1,6 @@
 namespace App.Shared.Lua.Apis;
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using App.Shared.Entities;
@@ -16,8 +15,8 @@ using MoonSharp.Interpreter;
 /// </summary>
 public class GroupingsLuaApi
 {
+    private const int MaxDynamicRules = 100;
     private readonly ILuaPlantDataProvider _provider;
-    private readonly ConcurrentDictionary<string, (string GroupType, Closure Predicate)> _dynamicRules = new(StringComparer.OrdinalIgnoreCase);
 
     public GroupingsLuaApi(ILuaPlantDataProvider provider)
     {
@@ -27,6 +26,8 @@ public class GroupingsLuaApi
     public void Register(Script script)
     {
         var table = new Table(script);
+        // Rules are scoped to this script run so closures never leak into other executions.
+        var dynamicRules = new Dictionary<string, (string GroupType, Closure Predicate)>(StringComparer.OrdinalIgnoreCase);
 
         table["get"] = (Func<string, string, DynValue>)((id, groupType) =>
         {
@@ -114,14 +115,15 @@ public class GroupingsLuaApi
         {
             if (string.IsNullOrWhiteSpace(ruleName) || predicate == null) return false;
             string gType = string.IsNullOrWhiteSpace(groupType) ? "machine" : groupType;
-            _dynamicRules[ruleName] = (gType, predicate);
+            if (!dynamicRules.ContainsKey(ruleName) && dynamicRules.Count >= MaxDynamicRules) return false;
+            dynamicRules[ruleName] = (gType, predicate);
             return true;
         });
 
         // Evaluates dynamic rule against all machines (or items) and returns matching IDs
         table["evaluate_rule"] = (Func<string, DynValue>)((ruleName) =>
         {
-            if (string.IsNullOrWhiteSpace(ruleName) || !_dynamicRules.TryGetValue(ruleName, out var rule))
+            if (string.IsNullOrWhiteSpace(ruleName) || !dynamicRules.TryGetValue(ruleName, out var rule))
             {
                 return DynValue.NewTable(new Table(script));
             }
@@ -142,15 +144,15 @@ public class GroupingsLuaApi
                         mTable["status"] = m.Status;
                         mTable["machine_type"] = m.MachineType ?? string.Empty;
 
-                        var res = rule.Predicate.Call(mTable);
+                        var res = LuaSandboxGuard.Call(rule.Predicate, DynValue.NewTable(mTable));
                         if (res.Boolean)
                         {
                             resultTable[idx++] = m.Id.ToString();
                         }
                     }
-                    catch
+                    catch (ScriptRuntimeException)
                     {
-                        // Ignore individual predicate failure
+                        // Ignore individual predicate failure; sandbox violations still propagate.
                     }
                 }
             }

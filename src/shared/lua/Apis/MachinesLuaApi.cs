@@ -57,7 +57,7 @@ public class MachinesLuaApi
         table["set_property"] = (Func<string, string, DynValue, bool>)((id, key, value) =>
         {
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(key)) return false;
-            object? clrVal = value.ToObject();
+            object? clrVal = LuaScriptEngine.ConvertDynValue(value, maxNodes: 256);
             return _provider.SetMachineCustomFieldAsync(id, key, clrVal).GetAwaiter().GetResult();
         });
 

@@ -1,29 +1,21 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
-import { machinesStore } from '../../../utils/machinesStore'
+import { backendFetch } from '../../../utils/backendFetch'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
   if (!id) {
-    throw createError({ statusCode: 400, message: 'Machine ID parameter is required.' })
+    throw createError({ statusCode: 400, statusMessage: 'Machine ID parameter is required.' })
   }
 
-  const body = (await readBody(event).catch(() => null)) || (event as any)._body || (event.node?.req as any)?.body
-  if (!body || !body.status) {
-    throw createError({ statusCode: 400, message: 'Status is required in request body.' })
+  const body = await readBody(event).catch(() => null)
+  if (!body || typeof body.status !== 'string' || !body.status) {
+    throw createError({ statusCode: 400, statusMessage: 'Status is required in request body.' })
   }
 
-  const actor = body.actor || { id: 'usr-current', name: 'Engineer' }
-
-  try {
-    const updated = machinesStore.updateMachineStatus(id, body.status, actor)
-    return {
-      success: true,
-      machine: updated
-    }
-  } catch (err: any) {
-    throw createError({
-      statusCode: 400,
-      message: err.message || 'Failed to update machine status.'
-    })
-  }
+  // The acting user is derived from the session by the backend; client-supplied "actor" is ignored.
+  const machine = await backendFetch(event, `machine/${id}/status`, {
+    method: 'PUT',
+    body: { status: body.status }
+  })
+  return { success: true, machine }
 })

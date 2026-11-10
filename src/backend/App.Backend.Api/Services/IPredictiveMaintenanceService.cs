@@ -15,7 +15,7 @@ public interface IPredictiveMaintenanceService
     List<AnomalyDetailDto> DetectAnomalies(string metricName, List<TelemetryPointDto> points);
     double CalculateHealthIndex(string machineId, int recentAnomalyCount, int openTicketCount);
     Task<FleetSummaryDto> GetFleetSummaryAsync(CancellationToken cancellationToken = default);
-    MachineTrendSeriesDto GetMachineTrends(string machineId, string metricName, TimeSpan timeRange, string? recipeId = null);
-    List<LineKpiDto> GetLineKpis();
-    List<StationKpiDto> GetStationTelemetryKpis(string? lineId = null, string? stationId = null);
+    Task<MachineTrendSeriesDto> GetMachineTrendsAsync(string machineId, string metricName, TimeSpan timeRange, string? recipeId = null, CancellationToken cancellationToken = default);
+    Task<List<LineKpiDto>> GetLineKpisAsync(CancellationToken cancellationToken = default);
+    Task<List<StationKpiDto>> GetStationTelemetryKpisAsync(string? lineId = null, string? stationId = null, CancellationToken cancellationToken = default);
 }

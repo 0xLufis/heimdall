@@ -756,6 +756,13 @@ public class DelegationRecipeService : IDelegationRecipeService
         DelegationDiscipline discipline,
         CancellationToken cancellationToken = default)
     {
+        if (!await _context.Machines.AnyAsync(m => m.Id == machineId, cancellationToken))
+            throw new KeyNotFoundException($"Machine '{machineId}' was not found.");
+
+        var recipe = await _context.DelegationRecipes.AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == recipeId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Delegation recipe '{recipeId}' was not found.");
+
         var existing = await _context.MachineDelegationBindings
             .FirstOrDefaultAsync(b => b.MachineId == machineId && b.DelegationRecipeId == recipeId && b.Discipline == discipline, cancellationToken);
 
@@ -768,6 +775,7 @@ public class DelegationRecipeService : IDelegationRecipeService
                 Id = existing.Id,
                 MachineId = existing.MachineId,
                 DelegationRecipeId = existing.DelegationRecipeId,
+                DelegationRecipeName = recipe.Name,
                 Discipline = existing.Discipline,
                 IsActive = existing.IsActive
             };
@@ -786,17 +794,53 @@ public class DelegationRecipeService : IDelegationRecipeService
         _context.MachineDelegationBindings.Add(binding);
         await _context.SaveChangesAsync(cancellationToken);
 
-        var recipe = await _context.DelegationRecipes.FindAsync(recipeId);
-
         return new MachineDelegationBindingDto
         {
             Id = binding.Id,
             MachineId = binding.MachineId,
             DelegationRecipeId = binding.DelegationRecipeId,
-            DelegationRecipeName = recipe?.Name ?? string.Empty,
+            DelegationRecipeName = recipe.Name,
             Discipline = binding.Discipline,
             IsActive = binding.IsActive
         };
+    }
+
+    public async Task<bool> DeleteRecipeAsync(Guid recipeId, CancellationToken cancellationToken = default)
+    {
+        var recipe = await _context.DelegationRecipes.FirstOrDefaultAsync(r => r.Id == recipeId, cancellationToken);
+        if (recipe == null) return false;
+
+        // Remove dependents explicitly instead of relying on provider-specific cascade behaviour.
+        _context.MachineDelegationBindings.RemoveRange(
+            await _context.MachineDelegationBindings.Where(b => b.DelegationRecipeId == recipeId).ToListAsync(cancellationToken));
+        _context.DelegationMaintenanceGroups.RemoveRange(
+            await _context.DelegationMaintenanceGroups.Where(j => j.DelegationRecipeId == recipeId).ToListAsync(cancellationToken));
+        _context.DelegationMachineGroups.RemoveRange(
+            await _context.DelegationMachineGroups.Where(j => j.DelegationRecipeId == recipeId).ToListAsync(cancellationToken));
+        _context.DelegationRecipes.Remove(recipe);
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<PersonnelGroupDeleteResult> DeletePersonnelGroupAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        var group = await _context.PersonnelGroups.FirstOrDefaultAsync(g => g.Id == groupId, cancellationToken);
+        if (group == null) return PersonnelGroupDeleteResult.NotFound;
+
+        var idText = groupId.ToString();
+        var inUse =
+            await _context.DelegationRecipes.AnyAsync(r =>
+                r.PrimaryPersonnelGroupId == groupId ||
+                r.EscalationGroupId == groupId ||
+                r.MaintenanceGroupIdsJson.Contains(idText), cancellationToken) ||
+            await _context.DelegationMaintenanceGroups.AnyAsync(j => j.MaintenanceGroupId == groupId, cancellationToken);
+        if (inUse) return PersonnelGroupDeleteResult.InUse;
+
+        _context.PersonnelGroupMembers.RemoveRange(
+            await _context.PersonnelGroupMembers.Where(m => m.PersonnelGroupId == groupId).ToListAsync(cancellationToken));
+        _context.PersonnelGroups.Remove(group);
+        await _context.SaveChangesAsync(cancellationToken);
+        return PersonnelGroupDeleteResult.Deleted;
     }
 
     public async Task<bool> UnbindRecipeFromMachineAsync(Guid bindingId, CancellationToken cancellationToken = default)
@@ -1189,20 +1233,12 @@ public class DelegationRecipeService : IDelegationRecipeService
 
     public async Task<MachineDedicationsDto> DedicateToMachineAsync(string machineIdentifier, DedicationAssignmentRequest request, CancellationToken cancellationToken = default)
     {
-        var machine = await FindMachineByIdentifierAsync(machineIdentifier, cancellationToken);
-        if (machine == null)
-        {
-            Guid newId = Guid.TryParse(machineIdentifier, out var g) ? g : Guid.NewGuid();
-            machine = new Machine
-            {
-                Id = newId,
-                Name = machineIdentifier,
-                CustomIdentifier = machineIdentifier,
-                Status = "active"
-            };
-            _context.Machines.Add(machine);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+        // Never auto-create machines from a dedication request: an unknown identifier is a client error.
+        var machine = await FindMachineByIdentifierAsync(machineIdentifier, cancellationToken)
+            ?? throw new KeyNotFoundException($"Machine '{machineIdentifier}' was not found.");
+
+        if (string.IsNullOrWhiteSpace(request.TargetId))
+            throw new ArgumentException("A dedication target id is required.", nameof(request));
 
         string targetTech = string.IsNullOrWhiteSpace(request.Technology) ? "General" : request.Technology.Trim();
         string targetType = string.Equals(request.TargetType, "group", StringComparison.OrdinalIgnoreCase) ? "group" : "person";
@@ -1436,15 +1472,21 @@ public class DelegationRecipeService : IDelegationRecipeService
 
     public async Task<bool> DedicateUserToMachineAsync(string userId, string machineIdentifier, string? technology = null, CancellationToken cancellationToken = default)
     {
-        var result = await DedicateToMachineAsync(machineIdentifier, new DedicationAssignmentRequest
+        try
         {
-            TargetType = "person",
-            TargetId = userId,
-            TargetName = userId,
-            Technology = technology
-        }, cancellationToken);
-
-        return result != null;
+            await DedicateToMachineAsync(machineIdentifier, new DedicationAssignmentRequest
+            {
+                TargetType = "person",
+                TargetId = userId,
+                TargetName = userId,
+                Technology = technology
+            }, cancellationToken);
+            return true;
+        }
+        catch (KeyNotFoundException)
+        {
+            return false;
+        }
     }
 
     public Task<bool> RemoveUserDedicationFromMachineAsync(string userId, Guid machineId, string? technology = null, CancellationToken cancellationToken = default)

@@ -1,4 +1,5 @@
 using App.Infrastructure.Repositories;
+using App.Contracts.Security;
 using App.Infrastructure.Services;
 using App.Shared.Data;
 using App.Shared.Entities;
@@ -19,15 +20,47 @@ public class MachineController : ControllerBase
     private readonly IStationRepository _stationRepository;
     private readonly AppDbContext? _context;
     private readonly IGenericTemplateService? _templateService;
+    private readonly IAuthorizationService? _authorizationService;
 
     public MachineController(
         IStationRepository stationRepository,
         AppDbContext? context = null,
-        IGenericTemplateService? templateService = null)
+        IGenericTemplateService? templateService = null,
+        IAuthorizationService? authorizationService = null)
     {
         _stationRepository = stationRepository;
         _context = context;
         _templateService = templateService;
+        _authorizationService = authorizationService;
+    }
+
+    /// <summary>Resolves a machine id from its custom identifier or name without loading the whole fleet.</summary>
+    private async Task<Guid?> FindMachineIdByIdentifierAsync(string id)
+    {
+        if (_context != null)
+        {
+            return await _context.Machines.AsNoTracking()
+                .Where(m => m.CustomIdentifier == id || m.Name == id)
+                .Select(m => (Guid?)m.Id)
+                .FirstOrDefaultAsync();
+        }
+        var all = await _stationRepository.GetAllAsync();
+        return all.FirstOrDefault(m => m.CustomIdentifier == id || m.Name == id)?.Id;
+    }
+
+    /// <summary>
+    /// The caller's organization (Better-Auth active organization, exposed as the "OrgId" claim).
+    /// Only platform administrators may act on behalf of a different organization.
+    /// </summary>
+    private async Task<(string? OrgId, bool Allowed)> ResolveTargetOrganizationAsync(string? requestedOrgId)
+    {
+        var callerOrg = User?.FindFirst("OrgId")?.Value;
+        if (string.IsNullOrWhiteSpace(requestedOrgId) || string.Equals(requestedOrgId, callerOrg, StringComparison.Ordinal))
+            return (callerOrg ?? "default", true);
+
+        var isPlatformAdmin = _authorizationService != null && User != null &&
+            (await _authorizationService.AuthorizeAsync(User, AuthorizationPolicies.SystemAdministration)).Succeeded;
+        return (requestedOrgId, isPlatformAdmin);
     }
 
     [HttpGet]
@@ -71,8 +104,10 @@ public class MachineController : ControllerBase
             {
                 Id = sm.Id,
                 Name = sm.Name,
+                DisplayName = sm.DisplayName,
                 CustomIdentifier = sm.CustomIdentifier,
                 SubMachineIndex = sm.SubMachineIndex,
+                CellType = sm.CellType,
                 MachineType = sm.MachineType,
                 Status = sm.Status ?? "active",
                 Spoc = sm.Spoc,
@@ -162,15 +197,12 @@ public class MachineController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Machine>> GetMachine(string id)
     {
-        Guid? targetGuid = Guid.TryParse(id, out var g) ? g : null;
-        if (targetGuid.HasValue)
+        Machine? machine = Guid.TryParse(id, out var g) ? await _stationRepository.GetByIdAsync(g) : null;
+        if (machine == null)
         {
-            var byId = await _stationRepository.GetByIdAsync(targetGuid.Value);
-            if (byId != null) return Ok(byId);
+            var byIdentifier = await FindMachineIdByIdentifierAsync(id);
+            if (byIdentifier.HasValue) machine = await _stationRepository.GetByIdAsync(byIdentifier.Value);
         }
-
-        var all = await _stationRepository.GetAllAsync();
-        var machine = all.FirstOrDefault(m => m.CustomIdentifier == id || m.Name == id);
         if (machine == null) return NotFound();
         return Ok(machine);
     }
@@ -178,26 +210,17 @@ public class MachineController : ControllerBase
     [HttpGet("{id}/sub-machines")]
     public async Task<ActionResult<List<App.Backend.Api.Dtos.SubMachineSummaryDto>>> GetSubMachines(string id)
     {
-        Guid targetGuid = Guid.Empty;
-        if (Guid.TryParse(id, out var g))
-        {
-            targetGuid = g;
-        }
-        else
-        {
-            var all = await _stationRepository.GetAllAsync();
-            var m = all.FirstOrDefault(mach => mach.CustomIdentifier == id || mach.Name == id);
-            if (m != null) targetGuid = m.Id;
-        }
-
-        if (targetGuid == Guid.Empty) return Ok(new List<App.Backend.Api.Dtos.SubMachineSummaryDto>());
-        var subMachines = await _stationRepository.GetSubMachinesAsync(targetGuid);
+        var targetGuid = Guid.TryParse(id, out var g) ? g : await FindMachineIdByIdentifierAsync(id);
+        if (!targetGuid.HasValue) return Ok(new List<App.Backend.Api.Dtos.SubMachineSummaryDto>());
+        var subMachines = await _stationRepository.GetSubMachinesAsync(targetGuid.Value);
         var dtos = subMachines.Select(sm => new App.Backend.Api.Dtos.SubMachineSummaryDto
         {
             Id = sm.Id,
             Name = sm.Name,
+            DisplayName = sm.DisplayName,
             CustomIdentifier = sm.CustomIdentifier,
             SubMachineIndex = sm.SubMachineIndex,
+            CellType = sm.CellType,
             MachineType = sm.MachineType,
             Status = sm.Status ?? "active",
             Spoc = sm.Spoc,
@@ -230,7 +253,53 @@ public class MachineController : ControllerBase
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<ActionResult<Machine>> CreateMachine(Machine machine)
     {
-        var created = await _stationRepository.CreateAsync(machine);
+        // Mass-assignment guard: never persist the client-bound entity graph directly. Only
+        // descriptive fields are copied; identity, tenant, lifecycle, audit timestamps and
+        // navigation graphs are server-controlled. Hierarchy goes through POST {id}/sub-machines,
+        // which performs cycle detection.
+        var (orgId, allowed) = await ResolveTargetOrganizationAsync(machine.OrganizationId);
+        if (!allowed) return Forbid();
+        if (machine.ParentMachineId != null)
+            return BadRequest(new { error = "Use POST /api/v1/machine/{parentId}/sub-machines to create child machines." });
+
+        var sanitized = new Machine
+        {
+            Id = Guid.NewGuid(),
+            Name = machine.Name,
+            DisplayName = machine.DisplayName,
+            OrganizationId = orgId,
+            PlantId = machine.PlantId,
+            CustomIdentifier = machine.CustomIdentifier,
+            Barcode = machine.Barcode,
+            SerialNumber = machine.SerialNumber,
+            MachineType = machine.MachineType,
+            Criticality = machine.Criticality,
+            Technologies = machine.Technologies ?? new List<string>(),
+            Spoc = machine.Spoc,
+            SpocUserId = machine.SpocUserId,
+            Owner = machine.Owner,
+            OwnerUserId = machine.OwnerUserId,
+            GroupId = machine.GroupId,
+            SubLineGroupId = machine.SubLineGroupId,
+            LineGroupId = machine.LineGroupId,
+            ProjectGroupId = machine.ProjectGroupId,
+            BusinessUnitGroupId = machine.BusinessUnitGroupId,
+            CellType = machine.CellType,
+            FloorPlanId = machine.FloorPlanId,
+            PinnedObjectHandle = machine.PinnedObjectHandle,
+            SpatialTransformJson = machine.SpatialTransformJson,
+            UserTags = machine.UserTags ?? new List<string>(),
+            CustomFieldsJson = machine.CustomFieldsJson,
+            ManufacturerId = machine.ManufacturerId,
+            SupplierId = machine.SupplierId,
+            PurchaseDate = machine.PurchaseDate,
+            CostInHUF = machine.CostInHUF,
+            PreferredTechnicianId = machine.PreferredTechnicianId,
+            PreferredTechnicianName = machine.PreferredTechnicianName,
+            Status = "active",
+        };
+
+        var created = await _stationRepository.CreateAsync(sanitized);
         return CreatedAtAction(nameof(GetMachine), new { id = created.Id }, created);
     }
 
@@ -238,7 +307,10 @@ public class MachineController : ControllerBase
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<IActionResult> UpdateMachine(Guid id, [FromBody] App.Backend.Api.Dtos.MachineUpdateDto update)
     {
-        var updated = await _stationRepository.UpdateAsync(
+        Machine? updated;
+        try
+        {
+            updated = await _stationRepository.UpdateAsync(
             id,
             update.Name,
             update.CustomIdentifier,
@@ -257,12 +329,18 @@ public class MachineController : ControllerBase
             update.SubMachineIndex,
             update.CellType
         );
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
 
         if (updated == null) return NotFound();
         return NoContent();
     }
 
     [HttpPut("{id}/status")]
+    [Authorize(Policy = AuthorizationPolicies.MaintenanceOperations)]
     public async Task<IActionResult> UpdateMachineStatus(Guid id, [FromBody] App.Backend.Api.Dtos.MachineStatusUpdateDto update)
     {
         var machine = await _stationRepository.UpdateStatusAsync(id, update.Status);
@@ -271,6 +349,7 @@ public class MachineController : ControllerBase
     }
 
     [HttpPost("{id}/decommission")]
+    [Authorize(Policy = AuthorizationPolicies.EndpointConfigManagement)]
     public async Task<IActionResult> DecommissionMachine(Guid id, [FromBody] App.Backend.Api.Dtos.MachineDecommissionDto decommission)
     {
         var machine = await _stationRepository.DecommissionAsync(
@@ -295,7 +374,11 @@ public class MachineController : ControllerBase
     [HttpGet("organization-types")]
     public async Task<IActionResult> GetOrganizationMachineTypes([FromQuery] string? organizationId = null)
     {
-        var orgId = organizationId ?? User?.FindFirst("organization_id")?.Value ?? "default";
+        var (orgId, allowed) = await ResolveTargetOrganizationAsync(organizationId);
+        if (!allowed) return Forbid();
+
+        if (_templateService != null)
+            await _templateService.SeedDefaultTemplatesIfEmptyAsync(HttpContext?.RequestAborted ?? default);
         var allMachineTemplates = _templateService != null
             ? await _templateService.GetTemplatesAsync(new App.Contracts.Templates.TemplateQueryFilterDto { TemplateType = "machine" })
             : new List<App.Contracts.Templates.GenericTemplateDto>();
@@ -346,11 +429,11 @@ public class MachineController : ControllerBase
     }
 
     [HttpPut("organization-types")]
+    [Authorize(Policy = AuthorizationPolicies.FunctionalSettingsManagement)]
     public async Task<IActionResult> UpdateOrganizationMachineTypes([FromBody] App.Contracts.Templates.OrganizationMachineTypeFilterDto dto)
     {
-        var orgId = string.IsNullOrWhiteSpace(dto.OrganizationId)
-            ? (User?.FindFirst("organization_id")?.Value ?? "default")
-            : dto.OrganizationId;
+        var (orgId, allowed) = await ResolveTargetOrganizationAsync(dto.OrganizationId);
+        if (!allowed) return Forbid();
 
         if (_context == null) return Ok(new { success = true, enabledCategories = dto.EnabledCategories });
 

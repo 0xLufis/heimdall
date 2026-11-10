@@ -61,17 +61,17 @@ const {
   fetchMetrics: fetchTelemetryMetrics
 } = useTelemetryMetrics()
 
-const activeMachineId = ref(props.initialMachineId || 'm-op20')
+const activeMachineId = ref<string>(props.initialMachineId || '')
 const activeMetric = ref<string>('cycle_time')
 const activeRange = ref<'1h' | '8h' | '24h' | '7d'>('8h')
-const activeRecipeId = ref<string>('REC-ALU-01')
+const activeRecipeId = ref<string>('')
 const showLinearTrend = ref(true)
 const showCorridor = ref(true)
 const showMovingAverage = ref(true)
 const isLoading = ref(false)
 
 const trendData = ref<TrendSeriesData>({
-  machineId: 'm-op20',
+  machineId: '',
   metricName: 'Cycle Time Deviation',
   unit: 'ms',
   nominalValue: 1200.0,
@@ -79,24 +79,28 @@ const trendData = ref<TrendSeriesData>({
   lowerTolerance: 1120.0,
   points: [],
   detectedAnomalies: [],
-  availableRecipes: [
-    { recipeId: 'REC-ALU-01', recipeName: 'Aluminum Lightweight Weld 1.5mm', description: 'High-speed laser stitch welding on 6061-T6 aluminum sheet' },
-    { recipeId: 'REC-STL-02', recipeName: 'Structural Steel Bracket Fastening', description: 'Multi-spindle M8 class 10.9 torque-controlled torque-angle fastening' },
-    { recipeId: 'REC-COMP-03', recipeName: 'Carbon Composite Adhesive Dispense', description: '2K structural polyurethane high-precision micro-bead bonding' }
-  ]
+  availableRecipes: []
 })
 
 const hoveredPoint = ref<TelemetryPoint | null>(null)
 
-const machinesList = [
-  { id: 'm-op20', name: 'OP20-Weld (Laser Robotic Cell)' },
-  { id: 'm-op50', name: 'OP50-Fasten (Multi-Spindle Fastener)' },
-  { id: 'm-op10', name: 'OP10-Dispense (Polymer Bonding Station)' },
-  { id: 'm-op30', name: 'OP30-Robotics (KUKA Vision Cell)' },
-  { id: 'm-op80', name: 'OP80-EOL (High Voltage Test Chamber)' }
-]
+// Real machines from the tenant-scoped machine registry (no hardcoded demo ids).
+const machinesList = ref<{ id: string; name: string }[]>([])
+const loadMachines = async () => {
+  try {
+    const res = await $fetch<any>('/api/machines')
+    const list: any[] = Array.isArray(res) ? res : (res?.machines ?? res?.items ?? [])
+    machinesList.value = list
+      .filter(m => m?.id && m.status !== 'decommissioned')
+      .map(m => ({ id: String(m.id), name: [m.customIdentifier, m.displayName || m.name].filter(Boolean).join(' · ') }))
+    if (!activeMachineId.value && machinesList.value.length > 0) activeMachineId.value = machinesList.value[0]!.id
+  } catch {
+    machinesList.value = []
+  }
+}
 
 const fetchTrends = async () => {
+  if (!activeMachineId.value) return
   isLoading.value = true
   try {
     const data = await $fetch<TrendSeriesData>(`/api/analytics/trends`, {
@@ -104,29 +108,14 @@ const fetchTrends = async () => {
         machineId: activeMachineId.value,
         metric: activeMetric.value,
         range: activeRange.value,
-        recipeId: activeRecipeId.value
+        recipeId: activeRecipeId.value || undefined
       }
     })
     if (data && data.points) {
       trendData.value = data
     }
   } catch {
-    // Graceful fallback to proxy endpoint if available
-    try {
-      const fallback = await $fetch<TrendSeriesData>(`/api/proxy/v1/analytics/trends`, {
-        params: {
-          machineId: activeMachineId.value,
-          metric: activeMetric.value,
-          range: activeRange.value,
-          recipeId: activeRecipeId.value
-        }
-      })
-      if (fallback && fallback.points) {
-        trendData.value = fallback
-      }
-    } catch {
-      // Retain local state
-    }
+    trendData.value = { ...trendData.value, machineId: activeMachineId.value, points: [], detectedAnomalies: [] }
   } finally {
     isLoading.value = false
   }
@@ -137,7 +126,7 @@ watch([activeMachineId, activeMetric, activeRange, activeRecipeId], () => {
 })
 
 onMounted(async () => {
-  await fetchTelemetryMetrics()
+  await Promise.all([fetchTelemetryMetrics(), loadMachines()])
   fetchTrends()
 })
 

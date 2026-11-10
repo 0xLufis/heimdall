@@ -43,8 +43,8 @@ public class AnalyticsController : ControllerBase
     /// Gets rolling telemetry trends, statistical regression corridors, and recipe-based failure forecast.
     /// </summary>
     [HttpGet("trends")]
-    public ActionResult<MachineTrendSeriesDto> GetMachineTrends(
-        [FromQuery] string machineId = "m-op20",
+    public async Task<ActionResult<MachineTrendSeriesDto>> GetMachineTrends(
+        [FromQuery] string machineId = "",
         [FromQuery] string metric = "cycle_time",
         [FromQuery] string range = "8h",
         [FromQuery] string? recipeId = null)
@@ -57,7 +57,7 @@ public class AnalyticsController : ControllerBase
             _ => TimeSpan.FromHours(8)
         };
 
-        var trends = _predictiveService.GetMachineTrends(machineId, metric, timeRange, recipeId);
+        var trends = await _predictiveService.GetMachineTrendsAsync(machineId, metric, timeRange, recipeId, HttpContext?.RequestAborted ?? default);
         return Ok(trends);
     }
 
@@ -65,9 +65,9 @@ public class AnalyticsController : ControllerBase
     /// Gets production line-level OEE, Availability, Performance, and Quality KPIs.
     /// </summary>
     [HttpGet("kpis")]
-    public ActionResult<List<LineKpiDto>> GetLineKpis()
+    public async Task<ActionResult<List<LineKpiDto>>> GetLineKpis()
     {
-        var kpis = _predictiveService.GetLineKpis();
+        var kpis = await _predictiveService.GetLineKpisAsync(HttpContext?.RequestAborted ?? default);
         return Ok(kpis);
     }
 
@@ -75,11 +75,11 @@ public class AnalyticsController : ControllerBase
     /// Gets station-level OEE, Yield, Parts/Hour, and SLA ticket overlays for floor plan CAD visualization.
     /// </summary>
     [HttpGet("station-kpis")]
-    public ActionResult<List<StationKpiDto>> GetStationKpis(
+    public async Task<ActionResult<List<StationKpiDto>>> GetStationKpis(
         [FromQuery] string? lineId = null,
         [FromQuery] string? stationId = null)
     {
-        var stationKpis = _predictiveService.GetStationTelemetryKpis(lineId, stationId);
+        var stationKpis = await _predictiveService.GetStationTelemetryKpisAsync(lineId, stationId, HttpContext?.RequestAborted ?? default);
         return Ok(stationKpis);
     }
 }

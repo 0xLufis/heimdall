@@ -2,11 +2,20 @@ namespace App.Backend.Tests;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
+using System.Reflection;
+using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using App.Backend.Api.Controllers.V1;
 using App.Contracts.Templates;
 using App.Infrastructure.Services;
 using App.Shared.Data;
@@ -515,5 +524,211 @@ public class GenericTemplateEngineTests
         Assert.Equal(8.2, Convert.ToDouble(instantiationResult.InstanceData["squeegee_pressure_kg"]));
         Assert.Equal(50.0, Convert.ToDouble(instantiationResult.InstanceData["print_speed_mm_s"]));
         Assert.Equal("SAC305 Type 4", instantiationResult.InstanceData["solder_paste_alloy"]?.ToString());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Security & correctness regression tests
+    // ─────────────────────────────────────────────────────────────────────
+
+    private static GenericTemplate NewTemplate(string code, string? orgId, List<TemplateFieldDefinitionDto>? schema = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = code,
+        Name = code,
+        TemplateType = GenericTemplateTypes.Custom,
+        OrganizationId = orgId,
+        SchemaJson = JsonSerializer.Serialize(schema ?? new List<TemplateFieldDefinitionDto>())
+    };
+
+    [Fact]
+    public async Task ValidateInstance_CatastrophicRegex_TimesOutInsteadOfHanging()
+    {
+        using var context = CreateContext();
+        var service = new GenericTemplateService(context, NullLogger<GenericTemplateService>.Instance);
+        var template = NewTemplate("CUS-REDOS", null, new List<TemplateFieldDefinitionDto>
+        {
+            new() { Key = "serial", Label = "Serial", FieldType = "string", ValidationRegex = "^(a+)+$" }
+        });
+        context.GenericTemplates.Add(template);
+        await context.SaveChangesAsync();
+
+        var sw = Stopwatch.StartNew();
+        var result = await service.ValidateInstanceDataAsync(template.Id, new Dictionary<string, object?>
+        {
+            ["serial"] = new string('a', 40) + "!"
+        });
+        sw.Stop();
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("timed out"));
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), $"Validation took {sw.Elapsed}");
+    }
+
+    [Fact]
+    public async Task ValidateInstance_NumberParsing_IsCultureInvariant()
+    {
+        using var context = CreateContext();
+        var service = new GenericTemplateService(context, NullLogger<GenericTemplateService>.Instance);
+        var template = NewTemplate("CUS-NUM", null, new List<TemplateFieldDefinitionDto>
+        {
+            new() { Key = "pressure", Label = "Pressure", FieldType = "number", Min = 1, Max = 10 }
+        });
+        context.GenericTemplates.Add(template);
+        await context.SaveChangesAsync();
+
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            // de-DE treats '.' as a group separator: "7.5" would otherwise parse as 75 and fail Max.
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            var result = await service.ValidateInstanceDataAsync(template.Id, new Dictionary<string, object?> { ["pressure"] = "7.5" });
+            Assert.True(result.IsValid, string.Join("; ", result.Errors));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    [Fact]
+    public async Task Instantiate_JsonElementValues_AreNormalizedAndTokensSubstituted()
+    {
+        using var context = CreateContext();
+        var service = new GenericTemplateService(context, NullLogger<GenericTemplateService>.Instance);
+        var template = NewTemplate("CUS-TOKENS", null);
+        context.GenericTemplates.Add(template);
+        await context.SaveChangesAsync();
+
+        // Simulate what MVC model binding produces for Dictionary<string, object?> bodies.
+        var values = JsonSerializer.Deserialize<Dictionary<string, object?>>("{\"label\":\"ST-{{$year}}\"}")!;
+        var result = await service.InstantiateTemplateAsync(template.Id, new InstantiateTemplateRequestDto { Values = values });
+
+        Assert.Equal($"ST-{DateTimeOffset.UtcNow.Year}", result.InstanceData["label"]);
+    }
+
+    [Fact]
+    public async Task TenantFilter_HidesOtherOrganizationsTemplates_ButKeepsGlobalOnes()
+    {
+        var dbName = $"TemplateTenantDb_{Guid.NewGuid():N}";
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(dbName).Options;
+        var foreign = NewTemplate("ORG-B-ONLY", "Plant-B");
+        using (var seed = new AppDbContext(options))
+        {
+            seed.GenericTemplates.AddRange(NewTemplate("GLOBAL-1", null), NewTemplate("ORG-A-ONLY", "Plant-A"), foreign);
+            await seed.SaveChangesAsync();
+        }
+
+        using var context = new AppDbContext(options) { CurrentOrganizationId = "Plant-A" };
+        var service = new GenericTemplateService(context, NullLogger<GenericTemplateService>.Instance);
+
+        var visible = await service.GetTemplatesAsync(new TemplateQueryFilterDto());
+        Assert.Contains(visible, t => t.Code == "GLOBAL-1");
+        Assert.Contains(visible, t => t.Code == "ORG-A-ONLY");
+        Assert.DoesNotContain(visible, t => t.Code == "ORG-B-ONLY");
+        Assert.Null(await service.GetTemplateByIdAsync(foreign.Id));
+        Assert.False(await service.DeleteTemplateAsync(foreign.Id));
+
+        // Codes are globally unique: a clash with an invisible template must still be a clean conflict.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateTemplateAsync(new CreateGenericTemplateDto { Code = "org-b-only", Name = "Clash" }, "Plant-A"));
+    }
+
+    [Fact]
+    public async Task Seed_IsIdempotent_WhenBuiltinCodeWasRenamed()
+    {
+        using var context = CreateContext();
+        var service = new GenericTemplateService(context, NullLogger<GenericTemplateService>.Instance);
+        await service.SeedDefaultTemplatesIfEmptyAsync();
+        var count = await context.GenericTemplates.CountAsync();
+
+        var builtin = await context.GenericTemplates.FirstAsync(t => t.IsBuiltin);
+        builtin.Code = "RENAMED-BY-ENGINEER";
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        await service.SeedDefaultTemplatesIfEmptyAsync();
+        Assert.Equal(count, await context.GenericTemplates.CountAsync());
+    }
+
+    [Fact]
+    public async Task Update_WithUnknownParent_IsRejected()
+    {
+        using var context = CreateContext();
+        var service = new GenericTemplateService(context, NullLogger<GenericTemplateService>.Instance);
+        var template = NewTemplate("CUS-ORPHAN", null);
+        context.GenericTemplates.Add(template);
+        await context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.UpdateTemplateAsync(template.Id, new UpdateGenericTemplateDto { ExtendsTemplateId = Guid.NewGuid() }));
+    }
+
+    private sealed class FixedAuthorizationService(bool allow) : IAuthorizationService
+    {
+        public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, IEnumerable<IAuthorizationRequirement> requirements)
+            => Task.FromResult(allow ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, string policyName)
+            => Task.FromResult(allow ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+    }
+
+    private static GenericTemplatesController CreateController(AppDbContext context, string orgId, bool platformAdmin)
+    {
+        var controller = new GenericTemplatesController(
+            new GenericTemplateService(context, NullLogger<GenericTemplateService>.Instance),
+            context,
+            new FixedAuthorizationService(platformAdmin));
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("OrgId", orgId) }, "Test"))
+            }
+        };
+        return controller;
+    }
+
+    [Fact]
+    public async Task Controller_ScopesReadsToCallerOrganization_AndProtectsGlobalTemplates()
+    {
+        using var context = CreateContext();
+        var foreign = NewTemplate("ORG-B-PRIVATE", "Plant-B");
+        var global = NewTemplate("GLOBAL-SHARED", null);
+        context.GenericTemplates.AddRange(foreign, global);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var controller = CreateController(context, "Plant-A", platformAdmin: false);
+
+        Assert.IsType<NotFoundObjectResult>((await controller.GetTemplateById(foreign.Id)).Result);
+        Assert.IsType<NotFoundObjectResult>((await controller.UpdateTemplate(foreign.Id, new UpdateGenericTemplateDto { Name = "x" })).Result);
+
+        var update = await controller.UpdateTemplate(global.Id, new UpdateGenericTemplateDto { Name = "Hijacked" });
+        var forbidden = Assert.IsType<ObjectResult>(update.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbidden.StatusCode);
+        Assert.IsType<ObjectResult>(await controller.DeleteTemplate(global.Id));
+
+        var created = await controller.CreateTemplate(new CreateGenericTemplateDto { Code = "ORG-A-NEW", Name = "New" });
+        var dto = Assert.IsType<GenericTemplateDto>(Assert.IsType<CreatedAtActionResult>(created.Result).Value);
+        Assert.Equal("Plant-A", dto.OrganizationId);
+
+        // Platform administrators may maintain the shared catalog.
+        var admin = CreateController(context, "Plant-A", platformAdmin: true);
+        Assert.IsType<OkObjectResult>((await admin.UpdateTemplate(global.Id, new UpdateGenericTemplateDto { Name = "Curated" })).Result);
+    }
+
+    [Fact]
+    public void Controller_AllEndpointsRequireAuthentication_AndMutationsRequirePolicies()
+    {
+        var type = typeof(GenericTemplatesController);
+        Assert.NotNull(type.GetCustomAttribute<AuthorizeAttribute>());
+
+        var actions = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        Assert.DoesNotContain(actions, m => m.GetCustomAttribute<AllowAnonymousAttribute>() != null);
+
+        foreach (var name in new[] { "CreateTemplate", "UpdateTemplate", "DeleteTemplate", "DeriveTemplate", "TriggerSeed" })
+        {
+            var attr = type.GetMethod(name)!.GetCustomAttribute<AuthorizeAttribute>();
+            Assert.False(string.IsNullOrEmpty(attr?.Policy), $"{name} must declare an authorization policy.");
+        }
     }
 }

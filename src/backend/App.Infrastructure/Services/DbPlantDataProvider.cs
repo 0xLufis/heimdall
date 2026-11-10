@@ -4,6 +4,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using App.Infrastructure.Repositories;
@@ -15,37 +17,39 @@ using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Database-backed implementation of ILuaPlantDataProvider for the Heimdall production backend.
-/// Connects the sandboxed Lua runtime directly to PostgreSQL entities and in-memory telemetry buffers.
+/// Machines, groups (machine + personnel), tickets and machine custom fields are read from and
+/// written to PostgreSQL. Telemetry is served from a bounded process-local ring buffer fed by
+/// the Lua telemetry evaluation pipeline (there is no historical telemetry store yet).
 /// </summary>
 public class DbPlantDataProvider : ILuaPlantDataProvider
 {
+    /// <summary>Key inside <see cref="BaseInventoryItem.Metadata"/> holding Lua-managed custom fields.</summary>
+    public const string CustomFieldsMetadataKey = "luaCustomFields";
+
+    private const int MaxCustomFieldsPerMachine = 100;
+    private const int MaxCustomFieldKeyLength = 64;
+    private const int MaxCustomFieldValueBytes = 8 * 1024;
+    private const int MaxListResults = 1000;
+    private const int MaxTelemetryMachines = 10_000;
+    private const int MaxTelemetryMetricsPerMachine = 200;
+    private const int MaxTelemetryPointsPerSeries = 200;
+
     private readonly AppDbContext _context;
-    private readonly IStationRepository _stationRepository;
     private readonly IMachineGroupRepository _machineGroupRepository;
     private readonly IMaintenanceTicketRepository _ticketRepository;
     private readonly ILogger<DbPlantDataProvider> _logger;
 
-    // Buffer for telemetry metrics streamed from PLC agents
+    // Recent telemetry points per machine/metric. Process-local and bounded in every dimension.
     private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, List<(double Value, DateTimeOffset Timestamp)>>> _telemetryBuffer
-        = new(StringComparer.OrdinalIgnoreCase);
-
-    // Custom fields storage for runtime dynamic machine attributes
-    private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, object?>> _customFields
-        = new(StringComparer.OrdinalIgnoreCase);
-
-    // Generic dynamic group storage
-    private static readonly ConcurrentDictionary<string, HashSet<string>> _genericGroups
         = new(StringComparer.OrdinalIgnoreCase);
 
     public DbPlantDataProvider(
         AppDbContext context,
-        IStationRepository stationRepository,
         IMachineGroupRepository machineGroupRepository,
         IMaintenanceTicketRepository ticketRepository,
         ILogger<DbPlantDataProvider> logger)
     {
         _context = context;
-        _stationRepository = stationRepository;
         _machineGroupRepository = machineGroupRepository;
         _ticketRepository = ticketRepository;
         _logger = logger;
@@ -54,21 +58,21 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
     // --- MACHINES ---
     public async Task<Machine?> GetMachineAsync(string machineId, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(machineId)) return null;
+
         if (Guid.TryParse(machineId, out var guid))
         {
-            var byGuid = await _stationRepository.GetByIdAsync(guid);
+            var byGuid = await _context.Machines.FirstOrDefaultAsync(m => m.Id == guid, cancellationToken);
             if (byGuid != null) return byGuid;
         }
 
-        // Search by CustomIdentifier or Name
         return await _context.Machines
-            .Include(m => m.Components)
             .FirstOrDefaultAsync(m => m.CustomIdentifier == machineId || m.Name == machineId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Machine>> ListMachinesAsync(string? status = null, string? machineType = null, string? lineGroupId = null, CancellationToken cancellationToken = default)
     {
-        var query = _context.Machines.AsQueryable();
+        var query = _context.Machines.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
         {
@@ -92,7 +96,7 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
             }
         }
 
-        return await query.ToListAsync(cancellationToken);
+        return await query.OrderBy(m => m.Name).Take(MaxListResults).ToListAsync(cancellationToken);
     }
 
     public async Task<bool> UpdateMachineStatusAsync(string machineId, string status, string? reason = null, CancellationToken cancellationToken = default)
@@ -102,7 +106,7 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
 
         machine.Status = status;
         machine.OperationalState = status;
-        if (!string.IsNullOrEmpty(reason))
+        if (!string.IsNullOrEmpty(reason) && string.Equals(status, "decommissioned", StringComparison.OrdinalIgnoreCase))
         {
             machine.DecommissionReason = reason;
         }
@@ -111,119 +115,231 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
         return true;
     }
 
-    public Task<bool> SetMachineCustomFieldAsync(string machineId, string key, object? value, CancellationToken cancellationToken = default)
+    public async Task<bool> SetMachineCustomFieldAsync(string machineId, string key, object? value, CancellationToken cancellationToken = default)
     {
-        var map = _customFields.GetOrAdd(machineId, _ => new ConcurrentDictionary<string, object?>(StringComparer.OrdinalIgnoreCase));
-        map[key] = value;
-        return Task.FromResult(true);
+        if (string.IsNullOrWhiteSpace(key) || key.Length > MaxCustomFieldKeyLength) return false;
+
+        var machine = await GetMachineAsync(machineId, cancellationToken);
+        if (machine == null) return false;
+
+        var valueNode = JsonSerializer.SerializeToNode(value);
+        if (valueNode != null && valueNode.ToJsonString().Length > MaxCustomFieldValueBytes) return false;
+
+        var root = machine.Metadata != null
+            ? JsonNode.Parse(machine.Metadata.RootElement.GetRawText()) as JsonObject ?? new JsonObject()
+            : new JsonObject();
+        var fields = root[CustomFieldsMetadataKey] as JsonObject ?? new JsonObject();
+        if (!fields.ContainsKey(key) && fields.Count >= MaxCustomFieldsPerMachine) return false;
+
+        fields[key] = valueNode;
+        root[CustomFieldsMetadataKey] = fields;
+        machine.Metadata = JsonDocument.Parse(root.ToJsonString());
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
-    public Task<object?> GetMachineCustomFieldAsync(string machineId, string key, CancellationToken cancellationToken = default)
+    public async Task<object?> GetMachineCustomFieldAsync(string machineId, string key, CancellationToken cancellationToken = default)
     {
-        if (_customFields.TryGetValue(machineId, out var map) && map.TryGetValue(key, out var val))
+        var machine = await GetMachineAsync(machineId, cancellationToken);
+        if (machine?.Metadata == null) return null;
+
+        if (machine.Metadata.RootElement.ValueKind == JsonValueKind.Object &&
+            machine.Metadata.RootElement.TryGetProperty(CustomFieldsMetadataKey, out var fields) &&
+            fields.ValueKind == JsonValueKind.Object &&
+            fields.TryGetProperty(key, out var value))
         {
-            return Task.FromResult<object?>(val);
+            return value.Clone();
         }
-        return Task.FromResult<object?>(null);
+        return null;
     }
 
     // --- GROUPINGS ---
+    // Supported group types: "machine" (MachineGroups + memberships) and "user" (PersonnelGroups).
+    // Other types have no backing store and are reported as unsupported rather than faked.
+
     public async Task<object?> GetGroupAsync(string groupId, string groupType = "machine", CancellationToken cancellationToken = default)
     {
-        if (string.Equals(groupType, "machine", StringComparison.OrdinalIgnoreCase))
+        if (IsMachineGroup(groupType))
         {
-            if (Guid.TryParse(groupId, out var gGuid))
-            {
-                return await _machineGroupRepository.GetByIdAsync(gGuid, cancellationToken);
-            }
-            return await _context.MachineGroups.FirstOrDefaultAsync(g => g.Name == groupId, cancellationToken);
+            return await ResolveMachineGroupAsync(groupId, cancellationToken);
         }
-
-        string key = $"{groupType}:{groupId}".ToLowerInvariant();
-        if (_genericGroups.ContainsKey(key))
+        if (IsUserGroup(groupType))
         {
-            return new { Id = groupId, GroupType = groupType };
+            var group = await ResolvePersonnelGroupAsync(groupId, cancellationToken);
+            return group == null ? null : new { Id = group.Id.ToString(), group.Name, group.Description, GroupType = "user" };
         }
-
         return null;
     }
 
     public async Task<IReadOnlyList<object>> ListGroupsAsync(string groupType = "machine", CancellationToken cancellationToken = default)
     {
-        if (string.Equals(groupType, "machine", StringComparison.OrdinalIgnoreCase))
+        if (IsMachineGroup(groupType))
         {
             var groups = await _machineGroupRepository.GetAllAsync(cancellationToken);
             return groups.Cast<object>().ToList();
         }
-
-        string prefix = $"{groupType.ToLowerInvariant()}:";
-        return _genericGroups.Keys
-            .Where(k => k.StartsWith(prefix))
-            .Select(k => (object)new { Id = k[prefix.Length..], GroupType = groupType })
-            .ToList();
+        if (IsUserGroup(groupType))
+        {
+            var groups = await _context.PersonnelGroups.AsNoTracking()
+                .OrderBy(g => g.Name)
+                .Take(MaxListResults)
+                .Select(g => new { Id = g.Id.ToString(), g.Name, g.Description, GroupType = "user" })
+                .ToListAsync(cancellationToken);
+            return groups.Cast<object>().ToList();
+        }
+        return Array.Empty<object>();
     }
 
     public async Task<IReadOnlyList<string>> GetGroupMembersAsync(string groupId, string groupType = "machine", CancellationToken cancellationToken = default)
     {
-        if (string.Equals(groupType, "machine", StringComparison.OrdinalIgnoreCase))
+        if (IsMachineGroup(groupType))
         {
-            Guid? gGuid = Guid.TryParse(groupId, out var g) ? g : null;
-            if (gGuid == null)
-            {
-                var grp = await _context.MachineGroups.FirstOrDefaultAsync(x => x.Name == groupId, cancellationToken);
-                gGuid = grp?.Id;
-            }
+            var group = await ResolveMachineGroupAsync(groupId, cancellationToken);
+            if (group == null) return Array.Empty<string>();
+            var gid = group.Id;
 
-            if (gGuid.HasValue)
-            {
-                var machineIds = await _context.Machines
-                    .Where(m => m.LineGroupId == gGuid || m.SubLineGroupId == gGuid || m.ProjectGroupId == gGuid || m.BusinessUnitGroupId == gGuid)
-                    .Select(m => m.Id.ToString())
-                    .ToListAsync(cancellationToken);
-                return machineIds;
-            }
+            var hierarchyMembers = await _context.Machines.AsNoTracking()
+                .Where(m => m.LineGroupId == gid || m.SubLineGroupId == gid || m.ProjectGroupId == gid || m.BusinessUnitGroupId == gid)
+                .Select(m => m.Id)
+                .Take(MaxListResults)
+                .ToListAsync(cancellationToken);
+            var explicitMembers = await _context.MachineGroupMemberships.AsNoTracking()
+                .Where(x => x.GroupId == gid)
+                .Select(x => x.MachineId)
+                .Take(MaxListResults)
+                .ToListAsync(cancellationToken);
+
+            return hierarchyMembers.Concat(explicitMembers).Distinct().Select(id => id.ToString()).ToList();
         }
 
-        string key = $"{groupType}:{groupId}".ToLowerInvariant();
-        if (_genericGroups.TryGetValue(key, out var members))
+        if (IsUserGroup(groupType))
         {
-            lock (members)
-            {
-                return members.ToList();
-            }
+            var group = await ResolvePersonnelGroupAsync(groupId, cancellationToken);
+            if (group == null) return Array.Empty<string>();
+            return await _context.PersonnelGroupMembers.AsNoTracking()
+                .Where(m => m.PersonnelGroupId == group.Id)
+                .Select(m => m.UserId)
+                .Take(MaxListResults)
+                .ToListAsync(cancellationToken);
         }
 
         return Array.Empty<string>();
     }
 
-    public Task<bool> AddGroupMemberAsync(string groupId, string memberId, string groupType = "machine", CancellationToken cancellationToken = default)
+    public async Task<bool> AddGroupMemberAsync(string groupId, string memberId, string groupType = "machine", CancellationToken cancellationToken = default)
     {
-        string key = $"{groupType}:{groupId}".ToLowerInvariant();
-        var set = _genericGroups.GetOrAdd(key, _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
-        lock (set)
+        if (IsMachineGroup(groupType))
         {
-            set.Add(memberId);
+            var group = await ResolveMachineGroupAsync(groupId, cancellationToken);
+            var machine = await GetMachineAsync(memberId, cancellationToken);
+            if (group == null || machine == null) return false;
+
+            bool exists = await _context.MachineGroupMemberships
+                .AnyAsync(x => x.GroupId == group.Id && x.MachineId == machine.Id, cancellationToken);
+            if (!exists)
+            {
+                _context.MachineGroupMemberships.Add(new MachineGroupMembership
+                {
+                    GroupId = group.Id,
+                    MachineId = machine.Id,
+                    AssignedBy = "LuaAutomation"
+                });
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            return true;
         }
-        return Task.FromResult(true);
+
+        if (IsUserGroup(groupType))
+        {
+            if (memberId.Length > 128) return false;
+            var group = await ResolvePersonnelGroupAsync(groupId, cancellationToken);
+            if (group == null) return false;
+
+            bool exists = await _context.PersonnelGroupMembers
+                .AnyAsync(m => m.PersonnelGroupId == group.Id && m.UserId == memberId, cancellationToken);
+            if (!exists)
+            {
+                _context.PersonnelGroupMembers.Add(new PersonnelGroupMember { PersonnelGroupId = group.Id, UserId = memberId });
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            return true;
+        }
+
+        return false;
     }
 
-    public Task<bool> RemoveGroupMemberAsync(string groupId, string memberId, string groupType = "machine", CancellationToken cancellationToken = default)
+    public async Task<bool> RemoveGroupMemberAsync(string groupId, string memberId, string groupType = "machine", CancellationToken cancellationToken = default)
     {
-        string key = $"{groupType}:{groupId}".ToLowerInvariant();
-        if (_genericGroups.TryGetValue(key, out var set))
+        if (IsMachineGroup(groupType))
         {
-            lock (set)
-            {
-                return Task.FromResult(set.Remove(memberId));
-            }
+            var group = await ResolveMachineGroupAsync(groupId, cancellationToken);
+            var machine = await GetMachineAsync(memberId, cancellationToken);
+            if (group == null || machine == null) return false;
+
+            var rows = await _context.MachineGroupMemberships
+                .Where(x => x.GroupId == group.Id && x.MachineId == machine.Id)
+                .ToListAsync(cancellationToken);
+            if (rows.Count == 0) return false;
+            _context.MachineGroupMemberships.RemoveRange(rows);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
         }
-        return Task.FromResult(false);
+
+        if (IsUserGroup(groupType))
+        {
+            var group = await ResolvePersonnelGroupAsync(groupId, cancellationToken);
+            if (group == null) return false;
+            var rows = await _context.PersonnelGroupMembers
+                .Where(m => m.PersonnelGroupId == group.Id && m.UserId == memberId)
+                .ToListAsync(cancellationToken);
+            if (rows.Count == 0) return false;
+            _context.PersonnelGroupMembers.RemoveRange(rows);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        return false;
     }
 
     public async Task<bool> IsGroupMemberAsync(string groupId, string memberId, string groupType = "machine", CancellationToken cancellationToken = default)
     {
         var members = await GetGroupMembersAsync(groupId, groupType, cancellationToken);
-        return members.Contains(memberId, StringComparer.OrdinalIgnoreCase);
+        if (members.Contains(memberId, StringComparer.OrdinalIgnoreCase)) return true;
+
+        if (IsMachineGroup(groupType) && !Guid.TryParse(memberId, out _))
+        {
+            var machine = await GetMachineAsync(memberId, cancellationToken);
+            return machine != null && members.Contains(machine.Id.ToString(), StringComparer.OrdinalIgnoreCase);
+        }
+        return false;
+    }
+
+    private static bool IsMachineGroup(string? groupType) =>
+        string.IsNullOrEmpty(groupType) || string.Equals(groupType, "machine", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsUserGroup(string? groupType) =>
+        string.Equals(groupType, "user", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(groupType, "personnel", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<MachineGroup?> ResolveMachineGroupAsync(string groupId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(groupId)) return null;
+        if (Guid.TryParse(groupId, out var gGuid))
+        {
+            return await _machineGroupRepository.GetByIdAsync(gGuid, cancellationToken);
+        }
+        return await _context.MachineGroups.FirstOrDefaultAsync(g => g.Name == groupId, cancellationToken);
+    }
+
+    private async Task<PersonnelGroup?> ResolvePersonnelGroupAsync(string groupId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(groupId)) return null;
+        if (Guid.TryParse(groupId, out var gGuid))
+        {
+            return await _context.PersonnelGroups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == gGuid, cancellationToken);
+        }
+        return await _context.PersonnelGroups.AsNoTracking().FirstOrDefaultAsync(g => g.Name == groupId, cancellationToken);
     }
 
     // --- TELEMETRY ---
@@ -250,7 +366,7 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
         {
             lock (series)
             {
-                int take = Math.Min(series.Count, count);
+                int take = Math.Clamp(count, 0, series.Count);
                 var slice = series.Skip(series.Count - take).ToList();
                 return Task.FromResult<IReadOnlyList<(double, DateTimeOffset)>>(slice);
             }
@@ -260,12 +376,32 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
 
     public Task EmitTelemetryAsync(string machineId, string metric, double value, Dictionary<string, object?>? metadata = null, CancellationToken cancellationToken = default)
     {
-        var metrics = _telemetryBuffer.GetOrAdd(machineId, _ => new ConcurrentDictionary<string, List<(double, DateTimeOffset)>>(StringComparer.OrdinalIgnoreCase));
-        var series = metrics.GetOrAdd(metric, _ => new List<(double, DateTimeOffset)>());
+        if (string.IsNullOrWhiteSpace(machineId) || string.IsNullOrWhiteSpace(metric) ||
+            machineId.Length > 128 || metric.Length > 128)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (!_telemetryBuffer.TryGetValue(machineId, out var metrics))
+        {
+            if (_telemetryBuffer.Count >= MaxTelemetryMachines)
+            {
+                _logger.LogWarning("Lua telemetry buffer machine limit reached; dropping point for {MachineId}/{Metric}", machineId, metric);
+                return Task.CompletedTask;
+            }
+            metrics = _telemetryBuffer.GetOrAdd(machineId, _ => new ConcurrentDictionary<string, List<(double, DateTimeOffset)>>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        if (!metrics.TryGetValue(metric, out var series))
+        {
+            if (metrics.Count >= MaxTelemetryMetricsPerMachine) return Task.CompletedTask;
+            series = metrics.GetOrAdd(metric, _ => new List<(double, DateTimeOffset)>());
+        }
+
         lock (series)
         {
             series.Add((value, DateTimeOffset.UtcNow));
-            if (series.Count > 200)
+            if (series.Count > MaxTelemetryPointsPerSeries)
             {
                 series.RemoveAt(0);
             }
@@ -276,18 +412,22 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
     // --- TICKETS ---
     public async Task<MaintenanceTicket?> GetTicketAsync(Guid ticketId, CancellationToken cancellationToken = default)
     {
-        return await _ticketRepository.GetByIdAsync(ticketId);
+        return await _context.MaintenanceTickets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == ticketId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<MaintenanceTicket>> ListTicketsAsync(string? status = null, string? machineId = null, string? priority = null, bool? isEscalated = null, CancellationToken cancellationToken = default)
     {
-        var query = _context.MaintenanceTickets.AsQueryable();
+        var query = _context.MaintenanceTickets.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
             query = query.Where(t => t.Status == status);
 
-        if (!string.IsNullOrEmpty(machineId) && Guid.TryParse(machineId, out var mGuid))
+        if (!string.IsNullOrEmpty(machineId))
+        {
+            Guid? mGuid = Guid.TryParse(machineId, out var parsed) ? parsed : (await GetMachineAsync(machineId, cancellationToken))?.Id;
+            if (mGuid == null) return Array.Empty<MaintenanceTicket>();
             query = query.Where(t => t.MachineId == mGuid);
+        }
 
         if (!string.IsNullOrEmpty(priority))
             query = query.Where(t => t.Priority == priority);
@@ -295,7 +435,7 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
         if (isEscalated.HasValue)
             query = query.Where(t => t.IsEscalated == isEscalated.Value);
 
-        return await query.OrderByDescending(t => t.CreatedAt).ToListAsync(cancellationToken);
+        return await query.OrderByDescending(t => t.CreatedAt).Take(MaxListResults).ToListAsync(cancellationToken);
     }
 
     public async Task<MaintenanceTicket> CreateTicketAsync(MaintenanceTicket ticket, CancellationToken cancellationToken = default)

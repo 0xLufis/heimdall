@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using App.Backend.Api.Services;
 using App.Contracts.Security;
+using App.Shared.Entities;
 using App.Shared.Errors;
 using App.Shared.Lua.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -31,6 +32,7 @@ public record EvaluateTelemetryLuaRequestDto(
 [Authorize]
 public class LuaScriptController : ControllerBase
 {
+    private static readonly int MaxStoredScriptLength = new App.Shared.Lua.Core.LuaSandboxOptions().MaxScriptLength;
     private readonly ILuaAutomationService _luaService;
 
     public LuaScriptController(ILuaAutomationService luaService)
@@ -39,9 +41,10 @@ public class LuaScriptController : ControllerBase
     }
 
     /// <summary>
-    /// Lists all plant-specific automation scripts.
+    /// Lists all plant-specific automation scripts (including source), restricted to roles that may run them.
     /// </summary>
     [HttpGet("scripts")]
+    [Authorize(Policy = AuthorizationPolicies.RemoteExecution)]
     public async Task<IActionResult> ListScripts(CancellationToken cancellationToken)
     {
         var scripts = await _luaService.ListScriptsAsync(cancellationToken);
@@ -52,6 +55,7 @@ public class LuaScriptController : ControllerBase
     /// Gets a single script definition by ID.
     /// </summary>
     [HttpGet("scripts/{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.RemoteExecution)]
     public async Task<IActionResult> GetScript(Guid id, CancellationToken cancellationToken)
     {
         var script = await _luaService.GetScriptAsync(id, cancellationToken);
@@ -73,8 +77,12 @@ public class LuaScriptController : ControllerBase
         {
             return BadRequest(new ApiError(ErrorCode.InvalidInput, "Script name and code are required."));
         }
+        if (script.Code.Length > MaxStoredScriptLength)
+        {
+            return BadRequest(new ApiError(ErrorCode.InvalidInput, $"Script code exceeds {MaxStoredScriptLength} characters."));
+        }
 
-        var created = await _luaService.CreateScriptAsync(script, cancellationToken);
+        var created = await _luaService.CreateScriptAsync(script, User?.Identity?.Name, cancellationToken);
         return CreatedAtAction(nameof(GetScript), new { id = created.Id }, created);
     }
 
@@ -88,6 +96,10 @@ public class LuaScriptController : ControllerBase
         if (script == null || string.IsNullOrWhiteSpace(script.Code))
         {
             return BadRequest(new ApiError(ErrorCode.InvalidInput, "Script payload is required."));
+        }
+        if (script.Code.Length > MaxStoredScriptLength)
+        {
+            return BadRequest(new ApiError(ErrorCode.InvalidInput, $"Script code exceeds {MaxStoredScriptLength} characters."));
         }
 
         var updated = await _luaService.UpdateScriptAsync(id, script, cancellationToken);
@@ -124,14 +136,20 @@ public class LuaScriptController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _luaService.RunScriptAsync(id, context, cancellationToken);
+        if (result == null)
+        {
+            return NotFound(new ApiError(ErrorCode.None, $"Script with ID '{id}' was not found."));
+        }
         return Ok(result);
     }
 
     /// <summary>
     /// Tests/evaluates an arbitrary Lua script snippet in the sandbox with optional context.
+    /// Ad-hoc code has the same power as a stored script (it can mutate machines and tickets), so it
+    /// requires the script-authoring policy rather than the broader RemoteExecution policy.
     /// </summary>
     [HttpPost("execute")]
-    [Authorize(Policy = AuthorizationPolicies.RemoteExecution)]
+    [Authorize(Policy = AuthorizationPolicies.EngineeringAdministration)]
     public async Task<IActionResult> TestExecute(
         [FromBody] ExecuteLuaRequestDto request,
         CancellationToken cancellationToken)
@@ -149,9 +167,9 @@ public class LuaScriptController : ControllerBase
     /// Returns dynamic UI extensions registered by plant Lua scripts.
     /// </summary>
     [HttpGet("ui-extensions")]
-    public IActionResult GetUiExtensions([FromQuery] LuaUiTargetZone? zone)
+    public async Task<IActionResult> GetUiExtensions([FromQuery] LuaUiTargetZone? zone, CancellationToken cancellationToken)
     {
-        var extensions = _luaService.GetUiExtensions(zone);
+        var extensions = await _luaService.GetUiExtensionsAsync(zone, cancellationToken);
         return Ok(extensions);
     }
 
@@ -166,6 +184,10 @@ public class LuaScriptController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _luaService.InvokeUiActionAsync(extensionId, request?.Context, cancellationToken);
+        if (result == null)
+        {
+            return NotFound(new ApiError(ErrorCode.None, $"UI action '{extensionId}' is not registered."));
+        }
         return Ok(result);
     }
 

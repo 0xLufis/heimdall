@@ -8,6 +8,16 @@ import {
   type QrActionParams
 } from '~/utils/qrActionGenerator'
 
+/** Escape untrusted text before interpolating it into the print window's HTML. */
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export interface UseActionQrOptions {
   initialParams?: Partial<QrActionParams>
   qrWidth?: number
@@ -116,7 +126,7 @@ export function useActionQr(options: UseActionQrOptions = {}) {
   }) {
     groupId.value = group.id
     if (group.machineTypes && group.machineTypes.length > 0) {
-      machineType.value = group.machineTypes[0]
+      machineType.value = group.machineTypes[0] ?? ''
     }
   }
 
@@ -174,7 +184,7 @@ export function useActionQr(options: UseActionQrOptions = {}) {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${title}</title>
+          <title>${escapeHtml(title)}</title>
           <style>
             body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; text-align: center; color: #0f172a; }
             .card { border: 2px solid #334155; border-radius: 24px; padding: 32px; max-width: 440px; margin: 0 auto; }
@@ -188,10 +198,10 @@ export function useActionQr(options: UseActionQrOptions = {}) {
         <body>
           <div class="card">
             <span class="badge">Heimdall Action QR</span>
-            <h2>${stationName.value || stationId.value || 'Industrial Station'}</h2>
-            <p>Action: <strong>${action.value}</strong> ${machineType.value ? '• ' + machineType.value : ''}</p>
-            <img src="${qrDataUrl.value}" alt="QR Code" />
-            <div class="uri">${activeUri.value}</div>
+            <h2>${escapeHtml(stationName.value || stationId.value || 'Industrial Station')}</h2>
+            <p>Action: <strong>${escapeHtml(action.value)}</strong> ${machineType.value ? '• ' + escapeHtml(machineType.value) : ''}</p>
+            <img src="${escapeHtml(qrDataUrl.value)}" alt="QR Code" />
+            <div class="uri">${escapeHtml(activeUri.value)}</div>
           </div>
           <script>
             window.onload = () => { window.print(); window.close(); }

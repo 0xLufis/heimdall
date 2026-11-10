@@ -1,4 +1,5 @@
 import { defineEventHandler, getQuery, getRouterParam, getHeader, createError } from 'h3'
+import { requireTerminalAuth } from '../../../utils/terminalAuth'
 import { machinesStore } from '../../../utils/machinesStore'
 import { ticketsStore } from '../../../utils/ticketsStore'
 
@@ -11,30 +12,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Workstation Authentication:
-  // Accept X.509 client certificate headers (from reverse proxy) or workstation token via header/query
-  const query = getQuery(event)
-  const tokenFromQuery = query.token as string | undefined
-  const tokenFromHeader = getHeader(event, 'x-terminal-token') || getHeader(event, 'x-workstation-token')
-  const clientCertThumbprint = getHeader(event, 'x-client-cert-thumbprint') || getHeader(event, 'x-client-cert')
-  const authHeader = getHeader(event, 'authorization')
-  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined
-  const isMockAuth = query.mock_auth === 'true' || query.token === 'test-token' || query.token === 'kiosk-token-op10'
-
-  const effectiveToken = tokenFromQuery || tokenFromHeader || bearerToken
-
-  const isAuthenticated = Boolean(
-    isMockAuth ||
-    clientCertThumbprint ||
-    (effectiveToken && effectiveToken.trim().length >= 4)
-  )
-
-  if (!isAuthenticated) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Workstation terminal authentication required. Please provide a valid workstation token (?token=...) or client certificate.'
-    })
-  }
+  // Workstation Authentication (registered token, trusted mTLS thumbprint, or operator session)
+  const terminalAuth = await requireTerminalAuth(event)
 
   // Retrieve machine from store (or backend fallback)
   let machine = machinesStore.getMachineById(id)
@@ -110,7 +89,7 @@ export default defineEventHandler(async (event) => {
     recentTickets,
     workstation: {
       terminalMode: 'TouchscreenKiosk',
-      authenticatedVia: clientCertThumbprint ? 'X509Certificate' : 'WorkstationToken',
+      authenticatedVia: terminalAuth.method === 'client-certificate' ? 'X509Certificate' : terminalAuth.method === 'session' ? 'OperatorSession' : 'WorkstationToken',
       permissions: ['read:machine_status', 'read:telemetry', 'write:terminal_ticket'],
       readOnly: true
     }

@@ -34,7 +34,7 @@ export function resolvePreferredTechnician(
   if (prioritizeTech) {
     // 1. Technology dedication primarily
     if (effectiveTech) {
-      resolved = rules.find(r => r.scopeType === 'technology' && r.targetId.toLowerCase() === effectiveTech.toLowerCase())
+      resolved = rules.find(r => r.scopeType === 'technology' && (r.targetId || '').toLowerCase() === effectiveTech.toLowerCase())
       if (resolved) {
         source = 'technology_rule'
         sourceLabel = `Technology dedication (${effectiveTech})`
@@ -79,7 +79,7 @@ export function resolvePreferredTechnician(
 
     // 3. Technology / MachineType rule
     if (!resolved && effectiveTech) {
-      resolved = rules.find(r => r.scopeType === 'technology' && r.targetId.toLowerCase() === effectiveTech.toLowerCase())
+      resolved = rules.find(r => r.scopeType === 'technology' && (r.targetId || '').toLowerCase() === effectiveTech.toLowerCase())
       if (resolved) {
         source = 'technology_rule'
         sourceLabel = `Technology rule (${effectiveTech})`

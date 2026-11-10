@@ -45,8 +45,15 @@ public class DelegationController : ControllerBase
     [Authorize(Policy = AuthorizationPolicies.DelegationManagement)]
     public async Task<ActionResult<MachineDelegationBindingDto>> BindRecipe([FromBody] BindRecipeRequest request)
     {
-        var result = await _delegationService.BindRecipeToMachineAsync(request.MachineId, request.RecipeId, request.Discipline);
-        return Ok(result);
+        try
+        {
+            var result = await _delegationService.BindRecipeToMachineAsync(request.MachineId, request.RecipeId, request.Discipline);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
     }
 
     [HttpDelete("bindings/{bindingId}")]
@@ -56,6 +63,25 @@ public class DelegationController : ControllerBase
         var success = await _delegationService.UnbindRecipeFromMachineAsync(bindingId);
         if (!success) return NotFound();
         return NoContent();
+    }
+
+    [HttpDelete("recipes/{id}")]
+    [Authorize(Policy = AuthorizationPolicies.DelegationManagement)]
+    public async Task<ActionResult> DeleteRecipe(Guid id)
+    {
+        return await _delegationService.DeleteRecipeAsync(id) ? NoContent() : NotFound();
+    }
+
+    [HttpDelete("groups/{id}")]
+    [Authorize(Policy = AuthorizationPolicies.DelegationManagement)]
+    public async Task<ActionResult> DeletePersonnelGroup(Guid id)
+    {
+        return await _delegationService.DeletePersonnelGroupAsync(id) switch
+        {
+            PersonnelGroupDeleteResult.Deleted => NoContent(),
+            PersonnelGroupDeleteResult.InUse => Conflict(new { error = "Personnel group is still referenced by one or more delegation recipes. Reassign those recipes first." }),
+            _ => NotFound()
+        };
     }
 
     [HttpGet("recipes")]
@@ -128,18 +154,19 @@ public class DelegationController : ControllerBase
     {
         var group = new PersonnelGroup
         {
-            Id = dto.Id != Guid.Empty ? dto.Id : Guid.NewGuid(),
+            // Server-assigned id and tenant: never trust the client to choose either.
+            Id = Guid.NewGuid(),
             Name = dto.Name,
             Description = dto.Description,
             Discipline = dto.Discipline,
             ShiftPattern = dto.ShiftPattern,
-            OrganizationId = dto.OrganizationId,
+            OrganizationId = User.FindFirst("OrgId")?.Value ?? dto.OrganizationId,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
         if (dto.MemberUserIds != null)
         {
-            foreach (var userId in dto.MemberUserIds)
+            foreach (var userId in dto.MemberUserIds.Where(u => !string.IsNullOrWhiteSpace(u)).Distinct())
             {
                 group.Members.Add(new PersonnelGroupMember
                 {
@@ -155,6 +182,7 @@ public class DelegationController : ControllerBase
         await _context.SaveChangesAsync();
 
         dto.Id = group.Id;
+        dto.OrganizationId = group.OrganizationId;
         return CreatedAtAction(nameof(GetPersonnelGroups), new { id = group.Id }, dto);
     }
 
@@ -188,6 +216,10 @@ public class DelegationController : ControllerBase
         catch (KeyNotFoundException)
         {
             return NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
     }
 

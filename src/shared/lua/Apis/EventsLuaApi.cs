@@ -1,31 +1,38 @@
 namespace App.Shared.Lua.Apis;
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using App.Shared.Lua.Core;
 using MoonSharp.Interpreter;
 
 /// <summary>
 /// Lua API exposed under the global 'events' table.
 /// Provides an event bus for plant-level hooks, reactive automation rules,
-/// and decoupled communication between scripts.
+/// and decoupled communication between the parts of a script.
+/// Listeners are scoped to the registering script run: closures are never retained across runs
+/// (they would otherwise leak, accumulate on every execution and run outside any sandbox budget).
 /// </summary>
 public class EventsLuaApi
 {
-    private readonly ConcurrentDictionary<string, List<Closure>> _listeners = new(StringComparer.OrdinalIgnoreCase);
+    private const int MaxListeners = 100;
 
     public void Register(Script script)
     {
         var table = new Table(script);
+        var listeners = new Dictionary<string, List<Closure>>(StringComparer.OrdinalIgnoreCase);
+        int listenerCount = 0;
 
         table["on"] = (Func<string, Closure, bool>)((eventName, handler) =>
         {
             if (string.IsNullOrWhiteSpace(eventName) || handler == null) return false;
-            var list = _listeners.GetOrAdd(eventName, _ => new List<Closure>());
-            lock (list)
+            if (listenerCount >= MaxListeners) return false;
+            if (!listeners.TryGetValue(eventName, out var list))
             {
-                list.Add(handler);
+                listeners[eventName] = list = new List<Closure>();
             }
+            list.Add(handler);
+            listenerCount++;
             return true;
         });
 
@@ -34,12 +41,12 @@ public class EventsLuaApi
             if (string.IsNullOrWhiteSpace(eventName)) return 0;
 
             int invokedCount = 0;
-            if (_listeners.TryGetValue(eventName, out var directListeners))
+            if (listeners.TryGetValue(eventName, out var directListeners))
             {
                 invokedCount += InvokeList(directListeners, payload);
             }
 
-            if (_listeners.TryGetValue("*", out var wildcardListeners))
+            if (listeners.TryGetValue("*", out var wildcardListeners))
             {
                 invokedCount += InvokeList(wildcardListeners, payload);
             }
@@ -53,19 +60,17 @@ public class EventsLuaApi
     private static int InvokeList(List<Closure> listeners, Table? payload)
     {
         int count = 0;
-        lock (listeners)
+        foreach (var l in listeners.ToArray())
         {
-            foreach (var l in listeners)
+            try
             {
-                try
-                {
-                    l.Call(payload != null ? DynValue.NewTable(payload) : DynValue.Nil);
-                    count++;
-                }
-                catch
-                {
-                    // Prevent single listener crash from breaking event dispatch
-                }
+                LuaSandboxGuard.Call(l, payload != null ? DynValue.NewTable(payload) : DynValue.Nil);
+                count++;
+            }
+            catch (ScriptRuntimeException)
+            {
+                // A failing listener must not break dispatch to the others. Sandbox violations
+                // (LuaSandboxViolationException) are intentionally not caught.
             }
         }
         return count;

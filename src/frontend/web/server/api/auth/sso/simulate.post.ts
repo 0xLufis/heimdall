@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   const email = requestedEmail || matchedUser?.email || 'entra.sso.operator@fake-factory.internal'
   const name = body?.name || matchedUser?.name || 'Azure SSO Simulated User'
   const role = body?.role || matchedUser?.primaryRole || 'controls_engineer'
-  const tenantId = body?.tenantId || metadata.entraTenantId || '72f988bf-86f1-41af-91ab-2d7cd011db47'
+  const tenantId = body?.tenantId || metadata.entraTenantId || '00000000-de70-4e1d-8000-00000000c0de'
   const securityGroupIds = body?.groups || matchedUser?.securityGroupIds || [
     'CN=SG-Line01-Controls,OU=AudiLine01,OU=ProductionLines,DC=factory,DC=corp'
   ]

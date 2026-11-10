@@ -73,7 +73,11 @@ export interface SubMachineSummary {
   customIdentifier: string
   subMachineIndex?: number
   cellType?: string
+  machineType?: string
   status?: string
+  spoc?: string
+  owner?: string
+  preferredTechnicianName?: string
 }
 
 export interface Machine {
@@ -95,11 +99,16 @@ export interface Machine {
   ownerUserId?: string
   // Industrial Hierarchy: BU > Project > Line > Sub-Line > Machine
   businessUnitGroupId?: string
+  businessUnitGroupName?: string
   projectGroupId?: string
+  projectGroupName?: string
   lineGroupId?: string
+  lineGroupName?: string
   subLineGroupId?: string
+  subLineGroupName?: string
   // Sub-Machine Architecture
   parentMachineId?: string
+  parentMachineName?: string
   subMachineIndex?: number
   cellType?: 'Standard' | 'MultiMachineCell' | 'Roundtable' | string
   isSubMachine?: boolean

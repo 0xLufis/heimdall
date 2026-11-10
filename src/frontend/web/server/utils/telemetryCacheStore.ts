@@ -417,6 +417,7 @@ export async function getCachedTelemetryDatapoints(
 
   // 3. Generate baseline points matching nominal & tolerance parameters
   const def = metricDef || (await findTelemetryMetricByKey(metricKey)) || BUILTIN_METRICS[0]
+  if (!def) return []
   const nominal = def.nominalValue
   const upper = def.upperTolerance
   const lower = def.lowerTolerance

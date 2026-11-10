@@ -188,6 +188,9 @@ public class AppDbContext : DbContext
     public DbSet<MalformedTelemetryRecord> MalformedTelemetryRecords { get; set; }
     public DbSet<AdOuGovernance> AdOuGovernances { get; set; }
     public DbSet<DiagnosticSnapshot> DiagnosticSnapshots { get; set; }
+
+    // Lua automation scripts (App.Shared.Lua sandbox)
+    public DbSet<LuaScriptRecord> LuaScripts { get; set; }
     
     // Auth Sets (Managed by Better-Auth, excluded from migrations)
     public DbSet<AuthUser> AuthUsers { get; set; }
@@ -993,6 +996,10 @@ public class AppDbContext : DbContext
             .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
 
         modelBuilder.Entity<AuditLog>()
+            .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
+
+        // Global (organization-less) templates are shared; organization templates stay tenant-private.
+        modelBuilder.Entity<GenericTemplate>()
             .HasQueryFilter(e => CurrentOrganizationId == null || e.OrganizationId == null || e.OrganizationId == CurrentOrganizationId);
     }
 

@@ -75,4 +75,3 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO dotnet_backend, nuxt_frontend;
     ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT USAGE, SELECT ON SEQUENCES TO dotnet_backend, nuxt_frontend;
 EOSQL
-chmod +x /home/lufis/Projects/Heimdall/heimdall/infra/database/init/01-init-roles.sh

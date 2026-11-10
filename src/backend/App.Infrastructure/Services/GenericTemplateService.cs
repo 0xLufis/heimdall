@@ -2,6 +2,7 @@ namespace App.Infrastructure.Services;
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -15,6 +16,12 @@ using App.Shared.Entities;
 
 public class GenericTemplateService : IGenericTemplateService
 {
+    /// <summary>Validation regexes come from user-authored template schemas; bound their runtime (ReDoS).</summary>
+    internal static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>Maximum template inheritance depth walked when resolving or validating lineage.</summary>
+    internal const int MaxInheritanceDepth = 32;
+
     private readonly AppDbContext _context;
     private readonly ILogger<GenericTemplateService> _logger;
 
@@ -112,7 +119,7 @@ public class GenericTemplateService : IGenericTemplateService
     public async Task<GenericTemplateDto> CreateTemplateAsync(CreateGenericTemplateDto dto, string? organizationId = null, CancellationToken ct = default)
     {
         var cleanCode = dto.Code.Trim().ToUpperInvariant();
-        var exists = await _context.GenericTemplates.AnyAsync(t => t.Code.ToUpper() == cleanCode, ct);
+        var exists = await _context.GenericTemplates.IgnoreQueryFilters().AnyAsync(t => t.Code.ToUpper() == cleanCode, ct);
         if (exists)
         {
             throw new InvalidOperationException($"A template with code '{cleanCode}' already exists.");
@@ -171,7 +178,7 @@ public class GenericTemplateService : IGenericTemplateService
             var cleanCode = dto.Code.Trim().ToUpperInvariant();
             if (!string.Equals(entity.Code, cleanCode, StringComparison.OrdinalIgnoreCase))
             {
-                var exists = await _context.GenericTemplates.AnyAsync(t => t.Id != id && t.Code.ToUpper() == cleanCode, ct);
+                var exists = await _context.GenericTemplates.IgnoreQueryFilters().AnyAsync(t => t.Id != id && t.Code.ToUpper() == cleanCode, ct);
                 if (exists)
                 {
                     throw new InvalidOperationException($"A template with code '{cleanCode}' already exists.");
@@ -203,8 +210,16 @@ public class GenericTemplateService : IGenericTemplateService
                 {
                     throw new InvalidOperationException("Circular template inheritance detected.");
                 }
+                if (visited.Count > MaxInheritanceDepth)
+                {
+                    throw new InvalidOperationException($"Template inheritance chain exceeds the maximum depth of {MaxInheritanceDepth}.");
+                }
                 visited.Add(currentParentId.Value);
                 var p = await _context.GenericTemplates.AsNoTracking().FirstOrDefaultAsync(x => x.Id == currentParentId.Value, ct);
+                if (p == null && currentParentId == dto.ExtendsTemplateId)
+                {
+                    throw new InvalidOperationException($"Parent template '{dto.ExtendsTemplateId.Value}' does not exist.");
+                }
                 currentParentId = p?.ExtendsTemplateId;
             }
             entity.ExtendsTemplateId = dto.ExtendsTemplateId.Value;
@@ -263,7 +278,7 @@ public class GenericTemplateService : IGenericTemplateService
         var sourceDefaults = ParseDictionary(source.DefaultValuesJson);
 
         var cleanCode = dto.NewCode.Trim().ToUpperInvariant();
-        var exists = await _context.GenericTemplates.AnyAsync(t => t.Code.ToUpper() == cleanCode, ct);
+        var exists = await _context.GenericTemplates.IgnoreQueryFilters().AnyAsync(t => t.Code.ToUpper() == cleanCode, ct);
         if (exists)
         {
             throw new InvalidOperationException($"A template with code '{cleanCode}' already exists.");
@@ -310,7 +325,7 @@ public class GenericTemplateService : IGenericTemplateService
         var visited = new HashSet<Guid> { target.Id };
         var currentParentId = target.ExtendsTemplateId;
 
-        while (currentParentId.HasValue)
+        while (currentParentId.HasValue && visited.Count <= MaxInheritanceDepth)
         {
             if (visited.Contains(currentParentId.Value)) break;
             visited.Add(currentParentId.Value);
@@ -411,7 +426,7 @@ public class GenericTemplateService : IGenericTemplateService
             switch (field.FieldType.ToLowerInvariant())
             {
                 case "number":
-                    if (!double.TryParse(rawVal!.ToString(), out var numVal))
+                    if (!double.TryParse(Convert.ToString(rawVal, CultureInfo.InvariantCulture), NumberStyles.Float, CultureInfo.InvariantCulture, out var numVal))
                     {
                         errors.Add($"Field '{field.Label}' must be a valid number.");
                     }
@@ -460,11 +475,14 @@ public class GenericTemplateService : IGenericTemplateService
                     {
                         try
                         {
-                            var regex = new Regex(field.ValidationRegex);
-                            if (!regex.IsMatch(rawVal!.ToString()!))
+                            if (!Regex.IsMatch(rawVal!.ToString()!, field.ValidationRegex, RegexOptions.None, RegexTimeout))
                             {
                                 errors.Add($"Field '{field.Label}' does not match required format ({field.ValidationRegex}).");
                             }
+                        }
+                        catch (RegexMatchTimeoutException)
+                        {
+                            errors.Add($"Field '{field.Label}' could not be validated: the validation pattern timed out.");
                         }
                         catch (Exception ex)
                         {
@@ -503,7 +521,7 @@ public class GenericTemplateService : IGenericTemplateService
         {
             foreach (var kvp in dto.Values)
             {
-                merged[kvp.Key] = kvp.Value;
+                merged[kvp.Key] = kvp.Value is JsonElement je ? ConvertJsonElement(je) : kvp.Value;
             }
         }
 
@@ -521,9 +539,10 @@ public class GenericTemplateService : IGenericTemplateService
         {
             foreach (var cp in dto.ContextParameters)
             {
-                if (cp.Value != null)
+                var cpValue = cp.Value is JsonElement cje ? ConvertJsonElement(cje) : cp.Value;
+                if (cpValue != null)
                 {
-                    sysTokens[cp.Key] = cp.Value.ToString() ?? "";
+                    sysTokens[cp.Key] = Convert.ToString(cpValue, CultureInfo.InvariantCulture) ?? "";
                 }
             }
         }
@@ -621,13 +640,16 @@ public class GenericTemplateService : IGenericTemplateService
 
     public async Task SeedDefaultTemplatesIfEmptyAsync(CancellationToken ct = default)
     {
-        var existingCodes = await _context.GenericTemplates
-            .Select(t => t.Code.ToUpper())
+        var existing = await _context.GenericTemplates
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Select(t => new { t.Id, t.Code })
             .ToListAsync(ct);
 
-        var existingSet = new HashSet<string>(existingCodes, StringComparer.OrdinalIgnoreCase);
+        var existingIds = existing.Select(e => e.Id).ToHashSet();
+        var existingCodes = new HashSet<string>(existing.Select(e => e.Code), StringComparer.OrdinalIgnoreCase);
         var missingSeeds = SystemTemplateCatalog.All
-            .Where(seed => !existingSet.Contains(seed.Code))
+            .Where(seed => !existingIds.Contains(seed.Id) && !existingCodes.Contains(seed.Code))
             .ToList();
 
         if (missingSeeds.Count == 0) return;
@@ -692,7 +714,7 @@ public class GenericTemplateService : IGenericTemplateService
         if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, object?>();
         try
         {
-            var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
             var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
             foreach (var prop in doc.RootElement.EnumerateObject())
             {

@@ -7,11 +7,15 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using App.Backend.Api.Controllers.V1;
 using App.Backend.Api.Services;
+using App.Shared.Data;
+using App.Shared.Entities;
 using App.Shared.Lua.Bridge;
 using App.Shared.Lua.Core;
 using App.Shared.Lua.Examples;
 using App.Shared.Lua.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -263,15 +267,20 @@ public class LuaScriptingAndSandboxTests
         var result = await _engine.ExecuteAsync(script);
         Assert.True(result.Success, result.Error);
         Assert.Equal(1.0, Convert.ToDouble(result.ReturnValue));
+        var registered = Assert.Single(result.UiExtensions);
+        Assert.Equal("action_zero_calibrate", registered.Id);
+        Assert.Equal("action_zero_calibrate", registered.HandlerFunctionName);
 
-        // Invoke registered action
-        var actionResult = await _engine.InvokeUiActionAsync("action_zero_calibrate", new Dictionary<string, object?>
+        // Invoke registered action: the owner script is re-executed in a fresh sandbox.
+        var owner = new LuaScriptRecord { Code = script, TriggerType = LuaScriptTriggerType.UiExtension };
+        var actionResult = await _engine.InvokeUiActionAsync(owner, "action_zero_calibrate", new Dictionary<string, object?>
         {
             ["machine_id"] = "L01-CNC-01"
         });
 
         Assert.True(actionResult.Success, actionResult.Error);
         Assert.Equal("Calibration OK", actionResult.ReturnValue?.ToString());
+        Assert.Contains("Zero calibration invoked for L01-CNC-01", actionResult.Output);
     }
 
     [Fact]
@@ -287,17 +296,36 @@ public class LuaScriptingAndSandboxTests
         }
     }
 
+    private ServiceProvider BuildServices()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var dbName = $"LuaScripts_{Guid.NewGuid()}";
+        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(dbName));
+        services.AddSingleton<ILuaPlantDataProvider>(_dataProvider);
+        return services.BuildServiceProvider();
+    }
+
     [Fact]
     public async Task LuaScriptController_EndpointsReturnSuccess()
     {
-        var service = new LuaAutomationService(_dataProvider, NullLogger<LuaAutomationService>.Instance);
+        using var sp = BuildServices();
+        var service = new LuaAutomationService(sp.GetRequiredService<IServiceScopeFactory>(), NullLogger<LuaAutomationService>.Instance);
         var controller = new LuaScriptController(service);
 
-        // 1. List scripts
+        // 1. Create + list scripts (persisted through AppDbContext)
+        var createResult = await controller.CreateScript(new LuaScriptRecord
+        {
+            Name = "SLA scan",
+            Code = "return 'ok'",
+            TriggerType = LuaScriptTriggerType.SlaPreventiveCheck
+        }, default);
+        Assert.IsType<CreatedAtActionResult>(createResult);
+
         var listResult = await controller.ListScripts(default);
         var okList = Assert.IsType<OkObjectResult>(listResult);
         var scripts = Assert.IsAssignableFrom<IEnumerable<LuaScriptRecord>>(okList.Value);
-        Assert.NotEmpty(scripts);
+        Assert.Single(scripts);
 
         // 2. TestExecute snippet
         var execResult = await controller.TestExecute(new ExecuteLuaRequestDto("return 100 + 200"), default);
@@ -307,14 +335,251 @@ public class LuaScriptingAndSandboxTests
         Assert.Equal(300.0, Convert.ToDouble(execData.ReturnValue));
 
         // 3. UI Extensions
-        var uiResult = controller.GetUiExtensions(null);
+        var uiResult = await controller.GetUiExtensions(null, default);
         var okUi = Assert.IsType<OkObjectResult>(uiResult);
         Assert.NotNull(okUi.Value);
 
-        // 4. SLA scan
+        // 4. SLA scan runs the stored script and records its execution status
         var slaResult = await controller.EvaluateSlaRules(default);
         var okSla = Assert.IsType<OkObjectResult>(slaResult);
-        Assert.NotNull(okSla.Value);
+        var slaRuns = Assert.IsAssignableFrom<IReadOnlyList<LuaExecutionResult>>(okSla.Value);
+        Assert.Equal("ok", Assert.Single(slaRuns).ReturnValue);
+        var stored = Assert.Single(await service.ListScriptsAsync());
+        Assert.True(stored.LastExecutionSuccess);
+
+        // 5. Unknown script → 404 rather than a fake 200
+        Assert.IsType<NotFoundObjectResult>(await controller.RunScript(Guid.NewGuid(), null, default));
+    }
+
+    [Fact]
+    public async Task LuaAutomationService_PersistsScripts_AndServesUiActionsFromStoredScript()
+    {
+        using var sp = BuildServices();
+        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+        var service = new LuaAutomationService(scopeFactory, NullLogger<LuaAutomationService>.Instance);
+
+        var created = await service.CreateScriptAsync(new LuaScriptRecord
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-0000000000aa"), // client-supplied id must be ignored
+            Name = "UI",
+            TriggerType = LuaScriptTriggerType.UiExtension,
+            Code = @"
+                ui.register_action({ id = 'act_1', title = 'Act', handler = function(ctx) return 'done:' .. ctx.machine_id end })
+                ui.register_badge({ id = 'badge_1', title = 'B', target = 'ticket' })
+            "
+        }, createdBy: "engineer@plant");
+        Assert.NotEqual(Guid.Parse("00000000-0000-0000-0000-0000000000aa"), created.Id);
+        Assert.Equal("engineer@plant", created.CreatedBy);
+
+        // A brand new service instance (e.g. after restart) rebuilds the registry from the database.
+        var restarted = new LuaAutomationService(scopeFactory, NullLogger<LuaAutomationService>.Instance);
+        var exts = await restarted.GetUiExtensionsAsync();
+        Assert.Equal(2, exts.Count);
+        Assert.Single(await restarted.GetUiExtensionsAsync(LuaUiTargetZone.TicketDetails));
+
+        var invoke = await restarted.InvokeUiActionAsync("act_1", new Dictionary<string, object?> { ["machine_id"] = "M1" });
+        Assert.NotNull(invoke);
+        Assert.True(invoke!.Success, invoke.Error);
+        Assert.Equal("done:M1", invoke.ReturnValue);
+
+        // Badges are not invocable; unknown ids are not found.
+        Assert.Null(await restarted.InvokeUiActionAsync("badge_1"));
+        Assert.Null(await restarted.InvokeUiActionAsync("nope"));
+
+        // Deactivating removes the extensions.
+        await restarted.UpdateScriptAsync(created.Id, new LuaScriptRecord
+        {
+            Name = created.Name, Code = created.Code, TriggerType = created.TriggerType, IsActive = false
+        });
+        Assert.Empty(await restarted.GetUiExtensionsAsync());
+        Assert.Null(await restarted.InvokeUiActionAsync("act_1"));
+
+        Assert.True(await restarted.DeleteScriptAsync(created.Id));
+        Assert.Empty(await restarted.ListScriptsAsync());
+    }
+
+    [Fact]
+    public void LuaEnums_SerializeAsStrings_MatchingFrontendContract()
+    {
+        var json = JsonSerializer.Serialize(new LuaScriptRecord { TriggerType = LuaScriptTriggerType.TelemetryChange },
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Contains("\"triggerType\":\"TelemetryChange\"", json);
+        Assert.DoesNotContain("metadataJson", json);
+
+        var ext = JsonSerializer.Serialize(new LuaUiExtension { TargetZone = LuaUiTargetZone.TicketDetails, ExtensionType = LuaUiExtensionType.Badge },
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Contains("\"targetZone\":\"TicketDetails\"", ext);
+        Assert.Contains("\"extensionType\":\"Badge\"", ext);
+
+        var roundTrip = JsonSerializer.Deserialize<LuaScriptRecord>("{\"name\":\"x\",\"code\":\"y\",\"triggerType\":\"UiExtension\"}",
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Equal(LuaScriptTriggerType.UiExtension, roundTrip!.TriggerType);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Sandbox escape / resource exhaustion regression tests
+    // ---------------------------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("return os.execute('id')")]
+    [InlineData("return io.open('/etc/passwd')")]
+    [InlineData("return load('return 1')()")]
+    [InlineData("return loadstring('return 1')()")]
+    [InlineData("return dofile('/etc/passwd')")]
+    [InlineData("return require('os')")]
+    [InlineData("return setmetatable({}, {})")]
+    [InlineData("return getmetatable('').__index")]
+    [InlineData("return rawset(_G, 'x', 1)")]
+    [InlineData("return collectgarbage('collect')")]
+    [InlineData("return string.dump(print)")]
+    [InlineData("return coroutine.create(print)")]
+    [InlineData("return pcall(error)")]
+    [InlineData("return _MOONSHARP.version")]
+    public async Task Sandbox_DangerousFunctionsAreUnavailable(string code)
+    {
+        var result = await _engine.ExecuteAsync(code);
+
+        Assert.False(result.Success);
+        Assert.StartsWith("Lua error:", result.Error);
+    }
+
+    [Fact]
+    public async Task Sandbox_InfiniteLoopInsideClrCallback_IsTerminated()
+    {
+        // table.sort swallows exceptions thrown from its comparator; the guard must still fail the run.
+        var result = await _engine.ExecuteAsync("table.sort({3, 2, 1}, function(a, b) while true do end end) return 'escaped'");
+
+        Assert.False(result.Success);
+        Assert.Contains("timed out", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Sandbox_ReentrantRecursionThroughClr_IsBoundedWithoutCrashingProcess()
+    {
+        // Without a re-entrancy bound this overflows the native stack and kills the backend process.
+        var result = await _engine.ExecuteAsync(@"
+            local function f() table.sort({2, 1}, function(a, b) f() return a < b end) end
+            f()
+            return 'escaped'");
+
+        Assert.False(result.Success);
+        Assert.Contains("nested callback depth", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Sandbox_DeepLuaRecursion_FailsCleanly()
+    {
+        var result = await _engine.ExecuteAsync("local function f(n) return f(n + 1) + 1 end return f(1)");
+
+        Assert.False(result.Success);
+        Assert.Contains("stack overflow", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("return #string.rep('x', 2^30)")]
+    [InlineData("return #(('x'):rep(2^30))")]
+    public async Task Sandbox_StringRepMemoryBomb_IsRejected(string code)
+    {
+        var result = await _engine.ExecuteAsync(code);
+
+        Assert.False(result.Success);
+        Assert.Contains("string.rep", result.Error);
+    }
+
+    [Theory]
+    [InlineData("local s = 'x' for i = 1, 40 do s = s .. s end return #s")]
+    [InlineData("local t = {} for i = 1, 1e9 do t[i] = i end return #t")]
+    public async Task Sandbox_AllocationBombs_AreTerminated(string code)
+    {
+        // Small budget + generous deadline so the memory guard (not the timeout) is what fires, even on a loaded CI box.
+        var engine = new LuaScriptEngine(_dataProvider, new LuaSandboxOptions
+        {
+            MaxAllocatedBytes = 16L * 1024 * 1024,
+            MaxExecutionTime = TimeSpan.FromSeconds(30)
+        });
+        var result = await engine.ExecuteAsync(code);
+
+        Assert.False(result.Success);
+        Assert.Contains("memory allocation budget", result.Error);
+    }
+
+    [Fact]
+    public async Task Sandbox_CancellationStopsRunningScript()
+    {
+        using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        var result = await _engine.ExecuteAsync("while true do end", cancellationToken: cts.Token);
+
+        // The engine deadline is 2s; "cancelled" proves the caller's token stopped the script first.
+        Assert.False(result.Success);
+        Assert.Contains("cancelled", result.Error);
+    }
+
+    [Fact]
+    public async Task Sandbox_OutputIsBounded()
+    {
+        var small = new LuaScriptEngine(_dataProvider, new LuaSandboxOptions { MaxOutputLength = 1000, MaxOutputLines = 5 });
+        var result = await small.ExecuteAsync("for i = 1, 100 do print(string.rep('y', 500)) end return 1");
+
+        Assert.True(result.Success, result.Error);
+        Assert.True(result.Output.Length < 1100);
+        Assert.Contains("[output truncated]", result.Output);
+    }
+
+    [Fact]
+    public async Task Sandbox_CyclicAndFunctionReturnValues_AreConvertedSafely()
+    {
+        var result = await _engine.ExecuteAsync("local t = { name = 'n', fn = print } t.self = t return t");
+
+        Assert.True(result.Success, result.Error);
+        var table = Assert.IsAssignableFrom<Dictionary<string, object?>>(result.ReturnValue);
+        Assert.Equal("n", table["name"]);
+        Assert.Null(table["self"]);
+        Assert.Equal("<clrfunction>", table["fn"]);
+        // Must be serializable by the API layer.
+        JsonSerializer.Serialize(result);
+    }
+
+    [Fact]
+    public async Task Sandbox_ContextCannotShadowHostApis()
+    {
+        var result = await _engine.ExecuteAsync("return type(machines.get)", new Dictionary<string, object?> { ["machines"] = "hijacked" });
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("function", result.ReturnValue);
+    }
+
+    [Fact]
+    public async Task Sandbox_ClosuresDoNotLeakAcrossRuns()
+    {
+        await _engine.ExecuteAsync("events.on('ping', function() print('stale listener') end)");
+        var second = await _engine.ExecuteAsync("return events.trigger('ping', {})");
+
+        Assert.True(second.Success, second.Error);
+        Assert.Equal(0.0, Convert.ToDouble(second.ReturnValue));
+        Assert.DoesNotContain("stale listener", second.Output);
+    }
+
+    [Theory]
+    [InlineData("ui.register_action({ id = '../../scripts', title = 'x' })")]
+    [InlineData("ui.register_action({ id = 'a/b', title = 'x' })")]
+    public async Task UiApi_RejectsUnsafeExtensionIds(string code)
+    {
+        var result = await _engine.ExecuteAsync(code);
+
+        Assert.False(result.Success);
+        Assert.Contains("UI extension id", result.Error);
+    }
+
+    [Fact]
+    public async Task UiApi_SanitizesIconAndColor()
+    {
+        var result = await _engine.ExecuteAsync(
+            "ui.register_badge({ id = 'b', title = 'T', icon = 'javascript:alert(1)', color = 'red;background:url(x)' })");
+
+        Assert.True(result.Success, result.Error);
+        var ext = Assert.Single(result.UiExtensions);
+        Assert.Equal("i-lucide-sparkles", ext.Icon);
+        Assert.Equal("blue", ext.Color);
     }
 
     [Fact]

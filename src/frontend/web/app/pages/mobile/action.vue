@@ -20,7 +20,7 @@ import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import { useMaintenance } from '~/composables/useMaintenance'
 import { authClient } from '~/utils/auth-client'
-import type { QrAction } from '~/utils/qrActionGenerator'
+import { isQrAction, type QrAction } from '~/utils/qrActionGenerator'
 
 definePageMeta({
   layout: false // Standalone lightweight mobile layout
@@ -30,23 +30,34 @@ const route = useRoute()
 const router = useRouter()
 const { qrPickup, fetchTickets } = useMaintenance()
 
-const action = computed<QrAction>(() => (route.query.action as QrAction) || 'report-incident')
-const stationId = computed<string>(() => (route.query.stationId as string) || '')
-const machineType = computed<string>(() => (route.query.machineType as string) || '')
-const groupId = computed<string>(() => (route.query.groupId as string) || '')
-const ticketId = computed<string>(() => (route.query.ticketId as string) || '')
-const prefillPriority = computed<string>(() => (route.query.prefillPriority as string) || (route.query.priority as string) || 'High')
-const prefillTitle = computed<string>(() => (route.query.prefillTitle as string) || (route.query.title as string) || '')
+// Query params come from an untrusted, scanned QR code: whitelist the action and
+// treat every other value strictly as display text / encoded route params.
+function queryString(key: string): string {
+  const v = route.query[key]
+  return typeof v === 'string' ? v : ''
+}
+const action = computed<QrAction>(() => {
+  const raw = queryString('action')
+  return isQrAction(raw) ? raw : 'report-incident'
+})
+const stationId = computed<string>(() => queryString('stationId'))
+const machineType = computed<string>(() => queryString('machineType'))
+const groupId = computed<string>(() => queryString('groupId'))
+const ticketId = computed<string>(() => queryString('ticketId'))
+const prefillPriority = computed<string>(() => {
+  const p = queryString('prefillPriority') || queryString('priority')
+  return ['Low', 'Medium', 'High', 'Critical'].includes(p) ? p : 'High'
+})
+const prefillTitle = computed<string>(() => (queryString('prefillTitle') || queryString('title')).slice(0, 200))
 
 const isExecuting = ref(false)
 const checkInSuccess = ref(false)
 const autoRedirectCountdown = ref<number | null>(null)
 let countdownTimer: any = null
 
-const currentUser = computed(() => {
-  const session = (authClient as any).useSession?.()
-  return session?.data?.value?.user?.name || 'On-Duty Floor Technician'
-})
+// Subscribe once at setup; calling useSession() inside a computed re-subscribes on every evaluation.
+const session = (authClient as any).useSession?.()
+const currentUser = computed(() => session?.data?.value?.user?.name || 'On-Duty Floor Technician')
 
 function navigateToReport() {
   if (countdownTimer) clearInterval(countdownTimer)
@@ -65,7 +76,8 @@ function navigateToReport() {
 function navigateToTicket() {
   if (countdownTimer) clearInterval(countdownTimer)
   if (ticketId.value) {
-    router.push(`/dashboard/tickets/${ticketId.value}`)
+    // Encode so a crafted ticketId cannot inject extra path segments / query strings
+    router.push(`/dashboard/tickets/${encodeURIComponent(ticketId.value)}`)
   } else {
     router.push('/dashboard/tickets')
   }
@@ -105,12 +117,12 @@ async function handleCheckIn() {
           assignedTechnicianName: currentUser.value,
           qrScannedAt: new Date().toISOString()
         }
-      }).catch(() => {})
+      })
     }
     checkInSuccess.value = true
     toast.success(`Check-in registered for ${stationId.value || 'Station'}`)
   } catch (err: any) {
-    toast.error('Failed to complete check-in: ' + (err.message || 'Network error'))
+    toast.error('Failed to complete check-in: ' + (err?.data?.message || err?.message || 'Network error'))
   } finally {
     isExecuting.value = false
   }
@@ -142,6 +154,14 @@ onMounted(() => {
     }, 1000)
   }
 })
+
+function cancelAutoRedirect() {
+  autoRedirectCountdown.value = null
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+}
 
 onUnmounted(() => {
   if (countdownTimer) {
@@ -242,7 +262,7 @@ onUnmounted(() => {
             Auto-opening in <strong>{{ autoRedirectCountdown }}s</strong> &bull;
             <button
               type="button"
-              @click="autoRedirectCountdown = null"
+              @click="cancelAutoRedirect"
               class="underline text-indigo-400 hover:text-white cursor-pointer ml-1"
             >
               Cancel auto-redirect
