@@ -26,8 +26,10 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 - **Enterprise Notification Center & Optimistic UI:** In-app notification popover, sticky toast notifications, browser Web Notifications, and automatic state rollback on server rejection.
 - **Unified Cryptographic Audit Feed:** Complete audit trail tracking entity state changes, security group assignments, decommissioning records, and automated PLC auto-closure.
 - **Industrial Maintenance Lifecycle & Zero-Dependency Action QR:** Canonical 5-state Kanban lifecycle (`Open`, `InProgress`, `Pending`, `Resolved`, `Closed`), machine watchdog auto-closure (`/auto-close`), kiosk retract (`/retract`), orthogonal escalation, typed `PendingReason` flags, technician delegation hierarchy, and pure SVG Galois Field GF(256) matrix QR generator.
+- **Live Station Telemetry & Digital Twin:** PLC block → `StationTelemetryExtractor` → Redis snapshot → org-scoped SignalR events (`StationTelemetryReceived`, `StationOscillationReceived`), rendered as plant-map HUD overlays and 3D digital twin cards. All KPIs, trends, and fleet summaries come from stored snapshots and tickets. Where no data source exists they return `null` instead of synthetic values.
+- **Sandboxed Lua Automation:** MoonSharp-based scripting persisted in `backend.lua_scripts`. Scripts react to `TelemetryChange` events. `LuaSandboxGuard` enforces per-instruction deadlines, cancellation, allocation budgets, and a re-entrancy depth limit.
 - **OT Integrations:** Git-based PLC version control integration blueprint and native OPC UA Server API (`opc.tcp://`).
-- **Security & Compliance:** TISAX (VDA ISA 6.0 / High Protection) compliance framework, multi-tenant isolation, cryptographic command signing, and mTLS support.
+- **Security & Compliance:** TISAX (VDA ISA 6.0 / High Protection) compliance framework. Per-request tenant scoping (`TenantScopeMiddleware`) and org-scoped SignalR groups. A hardened BFF proxy, token- or mTLS-authenticated kiosk terminals, cryptographic command signing, and mTLS support.
 
 ---
 
@@ -106,7 +108,8 @@ heimdall/
 │   │   └── web/             # Nuxt 4 Web Dashboard & Nitro BFF
 │   └── shared/
 │       ├── App.Contracts/   # Protobuf definitions, gRPC types, PLC TypeSystem (NO DB)
-│       └── App.Shared/      # Domain Entities, EF Core DbContext, Migrations
+│       ├── App.Shared/      # Domain Entities, EF Core DbContext, Migrations
+│       └── lua/             # Lua scripting engine, sandbox guard & UI extension models
 ├── docs/                    # Structured Documentation Hub
 │   ├── architecture/        # System, Agent, Encryption, Compliance, Protocols
 │   ├── api/                 # API Reference, Contracts, Recipe Specification
@@ -114,6 +117,9 @@ heimdall/
 │   ├── academic/            # Bachelor's Thesis Research Notes & Academic Formulations
 │   └── plc/                 # TwinCAT 3 POU and Interface specifications
 ├── fixtures/                # Canonical enterprise plant dataset (JSON)
+├── seed_data/               # Enterprise seed pipeline & topology
+│   └── demo/                # Story-driven "Nordvik NV1" demo dataset (plant, people, tickets, telemetry, Lua)
+├── scripts/                 # Demo loader, packaging & dev certificate helpers
 ├── infra/
 │   └── database/            # PostgreSQL 18 Docker Compose, SSL, Init Scripts
 ├── simulators/
@@ -125,8 +131,8 @@ heimdall/
 │   ├── dev_manager.py       # Unified development service orchestrator & monitor
 │   └── generate_sequence_diagrams.py # Code-to-Mermaid sequence diagram generator
 ├── tests/                   # Unified Verification Suites
-│   ├── backend/             # xUnit integration & unit tests (232 tests)
-│   ├── frontend/unit/       # Vitest unit tests (61 suites, 609 tests)
+│   ├── backend/             # xUnit integration & unit tests (354 tests)
+│   ├── frontend/unit/       # Vitest unit tests (681 tests)
 │   └── e2e/                 # Playwright browser automation tests
 └── justfile                 # Modern command runner for dev, staging, testing, and production
 ```
@@ -305,16 +311,38 @@ Heimdall includes pre-configured environment templates at the repository root:
 - **[`.env.dev`](.env.dev)**: Local development defaults (`HEIMDALL_ENABLE_DEV=true`, `HEIMDALL_ENABLE_DEBUG=true`).
 - **[`.env.staging`](.env.staging)**: Staging configuration (`HEIMDALL_ENABLE_DEV=false`, `HEIMDALL_ENABLE_DEBUG=true`, `heimdall_staging_db`).
 
+> [!IMPORTANT]
+> Dev-only conveniences are enabled only by an explicit `HEIMDALL_ENABLE_DEV=true`. These include the BFF's anonymous "System Administrator" fallback, the demo kiosk tokens, and the `mock_auth` route-guard bypass. A non-production `NODE_ENV` alone no longer enables them.
+> Kiosk terminals (`/api/terminal/*`) authenticate with one of the following:
+> - a token from `HEIMDALL_TERMINAL_TOKENS` (comma-separated, ≥ 16 characters each; generate with `openssl rand -hex 24`)
+> - an mTLS client-certificate thumbprint matching an active PKI certificate (only when `HEIMDALL_TRUST_CLIENT_CERT_HEADER=true` behind a TLS-terminating proxy)
+> - an operator session
+
+---
+
+### 5. Demo Dataset (Nordvik NV1)
+
+A small, fully fictional, story-driven dataset for presentations lives in [`seed_data/demo/`](seed_data/demo/README.md). The loader is idempotent and refuses to run unless `HEIMDALL_ENABLE_DEV=true`. It also refuses Production/Staging environments and database names that look like prod or staging.
+
+```bash
+just demo-check      # Validate JSON, references, enums; dry-run against the dev DB (rolled back)
+just demo-seed       # Load / refresh the dataset into heimdall_dev_db (+ demo-only logins)
+just demo-runtime    # With the backend running: register demo Lua scripts and replay telemetry
+just demo-reset      # Delete only demo rows and reload them
+```
+
+See the [demo walkthrough](seed_data/demo/README.md) for personas, demo logins, and the presentation script.
+
 ## Running Verification Tests
 
 ```bash
 # 0. Run Unified Verification Suite (seed validation, backend, frontend)
 just test
 
-# 1. Run .NET backend unit & integration tests (xUnit, 232 tests)
+# 1. Run .NET backend unit & integration tests (xUnit, 354 tests)
 dotnet test Heimdall.sln
 
-# 2. Run Nuxt frontend unit test suites (Vitest, 61 suites, 609 tests)
+# 2. Run Nuxt frontend unit test suites (Vitest, 681 tests)
 cd src/frontend/web && bun run test
 
 # 3. Run Python fleet simulator & mock CMI runner tests (9 tests)
@@ -344,7 +372,15 @@ Heimdall includes built-in enterprise tooling for manufacturing IT/OT environmen
 ## Security & Compliance (TISAX)
 
 Heimdall is designed in accordance with **VDA ISA 6.0 (TISAX High Protection Needs)** guidelines:
-- Multi-tenant data segregation with EF Core Global Query Filters (`OrganizationId`).
+- Multi-tenant data segregation with EF Core Global Query Filters (`OrganizationId`). `TenantScopeMiddleware` sets the active organization from the `OrgId` claim on every request. Non-admins without an organization see only global rows.
+- Org-scoped real-time delivery: SignalR broadcasts go only to `org:{orgId}` and `platform-admins` groups, never to all clients.
+- Hardened BFF → backend proxy:
+  - rejects path traversal, including encoded traversal
+  - derives `X-Organization-Id` from the session only
+  - retries only idempotent methods
+  - leaves internal URLs out of error responses
+- Sandboxed Lua execution with instruction deadlines, allocation budgets, and removed unsafe globals (`collectgarbage`, `string.dump`, `_MOONSHARP`).
+- Server-assigned IDs and tenants on create endpoints (mass-assignment whitelisting).
 - Role-Based Access Control (RBAC) powered by Better-Auth (`auth` schema).
 - Immutable system and security audit event logging (`agent_events`).
 - Cryptographically signed agent command payloads (`Signature` ECDSA/RSA validation).
