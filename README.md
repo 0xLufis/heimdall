@@ -36,60 +36,123 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 
 ## Screenshots & Demo Gallery
 
-> Screenshots captured from a live development instance running against the canonical 100-machine enterprise plant dataset, 60 synthetic users, and 8 automated production lines.
+> Captured from a live development instance (enterprise plant dataset: 100 stations on 8 lines, 56 edge controllers, fleet simulator running) with [`tools/capture-gallery.cjs`](tools/capture-gallery.cjs). Click a screenshot for full size, a clip for its MP4.
+
+### Feature clips
+
+<table>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/videos/kiosk_dispatch_and_qr.mp4"><img src="docs/media/videos/kiosk_dispatch_and_qr.gif" alt="Station kiosk: two-tap fault report, read-only ticket and QR codes" width="100%"/></a>
+<br/><sub><b>📟 Station Kiosk — two-tap fault report, ticket opened read-only, check-in QR</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/videos/plant_map_live.mp4"><img src="docs/media/videos/plant_map_live.gif" alt="Plant map with live station pins" width="100%"/></a>
+<br/><sub><b>🗺️ Plant Map — live station pins, telemetry HUD, station card</b></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/videos/live_telemetry.mp4"><img src="docs/media/videos/live_telemetry.gif" alt="Live telemetry hub" width="100%"/></a>
+<br/><sub><b>📈 Live Telemetry — station dynamics streaming in over MQTT → SignalR</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/videos/search_and_context_menu.mp4"><img src="docs/media/videos/search_and_context_menu.gif" alt="Global search and context menu" width="100%"/></a>
+<br/><sub><b>🔎 Global Search & Context Menu — Ctrl+K to a station, right-click actions</b></sub>
+</td>
+</tr>
+</table>
+
+### Station kiosk
+
+<table>
+<tr>
+<td align="center" width="40%">
+<a href="docs/media/15_kiosk_terminal.png"><img src="docs/media/15_kiosk_terminal.png" alt="Station kiosk with a ticket opened read-only" width="100%"/></a>
+<br/><sub><b>📟 Station Kiosk — live PLC values, two-tap reporting, station tickets opened read-only</b></sub>
+</td>
+<td align="center" width="40%">
+<a href="docs/media/16_kiosk_ticket_qr.png"><img src="docs/media/16_kiosk_ticket_qr.png" alt="Ticket QR code on the kiosk" width="100%"/></a>
+<br/><sub><b>📱 Ticket QR Code — technician check-in (QR pickup) or open on a phone</b></sub>
+</td>
+<td align="center" width="20%">
+<a href="docs/media/videos/kiosk_overlay.mp4"><img src="docs/media/videos/kiosk_overlay.gif" alt="Compact kiosk overlay" width="100%"/></a>
+<br/><sub><b>🪟 Compact Overlay — always-on-top window beside the machine HMI</b></sub>
+</td>
+</tr>
+</table>
+
+### Screens
 
 <table>
 <tr>
 <td align="center" width="50%">
 <a href="docs/media/01_sign_in.png"><img src="docs/media/01_sign_in.png" alt="Sign-In Screen" width="100%"/></a>
-<br/><sub><b>🔐 Sign-In — Entra ID SSO, GitHub & Google OAuth, Credential</b></sub>
+<br/><sub><b>🔐 Sign-In — Entra ID SSO, GitHub & Google OAuth, operator token</b></sub>
 </td>
 <td align="center" width="50%">
 <a href="docs/media/02_dashboard.png"><img src="docs/media/02_dashboard.png" alt="Main Dashboard" width="100%"/></a>
-<br/><sub><b>📊 Main Dashboard — KPI Overview, Edge Controllers, Audit Feed</b></sub>
+<br/><sub><b>📊 Dashboard — plant KPIs and cell topology by line</b></sub>
 </td>
 </tr>
 <tr>
 <td align="center" width="50%">
-<a href="docs/media/03_machines_list.png"><img src="docs/media/03_machines_list.png" alt="Machine Registry" width="100%"/></a>
-<br/><sub><b>🏭 Production Machinery — 100 Stations, 8 Automated Lines, Live Topology</b></sub>
+<a href="docs/media/03_machines_list.png"><img src="docs/media/03_machines_list.png" alt="Machine Directory" width="100%"/></a>
+<br/><sub><b>🏭 Machine Directory — 100 stations, live state, controllers, BOM</b></sub>
 </td>
 <td align="center" width="50%">
-<a href="docs/media/04_tickets_kanban.png"><img src="docs/media/04_tickets_kanban.png" alt="Maintenance Kanban" width="100%"/></a>
-<br/><sub><b>🔧 Maintenance & Incident Management — Kanban, SLA, Technician Delegation</b></sub>
+<a href="docs/media/04_tickets_kanban.png"><img src="docs/media/04_tickets_kanban.png" alt="Maintenance and floor incidents" width="100%"/></a>
+<br/><sub><b>🔧 Maintenance & Floor Incidents — work queue, line-stop alarm, SLA KPIs, List / Kanban / Split</b></sub>
 </td>
 </tr>
 <tr>
+<td align="center" width="50%">
+<a href="docs/media/10_plant_map.png"><img src="docs/media/10_plant_map.png" alt="Plant Map" width="100%"/></a>
+<br/><sub><b>🗺️ Plant Map — CAD floor plan with colour-coded station pins</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/11_live_telemetry.png"><img src="docs/media/11_live_telemetry.png" alt="Telemetry Hub" width="100%"/></a>
+<br/><sub><b>📈 Telemetry Hub — live station dynamics and OEE KPIs</b></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/12_fleet_analytics.png"><img src="docs/media/12_fleet_analytics.png" alt="Fleet Analytics" width="100%"/></a>
+<br/><sub><b>📋 Fleet Analytics — stations grouped by line with OEE roll-ups</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/13_lua_automation.png"><img src="docs/media/13_lua_automation.png" alt="Lua Automation" width="100%"/></a>
+<br/><sub><b>🧩 Lua Automation — sandboxed scripts, starter templates, API reference</b></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/14_tickets_monitor.png"><img src="docs/media/14_tickets_monitor.png" alt="Incident Monitor" width="100%"/></a>
+<br/><sub><b>📺 Incident Monitor — shop-floor TV display of the incident queue</b></sub>
+</td>
+<td align="center" width="50%">
+<a href="docs/media/07_clients.png"><img src="docs/media/07_clients.png" alt="Industrial Controllers" width="100%"/></a>
+<br/><sub><b>🖥️ Industrial Controllers — 56 edge IPCs, live CPU / RAM, CAD tags, remote access</b></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+<a href="docs/media/08_inventory.png"><img src="docs/media/08_inventory.png" alt="Inventory" width="100%"/></a>
+<br/><sub><b>📦 Inventory — serialized parts, stock levels, provisioning</b></sub>
+</td>
 <td align="center" width="50%">
 <a href="docs/media/05_security_groups.png"><img src="docs/media/05_security_groups.png" alt="Security Groups" width="100%"/></a>
-<br/><sub><b>🛡️ Security Groups — AD/Entra ID Group → RBAC Role → Org Mapping</b></sub>
+<br/><sub><b>🛡️ Security Groups — Entra ID group → RBAC role → organization mapping</b></sub>
 </td>
+</tr>
+<tr>
 <td align="center" width="50%">
 <a href="docs/media/06_organizations.png"><img src="docs/media/06_organizations.png" alt="Organizations" width="100%"/></a>
-<br/><sub><b>🏢 Tenant Organizations — 16 Multi-tenant Floors & Engineering Guilds</b></sub>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%">
-<a href="docs/media/07_clients.png"><img src="docs/media/07_clients.png" alt="Edge IPC Client Registry" width="100%"/></a>
-<br/><sub><b>🖥️ Edge IPC Client Registry — 56 Controllers, TwinCAT, MES, PKI</b></sub>
+<br/><sub><b>🏢 Organizations — multi-tenant plant organizations and members</b></sub>
 </td>
 <td align="center" width="50%">
-<a href="docs/media/08_inventory.png"><img src="docs/media/08_inventory.png" alt="Spare Parts Inventory" width="100%"/></a>
-<br/><sub><b>📦 Spare Parts Inventory — 550 Serialized Parts, Bulk Consumables</b></sub>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%">
-<a href="docs/media/09_settings.png"><img src="docs/media/09_settings.png" alt="Settings & MFA" width="100%"/></a>
-<br/><sub><b>⚙️ Account Settings — MFA Policy, PKI, Role-Based Access Thresholds</b></sub>
-</td>
-<td align="center" width="50%">
-<!-- Placeholder for future video demo -->
-<br/><br/>
-<b>🎬 Video Walkthrough</b><br/>
-<sub>Coming soon — full platform walkthrough including live telemetry ingestion, CAD floor plan navigation, QR action scanning, and real-time Kanban SignalR updates.</sub>
-<br/><br/>
+<a href="docs/media/09_settings.png"><img src="docs/media/09_settings.png" alt="Settings" width="100%"/></a>
+<br/><sub><b>⚙️ Settings — SSO, two-factor authentication, Copia credentials</b></sub>
 </td>
 </tr>
 </table>

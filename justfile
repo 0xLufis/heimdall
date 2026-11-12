@@ -121,6 +121,11 @@ dev *ARGS:
 tui:
     @python3 tools/tui.py
 
+# Refresh the README gallery in docs/media from the running dev stack: shots, videos or all (videos need ffmpeg;
+# the kiosk clip dispatches one real ticket). See tools/capture-gallery.cjs.
+gallery MODE="all":
+    NODE_PATH=src/frontend/web/node_modules node tools/capture-gallery.cjs {{MODE}}
+
 # Display service topology status and latency matrix
 status *ARGS:
     @python3 tools/dev_manager.py status {{ARGS}}
