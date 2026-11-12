@@ -522,7 +522,6 @@ Comprehensive technical documentation is maintained in the [`docs/`](docs/Home.m
 - [API & Interface Reference](docs/api/API_REFERENCE.md) - Complete REST API endpoints, MQTT topics and protobuf payloads, SignalR hub events, DTOs, and OPC UA address space.
 - [Developer & Operations Guide](docs/guide/DEV_GUIDE.md) - Local setup, environment prerequisites, building, testing, database migrations, and Docker workflows.
 - [User & Operator Guide](docs/guide/USER_GUIDE.md) - Plant floor operator guide for dashboard monitoring, spatial CAD inspection, and mobile maintenance ticketing.
-- [Thesis Presentation Slide Deck](docs/presentation.md) - Comprehensive slide deck for BSc defense.
 
 ---
 

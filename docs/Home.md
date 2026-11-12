@@ -106,6 +106,4 @@ Welcome to the Heimdall technical documentation suite. The documentation is orga
 
 * [Bachelor's Thesis Research Notes & Technical Foundations](academic/BACHELOR_THESIS_NOTES.md)
   * Comprehensive academic thesis notes: industrial background, ISA-95/Purdue Model, problem statement, edge-to-cloud telemetry architecture, fault tolerance, anti-pattern analysis, and IEEE/ACM/ISO literature citations.
-* [Thesis Defense Presentation Deck](presentation.md)
-  * Complete 16-slide slide deck for BSc defense at PTE MIK.
 
