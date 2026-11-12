@@ -216,7 +216,10 @@ start-service TARGET:
                 echo ">> Starting Backend REST API & embedded MQTT broker (dotnet watch: rebuild + restart on save)..."
                 # Console output -> .logs/backend.log through the rotating log pipe (a detached sibling: it
                 # ends at EOF and survives Ctrl-C); the backend's own rotating file log -> .logs/backend/.
-                {{DOTNET_WATCH_ENV}} Logging__File__Path="{{LOG_DIR}}/backend" setsid dotnet watch --no-hot-reload --project src/backend/App.Backend.Api run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/backend.log" --pidfile {{PID_DIR}}/backend.pid >/dev/null 2>&1) 2>&1 &
+                # dotnet watch can die and leave the backend, and with it the embedded MQTT broker, down until a
+                # manual restart: it exits when a watched directory disappears (a branch switch), and hot reload
+                # has crashed it. The loop starts it again; `just stop backend` ends the whole session, loop included.
+                {{DOTNET_WATCH_ENV}} Logging__File__Path="{{LOG_DIR}}/backend" setsid bash -c 'while :; do dotnet watch --no-hot-reload --project src/backend/App.Backend.Api run; echo ">> dotnet watch exited (code $?); starting it again in 3 s"; sleep 3; done' </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/backend.log" --pidfile {{PID_DIR}}/backend.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/backend.pid
             fi
             ;;
