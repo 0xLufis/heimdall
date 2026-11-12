@@ -59,8 +59,8 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
         tabindex="0"
         :aria-label="`Select controller ${pc.hostname || pc.name}`"
         @click="emit('select', pc)"
-        @keydown.enter="emit('select', pc)"
-        @keydown.space.prevent="emit('select', pc)"
+        @keydown.enter.self="emit('select', pc)"
+        @keydown.space.self.prevent="emit('select', pc)"
         @contextmenu="handleCardContextMenu(pc, $event)"
         class="bg-card border rounded-xl p-5 transition-all duration-200 shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995] group flex flex-col justify-between cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/50"
         :class="selectedId === pc.id ? 'border-zinc-500 border-primary ring-1 ring-primary/60 bg-card shadow-md' : 'border-border hover:border-primary/50 hover:bg-card/95'"
@@ -100,7 +100,7 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
                 <Cpu class="w-3 h-3 text-muted-foreground" /> CPU
               </div>
               <div class="text-xs font-mono font-semibold text-foreground mt-0.5">
-                {{ pc.telemetry?.cpuUsagePercent ?? 0 }}%
+                {{ pc.telemetry?.cpuUsagePercent != null ? `${Math.round(pc.telemetry.cpuUsagePercent)}%` : '—' }}
               </div>
             </div>
 
@@ -109,7 +109,7 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
                 <Activity class="w-3 h-3 text-muted-foreground" /> RAM
               </div>
               <div class="text-xs font-mono font-semibold text-foreground mt-0.5">
-                {{ pc.telemetry?.ramUsagePercent ?? 0 }}%
+                {{ pc.telemetry?.ramUsagePercent != null ? `${Math.round(pc.telemetry.ramUsagePercent)}%` : '—' }}
               </div>
             </div>
 
@@ -167,13 +167,16 @@ const handleCardContextMenu = (pc: IndustrialController, e: MouseEvent) => {
           <div class="space-y-1 mb-4">
             <span class="text-xs text-muted-foreground block">Controlled Stations</span>
             <div v-if="pc.controlledMachines && pc.controlledMachines.length > 0" class="flex flex-wrap gap-1">
-              <span
+              <NuxtLink
                 v-for="st in pc.controlledMachines"
                 :key="st.id"
-                class="px-2 py-0.5 bg-muted text-foreground border border-border rounded-md text-xs font-mono font-medium"
+                :to="{ path: '/dashboard/machines', query: { search: st.customIdentifier || st.name, tree: st.id } }"
+                class="px-2 py-0.5 bg-muted text-foreground border border-border rounded-md text-xs font-mono font-medium hover:border-primary/50 hover:text-primary transition-colors"
+                :title="`Open station ${st.customIdentifier || st.name}`"
+                @click.stop
               >
                 {{ st.customIdentifier || st.name }}
-              </span>
+              </NuxtLink>
             </div>
             <div v-else class="text-xs text-muted-foreground">Standalone Edge Node</div>
           </div>

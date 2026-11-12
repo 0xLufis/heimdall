@@ -42,7 +42,7 @@ $itemTrigger = $contextMenu.Items.Add("🚀 Trigger Immediate Telemetry Report")
 $itemTrigger.add_Click({
     try {
         $res = Invoke-RestMethod -Uri "$agentUrl/api/trigger-report" -Method Post -TimeoutSec 3
-        $notifyIcon.ShowBalloonTip(3000, "Heimdall Telemetry", "Immediate report successfully dispatched to backend gRPC.", [System.Windows.Forms.ToolTipIcon]::Info)
+        $notifyIcon.ShowBalloonTip(3000, "Heimdall Telemetry", "Immediate report requested; the agent sends it to the backend over MQTT.", [System.Windows.Forms.ToolTipIcon]::Info)
     } catch {
         $notifyIcon.ShowBalloonTip(3000, "Heimdall Telemetry", "Notice: Backend unreachable or agent offline: $_", [System.Windows.Forms.ToolTipIcon]::Warning)
     }

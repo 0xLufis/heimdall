@@ -49,7 +49,7 @@ function formatDate(date: string | Date) {
           </TableRow>
         </TableHeader>
         <TableBody class="divide-y divide-border">
-          <TableRow v-for="user in users" :key="user.id" class="group hover:bg-muted/50 transition-colors border-b border-border">
+          <TableRow v-for="user in users" :key="user.id" v-ctx:user="user" class="group hover:bg-muted/50 transition-colors border-b border-border">
             <TableCell class="px-4 py-3">
               <DashboardUserAvatar :name="user.name" :email="user.email" />
             </TableCell>

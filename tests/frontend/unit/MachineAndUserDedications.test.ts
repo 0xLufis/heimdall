@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
 import { useDedications } from '../../../src/frontend/web/app/composables/useDedications'
 import StationDetailWorkbench from '../../../src/frontend/web/app/components/machines/StationDetailWorkbench.vue'
 
@@ -87,6 +88,12 @@ const mockUserDedications = {
 
 describe('Machine and User Dedications UI & Composable', () => {
   beforeEach(() => {
+    // Nuxt's shared state (the workbench reads the fleet controller store through it)
+    const nuxtStates = new Map<string, any>()
+    vi.stubGlobal('useState', (key: string, init?: () => any) => {
+      if (!nuxtStates.has(key)) nuxtStates.set(key, ref(init ? init() : undefined))
+      return nuxtStates.get(key)
+    })
     vi.stubGlobal('$fetch', vi.fn((url: string, opts?: any) => {
       if (url.includes('/api/proxy/v1/Delegation/machine/m-laser-01/dedications')) {
         return Promise.resolve(mockMachineDedications)

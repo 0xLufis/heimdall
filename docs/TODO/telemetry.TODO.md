@@ -22,13 +22,32 @@
 - [x] Ring buffer stream visualization (`CircularBuffer.ts`, `useTelemetryStream.ts`).
 - [x] Telemetry metric catalog (built-in + user-defined definitions) in `telemetryCacheStore.ts`.
 
+### 3. Live Telemetry Hub & Dev Simulation
+- [x] `/dashboard/telemetry` is station-centric: fleet summary tiles (filter the directory), station directory grouped by
+  line, per-station live dynamics (6 metrics with trend + min/avg/max), OEE / production KPIs, tickets + SLA flags and the
+  controllers bound to the station; deep links `?station=<id|handle>` and `?controllerId=`.
+- [x] `useTelemetryStream.ts` follows one (reactive) station over the shared maintenance hub connection
+  (`StationOscillationReceived` / `StationTelemetryReceived`); values are `null` until reported, freshness is
+  `live | stale | waiting`. The old implementation listened for fields the backend never sent.
+- [x] `GET /api/v1/analytics/station-kpis` also returns the last reported dynamics, so the page is populated before the
+  next live sample.
+- [x] Fleet simulator publishes over MQTT 5 (the backend has no gRPC ingestion) and simulates station processes for the
+  enterprise and Nordvik demo datasets, with runtime scenarios (fault, drift, line stop, demo story) through its control
+  API and the in-app simulator panel (dev only). Contract fixture: `tests/fixtures/simulator/station_blocks.json`.
+- [x] Per-component links: a controller's remote view resolves through `ClientPc/{id}/remote-access`
+  (`system_metadata.RemoteAccess.Vnc`), a station's 3D twin through the station tree (`metadata.model3dUrl`, else a
+  component CAD reference). No client-side default machine/model.
+- [x] `Machine3dDigitalTwin` receives the station id (live HUD) and is re-created per station / model.
+
 ## Open Items
 - [ ] Persist station telemetry history (time-series store); trends currently use the in-process Lua buffer (200 samples).
 - [ ] Ingest machine runtime counters to provide `totalMachineHours` and runtime-based MTBF.
 - [ ] Store SLA due dates on tickets in the backend so `slaCompliancePercentage` and SLA warnings can be computed server-side.
 - [ ] `TelemetryIngestionService.ProcessTelemetryBatchAsync` acknowledges batches without unpacking them; implement decoding.
 - [ ] Per-CAD-node telemetry binding (current live values are station-level).
-- [ ] Pass `station-id` from `StationDetailWorkbench.vue` to `Machine3dDigitalTwin` so the 3D HUD shows live values.
+- [ ] Remote-desktop gateway: the per-controller VNC link is opened directly from the browser; add an authenticated
+  websocket relay in the BFF so controllers on OT VLANs are reachable without exposing noVNC ports.
+- [ ] UI to edit a station's `model3dUrl` and model upload/storage (today the link is set in station metadata / seeds).
 
 ## Future Enhancements
 - [ ] Direct OPC UA PubSub binary gateway for hardware PLCs without MQTT broker.

@@ -18,13 +18,14 @@ import {
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useCadModelViewer, DEFAULT_CAD_MODEL_URL, type CadNodeStatus } from '~/composables/useCadModelViewer'
+import { useCadModelViewer, type CadNodeStatus } from '~/composables/useCadModelViewer'
 import { useStationTelemetry } from '~/composables/useStationTelemetry'
 import { computeOverlayPlacement } from '~/utils/telemetryOverlayPlacement'
 
 const props = withDefaults(
   defineProps<{
-    modelUrl?: string
+    /** 3D model linked to the station this viewer shows; null when the station has no model. */
+    modelUrl?: string | null
     selectedSlot?: string | null
     components?: any[]
     height?: string
@@ -32,7 +33,7 @@ const props = withDefaults(
     stationId?: string | null
   }>(),
   {
-    modelUrl: DEFAULT_CAD_MODEL_URL,
+    modelUrl: null,
     selectedSlot: null,
     components: () => [],
     height: '540px',
@@ -152,11 +153,15 @@ let isMouseDown = false
 let dragStartPos = { x: 0, y: 0 }
 let didMove = false
 
+const hasModel = computed(() => typeof props.modelUrl === 'string' && props.modelUrl.trim().length > 0)
+let viewerReady = false
+
 onMounted(async () => {
-  if (containerRef.value && canvasRef.value) {
+  if (containerRef.value && canvasRef.value && hasModel.value) {
     setNodeStatuses(nodeStatusMap.value)
+    viewerReady = true
     await initViewer(containerRef.value, canvasRef.value, {
-      modelUrl: props.modelUrl,
+      modelUrl: props.modelUrl as string,
       enableGrid: true
     })
 
@@ -172,8 +177,15 @@ onUnmounted(() => {
 
 watch(nodeStatusMap, (statuses) => setNodeStatuses(statuses))
 
-const reloadModel = async (url: string) => {
+const reloadModel = async (url: string | null | undefined) => {
   if (!url || !containerRef.value || !canvasRef.value) return
+  if (!viewerReady) {
+    // First model for a viewer that mounted without one.
+    viewerReady = true
+    setNodeStatuses(nodeStatusMap.value)
+    await initViewer(containerRef.value, canvasRef.value, { modelUrl: url, enableGrid: true })
+    return
+  }
   try {
     const THREE = await import('three')
     const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
@@ -476,6 +488,19 @@ const handleMouseLeave = () => {
     <!-- Bottom Right Controls Help Hint -->
     <div class="absolute bottom-3 right-3 text-[10px] text-muted-foreground/60 font-mono pointer-events-none select-none bg-background/40 backdrop-blur-sm px-2 py-1 rounded border border-border/20">
       Left Drag: Orbit • Right Drag: Pan • Scroll: Zoom • Click: Pick
+    </div>
+
+    <!-- No model linked to this station -->
+    <div
+      v-if="!hasModel"
+      class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-20 p-6 text-center"
+    >
+      <Box class="w-8 h-8 text-muted-foreground mb-2" />
+      <span class="text-sm font-semibold text-foreground mb-1">No 3D model linked to this station</span>
+      <span class="text-xs text-muted-foreground max-w-md">
+        Link a model by setting <code class="font-mono text-foreground">model3dUrl</code> in the station's metadata
+        (or on one of its component CAD references).
+      </span>
     </div>
 
     <!-- Loading State Overlay -->

@@ -6,6 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useLuaExtensions } from '~/composables/useLuaExtensions'
 import type { LuaScriptRecord, LuaScriptTriggerType } from '~/types/lua'
+import LuaKpiWizard from '~/components/lua/LuaKpiWizard.vue'
+import LuaApiReferencePanel from '~/components/lua/LuaApiReferencePanel.vue'
+import { asKpiResult, explainLuaError } from '~/utils/lua/kpiTemplates'
+import { LUA_API_REFERENCE } from '~/utils/lua/luaApiReference'
 import {
   CodeIcon,
   PlayIcon,
@@ -19,7 +23,8 @@ import {
   AlertTriangleIcon,
   TerminalIcon,
   RotateCcwIcon,
-  FolderTreeIcon
+  FolderTreeIcon,
+  GaugeIcon
 } from 'lucide-vue-next'
 
 definePageMeta({
@@ -47,13 +52,62 @@ const editorTriggerType = ref<LuaScriptTriggerType>('Manual')
 const editorCode = ref('')
 const editorIsActive = ref(true)
 const statusMessage = ref('')
+const validationMessage = ref('')
+const showKpiWizard = ref(false)
+const editorRef = ref<HTMLTextAreaElement | null>(null)
+
+// Stations for the KPI wizard and the test run ("run against this station's live data").
+const stations = ref<Array<{ id: string; label: string }>>([])
+const testStationId = ref('')
+async function loadStations() {
+  try {
+    const rows = await $fetch<any[]>('/api/proxy/v1/inventory/machines')
+    stations.value = (Array.isArray(rows) ? rows : [])
+      .map(m => ({ id: String(m.id), label: String(m.customIdentifier || m.displayName || m.name || m.id) }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  } catch {
+    stations.value = []
+  }
+}
 
 onMounted(async () => {
-  await fetchScripts()
+  await Promise.all([fetchScripts(), loadStations()])
   if (scripts.value.length > 0) {
     selectScript(scripts.value[0])
   }
 })
+
+// A test run executes the script for real: name the calls that change plant data.
+const MUTATING_CALLS = LUA_API_REFERENCE.flatMap(g => g.functions.filter(f => f.mutates).map(f => `${g.global}.${f.name}`))
+const mutatingCalls = computed(() => MUTATING_CALLS.filter(call => editorCode.value.includes(`${call}(`)))
+
+const kpiResult = computed(() => asKpiResult(lastExecutionResult.value?.returnValue))
+const errorHint = computed(() => explainLuaError(lastExecutionResult.value?.error))
+const formatDetail = (value: unknown) => (typeof value === 'number' ? String(value) : JSON.stringify(value))
+
+function handleKpiCreate(payload: { name: string; description: string; code: string }) {
+  selectedScriptId.value = null
+  editorName.value = payload.name
+  editorDesc.value = payload.description
+  editorTriggerType.value = 'Manual'
+  editorCode.value = payload.code
+  editorIsActive.value = true
+  showKpiWizard.value = false
+  validationMessage.value = ''
+  statusMessage.value = 'KPI script created. Test it against a station below, then Save.'
+}
+
+function insertSnippet(snippet: string) {
+  const el = editorRef.value
+  const code = editorCode.value
+  const start = el ? el.selectionStart : code.length
+  const end = el ? el.selectionEnd : code.length
+  editorCode.value = code.slice(0, start) + snippet + code.slice(end)
+  if (el) {
+    const caret = start + snippet.length
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(caret, caret) })
+  }
+}
 
 const filteredScripts = computed(() => {
   if (filterType.value === 'all') return scripts.value
@@ -101,6 +155,12 @@ return { status = 'Evaluation completed', evaluated_count = #active_machines }
 }
 
 async function handleSave() {
+  validationMessage.value = !editorName.value.trim()
+    ? 'Give the script a name before saving.'
+    : !editorCode.value.trim()
+      ? 'The script has no code yet.'
+      : ''
+  if (validationMessage.value) return
   try {
     const payload: Partial<LuaScriptRecord> = {
       id: selectedScriptId.value || undefined,
@@ -133,10 +193,11 @@ async function handleDelete() {
 }
 
 async function handleRunTest() {
-  statusMessage.value = 'Testing script in isolated sandbox...'
+  statusMessage.value = ''
   await testExecute(editorCode.value, {
     context_test_mode: true,
-    context_simulated_time: new Date().toISOString()
+    context_simulated_time: new Date().toISOString(),
+    ...(testStationId.value ? { context_machine_id: testStationId.value } : {})
   })
 }
 
@@ -238,6 +299,10 @@ return true
       </div>
 
       <div class="flex items-center gap-2">
+        <Button size="sm" variant="outline" class="gap-1.5" data-testid="new-kpi-btn" @click="showKpiWizard = true">
+          <GaugeIcon class="h-4 w-4" />
+          New KPI
+        </Button>
         <Button size="sm" class="gap-1.5" @click="handleNewScript">
           <PlusIcon class="h-4 w-4" />
           New Script
@@ -245,7 +310,19 @@ return true
       </div>
     </div>
 
+    <LuaKpiWizard
+      v-if="showKpiWizard"
+      :stations="stations"
+      :default-station-id="testStationId || null"
+      @create="handleKpiCreate"
+      @close="showKpiWizard = false"
+    />
+
     <!-- Feedback alerts -->
+    <div v-if="validationMessage" class="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg text-sm flex items-center gap-2" role="alert">
+      <AlertTriangleIcon class="h-4 w-4 shrink-0" />
+      <span>{{ validationMessage }}</span>
+    </div>
     <div v-if="statusMessage" class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-sm flex items-center gap-2">
       <CheckCircle2Icon class="h-4 w-4 shrink-0" />
       <span>{{ statusMessage }}</span>
@@ -363,6 +440,12 @@ return true
             </Button>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent class="pt-4">
+            <LuaApiReferencePanel @insert="insertSnippet" />
+          </CardContent>
+        </Card>
       </div>
 
       <!-- Editor & Playground Workspace -->
@@ -397,15 +480,26 @@ return true
                   <option value="Scheduled">Scheduled</option>
                 </select>
 
+                <select
+                  v-model="testStationId"
+                  class="h-8 max-w-40 text-xs rounded-md border border-input bg-background px-2"
+                  aria-label="Station for the test run"
+                  title="The test run passes this station as context_machine_id"
+                >
+                  <option value="">No station</option>
+                  <option v-for="st in stations" :key="st.id" :value="st.id">{{ st.label }}</option>
+                </select>
+
                 <Button
                   size="sm"
                   variant="outline"
                   class="gap-1.5 h-8 text-xs"
                   :disabled="executing"
+                  data-testid="test-run-btn"
                   @click="handleRunTest"
                 >
                   <PlayIcon class="h-3.5 w-3.5 text-emerald-400 fill-emerald-400/20" />
-                  Test Sandbox
+                  Test run
                 </Button>
 
                 <Button
@@ -435,6 +529,7 @@ return true
           <CardContent class="p-0">
             <div class="relative font-mono text-xs">
               <textarea
+                ref="editorRef"
                 v-model="editorCode"
                 rows="18"
                 class="w-full p-4 bg-muted/20 font-mono text-xs leading-relaxed focus:outline-none resize-y border-none text-foreground placeholder:text-muted-foreground"
@@ -443,6 +538,10 @@ return true
               ></textarea>
             </div>
           </CardContent>
+          <div v-if="mutatingCalls.length" class="border-t px-4 py-2 text-xs text-amber-500 flex items-center gap-2">
+            <AlertTriangleIcon class="h-3.5 w-3.5 shrink-0" />
+            <span>A test run executes for real: {{ mutatingCalls.join(', ') }} will change plant data.</span>
+          </div>
         </Card>
 
         <!-- Live Sandbox Terminal & Console Output -->
@@ -472,18 +571,36 @@ return true
               Running script in isolated MoonSharp sandbox...
             </div>
             <div v-else-if="!lastExecutionResult" class="text-muted-foreground/60 italic">
-              No execution output yet. Click "Test Sandbox" above to run this script.
+              No execution output yet. Pick a station and click "Test run" above to run this script against its live data.
             </div>
             <template v-else>
+              <div v-if="kpiResult" class="mb-2 rounded-lg border border-border/60 bg-background/60 p-3 font-sans text-foreground" data-testid="kpi-result">
+                <div class="flex items-baseline justify-between gap-3">
+                  <span class="text-xs text-muted-foreground">{{ kpiResult.kpi }}<template v-if="kpiResult.station"> · {{ kpiResult.station }}</template></span>
+                  <span
+                    v-if="kpiResult.status"
+                    class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
+                    :class="kpiResult.status === 'ok' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'"
+                  >{{ kpiResult.status.replace('_', ' ') }}</span>
+                </div>
+                <div class="mt-1 text-2xl font-bold tabular-nums">
+                  {{ kpiResult.value }}<span class="ml-1 text-sm font-normal text-muted-foreground">{{ kpiResult.unit }}</span>
+                  <span v-if="kpiResult.target !== undefined" class="ml-2 text-xs font-normal text-muted-foreground">target {{ kpiResult.target }}{{ kpiResult.unit }}</span>
+                </div>
+                <div v-if="kpiResult.details" class="mt-1 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+                  <span v-for="(v, k) in kpiResult.details" :key="String(k)">{{ k }}: {{ formatDetail(v) }}</span>
+                </div>
+              </div>
               <div v-if="lastExecutionResult.output" class="whitespace-pre-wrap">
                 {{ lastExecutionResult.output }}
               </div>
-              <div v-if="lastExecutionResult.returnValue !== undefined && lastExecutionResult.returnValue !== null" class="text-cyan-400 mt-2 pt-2 border-t border-border/40">
+              <div v-if="!kpiResult && lastExecutionResult.returnValue !== undefined && lastExecutionResult.returnValue !== null" class="text-cyan-400 mt-2 pt-2 border-t border-border/40">
                 <span class="text-muted-foreground">Return: </span>
                 {{ typeof lastExecutionResult.returnValue === 'object' ? JSON.stringify(lastExecutionResult.returnValue, null, 2) : lastExecutionResult.returnValue }}
               </div>
               <div v-if="lastExecutionResult.error" class="text-red-400 bg-red-950/40 p-2 rounded border border-red-800/40 mt-2">
                 {{ lastExecutionResult.error }}
+                <div v-if="errorHint" class="mt-1 font-sans text-amber-300" data-testid="lua-error-hint">{{ errorHint }}</div>
               </div>
             </template>
           </CardContent>

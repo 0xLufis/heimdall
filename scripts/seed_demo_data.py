@@ -67,6 +67,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEMO_DIR = REPO_ROOT / "seed_data" / "demo"
 LUA_DIR = DEMO_DIR / "lua"
 
+sys.path.insert(0, str(REPO_ROOT / "seed_data"))
+import reference_checks  # noqa: E402  (DXF handles, digital-twin mesh names, HeimdallRoles)
+
 DEMO_NAMESPACE = uuid.UUID("6f1c2d8e-4b7a-5e3f-9c1d-0a2b3c4d5e6f")
 DEMO_ID_PREFIX = "de30de30"           # every demo UUID starts with this -> safe --reset
 DEMO_TEXT_ID_PREFIX = "demo-"         # auth.* text ids (users, org, members, accounts)
@@ -208,9 +211,7 @@ ENUMS: dict[tuple[str, str], set[str]] = {
     ("technician_rules", "scope_type"): {"technology", "group", "machine"},
     ("shift_absences", "reason"): {"Sick", "Emergency", "Vacation", "Training", "Unplanned"},
     ("generic_templates", "template_type"): {"machine", "component", "delegation", "telemetry", "ticket"},
-    ("users", "role"): {"system_admin", "heimdall_admin", "admin", "plant_director", "it_admin", "it_site_admin", "engineering_admin",
-                        "plant_engineering_manager", "senior_engineering_manager", "group_leader", "shift_leader", "lead_engineer",
-                        "controls_engineer", "engineer", "technician", "operative_planner", "operator", "manager", "user"},
+    ("users", "role"): reference_checks.read_heimdall_roles()[0],   # HeimdallRoles in SecurityConstants.cs
     ("machine_service_logs", "entry_type"): {"RoutineService", "ShiftHandover", "PartReplacement", "Calibration", "EmergencyRepair", "Note"},
 }
 SLA_HOURS = {"Critical": 2, "High": 4, "Medium": 8, "Low": 24}
@@ -707,12 +708,175 @@ class Dataset:
             if sc["machine_id"] not in {st["id"] for st in p["stations"]}:
                 self.errors.append(f"station controller {sc['id']} references unknown station")
 
+        self._validate_references()
+
         # lua files exist
         for script in self.lua.get("scripts", []):
             if not (LUA_DIR / script["file"]).exists():
                 self.errors.append(f"lua script file missing: {script['file']}")
         if not (LUA_DIR / self.lua.get("replay", {}).get("file", "replay_telemetry.lua")).exists():
             self.errors.append("lua replay helper missing")
+
+    def _validate_references(self) -> None:
+        """Machines <-> controllers <-> components <-> inventory <-> floor plan / digital twin."""
+        p = self.payload
+        err = self.errors.append
+        items = {m["id"]: m for m in p["machine_items"]}
+        stations = {st["id"]: st for st in p["stations"]}
+        controllers = {c["id"]: c for c in p["controllers"]}
+        groups = {g["id"]: g for g in p["machine_groups"]}
+        parts = {x["id"]: x for x in p["part_items"]}
+        label = lambda sid: stations[sid].get("custom_identifier") or sid  # noqa: E731
+
+        # -- every active station is driven by exactly one reporting (Primary) controller
+        links: dict[str, list[dict[str, Any]]] = {}
+        seen_links = set()
+        for sc in p["station_controllers"]:
+            if sc["client_pc_id"] not in controllers:
+                err(f"station controller {sc['id']}: unknown controller")
+            pair = (sc["client_pc_id"], sc["machine_id"])
+            if pair in seen_links:
+                err(f"station controller link defined twice: {controllers.get(pair[0], {}).get('name')} -> {label(pair[1]) if pair[1] in stations else pair[1]}")
+            seen_links.add(pair)
+            links.setdefault(sc["machine_id"], []).append(sc)
+        active = [sid for sid, st in stations.items() if st.get("status", "active") == "active"]
+        for sid in active:
+            primaries = [l for l in links.get(sid, []) if l.get("role") == "Primary"]
+            if len(primaries) != 1:
+                err(f"station {label(sid)}: needs exactly one Primary controller link (has {len(primaries)}) - it would report no telemetry")
+        controlled = {sc["client_pc_id"] for sc in p["station_controllers"]}
+        for cid, c in controllers.items():
+            if cid not in controlled:
+                err(f"controller {c['name']}: controls no station")
+        for key, values in (("machine_identifier", [c.get("machine_identifier") for c in controllers.values()]),
+                            ("mac_address", [c.get("mac_address") for c in controllers.values()]),
+                            ("custom_identifier", [st.get("custom_identifier") for st in stations.values()])):
+            dup = {v for v in values if v and values.count(v) > 1}
+            if dup:
+                err(f"duplicate {key}: {sorted(dup)}")
+
+        # -- hierarchy: sub-machines and group references point at rows of the right kind
+        for sid, st in stations.items():
+            parent = st.get("parent_machine_id")
+            if parent and parent not in stations:
+                err(f"station {label(sid)}: unknown parent machine")
+            for col, wanted in (("line_group_id", "Line"), ("sub_line_group_id", "SubLine"), ("project_group_id", "Project"),
+                                ("business_unit_group_id", "BusinessUnit")):
+                gid = st.get(col)
+                if gid and groups.get(gid, {}).get("group_type") != wanted:
+                    err(f"station {label(sid)}: {col} must reference a {wanted} group")
+            if st.get("status", "active") == "active" and not st.get("line_group_id"):
+                err(f"station {label(sid)}: no line group")
+        for g in p["machine_groups"]:
+            if g.get("parent_id") and g["parent_id"] not in groups:
+                err(f"machine group {g['name']}: unknown parent")
+            for mid in json.loads(g.get("machine_ids_json") or "[]"):
+                if mid not in stations:
+                    err(f"machine group {g['name']}: machine_ids_json references unknown station {mid}")
+        for m in p["machine_group_memberships"]:
+            if m["group_id"] not in groups or m["machine_id"] not in stations:
+                err(f"machine group membership {m['id']} is dangling")
+
+        # -- components <-> installed parts <-> spare store
+        twin_slots = set(reference_checks.TWIN_SLOTS)
+        seen_slots, installed_classes = set(), set()
+        for part in p["part_items"]:
+            meta = part.get("metadata") or {}
+            status, stock = part.get("equipment_status"), bool(part.get("is_stock_item"))
+            if status == "InMachine":
+                if part.get("machine_id") not in stations:
+                    err(f"part {part['name']}: InMachine without a station")
+                if not meta.get("partClass"):
+                    err(f"part {part['name']}: installed part needs metadata.partClass")
+                installed_classes.add(meta.get("partClass"))
+            elif part.get("machine_id"):
+                err(f"part {part['name']}: {status} part must not be assigned to a station")
+            if stock and not meta.get("consumableClass"):
+                err(f"stock item {part['name']}: needs metadata.consumableClass")
+            if stock and part.get("min_stock_threshold") is None:
+                err(f"stock item {part['name']}: needs min_stock_threshold")
+        for part in p["part_items"]:
+            meta = part.get("metadata") or {}
+            if part.get("equipment_status") != "InMachine" and not part.get("is_stock_item"):
+                if meta.get("partClass") not in installed_classes:
+                    err(f"spare {part['name']}: partClass {meta.get('partClass')!r} fits no installed part")
+        for mc in p["machine_components"]:
+            sid = mc["machine_id"]
+            if sid not in stations:
+                err(f"component {mc['name']}: unknown station")
+                continue
+            slot = mc["functional_slot_identifier"]
+            if (sid, slot) in seen_slots:
+                err(f"station {label(sid)}: slot {slot} defined twice")
+            seen_slots.add((sid, slot))
+            part = parts.get(mc.get("current_part_id"))
+            if part is None:
+                err(f"component {label(sid)}/{slot}: current part does not exist")
+            elif part.get("machine_id") != sid or part.get("equipment_status") != "InMachine":
+                err(f"component {label(sid)}/{slot}: current part {part['name']} is not installed in this station")
+            model = (items.get(sid, {}).get("metadata") or {}).get("model3dUrl")
+            if model == reference_checks.DIGITAL_TWIN_URL and slot not in twin_slots:
+                err(f"component {label(sid)}/{slot}: slot is not a mesh of the station's digital twin {model}")
+        with_component = {mc["machine_id"] for mc in p["machine_components"]}
+        for sid in active:
+            if not stations[sid].get("parent_machine_id") and sid not in with_component:
+                err(f"station {label(sid)}: no machine component (nothing to raise a component ticket against)")
+
+        # -- people: skills and dispatch rules
+        skill_ids = {x["id"] for x in p["skill_definitions"]}
+        skill_codes = {x["code"] for x in p["skill_definitions"]}
+        pg_ids = {x["id"] for x in p["personnel_groups"]}
+        populated = {x["personnel_group_id"] for x in p["personnel_group_members"]}
+        for pg in p["personnel_groups"]:
+            if pg["id"] not in populated:
+                err(f"personnel group {pg['name']}: no members")
+        for r in p["delegation_recipes"]:
+            for code in json.loads(r.get("required_skill_codes_json") or "[]"):
+                if code not in skill_codes:
+                    err(f"delegation recipe {r['name']}: unknown skill code {code}")
+            for sk in json.loads(r.get("required_skill_ids_json") or "[]"):
+                if sk not in skill_ids:
+                    err(f"delegation recipe {r['name']}: unknown skill id {sk}")
+            for gid in json.loads(r.get("maintenance_group_ids_json") or "[]"):
+                if gid not in pg_ids:
+                    err(f"delegation recipe {r['name']}: unknown maintenance group {gid}")
+            for gid in json.loads(r.get("machine_group_ids_json") or "[]"):
+                if gid not in groups:
+                    err(f"delegation recipe {r['name']}: unknown machine group {gid}")
+        technologies = {t for st in stations.values() for t in (st.get("technologies") or [])} | \
+                       {st.get("machine_type") for st in stations.values()}
+        for rule in p["technician_rules"]:
+            scope, target = rule["scope_type"], rule["target_id"]
+            if scope == "machine" and target not in stations:
+                err(f"technician rule {rule['name']}: unknown machine {target}")
+            if scope == "group" and target not in groups:
+                err(f"technician rule {rule['name']}: unknown machine group {target}")
+            if scope == "technology" and target not in technologies:
+                err(f"technician rule {rule['name']}: no station has technology / machine type {target!r}")
+
+        # -- floor plan: every pin resolves to a block of the drawing the plant map opens
+        self.reference_facts = {"simulated_stations": len(active), "components": len(p["machine_components"])}
+        dxf = Path(reference_checks.FLOOR_PLAN_DXF)
+        if dxf.exists():
+            handles = set(reference_checks.read_dxf_insert_handles(str(dxf)))
+            pins = [(f"station {label(sid)}", st.get("pinned_object_handle")) for sid, st in stations.items()] + \
+                   [(f"controller {c['name']}", c.get("pinned_object_handle")) for c in controllers.values()]
+            for who, handle in pins:
+                if handle and handle not in handles:
+                    err(f"{who}: floor-plan handle {handle} is not a block of {dxf.name}")
+            self.reference_facts["pins"] = sum(1 for _, h in pins if h)
+            for sid in active:
+                if not stations[sid].get("parent_machine_id") and not stations[sid].get("pinned_object_handle"):
+                    err(f"station {label(sid)}: not pinned to the floor plan")
+        else:
+            self.warnings.append(f"floor plan {dxf} not found - CAD handles not checked")
+        glb = Path(reference_checks.DIGITAL_TWIN_GLB)
+        if glb.exists():
+            missing = twin_slots - set(reference_checks.read_glb_node_names(str(glb)))
+            if missing:
+                err(f"digital twin model lacks mesh node(s) {sorted(missing)}")
+        else:
+            self.warnings.append(f"digital twin model {glb} not found - component slots not checked against mesh names")
 
     def counts(self) -> dict[str, int]:
         return {k: len(v) for k, v in self.payload.items() if v}
@@ -1061,6 +1225,11 @@ def main(argv: list[str]) -> int:
         info(f"dataset validation failed with {len(ds.errors)} error(s)")
         return 2
     info("dataset valid: " + ", ".join(f"{k}={v}" for k, v in ds.counts().items()))
+    facts = getattr(ds, "reference_facts", {})
+    if facts:
+        info(f"references resolve: {facts.get('simulated_stations')} active stations each with one reporting controller, "
+             f"{facts.get('components')} component slots with an installed part"
+             + (f", {facts['pins']} floor-plan pins found in the drawing" if "pins" in facts else ""))
 
     if args.dry_run:
         stmts = build_statements(ds, None, args.reset, args.unpin_conflicts)

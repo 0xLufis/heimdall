@@ -8,6 +8,17 @@ import * as hbSchema from "../database/drizzle/schema";
 import { createDrizzleEventsProvider } from "./studioEventsProvider";
 import { getPlantUsers } from "./datasetLoader";
 import { syncUserSecurityGroupsToOrganizations } from "./securityGroupOrgSync";
+import { adminEscalationGuard } from "./adminGuard";
+import { evictBackendSessionCache, evictBackendSessionCacheForUser, resolveDefaultOrganizationId } from "./sessionSync";
+import { DEFAULT_ROLE, HEIMDALL_ROLES, USER_ADMIN_ROLES, canManageOrganizations } from "../../app/utils/roles";
+
+// Better-Auth access control for every Heimdall role (app/utils/roles.ts mirrors the backend's
+// HeimdallRoles). The previous hand-written map knew only 10 names - one of them, `team_lead`,
+// unknown to the backend - so assigning e.g. `group_leader` or `plant_director` was rejected.
+const userAdminRoles: readonly string[] = USER_ADMIN_ROLES;
+const adminPluginRoles = Object.fromEntries(
+   HEIMDALL_ROLES.map((role) => [role, userAdminRoles.includes(role) ? adminAc : userAc])
+);
 
 export function getAzureSsoConfig() {
    const clientId = process.env.AZURE_AD_CLIENT_ID 
@@ -82,9 +93,24 @@ export const auth = betterAuth({
       provider: "pg",
       schema: hbSchema
    }),
+   hooks: {
+      // Stops user administrators from escalating through /api/auth/admin/*, and requires the
+      // OrganizationManagement right for the organization plugin's mutations (see adminGuard.ts).
+      before: adminEscalationGuard
+   },
    databaseHooks: {
       session: {
          create: {
+            // Start every session in one of the user's organizations. Better-Auth leaves
+            // activeOrganizationId empty until the client calls organization.setActive (which the
+            // UI never does), so the backend issued no OrgId claim and non-administrators saw no
+            // tenant-owned data after a normal sign-in.
+            before: async (session) => {
+               if ((session as any).activeOrganizationId) return;
+               const activeOrganizationId = await resolveDefaultOrganizationId(session.userId);
+               if (!activeOrganizationId) return;
+               return { data: { ...session, activeOrganizationId } };
+            },
             after: async (session) => {
                try {
                   const provider = createDrizzleEventsProvider();
@@ -105,16 +131,34 @@ export const auth = betterAuth({
                   console.error("[Auth Event Hook] Session create hook error:", e);
                }
             }
+         },
+         // The backend caches role and active organization per session token: tell it when a
+         // session changes (organization switch) or disappears (sign-out, revocation, ban).
+         update: {
+            after: async (session) => {
+               await evictBackendSessionCache([(session as any)?.token]);
+            }
+         },
+         delete: {
+            after: async (session) => {
+               await evictBackendSessionCache([(session as any)?.token]);
+            }
          }
       },
       user: {
+         // Role, ban or profile change: every session of that user must be re-read by the backend.
+         update: {
+            after: async (user) => {
+               await evictBackendSessionCacheForUser((user as any)?.id);
+            }
+         },
          create: {
             after: async (user) => {
                try {
                   const db = useDb();
                   const plantUsers = getPlantUsers();
                   const matchedDirUser = plantUsers.find(u => u.email.toLowerCase() === (user.email || '').toLowerCase());
-                  const assignedRole = (user as any).role || matchedDirUser?.primaryRole || 'engineer';
+                  const assignedRole = (user as any).role || matchedDirUser?.primaryRole || DEFAULT_ROLE;
 
                   if (!(user as any).role) {
                      await db.update(hbSchema.user)
@@ -150,27 +194,31 @@ export const auth = betterAuth({
    },
    user: {
       additionalFields: {
-         role: { type: "string" }
+         role: { type: "string" },
+         // Explicit per-user grants (comma-separated, e.g. "organizations.manage"). Never an input of
+         // sign-up / update-user; changed through PUT /api/users/:id/permissions.
+         permissions: { type: "string", required: false, input: false }
       }
    },
    plugins: [
       admin({
-         adminRoles: ["admin", "system_admin", "heimdall_admin", "engineering_admin"],
-         roles: {
-            admin: adminAc,
-            system_admin: adminAc,
-            heimdall_admin: adminAc,
-            engineering_admin: adminAc,
-            it_admin: userAc,
-            manager: userAc,
-            team_lead: userAc,
-            engineer: userAc,
-            technician: userAc,
-            user: userAc
-         }
+         adminRoles: [...USER_ADMIN_ROLES],
+         defaultRole: DEFAULT_ROLE,
+         roles: adminPluginRoles
       }),
       username(),
-      organization(),
+      organization({
+         // Organizations are tenant boundaries: only holders of the OrganizationManagement right
+         // (Heimdall admins, middle managers and up, or the explicit grant) create them. Better-Auth's
+         // default lets any signed-in user. The UI creates through POST /api/organizations.
+         allowUserToCreateOrganization: (user) => canManageOrganizations((user as any).role, (user as any).permissions),
+         organizationHooks: {
+            // Membership decides whether the backend honours a session's active organization.
+            afterAddMember: async ({ member }) => { await evictBackendSessionCacheForUser(member?.userId); },
+            afterRemoveMember: async ({ member }) => { await evictBackendSessionCacheForUser(member?.userId); },
+            afterUpdateMemberRole: async ({ member }) => { await evictBackendSessionCacheForUser(member?.userId); }
+         }
+      }),
       multiSession()
    ],
    emailAndPassword: {

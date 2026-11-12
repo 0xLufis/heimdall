@@ -1,4 +1,85 @@
+# Open items and decisions (2026-11-12)
+
+Consolidated after the plant-simulation / hardening work on branch `feature/simulated-plant-and-hardening`. Each item names the file or endpoint where the work starts.
+
+## Decisions taken (with sanity check)
+
+| Decision | Implemented as | Sanity check |
+|---|---|---|
+| User directory is global | Every signed-in user lists and searches all users (`/api/users`, `GET /api/v1/auth/users`, search) | Fine inside one company; e-mail and role become visible to operators too (TISAX data minimisation: acceptable, note it in the ISMS). |
+| Organisations are managed by Heimdall admins, middle managers and up, and anyone granted the right | `OrganizationManagement` policy: `system_admin`, `heimdall_admin`, `admin` manage all; `plant_director`, `engineering_admin`, `plant_engineering_manager`, `senior_engineering_manager`, `group_leader`, `manager` and holders of `organizations.manage` manage the organisations they belong to | Consistent in backend, BFF and Better-Auth. Open: should `plant_director` manage every organisation like a Heimdall admin? It currently cannot write any machine group (not in `EndpointConfigManagement`). |
+| KPI Builder removed, Lua is the KPI tool | Builder deleted; "New KPI" wizard with five templates, API reference, station test runs | OK. A test run still executes write calls for real (warning shown); a true dry-run needs backend support. |
+| Stale threshold below 60 s | Per station: stale after 3 missed samples (`clamp(3 x interval, 3 s, 5 min)`), freshness by arrival including unchanged blocks; OFFLINE on the agent's MQTT last will | 4 s sampling gives ~12 s with no extra traffic. A 5 s threshold needs sampling every <= 1.7 s (~2.4x MQTT and SignalR traffic). Caveat: freshness is measured when the backend processes a block, so an ingestion backlog makes old data look fresh (see Telemetry below). |
+| Global search lists stations first | Stations, controllers, tickets, people, inventory; page-scoped searches keep their own entity first | OK. |
+| Logs bounded by size and age, spooled to disk, verbosity configurable | File logger with rotation and a bounded spool; dev logs off the RAM-backed `/tmp` | See the logging section of `docs/guide/DEV_GUIDE.md`. |
+| Inventory page on backend data | Thin BFF mapping onto `/api/v1/inventory/*` | OK; backend gaps listed below. |
+| Plugins: user certificate for installing, double signature with machine certificates | User signs the package hash; the server countersigns with its computer certificate; agents verify both chains | Verification does not require a code-signing EKU, so ordinary AD user certificates work (Heimdall-issued user certificates carry codeSigning). Decide whether to require the EKU. Plugins reuse `EndpointConfigManagement`, which includes engineers. |
+| Machine groups: scope writes, allow reads | `MachineGroup.OrganizationId`; writes by platform admins, members of the owning organisation, and `EngineeringAdministration` for platform-managed groups | OK. Lua scripts may only change platform-managed groups (they run without a user identity). |
+| Ingestion capacity accepted for now ("enterprise can afford better hardware") | Unchanged: one MQTT message at a time | Interacts with freshness (see above); keep it on the list. |
+| Kiosk: no auth in dev/demo, computer certificates in production | Dev bypass only with `HEIMDALL_ENABLE_DEV=true`, never under `NODE_ENV=production`; production via proxy-verified client certificate mapped to the controller's stations | `POST /api/v1/pki/workstation-identity` is anonymous and reveals station bindings for any valid certificate: restrict it to the BFF (service key) or internal networks. |
+| Certificates from AD or Heimdall; Heimdall root self-signed or AD/CA-derived | One trust store (`trusted_ca_certificates`), subordinate CA via CSR, SAN conventions for users and computers | AD-issued revocation defaults to `NoCheck` (warning); use `Online` in production when CRLs are reachable. |
+
+## Open items
+
+### Telemetry and ingestion
+- [ ] MQTT messages are processed one at a time (`MqttIngestionHostedService.OnMessageReceivedAsync`). At 100 stations / 4 s the debug backend uses ~75-100 % of one core and falls 20-50 s behind under load; keep only the newest pending block per station and process controllers in parallel.
+- [ ] Record freshness at receive time once ingestion is decoupled (today a backlog makes old data look fresh).
+- [ ] The station arrival map is per backend instance (`StationFreshness.cs`); other instances fall back to the snapshot and the 60 s rule.
+- [ ] SignalR sends every station event to every dashboard of the organisation (~23 KiB/s, ~60 messages/s per dashboard for 100 stations). The browser now applies them per station and at most every 250 ms (`useStationTelemetry.ts`), but the bandwidth remains: subscribe per page or throttle per client.
+
+### Edge agent and Windows
+- [ ] Firewall: allow the Docker range to reach the host backend (`sudo ufw allow proto tcp from 172.16.0.0/12 to any port 1883,5001`), otherwise the Windows VM agent cannot connect.
+- [ ] Windows-only paths not exercised on a real Windows service: STOP vs SHUTDOWN, event-log evidence, volatile-registry boot id. (Identity recovery and previous-run classification were seen working in the VM.)
+- [ ] `RecordStopIntent` exists but the agent never requests its own restart; no lifecycle UI or SignalR event; the simulator does not emit lifecycle reports.
+- [ ] Spool encryption (`SpoolEncryptionMode`) is not implemented; spool files are plaintext.
+- [ ] `ControllerRepository.UpsertByMacAddressAsync` overwrites `LastOnline` unconditionally (a spool drain moves it backwards).
+- [ ] `DiagnosticSnapshotController` only logs crash telemetry.
+- [ ] Deployment: exclude the agent state directory from UWF write filters.
+- [ ] `infra/windows/oem/setup.ps1` never copies `infra/windows/tray/` into the VM; the kiosk launcher (`Start-HeimdallTerminal.ps1`) is untested on Windows.
+- [ ] Trust bundle is not distributed to agents automatically (`AgentConfig.TrustedCaCertificatesPem`); the agent config UI cannot set it.
+- [ ] No real PLC driver yet: the ADS endpoint is an in-process simulation server (dev features only), the OPC UA client stops after HEL/ACK and falls back to simulated values, Modbus is decoding helpers. In production mode an agent publishes no PLC memory; plant-scale data comes from the fleet simulator.
+- [ ] The deadband evaluator (xxHash64), recipe merger and priority bandwidth throttler are unit-tested but not registered in `src/agent/App.Agent.Daemon/Program.cs`; wire them in or remove them (unchanged blocks are filtered by the backend change gate today).
+- [ ] The backend subscribes to `recipes/request` but nothing handles it.
+
+### Security and identity
+- [ ] **High: agent local API is open.** `src/agent/App.Agent.Daemon/Program.cs` binds `http://0.0.0.0:5998` unless `AGENT_URLS` is set; `GET /api/config` returns the whole configuration including `ExtensionApiKey`, and `POST /api/config` changes `BackendUrl`, both without authentication. Bind to loopback by default, redact secrets, require a key for writes (check the tray app, the local configurator and the Windows VM test setup, which publish 5998).
+- [ ] **High: MFA verification.** `server/api/user/mfa/challenge.post.ts` / `verify.post.ts` take `userId` from the request body before the session, and `verifyMfaChallenge` (`server/utils/userMfaStore.ts`) accepts any 6-character code for users without an enrollment in every environment (`123456` for enrolled users outside production). Enrollments live in Nitro memory. Use the session user only, refuse unenrolled users, persist enrollments.
+- [ ] `FILE_CHECK` commands are queued unsigned, so agents with a `ServerPublicKey` reject them; with `HEIMDALL_AGENT_KEY` unset the embedded broker accepts any client (ingestion still rejects outside dev); the Copia webhook is accepted unverified when `COPIA_WEBHOOK_SECRET` is unset; the ADS toggle and other dev endpoints depend only on feature flags.
+- [ ] Ticket and dashboard caches use global keys (`MaintenanceTicketController.cs`, `DashboardController.cs`); `CacheService.RemoveByPatternAsync` clears only process memory.
+- [ ] SSO-simulation sessions are not real Better-Auth sessions: `/api/auth/admin/*` (role change, suspend, sessions) answers 401 under the simulated login; issue signed sessions instead.
+- [ ] `useAuthSession.ts` decides admin flags with regexes that differ from the backend policies.
+- [ ] Pseudo-IT-admin delegation: UI default on, enforcement default off; `allowEngineeringAdminUserCreation` is enforced nowhere.
+- [ ] Identity Studio lets `it_admin` write roles outside the admin guard (`studio.config.ts`).
+- [ ] The rank rule allows lateral grants (an engineering admin can grant `it_admin`).
+- [ ] Frontend unit tests write to the dev database (`useDb` default) - e.g. `usr-test-entra-001`.
+- [ ] Smaller: `technicianRulesStore.ts` trusts a client `callerRole`; `DelegationController` falls back to a client organisation; `activeDirectoryStore.ts` provisions approvers as `it_admin`; `SignIn.vue` logs the sign-in response.
+- [ ] Security-group mappings and automation keys live in Nitro memory although the backend has tables.
+- [ ] PKI: no admin UI for the trust store or the subordinate CA; no CRL / OCSP published by Heimdall; plugins are stored in backend memory.
+- [ ] Command signing (`PluginService.cs`) uses `HEIMDALL_MASTER_PRIVATE_KEY`, otherwise a temporary 2048-bit key generated at start, so signatures stop verifying after a restart; refuse to sign in production without a configured key. `UPDATE_CONFIG` signatures are supplied by the caller, not made by the server.
+- [ ] Ticket auto-close / retract comments and change history are written only by the BFF route; calls straight to the backend endpoint skip them.
+- [ ] **BFF ticket routes (`server/api/tickets/**`) do not check the caller**: outside development anyone who reaches the frontend can list and change tickets in the BFF store. Require a signed-in user (the kiosk has its own `/api/terminal/*` routes). Their backend calls now carry the caller's session (`backendAuthHeaders`).
+- [ ] **Tickets created through the BFF never reach the backend**: `index.post.ts` sends a `tkt-<timestamp>` id (the backend expects a GUID), a string `pendingReason` and a `null` / string `escalationHandoverState` (numeric enum), so the create fails (now logged) and the ticket lives only in Nitro memory until a restart. It also stores a fabricated `telemetrySnapshot` when none is sent, and `ensureTicketInStore` invents placeholder tickets (`STATION-01`) for unknown ids. Create in the backend first and cache its response.
+- [ ] `server/api/terminal/machine/[id].get.ts` forwards the raw client headers (including `X-Organization-Id`) to the backend.
+- [ ] OU approval in the UI writes to the BFF dataset store, while the AD import checks the backend's `ad_ou_governances`.
+
+### Analytics, inventory, machine groups
+- [ ] Alert rules are evaluated nowhere (rules in browser memory); MTBF needs machine runtime counters.
+- [ ] Inventory backend gaps: atomic stock decrement, usage ledger / history, using serialized parts, lifecycle condition, `PUT` cannot change minimum stock or manufacturer, no timestamps. Templates, spare-part policies and machine import still use the fixture store.
+- [ ] Machine groups UI: only three levels render (sub-lines invisible), machine types list does not match real types, delete without confirmation, no UI for group type / members / owning organisation; `UpdateAsync` ignores `GroupType`; `machineGroupsStore.ts` is dead code.
+- [ ] Tickets: comments and service logs have no read endpoints; the BFF ticket mapper drops `alarmCode`, `controllerSource` and probes.
+- [ ] Simulator: tickets left open by a restart are not cleaned up; the Nordvik `tickets.json` is static.
+
+### Search
+- [ ] Inventory filter tags still use `/api/v1/inventory/search`; ticket search has no index; `/dashboard/users` has no query parameter; `TagContextSearch` is not mounted.
+
+### Frontend and dev tooling
+- [ ] About ten secondary lists have no right-click menu (machine groups, security groups, alert rules, templates, spare-part policies, delegations).
+- [ ] The Vite main process still grows with many HMR rebuilds (toolchain); consider making Nuxt DevTools opt-in.
+- [ ] e2e (Playwright) suites were not run in this round.
+- [ ] `docker-compose.prod.yml` runs `postgres:16-alpine` while dev and staging run PostgreSQL 18; pick one (changing an existing production data directory needs a dump/restore or `pg_upgrade`).
+
 ### UI
+- [ ] The station slide-out panel (`StationDetailWorkbench.vue`) is not exposed as a dialog (`role="dialog"`, `aria-modal`, focus trap), and opening it for a new station loads topology, dedications and users twice (separate `open` and `machine` watchers).
 
 ## Dashboard landing
 

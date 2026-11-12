@@ -8,7 +8,7 @@ Welcome to the Heimdall technical documentation suite. The documentation is orga
 
 * [Master Sequence Diagrams Gallery](architecture/SEQUENCE_DIAGRAMS.md)
   * End-to-end visual protocol interactions (Mermaid sequence diagrams).
-  * Edge telemetry ingestion, maintenance ticket lifecycle, Active Directory OU discovery, PKI mTLS auto-enrollment, and agent command execution loops.
+  * Edge telemetry ingestion, maintenance ticket lifecycle, Active Directory OU discovery, PKI certificate auto-enrollment (kiosk computer certificates), and agent command execution loops.
 
 * [System Architecture & Data Model](architecture/SYSTEM_ARCHITECTURE.md)
   * Manufacturing plant topology and the graph-relational many-to-many (M:N) domain model.
@@ -19,7 +19,7 @@ Welcome to the Heimdall technical documentation suite. The documentation is orga
 * [Identity & Computer Management Decoupling Analysis](architecture/IDENTITY_AND_COMPUTER_MANAGEMENT_DECOUPLING.md)
   * Active Directory dependency footprint and air-gapped offline operational resilience.
   * Decoupled `IIdentityDirectoryService` provider specification (Better-Auth database, LDAP, Entra ID).
-  * Alternative endpoint management mechanisms: autonomous gRPC self-registration, subnet mDNS/ARP scanning, and CMDB inventory sync.
+  * Alternative endpoint management mechanisms: autonomous MQTT self-registration, subnet mDNS/ARP scanning, and CMDB inventory sync.
 
 * [Edge Agent, Signed Plugins & Protocol Drivers](architecture/EDGE_AGENT_AND_PROTOCOLS.md)
   * Edge daemon lifecycle, scheduling jitter, and background worker loops.
@@ -68,7 +68,7 @@ Welcome to the Heimdall technical documentation suite. The documentation is orga
   * REST Web API (`/api/v1/*`): Complete endpoints, query parameters, request bodies, and response JSON schemas for Stations, Controllers, Maintenance Tickets, Inventory, Dashboard, Commands, and Diagnostic Snapshots.
   * Edge Extension REST API (`/api/v1/extensions/*`): Dynamic hardware sensor registration, telemetry, and event ingestion.
   * Copia Automation Git webhook integration specification.
-  * gRPC Telemetry Ingestion Service (`heimdall.telemetry.v1.SystemInfoCollector`): Complete Protobuf definition and RPC methods.
+  * MQTT telemetry ingestion (`heimdall/devices/{id}/...` topics) and the Protobuf message contracts.
   * SignalR WebSocket Hub method signatures and client callback events.
   * Shared Data Transfer Objects (DTOs) and contract models.
   * OPC UA Server & Gateway address space hierarchy and node identifier mapping.

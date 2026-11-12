@@ -17,13 +17,20 @@ Industrial Operational Technology (OT) networks connect edge controllers with en
 │                             DEFENSE-IN-DEPTH                                │
 │                                                                             │
 │  [ Transport Security ]                                                     │
-│  └── TLS 1.3 for REST/HTTPS, HTTP/2 mTLS for gRPC, SSL for PostgreSQL       │
+│  └── HTTPS terminated at the reverse proxy (TLS 1.3 recommended; mTLS only  │
+│      for kiosk terminals), MQTT 5 + agent key (no telemetry mTLS), SSL for  │
+│      PostgreSQL                                                             │
+│                                                                             │
+│  [ Identity, Sessions & PKI ]                                               │
+│  └── Better-Auth sessions and MFA policy, security-group claims; trust      │
+│      store (AD CS / Heimdall CA) for kiosk computer and user certificates   │
 │                                                                             │
 │  [ Field-Level Authenticated Encryption at Rest ]                           │
 │  └── AES-256-GCM with unique 96-bit nonces and 128-bit authentication tags  │
 │                                                                             │
 │  [ Cryptographic Command Signing & Fail-Secure Verification ]               │
-│  └── Digital signatures validated on edge daemons prior to execution        │
+│  └── RSA-SHA256 signed commands and double-signed plugins, verified on edge │
+│      daemons prior to execution                                             │
 │                                                                             │
 │  [ Edge Envelope Encryption & Hardware Binding ]                            │
 │  └── Windows DPAPI / Linux HKDF-SHA256 from /etc/machine-id + 0600 seed     │
@@ -44,7 +51,7 @@ To protect confidential data at rest independently of database-level encryption,
 
 ### 2.1 Cryptographic Parameters
 * **Cipher**: `AES-256-GCM` authenticated symmetric encryption.
-* **Key Size**: 256 bits (32 bytes), loaded at startup from `HEIMDALL_ENCRYPTION_KEY`.
+* **Key Size**: 256 bits (32 bytes): the SHA-256 hash of `HEIMDALL_ENCRYPTION_KEY` (at least 32 characters), read on first use. Outside Development / Test a missing key is an error; Development and Test fall back to a built-in key.
 * **Initialization Vector (Nonce)**: 96 bits (12 bytes), generated freshly for every encryption operation using a cryptographically secure random number generator (`RandomNumberGenerator.Fill`).
 * **Authentication Tag**: 128 bits (16 bytes), verifying ciphertext integrity and authenticity.
 * **Serialized Wire Format**:
@@ -56,8 +63,11 @@ To protect confidential data at rest independently of database-level encryption,
 | :--- | :--- | :--- | :--- |
 | **`FloorPlan`** | `SvgContent` | **Confidential** | Proprietary plant layout geometry and machine coordinates. |
 | **`SoftwareAsset`** | `LicenseKey` | **Confidential** | Commercial Soft-PLC and SCADA activation keys. |
-| **`QueuedAgentCommand`** | `Payload` | **Restricted** | Operational command parameters dispatched to edge daemons. |
-| **`ClientPc`** | `SystemMetadata` | **Restricted** | Network adapter configurations, installed patches, system accounts. |
+| **`LicenseAsset`** | `LicenseKeyEncrypted` | **Confidential** | License keys of tracked software licenses. |
+| **`ClientCertificateRecord`** | `PrivateKeyPem` | **Restricted** | Private keys kept for issued certificates (e.g. the server countersigning certificate). |
+| **`TrustedCaCertificate`** | `PrivateKeyPem` | **Restricted** | Private key of the Heimdall CA. |
+
+`QueuedAgentCommand.Payload` and `ClientPc.SystemMetadata` are not encrypted (`system_metadata` is a GIN-indexed `jsonb` column).
 
 ### 2.3 Entity Framework Core ValueConverter
 Field encryption is handled transparently on database writes and reads via `EncryptedStringConverter` in `AppDbContext`:
@@ -147,17 +157,21 @@ This envelope scheme ensures that even if a disk image or configuration file is 
 
 ## 4. Signed Remote Command Execution Pipeline
 
-To eliminate the risk of unauthorized remote command execution, all commands queued for edge agents are cryptographically signed by the backend:
+To eliminate the risk of unauthorized remote command execution, edge agents execute a queued command only when it carries a valid RSA signature:
 
 ```
 [ Backend API ]                                                    [ Edge Daemon ]
        │                                                                  │
-       │ 1. Admin issues command (e.g., UPDATE_CONFIG)                    │
-       │ 2. Backend signs payload:                                        │
+       │ 1. Admin queues a command (e.g. UPDATE_CONFIG, INSTALL_PLUGIN)   │
+       │ 2. Payload is signed:                                            │
        │    Signature = Sign_RSA(SHA256(Payload), PrivateKey)             │
+       │    config / policy commands: signature supplied by the caller;   │
+       │    plugin installs: PluginService (HEIMDALL_MASTER_PRIVATE_KEY,  │
+       │    else a temporary RSA-2048 key)                                │
        │ 3. Enqueues in backend.queued_agent_commands                     │
        │                                                                  │
-       │─────────────── 4. Deliver via gRPC (ServerCommand) ─────────────►│
+       │────── 4. Next system_info report: commands topic (MQTT 5) ──────►│
+       │          SystemInfoResponse { ServerCommand[] }                  │
        │                                                                  │
        │                                                                  │ 5. Verify:
        │                                                                  │    Verify_RSA(Payload,
@@ -168,16 +182,20 @@ To eliminate the risk of unauthorized remote command execution, all commands que
        │                                                                  │ │ Execute Command
        │                                                                  │◄┘
        │                                                                  │
-       │                                                                  │─┐ [Signature Invalid]
-       │                                                                  │ │ Fail-Secure: Reject &
-       │                                                                  │ │ Raise Critical Alert
+       │                                                                  │─┐ [Signature Invalid / Missing]
+       │                                                                  │ │ Fail-Secure: Reject
+       │                                                                  │ │ (SignatureVerificationFailed),
+       │                                                                  │ │ logged as a warning
        │                                                                  │◄┘
 ```
 
-1. **Signing**: When an administrator queues an agent command via `POST /api/AgentCommand`, the backend signs the canonical payload bytes using RSA-4096 / SHA-256.
-2. **Transmission**: The base64-encoded signature is attached to `ServerCommand.Signature`.
+1. **Signing** (RSA-SHA256, PKCS#1 v1.5):
+   * `UPDATE_CONFIG` (`POST /api/v1/AgentCommand/{clientPcId}/update-config`) and `SET_MASTER_POLICY` (`POST /api/v1/SystemSettings/push-agent-master-policy`): the backend stores the signature that comes with the request; it does not sign these itself.
+   * `INSTALL_PLUGIN`: `PluginService` signs the payload with the key from `HEIMDALL_MASTER_PRIVATE_KEY`, or with a temporary RSA-2048 key generated at startup when that variable is not set (agents cannot verify it after a backend restart). RSA-4096 is not used for command signing; the 4096-bit keys are the Heimdall CA keys (section 9).
+   * `FILE_CHECK` (`POST /api/v1/AgentCommand/{clientPcId}/file-check`) is queued without a signature, so agents with a `ServerPublicKey` reject it.
+2. **Transmission**: The base64-encoded signature is attached to `ServerCommand.Signature` and delivered in the `SystemInfoResponse` published on the device's `commands` topic after its next `system_info` report.
 3. **Edge Verification**: `ConfigurationService.VerifyCommandSignature` validates the signature against the pre-configured `ServerPublicKey`.
-4. **Fail-Secure Rejection**: If the signature does not match or the public key is missing, execution is immediately aborted. The daemon logs a `Critical` security event to `backend.agent_events` and records the rejected payload for auditing.
+4. **Fail-Secure Rejection**: If the signature does not match or is empty, the command is rejected (`ErrorCode.SignatureVerificationFailed`). Without a `ServerPublicKey` every command is rejected, unless the development switch `AllowUnsignedCommands` is set. The agent logs the rejection locally; no event is sent to `backend.agent_events` and the payload is not recorded.
 
 ---
 
@@ -215,18 +233,18 @@ Command-line arguments of running processes are sanitized prior to telemetry pac
 
 ## 6. TISAX VDA ISA 6.0 Compliance Mapping
 
-The platform aligns with the **VDA Information Security Assessment (VDA ISA 6.0)** catalog for **Assessment Level 3 (High Protection Needs)**:
+The platform aligns with the **VDA Information Security Assessment (VDA ISA 6.0)** catalog for **Assessment Level 3 (High Protection Needs)**. Each row separates what the code enforces (**Code**) from what the deployment must provide (**Deployment**):
 
 | VDA ISA ID | Control Name | Heimdall Implementation | Verification Evidence |
 | :--- | :--- | :--- | :--- |
-| **ISA 1.1** | **Identity & Access Management** | Multi-tenant authentication via Better-Auth. Session tokens required on all REST, gRPC, and WebSocket endpoints. Multi-factor authentication (MFA) supported. | `AuthSession` token validation; unit tests in `auth.test.ts`. |
-| **ISA 1.2** | **Tenant & Data Isolation** | EF Core Global Query Filters automatically scope every query by `organization_id`. Cross-tenant data retrieval is blocked at the database engine level. | `MultiTenancyAndGovernanceTests` verify tenant isolation across all repositories. |
-| **ISA 1.3** | **Role-Based Access Control** | Fine-grained roles (`admin`, `engineer`, `technician`, `operator`). Role mappings supported via Entra ID and Active Directory security groups. | Dynamic claims transformer and API authorization policies. |
-| **ISA 2.1** | **Cryptography & Key Management** | AES-256-GCM authenticated encryption for sensitive database columns; RSA/ECDSA digital signatures for agent commands; no hardcoded keys in repository. | `EncryptedStringConverter` test suite; key validation startup checks. |
-| **ISA 2.2** | **Transport Security** | TLS 1.3 mandatory for HTTP; gRPC mTLS with mutual certificate verification; SSL required for PostgreSQL connections; Redis password authentication (`requirepass`). | Docker Compose network certificates; `Program.cs` Kestrel endpoints. |
-| **ISA 2.3** | **Least Privilege & Role Separation** | Separation between DDL migration role (`ef_admin`) and runtime DML role (`dotnet_backend`). Zero shell access required by backend containers. | PostgreSQL `init-roles.sql` permissions; container non-root execution. |
-| **ISA 5.1** | **System Auditability & Logging** | Immutable change logging (`audit_logs`), security event logging (`agent_events`), and dead-letter quarantine (`malformed_telemetry_quarantine`). | Dedicated database tables with UTC timestamps and user attribution. |
-| **ISA 5.2** | **Network Segmentation** | Clear demarcation between IT management plane (HTTP/JSON port 5099) and OT fieldbus telemetry (gRPC port 5001). Local spooling handles network partitions. | Agent `LocalTelemetrySpooler` and architecture topology. |
+| **ISA 1.1** | **Identity & Access Management** | **Code**: multi-tenant authentication via Better-Auth in the BFF; the backend validates the session bearer on `[Authorize]` endpoints and on the SignalR hub. Anonymous by design: `GET certificatemanagement/trust-bundle`, `POST pki/workstation-identity`, `POST tickets/machine-raised`, `POST DiagnosticSnapshot/crash-telemetry` and `recipe-changed`, `POST Copia/webhook`. In Development with dev features (and in the test host), unauthenticated calls act as a dev administrator. MQTT: outside Development / Test the broker accepts only `HEIMDALL_AGENT_KEY` and ingestion requires it as `x-agent-key`. MFA: TOTP enrollment exists in the BFF, but enrollments are kept in memory and the challenge accepts any 6-digit code for users without one, so MFA is not enforced yet (section 8.1). **Deployment**: unique `HEIMDALL_AGENT_KEY` and `BETTER_AUTH_SECRET` (the compose files ship placeholders); dev features off. | `BetterAuthHandler`; `MqttBrokerService.OnValidatingConnectionAsync`; `TelemetryIngestionService.ValidateCallerAuthentication`; unit tests in `auth.test.ts`. |
+| **ISA 1.2** | **Tenant & Data Isolation** | **Code**: EF Core Global Query Filters scope inventory items, client PCs, tickets, agent events, queued commands, audit logs, personnel and security groups and templates by `organization_id` (rows without an organization are visible to every tenant); SignalR events go to `org:{id}` groups only. This is application-level isolation: there is no row-level security in the database, and raw SQL bypasses the filters. **Deployment**: none beyond least-privilege database roles (ISA 2.3). | `MultiTenancyAndGovernanceTests` verify tenant isolation across all repositories. |
+| **ISA 1.3** | **Role-Based Access Control** | **Code**: role catalog in `SecurityConstants` (`system_admin`, `heimdall_admin`, `it_admin`, `engineering_admin`, `engineer`, `technician`, `operator`, ...) mapped to authorization policies (`ItAdministration`, `EndpointConfigManagement`, `MaintenanceOperations`, ...). Role mappings supported via Entra ID and Active Directory security groups. **Deployment**: map the directory groups. | Dynamic claims transformer and API authorization policies. |
+| **ISA 2.1** | **Cryptography & Key Management** | **Code**: AES-256-GCM for the columns in section 2.2; RSA-SHA256 signatures for agent commands (RSA-PKCS1-SHA256 or ECDSA-SHA256 for plugin user signatures); RSA-4096 Heimdall CA. `HEIMDALL_ENCRYPTION_KEY` is required outside Development / Test, where a built-in development key is the fallback. **Deployment**: generate and protect `HEIMDALL_ENCRYPTION_KEY`, `HEIMDALL_MASTER_PRIVATE_KEY` (else plugin commands are signed with a temporary key) and the agents' `ServerPublicKey`. | `EncryptedStringConverter` tests (`DatabaseTests`, `PiiSafeScannerAndSecurityTests`); the key check runs on first encryption, not at startup. |
+| **ISA 2.2** | **Transport Security** | **Code**: Kestrel serves plain HTTP (5099 / 5001) and the embedded broker plain TCP (1883): MQTT 5 with the agent key and signed commands, no gRPC, no telemetry mTLS. The BFF accepts the kiosk certificate header `X-Client-Cert` only from `HEIMDALL_TRUSTED_PROXIES` with `HEIMDALL_TRUST_CLIENT_CERT_HEADER=true` (section 9.1). **Deployment**: the TLS reverse proxy (TLS 1.2+, TLS 1.3 recommended; mTLS for kiosk terminals); 1883 restricted to the agent VLAN or behind a TLS stream proxy; `SSL Mode=Require` in the PostgreSQL connection strings (none of the shipped ones set it); Redis `requirepass` (set in the compose files). | `Program.cs` Kestrel endpoints; `MqttBrokerService`; `server/utils/terminalAuth.ts`; nginx snippet in `PRODUCTION_AND_STAGING_GUIDE.md`. |
+| **ISA 2.3** | **Least Privilege & Role Separation** | **Code**: `infra/database/init/01-init-roles.sh` creates a DDL role (`ef_admin`) and DML roles (`dotnet_backend`, `nuxt_frontend`). The shipped backend connection strings do not use the separation yet: dev and staging connect as `ef_admin`, `docker-compose.prod.yml` as the database owner (`POSTGRES_USER`). The backend, agent and frontend images run as non-root users. **Deployment**: run the backend as `dotnet_backend` and migrations as `ef_admin`. | `01-init-roles.sh`; `USER` in `src/backend/Dockerfile`, `src/agent/Dockerfile`, `src/frontend/web/Dockerfile`. |
+| **ISA 5.1** | **System Auditability & Logging** | **Code**: change logging in `audit_logs` (written today for diagnostic snapshot requests), security and lifecycle events in `agent_events`, dead-letter quarantine in `malformed_telemetry_quarantine`. The tables are not write-protected in code. **Deployment**: revoke `UPDATE` / `DELETE` on the audit tables for the runtime role if immutability is required; retention (section 7). | Dedicated database tables with UTC timestamps and user attribution. |
+| **ISA 5.2** | **Network Segmentation** | **Code**: separate listeners for the IT management plane (HTTP/JSON, 5099 / 5001) and OT telemetry (MQTT 5, 1883) in the same backend process; the agent spools reports locally during network partitions (`LocalTelemetrySpooler`). **Deployment**: firewall / VLAN separation between the networks. | Agent `LocalTelemetrySpooler` and architecture topology. |
 
 ---
 
@@ -258,20 +276,90 @@ To balance stringent security compliance (TISAX ISA 1.1) with operator usability
 | **Custom Groups** | **Configurable** | Custom intervals defined per security group via `/dashboard/admin/system-settings`. |
 
 ### 8.1 Live Session Evaluation Engine (`server/utils/mfaPolicyStore.ts`)
-The server validates session freshness on protected mutations by evaluating:
+The policy evaluates session freshness as:
 $$\Delta t = t_{\text{current}} - t_{\text{last\_mfa}}$$
-If $\Delta t > \text{Threshold}_{\text{role}}$, the request is intercepted with HTTP 403 / `MFA_CHALLENGE_REQUIRED`.
+and reports a required challenge when $\Delta t > \text{Threshold}_{\text{role}}$. Today this runs only on request (`POST /api/system/mfa-policy/evaluate`): no middleware applies it to protected mutations, and nothing answers HTTP 403 / `MFA_CHALLENGE_REQUIRED` yet (not implemented). TOTP enrollment (`server/utils/userMfaStore.ts`) keeps its records in memory, so they are lost when the BFF restarts.
 
 ---
 
-## 9. Active Directory OU-Based PKI & Certificate Governance
+## 9. PKI: Trust Store, Certificates and Identity Mapping
 
-Edge PCs and Soft-PLCs participating in the industrial telemetry mesh require X.509 certificates:
-- **Root CA Management**: Administrators can import existing enterprise root certificates (`.crt` / `.pem`) or generate internal self-signed authority pairs (`/api/pki/root-ca`).
-- **OU-Partitioned Rules**: Automatic certificate enrollment rules map directly to Active Directory Organizational Units partitioned by VLAN:
-  - `OU=Robotics,OU=VLAN10-Production` $\to$ SAN: `*.robotics.vlan10.factory.corp`
-  - `OU=VisionInspection,OU=VLAN20-Quality` $\to$ SAN: `*.vision.vlan20.factory.corp`
-  - `OU=MillingMachining,OU=VLAN30-Machining` $\to$ SAN: `*.milling.vlan30.factory.corp`
+Transport overview: agents talk **MQTT 5 + protobuf** to the backend's embedded broker and authenticate
+with the agent key (`HEIMDALL_AGENT_KEY` as MQTT password); commands are signed (section 4). There is
+**no gRPC and no transport-level mTLS for telemetry**. Client certificates are used for kiosk terminals
+(mTLS terminated at the reverse proxy) and for plugin signatures (section 11).
+
+```mermaid
+flowchart LR
+  Agent[Edge agent] -- "MQTT 5 + protobuf, agent key" --> Broker[(Backend embedded broker)]
+  Kiosk[Kiosk workstation<br/>computer certificate] -- "HTTPS + mTLS" --> Proxy[TLS reverse proxy]
+  Proxy -- "X-Client-Cert (URL-encoded PEM)" --> BFF[Nuxt BFF]
+  BFF -- "POST /api/v1/pki/workstation-identity" --> PKI[Backend PKI<br/>trusted_ca_certificates]
+  Admin[Admin / engineer<br/>user certificate] -- "signed plugin upload" --> PKI
+```
+
+**Trust store** (`backend.trusted_ca_certificates`, one place of truth; the BFF `/api/pki/*` routes proxy
+to it). Each CA certificate has a source and a status:
+
+| Source | Meaning |
+|---|---|
+| `heimdall-self-signed` | Heimdall's own root (created on first use, RSA-4096, key encrypted at rest with `HEIMDALL_ENCRYPTION_KEY`) |
+| `heimdall-subordinate` | Heimdall's CA signed by an AD / enterprise CA: `POST root-ca/subordinate/csr` returns a CSR, `POST root-ca/subordinate/complete` imports the signed certificate + chain (validated: key match, CA flag, chain) |
+| `ad` | AD CS chain imported by an admin (`POST trust-store/import`, or the chain of a subordinate) |
+| `imported` | any other CA certificate |
+
+Statuses: `Active` and `Superseded` are trusted (only the active Heimdall CA issues), `Disabled` and
+`PendingSignature` are not. Endpoints live under `/api/v1/certificatemanagement` (policy `ItAdministration`);
+`GET trust-bundle` (anonymous, public CA certificates) gives agents their `TrustedCaCertificatesPem`.
+
+**Issuance** (`POST issue`, OU sync, `generate`): user and computer certificates from the active Heimdall CA,
+or from AD CS auto-enrolment with the same conventions:
+
+- users: SAN `otherName` UPN (1.3.6.1.4.1.311.20.2.3) and/or `rfc822Name` e-mail; EKU clientAuth + codeSigning;
+- computers: SAN `dNSName` = hostname (or FQDN) and URI `urn:heimdall:machine:<machine identifier>`; EKU clientAuth + serverAuth.
+  `heimdall-server` is reserved for the server's own countersigning certificate.
+
+Without a CSR the generated key is returned once as PKCS#12 and not stored.
+
+**Validation** (`PkiService.ValidateAsync`, BCL `X509Chain` with a custom root trust store, no AIA downloads):
+validity, chain to a trusted CA, end-entity only. Revocation: Heimdall-issued certificates must be in
+`client_certificates` and not `Revoked` (unknown ones fail closed). For AD-issued certificates CRL/OCSP is
+**best effort**: `Heimdall:Pki:ExternalRevocationMode=Online` enables it (unreachable CRL = warning);
+the default `NoCheck` is a documented gap, reported as a warning.
+
+**Identity mapping**: a user certificate maps to the Better-Auth user whose e-mail equals the UPN or the
+e-mail SAN; a computer certificate maps to a ClientPc by machine URI, else DNS name = hostname (full or
+first label), else the registered `certificate_thumbprint`.
+
+### 9.1 Kiosk terminals
+
+`/api/terminal/*` accepts, in this order: a workstation token from `HEIMDALL_TERMINAL_TOKENS` (documented
+fallback), a signed-in session (Better-Auth or the dev SSO simulation), the workstation certificate, and
+in dev / demo (`HEIMDALL_ENABLE_DEV=true`, never with `NODE_ENV=production`, logged at startup) no
+authentication at all.
+
+```mermaid
+sequenceDiagram
+  participant K as Kiosk (computer cert)
+  participant P as Reverse proxy (mTLS)
+  participant B as BFF
+  participant A as Backend PKI
+  K->>P: TLS client certificate
+  P->>B: GET /api/terminal/machine/LINE-03-OP010 + X-Client-Cert
+  B->>B: HEIMDALL_TRUST_CLIENT_CERT_HEADER=true and peer in HEIMDALL_TRUSTED_PROXIES?
+  B->>A: POST /api/v1/pki/workstation-identity
+  A-->>B: valid, ClientPc, stations bound in StationControllers
+  B-->>K: 200 for bound stations, 403 otherwise (401 if invalid)
+```
+
+The proxy must verify the client certificate against the same CAs and overwrite the header
+(nginx: `proxy_set_header X-Client-Cert $ssl_client_escaped_cert;`). The header name is configurable
+(`HEIMDALL_CLIENT_CERT_HEADER`).
+
+### 9.2 OU rules
+
+OU certificate rules (`ou_certificate_rules`) issue computer certificates for ClientPcs in matching AD OUs
+(`POST sync-ou-certificates`) from the Heimdall CA with the conventions above.
 
 ---
 
@@ -281,4 +369,35 @@ Heimdall integrates enterprise identity providers with Better-Auth multi-tenancy
 - **Directory Claims Extraction**: Evaluates incoming Entra ID GUIDs and on-prem Active Directory Distinguished Names (`CN=...,OU=Groups,DC=factory,DC=corp`).
 - **Dynamic Organization Provisioning**: Auto-provisions tenant organizations in PostgreSQL (`auth.organization`) and enrolls users with calculated roles (`owner`, `admin`, `member`) via `server/utils/securityGroupOrgSync.ts`.
 - **Claims Evaluation Sandbox**: Allows administrators to simulate directory claim payloads and inspect resolved tenant memberships directly in the UI (`/dashboard/security-groups`).
+
+---
+
+## 11. Plugin Signing (user signature + server countersignature)
+
+Plugin endpoints (`/api/v1/plugin`) require the `EndpointConfigManagement` policy. Outside dev mode a plugin
+is installed only when it carries two valid signatures:
+
+```mermaid
+sequenceDiagram
+  participant U as Engineer (user certificate)
+  participant S as Backend
+  participant G as Agent
+  U->>U: sign SHA-256(package.json): scripts/sign-plugin.sh or Sign-HeimdallPlugin.ps1
+  U->>S: POST /api/v1/plugin/signed {packageBase64, signature}
+  S->>S: hash matches, signature verifies, chain to trusted CA, not revoked, certificate maps to the caller
+  S->>S: countersign SHA-256(format, package hash, user signature) with the server certificate
+  S->>G: INSTALL_PLUGIN (command signed with the server key, section 4)
+  G->>G: verify both signatures and chains against TrustedCaCertificatesPem, files equal the signed package
+```
+
+- **Envelope** (detached JSON, no CMS): `format` (`heimdall-plugin-signature/v1` or `heimdall-plugin-countersignature/v1`),
+  `algorithm` (`RSA-PKCS1-SHA256` or `ECDSA-SHA256`; DER or P1363), `packageSha256`, `certificateChainPem`
+  (signer first, root left out), `signature` (Base64), `signedAt`.
+- **Server certificate**: issued by the Heimdall CA on first use (`urn:heimdall:machine:heimdall-server`, key
+  encrypted in `client_certificates`); agents require that URI on the countersigner.
+- **Agent**: `PluginManager.VerifyDoubleSignature` checks both chains against `AgentConfig.TrustedCaCertificatesPem`
+  (from `GET /api/v1/certificatemanagement/trust-bundle`). Unsigned or single-signed plugins are rejected unless
+  `Environment` is not `Production` or `AllowUnsignedPlugins` is set (dev mode, sandboxed).
+  Revocation is checked by the backend at upload time; agents do not check CRLs.
+- **Dev only**: `POST /api/v1/plugin` (no user signature) answers 403 unless `HEIMDALL_ENABLE_DEV=true` or Development.
 

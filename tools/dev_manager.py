@@ -19,7 +19,7 @@ CORE_SERVICES = [
     {"name": "PostgreSQL Database", "host": "127.0.0.1", "port": 5432, "type": "tcp", "cat": "Data Storage"},
     {"name": "Redis Spool Cache", "host": "127.0.0.1", "port": 6379, "type": "tcp", "cat": "Data Storage"},
     {"name": "Backend REST API (V1)", "host": "127.0.0.1", "port": 5099, "type": "http", "path": "/swagger/v1/swagger.json", "cat": "Application"},
-    {"name": "Backend gRPC Ingestion", "host": "127.0.0.1", "port": 5001, "type": "tcp", "cat": "Application"},
+    {"name": "MQTT Telemetry Broker", "host": "127.0.0.1", "port": 1883, "type": "tcp", "cat": "Application"},
     {"name": "Web Frontend (Nuxt 4)", "host": "127.0.0.1", "port": 3000, "type": "http", "path": "/", "cat": "Application"},
     {"name": "Edge Agent Config API", "host": "127.0.0.1", "port": 5998, "type": "tcp", "cat": "Edge Node"},
     {"name": "Edge Fleet Simulator", "host": "127.0.0.1", "port": 5055, "type": "tcp", "cat": "Simulation"},
@@ -139,7 +139,7 @@ def run_tests():
     print("\n>>> 4. Running Fleet Simulator Smoke Test...")
     res = subprocess.run([python_bin, "simulators/fleet/fleet_simulator.py", "--smoke-test", "--count", "5"], cwd=ROOT_DIR)
     if res.returncode != 0:
-        print("ℹ️ Note: Fleet simulator smoke test requires active local gRPC service on port 5001.")
+        print("ℹ️ Note: Fleet simulator smoke test requires the backend's embedded MQTT broker on port 1883.")
 
     print("\n✅ Verification Suite Execution Finished.")
     return True

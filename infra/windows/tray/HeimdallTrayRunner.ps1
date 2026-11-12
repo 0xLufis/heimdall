@@ -42,7 +42,7 @@ $itemTrigger = $contextMenu.Items.Add("🚀 Trigger Immediate Telemetry Report")
 $itemTrigger.add_Click({
     try {
         $res = Invoke-RestMethod -Uri "$agentUrl/api/trigger-report" -Method Post -TimeoutSec 3
-        $notifyIcon.ShowBalloonTip(3000, "Heimdall Telemetry", "Immediate report successfully dispatched to backend gRPC.", [System.Windows.Forms.ToolTipIcon]::Info)
+        $notifyIcon.ShowBalloonTip(3000, "Heimdall Telemetry", "Immediate report requested; the agent sends it to the backend over MQTT.", [System.Windows.Forms.ToolTipIcon]::Info)
     } catch {
         $notifyIcon.ShowBalloonTip(3000, "Heimdall Telemetry", "Notice: Backend unreachable or agent offline: $_", [System.Windows.Forms.ToolTipIcon]::Warning)
     }
@@ -70,6 +70,25 @@ $itemStatus.add_Click({
     } catch {
         [System.Windows.Forms.MessageBox]::Show("Agent daemon not responding on $agentUrl.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
+})
+
+$contextMenu.Items.Add("-") | Out-Null
+
+# Item: Station terminal overlay (chromeless Edge/Chrome app window kept on top of the HMI).
+# Needs HEIMDALL_STATION_ID (machine id) and, where used, HEIMDALL_TERMINAL_TOKEN / HEIMDALL_WEB_URL
+# in the environment; see Start-HeimdallTerminal.ps1 next to this script.
+$terminalLauncher = Join-Path $PSScriptRoot "Start-HeimdallTerminal.ps1"
+$itemTerminal = $contextMenu.Items.Add("Open Station Terminal (overlay)")
+$itemTerminal.add_Click({
+    if (-not (Test-Path -LiteralPath $terminalLauncher)) {
+        $notifyIcon.ShowBalloonTip(3000, "Heimdall Terminal", "Launcher not found: $terminalLauncher", [System.Windows.Forms.ToolTipIcon]::Warning)
+        return
+    }
+    if (-not $env:HEIMDALL_STATION_ID) {
+        $notifyIcon.ShowBalloonTip(3000, "Heimdall Terminal", "Set HEIMDALL_STATION_ID to this station's machine id first.", [System.Windows.Forms.ToolTipIcon]::Warning)
+        return
+    }
+    Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$terminalLauncher`"", "-KeepOnTop")
 })
 
 $contextMenu.Items.Add("-") | Out-Null

@@ -24,9 +24,16 @@ export const user = hbSchema.table("user", {
     .notNull(),
   role: text("role"),
   username: text("username").unique(),
+  // Username plugin: the username as typed (sign-up writes it; without the column sign-up failed).
+  displayUsername: text("display_username"),
   banned: boolean("banned"),
   banReason: text("ban_reason"),
-  banExpiresAt: timestamp("ban_expires_at"),
+  // Better-Auth's admin plugin reads and writes the field `banExpires`. The property used to be
+  // called `banExpiresAt`, so a ban's expiry was never stored. The column keeps its name.
+  banExpires: timestamp("ban_expires_at"),
+  // Explicit per-user permission grants, comma-separated (e.g. "organizations.manage"). Not
+  // writable through Better-Auth's own endpoints (input: false); see /api/users/:id/permissions.
+  permissions: text("permissions"),
 });
 
 /**
@@ -49,6 +56,8 @@ export const session = hbSchema.table(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     activeOrganizationId: text("active_organization_id"),
+    // Admin plugin: who started an impersonation session (impersonation failed without it).
+    impersonatedBy: text("impersonated_by"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -127,6 +136,8 @@ export const invitation = hbSchema.table("invitation", {
   role: text("role"),
   status: text("status").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
+  // Organization plugin writes it on every invitation (inviting failed without the column).
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   inviterId: text("inviter_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),

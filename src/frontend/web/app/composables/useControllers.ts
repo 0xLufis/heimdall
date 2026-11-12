@@ -2,8 +2,16 @@ import { ref, onMounted, onUnmounted, getCurrentInstance } from 'vue'
 import type { IndustrialController } from '~/types/domain'
 
 let pollTimer: any = null
+// Components currently relying on the shared poll timer; it stops with the last one.
+let pollSubscribers = 0
 
-export const useControllers = () => {
+export interface UseControllersOptions {
+  /** Keep the shared fleet list fresh with a 5 s poll while mounted (default true). */
+  poll?: boolean
+}
+
+export const useControllers = (options: UseControllersOptions = {}) => {
+  const shouldPoll = options.poll !== false
   const controllers = useState<IndustrialController[]>('global_controllers', () => [])
   const selectedController = useState<IndustrialController | null>('global_selected_controller', () => null)
   const isLoading = ref<boolean>(false)
@@ -74,18 +82,23 @@ export const useControllers = () => {
     })
   }
 
-  const updateControllerPin = async (controllerId: string, handle: string, machineIds: string[] = []) => {
+  /**
+   * Sets the controller's floor-plan pin (an empty handle unpins it). Station associations are
+   * replaced only when `machineIds` is passed; omitting it leaves them untouched, so unpinning a
+   * controller does not also detach it from its stations.
+   */
+  const updateControllerPin = async (controllerId: string, handle: string, machineIds?: string[]) => {
     const pc = controllers.value.find(c => c.id === controllerId)
     if (!pc) return
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       id: pc.id,
       name: pc.name,
       hostname: pc.hostname,
       macAddress: pc.macAddress,
-      pinnedObjectHandle: handle,
-      controlledMachineIds: machineIds
+      pinnedObjectHandle: handle
     }
+    if (machineIds) payload.controlledMachineIds = machineIds
 
     await $fetch(`/api/proxy/ClientPc/${controllerId}`, {
       method: 'PUT',
@@ -99,7 +112,9 @@ export const useControllers = () => {
       if (controllers.value.length === 0) {
         fetchControllers(false)
       }
-      if (typeof window !== 'undefined' && !pollTimer) {
+      if (!shouldPoll || typeof window === 'undefined') return
+      pollSubscribers++
+      if (!pollTimer) {
         pollTimer = setInterval(() => {
           fetchControllers(true)
         }, 5000)
@@ -107,7 +122,10 @@ export const useControllers = () => {
     })
 
     onUnmounted(() => {
-      if (pollTimer) {
+      if (!shouldPoll || typeof window === 'undefined') return
+      // One consumer unmounting must not stop the poll another mounted consumer still relies on.
+      pollSubscribers = Math.max(0, pollSubscribers - 1)
+      if (pollSubscribers === 0 && pollTimer) {
         clearInterval(pollTimer)
         pollTimer = null
       }

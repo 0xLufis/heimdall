@@ -327,6 +327,7 @@ const resetWorkstation = () => {
           <div
             v-for="part in paginatedCatalog"
             :key="part.id"
+            v-ctx:inventory="part"
             @click="selectPart(part)"
             class="p-3 rounded-xl border transition-all cursor-pointer select-none space-y-2"
             :class="selectedPart?.id === part.id 

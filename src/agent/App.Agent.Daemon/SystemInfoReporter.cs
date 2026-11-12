@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using App.Agent.Daemon.Interfaces;
 using App.Agent.Daemon.Reporting;
@@ -25,7 +26,18 @@ public class SystemInfoReporter : ISystemInfoReporter
     private readonly IMqttAgentClient _mqttClient;
     private readonly ISystemInfoService? _systemInfoService;
 
+    private readonly App.Agent.Daemon.Lifecycle.IAgentLifecycle? _lifecycle;
+    private readonly TelemetrySanityFilter _sanity;
+
+    /// <summary>Client-side sanity checks and their counters.</summary>
+    public TelemetrySanityFilter SanityFilter => _sanity;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _contributorFailures = new();
+    private int _draining;
+
     public IReadOnlyList<IComponentContributor> Contributors => _contributors;
+
+    /// <summary>Exceptions thrown by each contributor since start (a failing contributor is skipped, the report still goes out).</summary>
+    public IReadOnlyDictionary<string, long> ContributorFailures => _contributorFailures;
 
     public SystemInfoReporter(
         ILogger<SystemInfoReporter> logger,
@@ -33,8 +45,12 @@ public class SystemInfoReporter : ISystemInfoReporter
         IMqttAgentClient mqttClient,
         IEnumerable<IComponentContributor>? contributors = null,
         ITelemetrySpooler? spooler = null,
-        ISystemInfoService? systemInfoService = null)
+        ISystemInfoService? systemInfoService = null,
+        App.Agent.Daemon.Lifecycle.IAgentLifecycle? lifecycle = null,
+        TelemetrySanityFilter? sanityFilter = null)
     {
+        _lifecycle = lifecycle;
+        _sanity = sanityFilter ?? new TelemetrySanityFilter();
         _logger = logger;
         _configService = configService;
         _mqttClient = mqttClient;
@@ -68,8 +84,23 @@ public class SystemInfoReporter : ISystemInfoReporter
 
     public IConfigurationService GetConfigService() => _configService;
 
-    public async Task<SystemInfoResponse?> ReportInfoAsync(SystemInfoData data)
+    public Task<SystemInfoResponse?> ReportInfoAsync(SystemInfoData data) => ReportCoreAsync(data, spoolOnFailure: true);
+
+    private async Task<SystemInfoResponse?> ReportCoreAsync(SystemInfoData data, bool spoolOnFailure)
     {
+        // Sanity checks before anything is sent or spooled (live reports also get the monotonic time rule).
+        var sanity = _sanity.Check(data, DateTimeOffset.UtcNow, liveReport: spoolOnFailure);
+        if (sanity.Issues.Count > 0)
+        {
+            _logger.LogWarning("Report sanity check {Outcome}: {Issues}", sanity.Accepted ? "corrected values" : "rejected the report",
+                string.Join(", ", sanity.Issues.Distinct()));
+        }
+        if (!sanity.Accepted)
+        {
+            // Not spooled either: it would be rejected again on every drain.
+            return spoolOnFailure ? null : new SystemInfoResponse { Success = true, Message = "Rejected by sanity checks; dropped from spool." };
+        }
+
         try
         {
             var request = new SystemInfoRequest
@@ -93,27 +124,52 @@ public class SystemInfoReporter : ISystemInfoReporter
                 }
             }
 
-            // Build inventory components dynamically through contributor pipeline
+            // Build inventory components dynamically through contributor pipeline. Each contributor is
+            // isolated: one that throws (a plugin, an extension with unserializable data) is skipped
+            // and counted instead of failing - and spooling - the whole report on every cycle.
             foreach (var contributor in _contributors)
             {
-                if (contributor is IMultiComponentContributor multi)
+                try
                 {
-                    foreach (var component in multi.CreateComponents(data))
+                    if (contributor is IMultiComponentContributor multi)
                     {
+                        foreach (var component in multi.CreateComponents(data))
+                        {
+                            if (component != null)
+                            {
+                                request.Components.Add(component);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var component = contributor.CreateComponent(data);
                         if (component != null)
                         {
                             request.Components.Add(component);
                         }
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    var component = contributor.CreateComponent(data);
-                    if (component != null)
+                    long failures = _contributorFailures.AddOrUpdate(contributor.GetType().Name, 1, (_, n) => n + 1);
+                    if (failures == 1 || failures % 100 == 0)
                     {
-                        request.Components.Add(component);
+                        _logger.LogWarning(ex, "Component contributor {Contributor} failed ({Failures} failures since start); report sent without it.",
+                            contributor.GetType().Name, failures);
                     }
                 }
+            }
+
+            int maxBytes = Math.Max(16_384, _configService.Config.MaxReportPayloadBytes);
+            if (!_sanity.EnforceSize(request, maxBytes, out var dropped))
+            {
+                _logger.LogError("System info report exceeds {Max} bytes even without inventory components; not sent.", maxBytes);
+                return spoolOnFailure ? null : new SystemInfoResponse { Success = true, Message = "Oversized; dropped from spool." };
+            }
+            if (dropped.Count > 0)
+            {
+                _logger.LogWarning("System info report exceeded {Max} bytes; left out components: {Components}", maxBytes, string.Join(", ", dropped));
             }
 
             var topic = MqttTopics.SystemInfo(data.MachineIdentifier);
@@ -122,8 +178,11 @@ public class SystemInfoReporter : ISystemInfoReporter
             if (published)
             {
                 _logger.LogInformation("Successfully reported system info via MQTT to topic {Topic}", topic);
+                _lifecycle?.MarkReportDelivered();
 
-                if (_spooler != null)
+                // Drain the spool after a live report got through - but not from inside a drain, and
+                // a spooled record that fails again is NOT spooled a second time (it stays queued).
+                if (_spooler != null && spoolOnFailure && Interlocked.CompareExchange(ref _draining, 1, 0) == 0)
                 {
                     _ = Task.Run(async () =>
                     {
@@ -133,13 +192,17 @@ public class SystemInfoReporter : ISystemInfoReporter
                             {
                                 var spooledData = JsonSerializer.Deserialize<SystemInfoData>(payload);
                                 if (spooledData == null) return true;
-                                var res = await ReportInfoAsync(spooledData);
+                                var res = await ReportCoreAsync(spooledData, spoolOnFailure: false);
                                 return res?.Success == true;
                             });
                         }
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Background spool draining encountered an issue.");
+                        }
+                        finally
+                        {
+                            Interlocked.Exchange(ref _draining, 0);
                         }
                     });
                 }
@@ -152,15 +215,15 @@ public class SystemInfoReporter : ISystemInfoReporter
             }
             else
             {
-                _logger.LogWarning("Failed to publish system info via MQTT. Spooling to local buffer.");
-                await SpoolDataAsync(data);
+                _logger.LogWarning("Failed to publish system info via MQTT.{Action}", spoolOnFailure ? " Spooling to local buffer." : string.Empty);
+                if (spoolOnFailure) await SpoolDataAsync(data);
                 return null;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error while reporting system info via MQTT. Spooling to local buffer.");
-            await SpoolDataAsync(data);
+            _logger.LogError(ex, "Error while reporting system info via MQTT.{Action}", spoolOnFailure ? " Spooling to local buffer." : string.Empty);
+            if (spoolOnFailure) await SpoolDataAsync(data);
             return null;
         }
     }

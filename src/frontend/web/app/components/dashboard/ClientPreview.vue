@@ -70,6 +70,7 @@ function navigateToClient(client: Client) {
               <TableRow 
                 v-for="client in clients" 
                 :key="client.id" 
+                v-ctx:controller="client"
                 @click="navigateToClient(client)"
                 class="hover:bg-muted/40 transition-colors border-border cursor-pointer group"
               >

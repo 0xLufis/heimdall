@@ -43,6 +43,45 @@ public static class AuthorizationPolicies
     public const string DelegationManagement = "DelegationManagement";
     public const string SkillsManagement = "SkillsManagement";
     public const string ComponentManagement = "ComponentManagement";
+    /// <summary>
+    /// Create organizations and manage the ones the caller is a member of (Heimdall administrators:
+    /// every organization). Met by the roles in <see cref="OrganizationManagementRules.Roles"/> or by
+    /// the explicit per-user grant <see cref="HeimdallPermissions.OrganizationsManage"/>.
+    /// </summary>
+    public const string OrganizationManagement = "OrganizationManagement";
+}
+
+/// <summary>
+/// Who holds <see cref="AuthorizationPolicies.OrganizationManagement"/>. Mirrored by
+/// <c>POLICY_ROLES.OrganizationManagement</c> / <c>ORGANIZATION_ADMIN_ROLES</c> in
+/// src/frontend/web/app/utils/roles.ts (RoleCatalogConsistency.test.ts checks both).
+/// </summary>
+public static class OrganizationManagementRules
+{
+    /// <summary>Heimdall administrators: manage every organization, member or not.</summary>
+    public static readonly string[] HeimdallAdminRoles =
+    {
+        HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin
+    };
+
+    /// <summary>
+    /// Roles holding the right by role: Heimdall administrators plus middle managers and up.
+    /// First-line supervisors (shift_leader), senior individual contributors (lead_engineer), the IT
+    /// roles and everyone else need the explicit grant.
+    /// </summary>
+    public static readonly string[] Roles =
+    {
+        HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin,
+        HeimdallRoles.PlantDirector, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager,
+        HeimdallRoles.SeniorEngineeringManager, HeimdallRoles.GroupLeader, HeimdallRoles.Manager
+    };
+}
+
+/// <summary>Claim types Heimdall issues besides the standard ones.</summary>
+public static class HeimdallClaimTypes
+{
+    /// <summary>One claim per explicit per-user permission grant (auth.user.permissions).</summary>
+    public const string Permission = "heimdall:permission";
 }
 
 /// <summary>
@@ -63,5 +102,8 @@ public static class HeimdallPermissions
     public const string SkillsManage = "functional:skills:manage";
     public const string LineStopApprove = "functional:linestop:approve";
     public const string InventoryManage = "functional:inventory:manage";
+
+    /// <summary>Explicit per-user grant of <see cref="AuthorizationPolicies.OrganizationManagement"/>.</summary>
+    public const string OrganizationsManage = "organizations.manage";
 }
 

@@ -1,131 +1,155 @@
-using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using App.Agent.Daemon.Infrastructure.Persistence;
 using App.Agent.Daemon.Interfaces;
 
 namespace App.Agent.Daemon.Infrastructure.Spooling;
 
 /// <summary>
 /// Offline local telemetry spooler buffering telemetry payloads when disconnected from Heimdall backend.
-/// Automatically enforces storage quotas with FIFO eviction, atomic snapshot writes, and process crash resilience.
+/// <para>
+/// Records are written durably (temp file, flush to disk, atomic rename) with a checksum envelope
+/// (<see cref="DurableRecordQueue"/>), the disk quota is enforced with FIFO eviction, and draining is
+/// single-flight and oldest-first. A record that a power loss or BSOD left empty, zero-filled or
+/// truncated is moved to <c>corrupt/</c> and skipped: it neither blocks the records behind it nor
+/// stops the agent.
+/// </para>
 /// </summary>
 public class LocalTelemetrySpooler : ITelemetrySpooler
 {
     private readonly ILogger<LocalTelemetrySpooler> _logger;
     private readonly IConfigurationService _configService;
-    private readonly string _spoolDir;
-    private readonly object _lock = new();
+    private readonly DurableRecordQueue _queue;
+    private readonly SemaphoreSlim _drainGate = new(1, 1);
 
-    public LocalTelemetrySpooler(ILogger<LocalTelemetrySpooler> logger, IConfigurationService configService, string? spoolDirectory = null)
+    public LocalTelemetrySpooler(
+        ILogger<LocalTelemetrySpooler> logger,
+        IConfigurationService configService,
+        string? spoolDirectory = null,
+        IRecoveryJournal? recoveryJournal = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
-        _spoolDir = spoolDirectory ?? Path.Combine(AppContext.BaseDirectory, "telemetry_spool");
-
-        try
-        {
-            if (!Directory.Exists(_spoolDir))
-            {
-                Directory.CreateDirectory(_spoolDir);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initialize spool directory at {Path}", _spoolDir);
-        }
+        string directory = spoolDirectory ?? Path.Combine(AppContext.BaseDirectory, "telemetry_spool");
+        _queue = new DurableRecordQueue(directory, "spool_", "spool", logger, recoveryJournal);
     }
 
     /// <summary>
-    /// Spools a raw telemetry or system info JSON payload to local disk with atomic crash-resistant write.
+    /// Spools a raw telemetry or system info JSON payload to local disk with a durable, crash-resistant write.
     /// </summary>
-    public async Task SpoolPayloadAsync(string payloadJson)
+    public Task SpoolPayloadAsync(string payloadJson)
     {
-        lock (_lock)
-        {
-            EnforceQuota();
-        }
+        long maxBytes = (long)Math.Max(1, _configService.Config.MaxSpoolDiskMb) * 1024 * 1024;
 
-        string fileName = $"spool_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Guid.NewGuid():N}.json";
-        string filePath = Path.Combine(_spoolDir, fileName);
-        string tmpPath = filePath + ".tmp";
-
-        try
+        string? fileName = _queue.TryEnqueue(payloadJson, maxBytes, out var error);
+        if (fileName != null)
         {
-            await File.WriteAllTextAsync(tmpPath, payloadJson, Encoding.UTF8);
-            File.Move(tmpPath, filePath, overwrite: true);
             _logger.LogInformation("Spooled telemetry payload to {Path} ({Bytes} bytes)", fileName, payloadJson.Length);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Failed to write spooled telemetry file to {Path}", filePath);
-            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { }
+            Interlocked.Increment(ref _rejectedRecords);
+            _logger.LogError("Failed to write spooled telemetry record to {Path}: {Error}", _queue.Directory, error);
         }
+
+        return Task.CompletedTask;
     }
 
-    public int PendingCount
-    {
-        get
-        {
-            try
-            {
-                return Directory.Exists(_spoolDir) ? Directory.GetFiles(_spoolDir, "spool_*.json").Length : 0;
-            }
-            catch
-            {
-                return 0;
-            }
-        }
-    }
+    private long _rejectedRecords;
+
+    public int PendingCount => _queue.Count;
 
     /// <summary>
     /// Returns total size in bytes of all spooled payloads buffered on disk.
     /// </summary>
-    public long TotalSizeBytes
-    {
-        get
-        {
-            try
-            {
-                if (!Directory.Exists(_spoolDir)) return 0L;
-                var dirInfo = new DirectoryInfo(_spoolDir);
-                return dirInfo.GetFiles("spool_*.json").Sum(f => f.Length);
-            }
-            catch
-            {
-                return 0L;
-            }
-        }
-    }
+    public long TotalSizeBytes => _queue.TotalBytes;
+
+    /// <summary>Records skipped because they were damaged (torn, zero-filled, bad checksum) or poison since start.</summary>
+    public long CorruptRecordsSkipped => _queue.CorruptRecords;
+
+    /// <summary>Records dropped to stay within <c>MaxSpoolDiskMb</c> since start.</summary>
+    public long EvictedRecords => _queue.EvictedRecords;
+
+    /// <summary>Records that could not be written to the spool at all since start.</summary>
+    public long RejectedRecords => Interlocked.Read(ref _rejectedRecords);
 
     /// <summary>
     /// Drains spooled payloads in chronological order and sends them via the provided send function.
+    /// Only one drain runs at a time; a call that arrives while another is in progress returns 0.
     /// </summary>
     public async Task<int> DrainSpoolAsync(Func<string, Task<bool>> sendFunction)
     {
-        if (!Directory.Exists(_spoolDir)) return 0;
+        ArgumentNullException.ThrowIfNull(sendFunction);
 
-        string[] files;
-        lock (_lock)
+        // Two concurrent drains would read the same directory listing and send every record twice.
+        if (!await _drainGate.WaitAsync(0))
         {
-            files = Directory.GetFiles(_spoolDir, "spool_*.json")
-                .OrderBy(f => f)
-                .ToArray();
+            return 0;
         }
 
-        if (files.Length == 0) return 0;
-
-        _logger.LogInformation("Attempting to drain {Count} spooled telemetry entries", files.Length);
-        int successCount = 0;
-
-        foreach (var file in files)
+        try
         {
-            try
+            var files = _queue.ListFiles();
+            if (files.Count == 0) return 0;
+
+            _logger.LogInformation("Attempting to drain {Count} spooled telemetry entries", files.Count);
+            int successCount = 0;
+            int setAside = 0;
+            string? firstBadFile = null;
+            FileDefect firstDefect = FileDefect.None;
+            string? firstDetail = null;
+
+            foreach (var file in files)
             {
-                string payload = await File.ReadAllTextAsync(file, Encoding.UTF8);
-                bool sent = await sendFunction(payload);
+                var record = _queue.Read(file);
+                if (!record.IsValid)
+                {
+                    if (record.Defect == FileDefect.Missing)
+                    {
+                        continue; // evicted by the quota or removed meanwhile
+                    }
+
+                    if (record.Defect == FileDefect.Unreadable)
+                    {
+                        // Locked or temporarily inaccessible is not proof of damage: keep order, retry later.
+                        _logger.LogWarning("Spooled record {File} is not readable right now ({Detail}). Halting drain.",
+                            Path.GetFileName(file), record.Detail);
+                        break;
+                    }
+
+                    // Torn tail record after a power loss / BSOD, or a corrupted file: skip it, keep going.
+                    _queue.SetAside(file, record.Defect, record.Detail);
+                    setAside++;
+                    firstBadFile ??= Path.GetFileName(file);
+                    if (setAside == 1) { firstDefect = record.Defect; firstDetail = record.Detail; }
+                    continue;
+                }
+
+                bool sent;
+                try
+                {
+                    sent = await sendFunction(record.Payload!);
+                }
+                catch (Exception ex)
+                {
+                    if (_queue.RegisterConsumerFailure(file))
+                    {
+                        // The consumer cannot process this record at all: it must not block the spool forever.
+                        _logger.LogError(ex, "Spooled record {File} failed {Attempts} times in the consumer; setting it aside.",
+                            Path.GetFileName(file), DurableRecordQueue.MaxConsumerFailures);
+                        _queue.SetAside(file, FileDefect.Invalid, $"consumer failed: {ex.GetType().Name}: {ex.Message}");
+                        setAside++;
+                        firstBadFile ??= Path.GetFileName(file);
+                        if (setAside == 1) { firstDefect = FileDefect.Invalid; firstDetail = ex.Message; }
+                        continue;
+                    }
+
+                    _logger.LogError(ex, "Error while draining spooled file {File}", Path.GetFileName(file));
+                    break;
+                }
+
                 if (sent)
                 {
-                    File.Delete(file);
+                    _queue.Remove(file);
                     successCount++;
                 }
                 else
@@ -134,47 +158,22 @@ public class LocalTelemetrySpooler : ITelemetrySpooler
                     break;
                 }
             }
-            catch (Exception ex)
+
+            if (setAside > 0)
             {
-                _logger.LogError(ex, "Error while draining spooled file {File}", file);
-                break;
+                _queue.ReportSetAside(setAside, firstBadFile!, firstDefect, firstDetail);
             }
-        }
 
-        if (successCount > 0)
-        {
-            _logger.LogInformation("Successfully drained and removed {Count} spooled entries", successCount);
-        }
-
-        return successCount;
-    }
-
-    /// <summary>
-    /// Enforces disk quota by deleting the oldest files until disk usage is below quota.
-    /// </summary>
-    private void EnforceQuota()
-    {
-        try
-        {
-            if (!Directory.Exists(_spoolDir)) return;
-
-            long maxBytes = (long)_configService.Config.MaxSpoolDiskMb * 1024 * 1024;
-            var dirInfo = new DirectoryInfo(_spoolDir);
-            var files = dirInfo.GetFiles("spool_*.json").OrderBy(f => f.CreationTimeUtc).ToList();
-
-            long totalBytes = files.Sum(f => f.Length);
-            while (totalBytes > maxBytes && files.Count > 0)
+            if (successCount > 0)
             {
-                var oldest = files[0];
-                _logger.LogWarning("Spool quota exceeded ({Used} / {Max} bytes). Evicting oldest spool file {File}", totalBytes, maxBytes, oldest.Name);
-                totalBytes -= oldest.Length;
-                oldest.Delete();
-                files.RemoveAt(0);
+                _logger.LogInformation("Successfully drained and removed {Count} spooled entries", successCount);
             }
+
+            return successCount;
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Failed to enforce spool disk quota");
+            _drainGate.Release();
         }
     }
 }

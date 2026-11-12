@@ -303,11 +303,18 @@ describe('QR action payload hardening', () => {
 
 describe('machine group BFF <-> backend mapping', () => {
   it('serialises arrays to JSON columns and strips server-managed fields', () => {
-    const out = toBackendGroup({ id: 'x', organizationId: 'other-org', name: 'Line 1', machineIds: ['a'], machineTypes: ['AOI'] })
-    expect(out).not.toHaveProperty('organizationId')
+    const out = toBackendGroup({ id: 'x', createdAt: 'then', name: 'Line 1', machineIds: ['a'], machineTypes: ['AOI'] })
     expect(out).not.toHaveProperty('id')
+    expect(out).not.toHaveProperty('createdAt')
     expect(out.machineIdsJson).toBe('["a"]')
     expect(out.machineTypesJson).toBe('["AOI"]')
+  })
+
+  it('forwards the owning organization for the backend to decide (only platform administrators may pick one)', () => {
+    expect(toBackendGroup({ name: 'Line 1', organizationId: 'org-line-01' })).toMatchObject({ organizationId: 'org-line-01' })
+    expect(toBackendGroup({ name: 'Fleet', organizationId: null })).toMatchObject({ organizationId: null })
+    expect(toBackendGroup({ name: 'Line 1' })).not.toHaveProperty('organizationId')
+    expect(fromBackendGroup({ name: 'g', organizationId: 'org-line-02', machineIdsJson: '[]' })).toMatchObject({ organizationId: 'org-line-02' })
   })
 
   it('parses JSON columns back into arrays and tolerates malformed JSON', () => {

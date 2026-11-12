@@ -20,7 +20,8 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREREQUISITE_PORTS = [
     {"port": 3000, "service": "Nuxt 4 Web Frontend", "role": "Frontend Web Application"},
     {"port": 5000, "service": "Legacy / Alt Backend", "role": "Diagnostic Port"},
-    {"port": 5001, "service": "Backend gRPC Ingestion", "role": "Industrial Telemetry Collector"},
+    {"port": 5001, "service": "Backend API (secondary)", "role": "Cleartext HTTP (containers)"},
+    {"port": 1883, "service": "Embedded MQTT Broker", "role": "Agent / Simulator Telemetry Ingestion"},
     {"port": 5099, "service": "Backend REST API (V1)", "role": "Core API Gateway"},
     {"port": 5432, "service": "PostgreSQL 18 Database", "role": "Relational Multi-Tenant Storage"},
     {"port": 6379, "service": "Redis Spool Cache", "role": "Telemetry & Event Spool"}
@@ -53,10 +54,26 @@ def check_tool_version(cmd, name, version_arg="--version", version_pattern=None,
                 if parts < min_parts:
                     return False, f"Version {version_str} found, but >={min_version} is required"
                 return True, f"v{version_str} ({executable})"
-            return True, f"{first_line} ({executable})"
+            # No version in the output usually means the tool is broken (e.g. dotnet with a runtime but no SDK).
+            return False, f"Could not determine version: {first_line} ({executable})"
         return True, f"{first_line} ({executable})"
     except Exception as e:
         return False, str(e)
+
+
+def check_aspnet_runtime(min_major=10):
+    """The backend needs the Microsoft.AspNetCore.App shared framework, not just the SDK."""
+    try:
+        res = subprocess.run(["dotnet", "--list-runtimes"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+    except Exception as e:
+        return False, str(e)
+    versions = re.findall(r"^Microsoft\.AspNetCore\.App (\d+)\.(\d+)\.(\d+)", res.stdout, flags=re.MULTILINE)
+    matching = [v for v in versions if int(v[0]) >= min_major]
+    if matching:
+        return True, "v" + ".".join(matching[-1])
+    return False, (f"Microsoft.AspNetCore.App {min_major}.x not installed; the backend will not start. "
+                   "Install the ASP.NET Core runtime (e.g. Arch: `sudo pacman -S aspnet-runtime`, "
+                   f"Debian/Ubuntu: `sudo apt install aspnetcore-runtime-{min_major}.0`)")
 
 
 def check_prerequisites():
@@ -70,6 +87,13 @@ def check_prerequisites():
     print(f"  • .NET 10 SDK:          {'[PASS]' if dotnet_ok else '[FAIL]'} {dotnet_msg}")
     results["dotnet"] = dotnet_ok
     if not dotnet_ok: all_passed = False
+
+    # 1b. ASP.NET Core shared runtime. The SDK alone is not enough: the backend (and its Swagger UI)
+    # targets Microsoft.AspNetCore.App, which some distributions package separately from the SDK.
+    aspnet_ok, aspnet_msg = check_aspnet_runtime() if dotnet_ok else (False, "Skipped (.NET SDK check failed)")
+    print(f"  • ASP.NET Core Runtime: {'[PASS]' if aspnet_ok else '[FAIL]'} {aspnet_msg}")
+    results["aspnet"] = aspnet_ok
+    if not aspnet_ok: all_passed = False
 
     # 2. Bun
     bun_ok, bun_msg = check_tool_version("bun", "Bun", "--version", r"(\d+\.\d+\.\d+)", "1.0.0")
@@ -166,6 +190,52 @@ def check_ports():
     return port_status
 
 
+def run_migrations():
+    print(">> Applying EF Core database migrations...")
+    try:
+        subprocess.run(["dotnet", "tool", "restore"], cwd=ROOT_DIR, check=True)
+        subprocess.run([
+            "dotnet", "ef", "database", "update",
+            "--project", "src/shared/App.Shared",
+            "--startup-project", "src/backend/App.Backend.Api",
+        ], cwd=ROOT_DIR, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error applying database migrations: {e}")
+        return False
+    # The auth schema (better-auth tables) is owned by Drizzle, not EF Core. Without it the seed
+    # pipeline fails with `relation "auth.member" does not exist` on a fresh database.
+    print(">> Applying Drizzle auth-schema migrations...")
+    web_dir = os.path.join(ROOT_DIR, "src", "frontend", "web")
+    drizzle_env = dict(os.environ)
+    drizzle_env.setdefault(
+        "DATABASE_URL", "postgresql://drizzle_admin:migrate@127.0.0.1:5432/heimdall_dev_db"
+    )
+    try:
+        if not os.path.isdir(os.path.join(web_dir, "node_modules")):
+            subprocess.run(["bun", "install"], cwd=web_dir, check=True)
+        subprocess.run(["bun", "x", "drizzle-kit", "migrate"], cwd=web_dir, env=drizzle_env, check=True)
+        # Tables created by ef_admin / drizzle_admin are not covered by the default privileges set
+        # at init time, so re-run the (idempotent) role script to grant the runtime roles access.
+        # The database superuser is whatever the container was initialised with.
+        pg_user = "postgres"
+        try:
+            with open(os.path.join(ROOT_DIR, "infra", "database", "secrets", "pg_user.txt")) as f:
+                pg_user = f.read().strip() or pg_user
+        except OSError:
+            pass
+        subprocess.run([
+            "docker", "exec", "-u", "postgres",
+            "-e", f"POSTGRES_USER={pg_user}", "-e", "POSTGRES_DB=heimdall_dev_db",
+            "postgres_heimdall", "bash", "/docker-entrypoint-initdb.d/01-init-roles.sh",
+        ], cwd=ROOT_DIR, check=True, stdout=subprocess.DEVNULL)
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print(f"Error applying Drizzle auth-schema migrations: {e}")
+        return False
+
+    print("Database schema is up to date.")
+    return True
+
+
 def bootstrap_databases(skip_seed=False):
     print("\n[3/3] Initializing Databases & Seeding Enterprise Data...")
     print("-" * 73)
@@ -200,6 +270,10 @@ def bootstrap_databases(skip_seed=False):
         return False
 
     print("PostgreSQL & Redis database containers are healthy.")
+
+    # Apply EF Core migrations before seeding: the seed SQL expects the schema to exist.
+    if not run_migrations():
+        return False
 
     if skip_seed:
         print("Skipping seed data pipeline (--skip-seed specified).")
@@ -250,7 +324,7 @@ def bootstrap_databases(skip_seed=False):
 def main():
     parser = argparse.ArgumentParser(description="Heimdall Dev Setup & Environment Automation")
     parser.add_argument("--check-only", action="store_true", help="Run prerequisite and port diagnostics without modifying DB")
-    parser.add_argument("--skip-seed", action="store_true", help="Initialize database containers without running enterprise seed")
+    parser.add_argument("--skip-seed", action="store_true", help="Initialize database containers and apply migrations without running enterprise seed")
     parser.add_argument("--non-interactive", action="store_true", help="Run without interactive prompts")
     args = parser.parse_args()
 
@@ -274,7 +348,8 @@ def main():
         print("  \033[92mHEIMDALL DEVELOPMENT ENVIRONMENT SUCCESSFULLY INITIALIZED\033[0m")
         print("  • To launch full stack with interactive monitor:   just dev")
         print("  • To start individual service:                     just start <service>")
-        print("  • To view pgAdmin portal (optional profile):       just pgadmin")
+        print("  • To view pgAdmin portal (optional profile):       just pgadmin   -> http://localhost:5050")
+        print("  • Swagger UI (backend running, dev only):          http://localhost:5099/swagger")
         print("  • To run test suites:                              just test")
     else:
         print("  \033[91mHEIMDALL DEV SETUP ENCOUNTERED ERRORS DURING INITIALIZATION\033[0m")

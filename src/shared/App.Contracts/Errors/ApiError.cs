@@ -73,7 +73,7 @@ public class ApiError
         ErrorCode.HardwareQueryFailed => "Querying system hardware telemetry failed.",
         ErrorCode.SpoolError => "Local telemetry spooler operation failed.",
         ErrorCode.DatabaseError => "Database persistence operation failed.",
-        ErrorCode.CommunicationError => "gRPC or network communication failure.",
+        ErrorCode.CommunicationError => "Network or message broker communication failure.",
         _ => "An internal system error occurred."
     };
 }

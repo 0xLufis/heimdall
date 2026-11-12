@@ -1,7 +1,11 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateAutomationApiKey } from '../../../utils/automationApiKeysStore'
+import { requirePolicy } from '../../../utils/authz'
 
 export default defineEventHandler(async (event) => {
+  // Minting an automation key hands out write access to security-group mappings and organization
+  // enrolment; this route used to be anonymous and let the caller pick any scope.
+  const caller = await requirePolicy(event, 'ItAdministration')
   const body = await readBody(event)
 
   if (!body || !body.name || typeof body.name !== 'string' || !body.name.trim()) {
@@ -16,7 +20,7 @@ export default defineEventHandler(async (event) => {
     systemType: body.systemType || 'Custom',
     scopes: Array.isArray(body.scopes) && body.scopes.length > 0 ? body.scopes : undefined,
     expiresInDays: typeof body.expiresInDays === 'number' ? body.expiresInDays : null,
-    createdBy: body.createdBy || 'it_admin',
+    createdBy: caller.email || caller.id,
     description: body.description?.trim()
   })
 

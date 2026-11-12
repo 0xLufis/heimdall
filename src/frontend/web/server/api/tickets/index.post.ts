@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { addTicketToStore, MaintenanceTicket } from '../../utils/ticketsStore'
 import { ensureBetterAuthProfile } from '../../utils/authProfiles'
+import { backendAuthHeaders } from '../../utils/backendProxy'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -128,6 +129,7 @@ export default defineEventHandler(async (event) => {
   const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   $fetch(`${backendBase}/api/v1/tickets`, {
     method: 'POST',
+    headers: await backendAuthHeaders(event),
     body: {
       ...newTicket,
       machineId: newTicket.stationId,
@@ -135,7 +137,9 @@ export default defineEventHandler(async (event) => {
       createdBy: newTicket.reportedByUserName,
       assignedTo: newTicket.assignedTechnicianName
     }
-  }).catch(() => {})
+  }).catch((err: any) => {
+    console.warn(`[tickets] backend create of ${newTicket.id} failed: ${err?.statusCode || err?.status || ''} ${err?.message || err}`)
+  })
 
   return {
     success: true,

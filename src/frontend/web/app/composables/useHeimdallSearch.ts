@@ -23,7 +23,21 @@ import {
   buildDynamicSearchKeyGroups,
   type RankedIndexingTable
 } from '~/utils/search/indexingTables'
-import { rankByFuzzyScore, isFuzzyMatch } from '~/utils/search/fuzzy'
+import { rankByFuzzyScore } from '~/utils/search/fuzzy'
+import { rankRecords } from '~/utils/search/searchRanking'
+import {
+  loadCatalog,
+  resolveSearchScope,
+  inventoryFilterExpression,
+  searchServer,
+  ticketToSearchItem,
+  CATALOG_FIELDS,
+  type CatalogName,
+  type SearchScopeKind,
+  type ServerSearchKind
+} from '~/utils/search/searchSources'
+import { loadRecentSearches, addRecentSearch, saveRecentSearches } from '~/utils/search/recentSearches'
+import { orderResultsByKind } from '~/utils/search/searchNavigation'
 import { 
   SearchDiagnosticsService, 
   defaultSearchDiagnostics,
@@ -35,6 +49,10 @@ import {
  * Universal high-throughput multi-tier fuzzy indexing engine for industrial assets,
  * client PCs, telemetry, and enterprise field inventory.
  */
+/** Hits per entity kind asked from the server: a few of each in a mixed list, more when one kind is the subject. */
+const MIXED_RESULT_LIMIT = 8
+const FOCUSED_RESULT_LIMIT = 20
+
 const DEFAULT_CONFIG: SearchInstanceConfig = {
   instanceId: 'dashboard',
   placeholder: 'Search stations, controllers, inventory, specs... (Cmd+K)',
@@ -57,7 +75,7 @@ export const useHeimdallSearch = (
   const config: SearchInstanceConfig = {
     ...DEFAULT_CONFIG,
     ...topConfig,
-    instanceId: (optionsOrConfig as any).instanceId || topConfig.placeholder || DEFAULT_CONFIG.instanceId,
+    instanceId: (optionsOrConfig as any).instanceId || DEFAULT_CONFIG.instanceId,
     placeholder: (optionsOrConfig as any).placeholder || topConfig.placeholder || DEFAULT_CONFIG.placeholder,
     defaultEndpoints: (optionsOrConfig as any).defaultEndpoints || DEFAULT_CONFIG.defaultEndpoints,
     allowedTagKeys: (optionsOrConfig as any).allowedTagKeys || topConfig.allowedTagKeys || DEFAULT_CONFIG.allowedTagKeys,
@@ -113,6 +131,22 @@ export const useHeimdallSearch = (
   const searchKeyGroups = ref<SearchGroup[]>(buildDynamicSearchKeyGroups(dynamicKnownKeyValues.value))
   const isLoading = ref(false)
   const isDropdownOpen = ref(false)
+  // Set when every queried source failed; `failedSources` lists partial outages
+  const error = ref<string | null>(null)
+  const failedSources = ref<string[]>([])
+  const recentSearches = ref<string[]>(loadRecentSearches())
+
+  const rememberSearch = (query: string = rawInput.value) => {
+    const next = addRecentSearch(recentSearches.value, query)
+    if (next === recentSearches.value) return
+    recentSearches.value = next
+    saveRecentSearches(next)
+  }
+
+  const clearRecentSearches = () => {
+    recentSearches.value = []
+    saveRecentSearches([])
+  }
 
   // Current free-text typing extracted after tag parsing
   const freeText = computed(() => {
@@ -168,86 +202,81 @@ export const useHeimdallSearch = (
     return true
   }
 
-  // Filter and score item with query text
-  const matchItemWithText = (
-    item: any, 
-    cleanQ: string, 
-    template: SearchTemplateDef, 
-    useFuzzy: boolean, 
-    fuzzyThreshold: number
-  ): { matches: boolean; score: number } => {
-    if (!cleanQ) return { matches: true, score: 1.0 }
+  // Fields of a raw record the active template declares searchable, most important first
+  const templateFields = (item: any, template: SearchTemplateDef): string[] =>
+    template.searchableFields.map(f => (item?.[f] != null ? String(item[f]) : ''))
 
-    const fields = template.searchableFields.map(f => {
-      const val = item[f]
-      return val != null ? String(val) : ''
-    }).filter(Boolean)
+  const rankOptions = () => ({ fuzzy: fuzzyConfig.value.enabled, threshold: fuzzyConfig.value.threshold })
 
-    // Exact or substring match
-    for (const f of fields) {
-      const lower = f.toLowerCase()
-      if (lower === cleanQ) return { matches: true, score: 1.0 }
-      if (lower.startsWith(cleanQ)) return { matches: true, score: 0.95 }
-      if (lower.includes(cleanQ)) return { matches: true, score: 0.85 }
-    }
+  const MAX_CACHED_QUERIES = 50
+  const QUERY_CACHE_TTL_MS = 60_000
+  const localQueryCache = new Map<string, { primary: SearchResultItem[]; cross: SearchResultItem[]; timestamp: number }>()
 
-    // Fuzzy match if enabled
-    if (useFuzzy && cleanQ.length >= 3) {
-      for (const f of fields) {
-        if (isFuzzyMatch(cleanQ, f, fuzzyThreshold)) {
-          return { matches: true, score: 0.75 }
-        }
-      }
-    }
+  // Monotonic id of the latest search; responses of older searches are discarded
+  let searchSequence = 0
 
-    return { matches: false, score: 0.0 }
+  const clearResults = () => {
+    results.value = []
+    primaryResults.value = []
+    crossTableResults.value = []
   }
 
-  const localQueryCache = new Map<string, { primary: SearchResultItem[]; cross: SearchResultItem[]; timestamp: number }>()
+  /** Free text of a query string: everything that is not a `key:value` or prefix-scope token. */
+  const stripTagTokens = (queryStr: string) =>
+    queryStr.replace(/(?:\w+):(?:"[^"]*"|\S+)/g, ' ').replace(/(?:^|\s)[@#!*%](?:"[^"]*"|\S+)/g, ' ').replace(/\s+/g, ' ').trim()
 
   // Execute multi-tier search across instance primary and cross-table indexing
   const executeSearch = async (queryStr: string = effectiveQueryString.value) => {
     const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
     let resolvedDataSourceType: 'uri' | 'dbConnection' | 'redisCache' | 'custom' | 'inMemory' = 'inMemory'
+    const sequence = ++searchSequence
+    const isLatest = () => sequence === searchSequence
 
     if (!queryStr && tags.value.length === 0) {
-      results.value = []
-      primaryResults.value = []
-      crossTableResults.value = []
+      clearResults()
+      error.value = null
+      failedSources.value = []
+      isLoading.value = false
       return
     }
 
-    const cacheKey = `${config.instanceId}:${queryStr}:${tags.value.map(t => `${t.key}=${t.value}`).join(';')}`
+    const activeTags = [...tags.value]
+    const cacheKey = `${config.instanceId}:${queryStr}:${activeTags.map(t => `${t.key}=${t.value}`).join(';')}`
     const cached = localQueryCache.get(cacheKey)
-    if (cached && (Date.now() - cached.timestamp) < 60000) {
-      primaryResults.value = cached.primary
-      crossTableResults.value = cached.cross
-      results.value = [...cached.primary, ...cached.cross]
+    const cacheIsFresh = !!cached && (Date.now() - cached.timestamp) < QUERY_CACHE_TTL_MS
+
+    if (cacheIsFresh) {
+      // Show the cached page immediately; the refresh below replaces it without a spinner.
+      primaryResults.value = cached!.primary
+      crossTableResults.value = cached!.cross
+      results.value = orderResultsByKind([...cached!.primary, ...cached!.cross], config.instanceId)
     } else {
       isLoading.value = true
     }
 
     try {
-      let cleanQ = (rawInput.value || '').toLowerCase().trim()
-      if (!cleanQ && queryStr) {
-        cleanQ = queryStr.replace(/(?:\w+):(?:"[^"]+"|\S+)/g, '').replace(/[@#!*%](?:"[^"]+"|\S+)/g, '').toLowerCase().trim()
-      }
+      // An explicitly passed query is authoritative; otherwise the live input is the free text.
+      const isExplicitQuery = queryStr !== effectiveQueryString.value
+      const cleanQ = (isExplicitQuery ? stripTagTokens(queryStr) : (rawInput.value || '')).toLowerCase().trim()
       let primary: SearchResultItem[] = []
       let cross: SearchResultItem[] = []
+      const failed: string[] = []
+      let attemptedSources = 0
 
       // -----------------------------------------------------------------
       // PATH A: Direct in-memory data or custom dataSource handler provided
       // -----------------------------------------------------------------
       const unrefData = rawDataRef ? unref(rawDataRef) : undefined
       const isDataProvided = unrefData !== undefined
+      const isCustomSource = !!rawDataSource && typeof rawDataSource === 'object' && rawDataSource.type === 'custom'
 
-      if (isDataProvided || (rawDataSource && typeof rawDataSource === 'object' && rawDataSource.type === 'custom')) {
+      if (isDataProvided || isCustomSource) {
         let candidateItems: any[] = []
 
-        if (rawDataSource && typeof rawDataSource === 'object' && rawDataSource.type === 'custom') {
+        if (isCustomSource) {
           resolvedDataSourceType = 'custom'
-          const customRes = await rawDataSource.handler(queryStr, { tags: tags.value, freeText: cleanQ })
-          candidateItems = Array.isArray(customRes) ? customRes : (customRes?.items || [customRes])
+          const customRes = await rawDataSource.handler(queryStr, { tags: activeTags, freeText: cleanQ })
+          candidateItems = Array.isArray(customRes) ? customRes : (customRes?.items || (customRes ? [customRes] : []))
         } else if (Array.isArray(unrefData)) {
           candidateItems = unrefData
         } else if (unrefData && typeof unrefData === 'object') {
@@ -255,192 +284,186 @@ export const useHeimdallSearch = (
         }
 
         const currentTemplate = activeTemplate.value
-        const scoredItems: Array<{ item: SearchResultItem; score: number }> = []
-
-        for (const raw of candidateItems) {
-          if (!matchItemWithTags(raw, tags.value, currentTemplate)) continue
-          const { matches, score } = matchItemWithText(
-            raw, 
-            cleanQ, 
-            currentTemplate, 
-            fuzzyConfig.value.enabled, 
-            fuzzyConfig.value.threshold
-          )
-          if (matches) {
-            scoredItems.push({
-              item: currentTemplate.extractSearchItem(raw),
-              score
-            })
-          }
-        }
-
-        scoredItems.sort((a, b) => b.score - a.score)
-        primary = scoredItems.map(s => s.item)
+        const tagMatched = candidateItems.filter(raw => matchItemWithTags(raw, activeTags, currentTemplate))
+        primary = rankRecords(cleanQ, tagMatched, raw => templateFields(raw, currentTemplate), rankOptions())
+          .map(s => currentTemplate.extractSearchItem(s.item))
 
         // Query secondary indexing tables for cross-table results if configured
-        if (indexingTablesRef.value.length > 0) {
+        if (indexingTablesRef.value.length > 0 && cleanQ.length >= 2) {
           const secondaryTables = indexingTablesRef.value.filter(t => t.rank > 1)
           for (const tbl of secondaryTables) {
             const tblData = typeof tbl.data === 'function' ? tbl.data() : unref(tbl.data)
-            if (Array.isArray(tblData) && cleanQ.length >= 2) {
-              const matched = tblData.filter(rawItem => {
-                const searchable = tbl.searchFields || ['name', 'hostname', 'customIdentifier']
-                return searchable.some(field => {
-                  const val = String(rawItem[field] || '').toLowerCase()
-                  return val.includes(cleanQ) || (fuzzyConfig.value.enabled && isFuzzyMatch(cleanQ, val, 0.75))
-                })
-              }).slice(0, 5)
+            if (!Array.isArray(tblData)) continue
+            const searchable = tbl.searchFields || ['name', 'hostname', 'customIdentifier']
+            const matched = rankRecords(cleanQ, tblData, rawItem => searchable.map(field => rawItem?.[field]), rankOptions()).slice(0, 5)
 
-              for (const m of matched) {
-                cross.push({
-                  id: m.id || `${tbl.name}-${Math.random()}`,
-                  name: m.name || m.hostname || m.customIdentifier || 'Cross Item',
-                  displayName: m.displayName,
-                  itemType: tbl.name,
-                  typeLabel: tbl.name,
-                  sourceTable: tbl.name,
-                  isCrossTable: true,
-                  subtitle: tbl.description
-                })
-              }
-            }
+            matched.forEach(({ item: m }, index) => {
+              const name = m.name || m.hostname || m.customIdentifier || 'Cross Item'
+              cross.push({
+                // Stable id: keyboard selection and list keys must survive a re-render.
+                id: String(m.id ?? m[tbl.keyField || 'id'] ?? `${tbl.name}:${name}:${index}`),
+                name,
+                displayName: m.displayName,
+                itemType: tbl.name,
+                typeLabel: tbl.name,
+                sourceTable: tbl.name,
+                isCrossTable: true,
+                subtitle: tbl.description
+              })
+            })
           }
         }
       } else {
         // -----------------------------------------------------------------
-        // PATH B: Endpoint-based or instance-based multi-tier search
+        // PATH B: Endpoint-based multi-source search (all sources in parallel)
         // -----------------------------------------------------------------
+        resolvedDataSourceType = 'uri'
         const isMachinesInstance = config.instanceId === 'machines'
         const isNodesInstance = config.instanceId === 'nodes' || config.instanceId === 'clients'
+        const isInventoryInstance = config.instanceId === 'inventory'
 
-        if (isMachinesInstance) {
-          resolvedDataSourceType = 'uri'
-          // Stage 1 Primary: Machines / Stations
-          try {
-            const machines = await $fetch<any[]>('/api/proxy/v1/machine')
-            if (Array.isArray(machines)) {
-              const filtered = machines.filter(m => {
-                if (!cleanQ) return true
-                const nameMatch = (m.name || '').toLowerCase().includes(cleanQ)
-                const dispMatch = (m.displayName || '').toLowerCase().includes(cleanQ)
-                const identMatch = (m.customIdentifier || '').toLowerCase().includes(cleanQ)
-                const typeMatch = (m.machineType || '').toLowerCase().includes(cleanQ)
-                const groupMatch = (m.groupId || '').toLowerCase().includes(cleanQ)
-                const fuzzyMatch = fuzzyConfig.value.enabled && cleanQ.length >= 3 && (
-                  isFuzzyMatch(cleanQ, m.name || '', fuzzyConfig.value.threshold) ||
-                  isFuzzyMatch(cleanQ, m.displayName || '', fuzzyConfig.value.threshold)
-                )
-                return nameMatch || dispMatch || identMatch || typeMatch || groupMatch || fuzzyMatch
-              })
-              primary = filtered.map(m => resolveSearchTemplate('machine').extractSearchItem(m))
-            }
-          } catch {}
+        const scope = resolveSearchScope(activeTags)
+        const inScope = (kind: SearchScopeKind) => !scope.kinds || scope.kinds.has(kind)
+        // Scope values such as `station:OP20` are search terms for that scope.
+        const term = [cleanQ, ...scope.terms.map(t => t.toLowerCase())].filter(Boolean).join(' ')
+        const filterQuery = [inventoryFilterExpression(scope.filterTags), term].filter(Boolean).join(' ')
+        const hasCriteria = term.length > 0 || scope.filterTags.length > 0 || !!scope.kinds
 
-          // Stage 3 Cross-table: Inventory / Parts installed on machines
+        const runSource = async <T>(label: string, task: () => Promise<T>, fallback: T): Promise<T> => {
+          attemptedSources++
           try {
-            const inv = await $fetch<any>(`/api/inventory/filter?query=${encodeURIComponent(queryStr)}`)
-            if (inv && Array.isArray(inv.items)) {
-              cross = inv.items.slice(0, 10).map((item: any) => ({
-                id: item.id,
-                name: item.name || item.customIdentifier || 'Asset',
-                displayName: item.displayName,
-                itemType: item.itemType || 'Asset',
-                typeLabel: item.itemType === 'hardware' ? 'Component' : 'License',
-                manufacturerName: item.manufacturer?.name,
-                subtitle: item.serialNumber ? `SN: ${item.serialNumber}` : undefined,
-                sourceTable: 'inventory',
-                isCrossTable: true,
-                link: `/dashboard/inventory`
-              }))
-            }
-          } catch {}
-        } else if (isNodesInstance) {
-          resolvedDataSourceType = 'uri'
-          // Stage 1 Primary: Nodes / Client PCs
-          try {
-            const pcs = await $fetch<any[]>('/api/proxy/v1/ClientPc')
-            if (Array.isArray(pcs)) {
-              const filtered = pcs.filter(p => {
-                if (!cleanQ) return true
-                const exact = (p.hostname || '').toLowerCase().includes(cleanQ) ||
-                  (p.macAddress || '').toLowerCase().includes(cleanQ) ||
-                  (p.ipAddress || '').toLowerCase().includes(cleanQ)
-                const fuzzy = fuzzyConfig.value.enabled && cleanQ.length >= 3 && isFuzzyMatch(cleanQ, p.hostname || '', fuzzyConfig.value.threshold)
-                return exact || fuzzy
-              })
-              primary = filtered.map(p => resolveSearchTemplate('endpoint').extractSearchItem(p))
-            }
-          } catch {}
-
-          // Stage 3 Cross-table: Machines assigned to nodes
-          try {
-            const machines = await $fetch<any[]>('/api/proxy/v1/machine')
-            if (Array.isArray(machines)) {
-              cross = machines.filter(m => (m.name || '').toLowerCase().includes(cleanQ)).slice(0, 5).map(m => ({
-                id: m.id,
-                name: m.name,
-                itemType: 'Machine',
-                typeLabel: 'Station',
-                sourceTable: 'machines',
-                isCrossTable: true,
-                link: `/dashboard/machines?id=${encodeURIComponent(m.id)}&search=${encodeURIComponent(m.name)}`
-              }))
-            }
-          } catch {}
-        } else {
-          // Inventory or Global Search
-          const endpoint = typeof rawDataSource === 'string' 
-            ? rawDataSource 
-            : (rawDataSource?.type === 'uri' ? rawDataSource.url : (config.defaultEndpoints?.[0] || '/api/proxy/inventory/search'))
-          resolvedDataSourceType = 'uri'
-          const queryParam = encodeURIComponent(queryStr)
-
-          try {
-            const res = await $fetch<any[]>(`${endpoint}?query=${queryParam}`)
-            primary = (res || []).map((item: any) => resolveSearchTemplate('inventory').extractSearchItem(item))
+            return await task()
           } catch {
-            // Fallback to local filter API
+            failed.push(label)
+            return fallback
+          }
+        }
+
+        const searchCatalog = (name: CatalogName, limit?: number) => async (): Promise<SearchResultItem[]> => {
+          const records = await loadCatalog(name)
+          const ranked = rankRecords(term, records, CATALOG_FIELDS[name], rankOptions()).map(s => s.item)
+          const page = limit ? ranked.slice(0, limit) : ranked
+          if (name === 'machines') return page.map(m => resolveSearchTemplate('machine').extractSearchItem(m))
+          if (name === 'controllers') return page.map(c => resolveSearchTemplate('endpoint').extractSearchItem(c))
+          return page.map(ticketToSearchItem)
+        }
+
+        const searchInventory = (limit?: number) => async (): Promise<SearchResultItem[]> => {
+          if (!filterQuery) return []
+          const endpoint = typeof rawDataSource === 'string'
+            ? rawDataSource
+            : (rawDataSource?.type === 'uri' ? rawDataSource.url : (config.defaultEndpoints?.[0] || '/api/proxy/inventory/search'))
+          const queryParam = encodeURIComponent(filterQuery)
+          let rows: any[]
+          try {
+            const res = await $fetch<any>(`${endpoint}?query=${queryParam}`)
+            rows = Array.isArray(res) ? res : (res?.items || [])
+          } catch {
+            // The backend search endpoint is unavailable: fall back to the BFF filter API.
+            const res = await $fetch<any>(`/api/inventory/filter?query=${queryParam}`)
+            rows = Array.isArray(res?.items) ? res.items : []
+          }
+          // Stations live in the inventory table too; they are a search kind of their own and
+          // would otherwise be listed twice (once as a part that links to the inventory page).
+          const items = rows
+            .filter((item: any) => String(item?.itemType || '').toLowerCase() !== 'machine')
+            .map((item: any) => resolveSearchTemplate('inventory').extractSearchItem(item))
+          return limit ? items.slice(0, limit) : items
+        }
+
+        const asCross = (items: SearchResultItem[]) => items.map(i => ({ ...i, isCrossTable: true }))
+        const none = async (): Promise<SearchResultItem[]> => []
+
+        // Server-side search: one request, matched, ranked and tenant-scoped by the backend.
+        // Inventory filter tags and custom endpoints are only understood by the inventory search,
+        // so those use the per-source path below, which is also the fallback when the search
+        // endpoint cannot be reached (the catalogues are then ranked in the browser).
+        let served = false
+        if (hasCriteria && term.length >= 2 && scope.filterTags.length === 0 && !rawDataSource) {
+          const wanted: ServerSearchKind[] = isMachinesInstance
+            ? ['stations', 'inventory']
+            : isNodesInstance
+              ? ['controllers', 'stations']
+              : ([
+                  inScope('machines') && 'stations',
+                  inScope('controllers') && !isInventoryInstance && 'controllers',
+                  inScope('tickets') && !isInventoryInstance && 'tickets',
+                  inScope('users') && !isInventoryInstance && 'users',
+                  inScope('inventory') && 'inventory'
+                ].filter(Boolean) as ServerSearchKind[])
+          const focused = !!scope.kinds || isMachinesInstance || isNodesInstance
+          if (wanted.length > 0) {
             try {
-              const res = await $fetch<any>(`/api/inventory/filter?query=${queryParam}`)
-              if (res && Array.isArray(res.items)) {
-                primary = res.items.map((item: any) => resolveSearchTemplate('inventory').extractSearchItem(item))
+              const hits = await searchServer(term, wanted, focused ? FOCUSED_RESULT_LIMIT : MIXED_RESULT_LIMIT)
+              if (isMachinesInstance) {
+                primary = hits.stations
+                cross = asCross(hits.inventory.slice(0, 10))
+              } else if (isNodesInstance) {
+                primary = hits.controllers
+                cross = asCross(hits.stations.slice(0, 5))
+              } else {
+                primary = hits.inventory
+                cross = asCross([...hits.stations, ...hits.controllers, ...hits.tickets, ...hits.users])
               }
+              attemptedSources++
+              served = true
             } catch {
-              primary = []
+              // Users have no catalogue to fall back to: say so when they were asked for explicitly.
+              if (scope.kinds?.has('users')) {
+                attemptedSources++
+                failed.push('users')
+              }
             }
           }
+        }
 
-          // Cross-table machines if query matches
-          if (cleanQ.length >= 2) {
-            try {
-              const machines = await $fetch<any[]>('/api/proxy/v1/machine')
-              if (Array.isArray(machines)) {
-                const matchedMachines = machines.filter(m => 
-                  (m.name || '').toLowerCase().includes(cleanQ) || 
-                  (m.groupId || '').toLowerCase().includes(cleanQ) ||
-                  (m.machineType || '').toLowerCase().includes(cleanQ)
-                )
-                cross = matchedMachines.slice(0, 6).map(m => ({
-                  id: m.id,
-                  name: m.name,
-                  displayName: m.displayName,
-                  itemType: 'Machine',
-                  typeLabel: m.machineType || 'Station',
-                  subtitle: `Line: ${m.groupId || 'General'}`,
-                  sourceTable: 'machines',
-                  isCrossTable: true,
-                  link: `/dashboard/machines?id=${encodeURIComponent(m.id)}&search=${encodeURIComponent(m.name)}`
-                }))
-              }
-            } catch {}
+        if (hasCriteria && !served) {
+          if (isMachinesInstance) {
+            const [machines, parts] = await Promise.all([
+              runSource('stations', searchCatalog('machines'), []),
+              runSource('inventory', term.length >= 2 ? searchInventory(10) : none, [])
+            ])
+            primary = machines
+            cross = asCross(parts)
+          } else if (isNodesInstance) {
+            const [nodes, machines] = await Promise.all([
+              runSource('controllers', searchCatalog('controllers'), []),
+              runSource('stations', term.length >= 2 ? searchCatalog('machines', 5) : none, [])
+            ])
+            primary = nodes
+            cross = asCross(machines)
+          } else {
+            const crossEnabled = term.length >= 2 || !!scope.kinds
+            const [parts, machines, nodes, tickets] = await Promise.all([
+              inScope('inventory') ? runSource('inventory', searchInventory(), []) : none(),
+              inScope('machines') && crossEnabled ? runSource('stations', searchCatalog('machines', 6), []) : none(),
+              inScope('controllers') && crossEnabled && !isInventoryInstance ? runSource('controllers', searchCatalog('controllers', 6), []) : none(),
+              inScope('tickets') && crossEnabled && !isInventoryInstance ? runSource('tickets', searchCatalog('tickets', 6), []) : none()
+            ])
+            primary = parts
+            cross = asCross([...machines, ...nodes, ...tickets])
           }
         }
       }
 
+      // A newer search started while this one was in flight: its results win.
+      if (!isLatest()) return
+
       primaryResults.value = primary
       crossTableResults.value = cross
-      results.value = [...primary, ...cross]
-      localQueryCache.set(cacheKey, { primary, cross, timestamp: Date.now() })
+      results.value = orderResultsByKind([...primary, ...cross], config.instanceId)
+      failedSources.value = failed
+      error.value = attemptedSources > 0 && failed.length === attemptedSources
+        ? 'Search is unavailable right now. Check the connection to the Heimdall backend and try again.'
+        : null
+
+      if (failed.length === 0) {
+        if (localQueryCache.size >= MAX_CACHED_QUERIES) {
+          const oldest = localQueryCache.keys().next().value
+          if (oldest !== undefined) localQueryCache.delete(oldest)
+        }
+        localQueryCache.set(cacheKey, { primary, cross, timestamp: Date.now() })
+      }
 
       // Record GDPR-compliant diagnostics
       const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startTime
@@ -449,17 +472,19 @@ export const useHeimdallSearch = (
         durationMs,
         resultCount: results.value.length,
         itemTypes: results.value.map(r => r.itemType),
-        matchedTagKeys: tags.value.map(t => t.key),
+        matchedTagKeys: activeTags.map(t => t.key),
         fuzzyApplied: fuzzyConfig.value.enabled,
         dataSourceType: resolvedDataSourceType,
         templateUsed: activeTemplate.value.name,
-        status: 'success'
+        status: error.value ? 'error' : 'success',
+        errorCode: error.value ? 'ALL_SOURCES_FAILED' : undefined
       })
       diagnostics.value = diagnosticsService.getRecords()
     } catch (err: any) {
-      results.value = []
-      primaryResults.value = []
-      crossTableResults.value = []
+      if (!isLatest()) return
+      clearResults()
+      failedSources.value = []
+      error.value = 'Search failed. Please try again.'
 
       const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startTime
       diagnosticsService.recordSearch({
@@ -474,7 +499,8 @@ export const useHeimdallSearch = (
       })
       diagnostics.value = diagnosticsService.getRecords()
     } finally {
-      isLoading.value = false
+      // Only the latest search owns the loading flag; a stale one must not hide the spinner.
+      if (isLatest()) isLoading.value = false
     }
   }
 
@@ -624,6 +650,11 @@ export const useHeimdallSearch = (
   }
 
   const clearAllTags = () => {
+    // Invalidate any in-flight search so its response cannot repopulate the cleared list
+    searchSequence++
+    isLoading.value = false
+    error.value = null
+    failedSources.value = []
     tags.value = []
     rawInput.value = ''
     results.value = []
@@ -641,6 +672,11 @@ export const useHeimdallSearch = (
       if (rawInput.value.length >= (config.minCharsForSuggestions || 2) || tags.value.length > 0) {
         executeSearch()
       } else if (tags.value.length === 0) {
+        // Below the minimum length: drop results and cancel whatever is still in flight
+        searchSequence++
+        isLoading.value = false
+        error.value = null
+        failedSources.value = []
         results.value = []
         primaryResults.value = []
         crossTableResults.value = []
@@ -663,6 +699,11 @@ export const useHeimdallSearch = (
     searchKeyGroups,
     isLoading,
     isDropdownOpen,
+    error,
+    failedSources,
+    recentSearches,
+    rememberSearch,
+    clearRecentSearches,
     effectiveQueryString,
     config,
     handleInputChange,

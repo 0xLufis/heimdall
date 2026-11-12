@@ -349,12 +349,19 @@ public class MfaAndActiveDirectoryTests
         Assert.True(rootRecord.IsRootCa);
         Assert.Equal(testCert.Thumbprint, rootRecord.Thumbprint);
 
-        // 2. Query active root CA
+        // 2. The imported enterprise root is trusted; Heimdall's issuing CA (root-ca) is its own
+        //    self-signed root, created on first use (a subordinate CA goes through root-ca/subordinate/*).
+        var store = (await controller.GetTrustStore() as OkObjectResult)?.Value as List<TrustedCaCertificate>;
+        Assert.NotNull(store);
+        Assert.Contains(store, c => c.Thumbprint == testCert.Thumbprint && c.Source == "imported" && c.Status == "Active");
+
         var getRootRes = await controller.GetRootCa() as OkObjectResult;
         Assert.NotNull(getRootRes);
         var activeRoot = getRootRes.Value as ClientCertificateRecord;
         Assert.NotNull(activeRoot);
-        Assert.Equal(testCert.Thumbprint, activeRoot.Thumbprint);
+        Assert.True(activeRoot.IsRootCa);
+        Assert.Equal("heimdall-self-signed", activeRoot.ProfileName);
+        Assert.NotEqual(testCert.Thumbprint, activeRoot.Thumbprint);
 
         // 3. Ensure OU rules are seeded and add client PC
         await controller.GetOuRules();

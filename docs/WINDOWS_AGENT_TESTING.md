@@ -10,25 +10,29 @@ Running Windows in a Linux Docker environment requires hardware-assisted full vi
 
 ```
 +----------------------------------------------------------------------------------------------------------------+
-| Linux Host (KVM Accelerated)                                                                                  |
+| Linux Host (KVM Accelerated)                                                                                   |
 |                                                                                                                |
-|  +-----------------------------+      dotnet publish         +-----------------------------------------------+ |
-|  | agent/App.Agent.Daemon      | --------------------------> | ./infra/windows/shared/agent                  | |
-|  | (.NET 10 Daemon Source)     |      (win-x64 build)        | (Bi-directional Host Mount)                   | |
-|  +-----------------------------+                             +-----------------------------------------------+ |
-|                 |                                                                    |                         |
-|                 |                                                                    v                         |
-|  +-----------------------------+      WinRM (:5985)          +-----------------------------------------------+ |
-|  | tools/test_windows_agent.py | --------------------------> | heimdall_windows_agent (Docker QEMU Container)| |
-|  | (Automated Test Suite)      |                             |  - Windows 10 Enterprise LTSC (10l)           | |
-|  +-----------------------------+      HTTP (:5998)           |  - WinRM Service & OpenSSH                    | |
-|                 |                --------------------------> |  - Configurator HTTP API (:5998)              | |
-|                 |                                            |  - Heimdall Agent Daemon Process              | |
-|                 v                                            |  - WMI, Registry, EventLog, DPAPI Store       | |
-|  +-----------------------------+                             +-----------------------------------------------+ |
-|  | heimdall_backend (:5001)    | <===========================================+                                 |
-|  | (REST :5099 & gRPC :5001)   |        gRPC Telemetry & Remote Command Dispatch                               |
-|  +-----------------------------+        over 'heimdall_dev_net'                                                |
+|  +-------------------------------+     dotnet publish      +-----------------------------------------------+   |
+|  | src/agent/App.Agent.Daemon    | ----------------------> | ./infra/windows/shared/agent                  |   |
+|  | (.NET 10 Daemon Source)       | win-x64, self-contained | (host mount, heimdall-agent.exe)              |   |
+|  +-------------------------------+                         +-----------------------+-----------------------+   |
+|                 |                                                                  |                           |
+|                 |                                                                  v                           |
+|  +-------------------------------+     WinRM (:5985)       +-----------------------------------------------+   |
+|  | tools/test_windows_agent.py,  | ----------------------> | heimdall_windows_agent (Docker QEMU container)|   |
+|  | tools/launch_agent_win.py     |                         |  - Windows 10 Enterprise LTSC (10l)           |   |
+|  +--------------+----------------+     HTTP (:5998)        |  - WinRM Service & OpenSSH                    |   |
+|                 |                  ----------------------> |  - Configurator HTTP API (:5998)              |   |
+|                 | REST :5099 checks                        |  - Heimdall Agent Daemon Process              |   |
+|                 |                                          |  - Tray runner, station terminal overlay      |   |
+|                 v                                          |  - WMI, Registry, EventLog, DPAPI Store       |   |
+|  +-------------------------------+                         +-----------------------+-----------------------+   |
+|  | Heimdall backend              | <===============================================+                           |
+|  | (host process or the          |   MQTT 5 telemetry & commands via backend:1883                              |
+|  | heimdall_backend container)   |   (the VM resolves "backend" to the Docker host gateway)                    |
+|  | REST :5099 / :5001            |                                                                             |
+|  | MQTT 5 broker :1883           |                                                                             |
+|  +-------------------------------+                                                                             |
 +----------------------------------------------------------------------------------------------------------------+
 ```
 
@@ -46,9 +50,13 @@ infra/windows/
 ├── Dockerfile           # Extends dockurr/windows:latest with Windows 10 LTSC defaults
 ├── oem/
 │   ├── install.bat      # Windows SetupComplete hook executing setup.ps1
-│   └── setup.ps1        # WinRM, Firewall, Beckhoff mock registry, and daemon watcher setup
-├── shared/              # Bi-directional host-guest shared mount (drive Z:\ in Windows)
-│   └── agent/           # Compiled self-contained win-x64 agent binaries
+│   ├── setup.ps1        # WinRM, Firewall, Beckhoff mock registry, daemon watcher, tray runner registration
+│   └── HeimdallTrayRunner.ps1     # Copy installed to C:\Heimdall by setup.ps1 (Run key)
+├── shared/              # Bi-directional host-guest shared mount (C:\Users\Docker\Desktop\Shared in Windows)
+│   └── agent/           # Compiled self-contained win-x64 agent binaries (heimdall-agent.exe)
+├── tray/
+│   ├── HeimdallTrayRunner.ps1     # Taskbar tray icon (agent dashboard, triggers, terminal overlay)
+│   └── Start-HeimdallTerminal.ps1 # Station terminal overlay launcher (see section 7)
 └── storage/             # Persistent QEMU virtual disk (ignored by Git)
 ```
 
@@ -78,7 +86,7 @@ infra/windows/
 python3 tools/test_windows_agent.py --check-prereqs
 python3 tools/test_windows_agent.py --build-agent
 ```
-This builds a self-contained `win-x64` executable `App.Agent.Daemon.exe` directly into `infra/windows/shared/agent/`.
+This builds a self-contained `win-x64` executable `heimdall-agent.exe` (the project's `AssemblyName`) directly into `infra/windows/shared/agent/`.
 
 ### Step 2: Start the Windows Container
 The Windows container is gated under the `windows` profile in `docker-compose.yml`:
@@ -97,7 +105,7 @@ python3 tools/test_windows_agent.py --status
 ## 5. Running the Tests
 
 ### A. Backend Windows Invariant Integration Tests (xUnit)
-Validates that the backend gRPC telemetry pipeline accurately ingests and persists Windows-specific WMI UUIDs, `C:\` disk metrics, EventLog items, Beckhoff RT drivers, and command queues:
+Validates that the backend MQTT telemetry pipeline accurately ingests and persists Windows-specific WMI UUIDs, `C:\` disk metrics, EventLog items, Beckhoff RT drivers, and command queues:
 ```bash
 dotnet test tests/backend/App.Backend.Tests/App.Backend.Tests.csproj --filter "FullyQualifiedName~WindowsEndpointTelemetryTests"
 ```
@@ -127,3 +135,46 @@ WIN_VERSION="tiny10" docker compose --profile windows up -d windows-agent
 # Use Windows 11 LTSC with 4GB RAM
 WIN_VERSION="11l" WIN_RAM="4G" docker compose --profile windows up -d windows-agent
 ```
+
+---
+
+## 7. Station Terminal Overlay on the IPC
+
+The kiosk terminal page (`/terminal/machine/<machine id>`) can run next to or over the machine HMI
+in a small, always-on-top browser window. `infra/windows/tray/Start-HeimdallTerminal.ps1` opens it:
+
+- Microsoft Edge (or Google Chrome) in app mode, `--app=<terminal url>`: no tabs, no address bar.
+  This is a normal, chromeless window. A *headless* browser has no window at all, so it cannot be
+  an overlay.
+- Its own browser profile (`%LOCALAPPDATA%\Heimdall\TerminalBrowser`, `-UserDataDir`), so the
+  terminal never shares cookies or tabs with a normal browser.
+- Window size and position (`-Width 420 -Height 700`, docked to the right edge, or `-Dock Left`,
+  `-X`/`-Y`), then `SetWindowPos(HWND_TOPMOST)` keeps it above the HMI. `-KeepOnTop` re-applies
+  that every 3 s for HMIs that raise themselves.
+- The page opens in its compact overlay layout (`?overlay=1`: large touch targets, no page chrome).
+  The expand button switches to the full view and grows the window to the whole screen; the
+  "Overlay" button in the full view shrinks it back. `?overlay=0` forces the full view; without the
+  parameter a window narrower than 640 px gets the overlay layout.
+- `-Kiosk` opens the full view full screen (`--kiosk`) instead, e.g. on an IPC without an HMI.
+- Text inputs are ordinary inputs: use the IPC's hardware keyboard or the Windows touch keyboard.
+
+The workstation token (when the server sets `HEIMDALL_TERMINAL_TOKENS`) goes into the URL as
+`?token=`, which the terminal page forwards to `/api/terminal/*`. Without a token the page asks for
+pairing (or uses an operator's signed-in session). In dev mode (`HEIMDALL_ENABLE_DEV=true`) the demo
+token `kiosk-token-op10` is accepted.
+
+```powershell
+# Overlay, right screen edge, token from the environment
+$env:HEIMDALL_WEB_URL = "http://backend:3000"          # test VM: 'backend' is the Linux host
+$env:HEIMDALL_TERMINAL_TOKEN = "kiosk-token-op10"      # dev only; use a registered token in production
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Heimdall\Start-HeimdallTerminal.ps1 -MachineId OP10-LOAD -KeepOnTop
+
+# Narrow strip on the left, full-screen kiosk
+.\Start-HeimdallTerminal.ps1 -MachineId OP10-LOAD -Dock Left -Width 360 -Height 1000
+.\Start-HeimdallTerminal.ps1 -MachineId OP10-LOAD -Kiosk
+```
+
+With `HEIMDALL_STATION_ID` (and optionally `HEIMDALL_WEB_URL` / `HEIMDALL_TERMINAL_TOKEN`) set for
+the logged-on user, the tray icon (`HeimdallTrayRunner.ps1`) offers **Open Station Terminal
+(overlay)**, which runs the launcher from the same folder. The launcher needs Windows PowerShell 5.1+
+and Edge or Chrome; it has not been run on Windows by the Linux test suite.

@@ -4,7 +4,7 @@ Heimdall Simulated PC Daemon
 Runs inside a simulated PC container representing an industrial edge controller
 (e.g., Kuka Robot IPC, Cognex Vision Host, Atlas Copco Screwing Controller).
 Collects local CMI/WMI telemetry, checks in with simulated Active Directory,
-and reports gRPC system telemetry to Heimdall Backend.
+and reports system telemetry to the Heimdall backend over MQTT (system_info topic), like the real agent.
 """
 
 import sys
@@ -22,16 +22,18 @@ proto_dir = os.path.join(os.path.dirname(__file__), 'proto')
 if proto_dir not in sys.path:
     sys.path.insert(0, proto_dir)
 
-import grpc
 from google.protobuf.timestamp_pb2 import Timestamp
 import system_info_pb2
-import system_info_pb2_grpc
+
+from mqtt_transport import MqttPublisher, SYSTEM_INFO_CHANNEL, broker_from_env
 
 from dataset_loader import get_client_pc_by_hostname, load_enterprise_dataset
 from mock_cmi_runner import MockCmiEngine
 
 SIMULATED_HOSTNAME = os.environ.get('SIMULATED_HOSTNAME', 'IPC-L01-OP030-DEDICATED')
-BACKEND_GRPC_HOST = os.environ.get('BACKEND_GRPC_HOST', 'localhost:5001')
+# The backend ingests over its embedded MQTT broker (MQTT_BROKER_HOST / MQTT_BROKER_PORT).
+# BACKEND_GRPC_HOST is no longer used: there is no gRPC ingestion endpoint.
+MQTT_BROKER_HOST, MQTT_BROKER_PORT = broker_from_env()
 AD_SERVICE_URL = os.environ.get('AD_SERVICE_URL', 'http://localhost:3000/api/ad-mock')
 DIAGNOSTIC_PORT = int(os.environ.get('DIAGNOSTIC_PORT', '8080'))
 
@@ -149,22 +151,25 @@ def build_system_info_request():
         components=components
     )
 
-def telemetry_loop(grpc_host: str, interval: int = 10):
-    print(f"[SimPC-{state.hostname}] Starting gRPC telemetry loop towards {grpc_host} (Interval: {interval}s)...")
+def telemetry_loop(interval: int = 10):
+    print(f"[SimPC-{state.hostname}] Starting MQTT telemetry loop towards {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT} (Interval: {interval}s)...")
+    publisher = MqttPublisher(MQTT_BROKER_HOST, MQTT_BROKER_PORT, client_name=f"simpc_{state.hostname}")
+    publisher.start()
     while True:
+        ok = False
         try:
             req = build_system_info_request()
-            with grpc.insecure_channel(grpc_host) as channel:
-                stub = system_info_pb2_grpc.SystemInfoCollectorStub(channel)
-                resp = stub.ReportSystemInfo(req, timeout=4.0)
-                state.last_heartbeat_success = resp.success
-                state.total_heartbeats += 1
-                state.last_heartbeat_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                print(f"[SimPC-{state.hostname}] Heartbeat #{state.total_heartbeats} -> Acknowledged: {resp.success}")
-        except Exception as e:
-            state.last_heartbeat_success = False
-            state.last_heartbeat_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
-            # print(f"[SimPC-{state.hostname}] Heartbeat attempt failed (backend offline?): {e}")
+            # QoS 1: True means the broker acknowledged the message.
+            ok = publisher.wait_connected(4.0) and publisher.publish(
+                req.machine_identifier or f"HW-{state.hostname}", SYSTEM_INFO_CHANNEL,
+                req.SerializeToString(), qos=1, wait=4.0)
+        except Exception:
+            ok = False
+        state.last_heartbeat_success = bool(ok)
+        state.last_heartbeat_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        if ok:
+            state.total_heartbeats += 1
+            print(f"[SimPC-{state.hostname}] Heartbeat #{state.total_heartbeats} -> broker acknowledged")
 
         time.sleep(interval)
 
@@ -172,7 +177,7 @@ def main():
     print(f"==================================================================")
     print(f"  Heimdall Simulated Edge PC Container: {SIMULATED_HOSTNAME}")
     print(f"  Machine Type: {state.pc.get('machineType')} | VLAN: {state.pc.get('vlanId')}")
-    print(f"  Target gRPC: {BACKEND_GRPC_HOST} | AD Mock: {AD_SERVICE_URL}")
+    print(f"  MQTT broker: {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT} | AD Mock: {AD_SERVICE_URL}")
     print(f"==================================================================")
 
     # Check Active Directory enrollment
@@ -186,7 +191,7 @@ def main():
     print(f"[SimPC-{state.hostname}] Diagnostics API listening on http://0.0.0.0:{DIAGNOSTIC_PORT}")
 
     # Start telemetry dispatch loop
-    telemetry_loop(BACKEND_GRPC_HOST, interval=int(os.environ.get('REPORT_INTERVAL_SEC', '10')))
+    telemetry_loop(interval=int(os.environ.get('REPORT_INTERVAL_SEC', '10')))
 
 if __name__ == '__main__':
     main()

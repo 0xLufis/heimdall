@@ -3,7 +3,7 @@
 Heimdall Industrial OT Development Workspace - Interactive TUI Dashboard
 Provides a live, reactive terminal console for managing and monitoring:
 - PostgreSQL & Redis Database Containers
-- ASP.NET Core Backend API & gRPC Telemetry Collector
+- ASP.NET Core Backend API & embedded MQTT telemetry broker
 - Nuxt 4 Web Frontend & Nitro BFF
 - Linux Industrial Edge Agent Daemon
 - Industrial Fleet Simulator
@@ -32,7 +32,8 @@ except ImportError:
     HAS_CURSES = False
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOG_DIR = "/tmp/heimdall_logs"
+# Same on-disk location as the justfile's LOG_DIR (never /tmp: it is RAM-backed on dev machines).
+LOG_DIR = os.path.join(ROOT_DIR, ".logs")
 PID_DIR = "/tmp/heimdall_dev_pids"
 
 # Service definitions
@@ -70,21 +71,21 @@ SERVICES = [
         "check_type": "http",
         "path": "/swagger/v1/swagger.json",
         "pid_file": os.path.join(PID_DIR, "backend.pid"),
-        "log_path": "/tmp/heimdall-backend.log",
+        "log_path": os.path.join(LOG_DIR, "backend.log"),
         "url": "http://localhost:5099/swagger",
         "desc": "ASP.NET Core 10 Web API & Controllers",
     },
     {
-        "id": "grpc",
-        "name": "gRPC Collector Stream",
+        "id": "mqtt",
+        "name": "MQTT Telemetry Broker",
         "type": ".NET 10",
         "host": "127.0.0.1",
-        "port": 5001,
+        "port": 1883,
         "check_type": "tcp",
         "pid_file": os.path.join(PID_DIR, "backend.pid"),
-        "log_path": "/tmp/heimdall-backend.log",
-        "url": "grpc://localhost:5001",
-        "desc": "Industrial binary telemetry ingestion",
+        "log_path": os.path.join(LOG_DIR, "backend.log"),
+        "url": "mqtt://localhost:1883",
+        "desc": "Embedded broker: agent & simulator telemetry ingestion",
     },
     {
         "id": "frontend",
@@ -95,7 +96,7 @@ SERVICES = [
         "check_type": "http",
         "path": "/",
         "pid_file": os.path.join(PID_DIR, "frontend.pid"),
-        "log_path": "/tmp/heimdall-nuxt.log",
+        "log_path": os.path.join(LOG_DIR, "frontend.log"),
         "url": "http://localhost:3000",
         "desc": "Nuxt 4 + Vite HMR + Tailwind CSS",
     },
@@ -106,7 +107,7 @@ SERVICES = [
         "host": "127.0.0.1",
         "port": 5998,
         "check_type": "tcp",
-        "log_path": "/tmp/heimdall-windows.log",
+        "log_path": os.path.join(LOG_DIR, "windows.log"),
         "url": "http://localhost:5998",
         "desc": "Windows 10 LTSC Industrial Edge Agent Daemon",
         "is_windows": True,
@@ -119,7 +120,7 @@ SERVICES = [
         "port": 5998,
         "check_type": "tcp",
         "pid_file": os.path.join(PID_DIR, "agent.pid"),
-        "log_path": "/tmp/heimdall-agent.log",
+        "log_path": os.path.join(LOG_DIR, "agent.log"),
         "url": "http://localhost:5998",
         "desc": "Local Linux Edge Collector (active in --linux-agent mode)",
     },
@@ -131,8 +132,8 @@ SERVICES = [
         "port": 5055,
         "check_type": "tcp",
         "pid_file": os.path.join(PID_DIR, "simulator.pid"),
-        "log_path": "/tmp/heimdall-simulator.log",
-        "url": "http://localhost:5055/metrics",
+        "log_path": os.path.join(LOG_DIR, "simulator.log"),
+        "url": "http://localhost:5055/api/status",
         "desc": "Simulates 50+ plant IPCs & PLCs",
     },
     {
@@ -142,7 +143,7 @@ SERVICES = [
         "host": "127.0.0.1",
         "port": 8006,
         "check_type": "tcp",
-        "log_path": "/tmp/heimdall-windows.log",
+        "log_path": os.path.join(LOG_DIR, "windows.log"),
         "url": "http://localhost:8006",
         "desc": "Windows 10 LTSC KVM Docker Container",
         "is_windows": True,
@@ -154,7 +155,7 @@ SERVICES = [
         "host": "127.0.0.1",
         "port": 48898,
         "check_type": "tcp",
-        "log_path": "/tmp/heimdall-windows.log",
+        "log_path": os.path.join(LOG_DIR, "windows.log"),
         "url": "ams://5.80.201.44.1.1:851:48898",
         "desc": "Beckhoff TwinCAT 3 ADS Simulation Server",
         "is_windows": True,
@@ -166,7 +167,7 @@ SERVICES = [
         "host": "127.0.0.1",
         "port": 4840,
         "check_type": "tcp",
-        "log_path": "/tmp/heimdall-windows.log",
+        "log_path": os.path.join(LOG_DIR, "windows.log"),
         "url": "opc.tcp://127.0.0.1:4840",
         "desc": "Zero-dependency binary OPC UA endpoint",
         "is_windows": True,
@@ -176,7 +177,7 @@ SERVICES = [
 ENDPOINTS = [
     ("Web UI", "http://localhost:3000", "Production Dashboard"),
     ("Swagger API", "http://localhost:5099/swagger", "REST OpenAPI v1"),
-    ("gRPC Ingestion", "localhost:5001", "Telemetry Spool Stream"),
+    ("MQTT Ingestion", "localhost:1883", "Agent / simulator telemetry"),
     ("Windows VNC", "http://localhost:8006", "Win10 Desktop View"),
     ("Agent Config API", "http://localhost:5998", "Edge Agent Web UI"),
     ("TwinCAT ADS", "localhost:48898", "AMS NetId 5.80.201.44.1.1:851"),
@@ -288,7 +289,11 @@ def log_tail_worker():
                 else:
                     continue
             try:
-                curr_size = os.path.getsize(log_path)
+                st = os.stat(log_path)
+                curr_size = st.st_size
+                if file_offsets.get(log_path + "#ino") not in (None, st.st_ino):
+                    file_offsets[log_path] = 0  # rotated (tools/logpipe.py renamed it): read the new file from the start
+                file_offsets[log_path + "#ino"] = st.st_ino
                 last_offset = file_offsets.get(log_path, max(0, curr_size - 4096))
                 if curr_size > last_offset:
                     with open(log_path, "r", encoding="utf-8", errors="replace") as f:
@@ -332,7 +337,7 @@ def map_service_target(sid):
         return "postgres"
     if sid == "redis":
         return "redis"
-    if sid in ("backend", "grpc"):
+    if sid in ("backend", "mqtt", "grpc"):
         return "backend"
     if sid == "frontend":
         return "frontend"
@@ -422,10 +427,15 @@ def curses_tui(stdscr):
             max_y, max_x = stdscr.getmaxyx()
             if max_y < 15 or max_x < 60:
                 stdscr.clear()
-                stdscr.addstr(0, 0, f"Terminal window too small ({max_x}x{max_y}). Min: 60x15.")
+                try:
+                    # Clipped to the window: writing past the last cell raises curses.error.
+                    stdscr.addnstr(0, 0, f"Too small ({max_x}x{max_y}), need 60x15. [q/d] exit", max(0, max_x * max_y - 1))
+                except curses.error:
+                    pass
                 stdscr.refresh()
                 key = stdscr.getch()
-                if key in (ord('q'), ord('Q'), 27):
+                # Leaving here only detaches (same as [d]/[b]); services keep running.
+                if key in (ord('q'), ord('Q'), ord('d'), ord('D'), ord('b'), ord('B'), 27):
                     break
                 time.sleep(0.1)
                 continue
@@ -783,6 +793,7 @@ def main():
                 continue
         try:
             with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                f.seek(max(0, os.path.getsize(log_path) - 64 * 1024))  # the tail only, not the whole file
                 lines = f.readlines()[-50:]
                 for line in lines:
                     STATE.log_buffers[svc["id"]].append(line.rstrip("\r\n"))

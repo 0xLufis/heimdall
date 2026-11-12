@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import type { AutoTagResult, SearchResultItem, SearchGroup, KeyLookupSuggestion } from '~/types/search'
 import { 
   Sparkles, 
@@ -28,9 +28,17 @@ import {
   AlertTriangle,
   Flame,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Loader2,
+  History,
+  AlertCircle,
+  Ticket,
+  User,
+  Activity
 } from 'lucide-vue-next'
 import { BASELINE_KNOWN_KEY_VALUES } from '~/utils/search/indexingTables'
+import { highlightSegments } from '~/utils/search/searchRanking'
+import { resolveEntityKind, resolveResultLink, resultKindOrder, type SearchEntityKind } from '~/utils/search/searchNavigation'
 
 const props = withDefaults(
   defineProps<{
@@ -46,6 +54,13 @@ const props = withDefaults(
     isLoading?: boolean
     freeText?: string
     instanceId?: string
+    /** Set when every search source failed. */
+    error?: string | null
+    /** Sources that failed while others answered (partial outage). */
+    failedSources?: string[]
+    recentSearches?: string[]
+    /** DOM id of the results listbox; option ids derive from it (aria-activedescendant). */
+    listboxId?: string
   }>(),
   {
     autoSuggestions: () => [],
@@ -59,7 +74,11 @@ const props = withDefaults(
     knownKeyValues: () => ({}),
     isLoading: false,
     freeText: '',
-    instanceId: 'global'
+    instanceId: 'global',
+    error: null,
+    failedSources: () => [],
+    recentSearches: () => [],
+    listboxId: 'heimdall-search-listbox'
   }
 )
 
@@ -69,6 +88,10 @@ const emit = defineEmits<{
   (e: 'select-key', key: string): void
   (e: 'select-value', value: string): void
   (e: 'select-tag-value', key: string, value: string): void
+  (e: 'select-recent', query: string): void
+  (e: 'clear-recent'): void
+  (e: 'retry'): void
+  (e: 'active-change', optionId: string | null): void
 }>()
 
 // Active View Mode: 'results' (live suggestions/matches) or 'tags' (full tag & stored values browser)
@@ -182,17 +205,56 @@ const crossTableItems = computed(() => {
   return props.results.filter(r => r.isCrossTable)
 })
 
-// Flattened results for keyboard navigation & preview
-const flatResults = computed(() => {
-  return [...primaryItems.value, ...crossTableItems.value]
+// Results grouped by entity kind. The global search lists stations, controllers, tickets and
+// people before inventory; a page-scoped search lists its own entity first (resultKindOrder).
+const GROUP_META: Record<SearchEntityKind, { label: string; icon: any }> = {
+  machine: { label: 'Stations', icon: Factory },
+  controller: { label: 'Controllers', icon: Monitor },
+  ticket: { label: 'Tickets', icon: Ticket },
+  inventory: { label: 'Inventory', icon: Package },
+  user: { label: 'People', icon: User },
+  telemetry: { label: 'Telemetry', icon: Activity }
+}
+
+interface ResultGroup {
+  kind: SearchEntityKind
+  label: string
+  icon: any
+  entries: Array<{ item: SearchResultItem; index: number }>
+}
+
+const resultGroups = computed<ResultGroup[]>(() => {
+  const byKind = new Map<SearchEntityKind, ResultGroup>()
+  for (const item of [...primaryItems.value, ...crossTableItems.value]) {
+    const kind = resolveEntityKind(item)
+    let group = byKind.get(kind)
+    if (!group) {
+      group = { kind, ...GROUP_META[kind], entries: [] }
+      byKind.set(kind, group)
+    }
+    group.entries.push({ item, index: 0 })
+  }
+  // Keyboard order is the render order: number the entries group by group.
+  let index = 0
+  const order = resultKindOrder(props.instanceId)
+  const groups = [...byKind.values()].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))
+  for (const group of groups) {
+    for (const entry of group.entries) entry.index = index++
+  }
+  return groups
 })
 
-const selectedResultIndex = ref(0)
+// Flattened results for keyboard navigation & preview
+const flatResults = computed(() => resultGroups.value.flatMap(g => g.entries.map(e => e.item)))
 
-watch(flatResults, (items) => {
-  if (selectedResultIndex.value >= items.length) {
-    selectedResultIndex.value = Math.max(0, items.length - 1)
-  }
+const selectedResultIndex = ref(0)
+const listRef = ref<HTMLElement | null>(null)
+
+const optionId = (index: number) => `${props.listboxId}-option-${index}`
+
+// A new result set starts at the top; an unchanged one (cache refresh) keeps the selection.
+watch(() => flatResults.value.map(r => `${r.sourceTable || ''}:${r.id}`).join('|'), () => {
+  selectedResultIndex.value = 0
 })
 
 const selectedResult = computed<SearchResultItem | null>(() => {
@@ -200,14 +262,25 @@ const selectedResult = computed<SearchResultItem | null>(() => {
   return flatResults.value[selectedResultIndex.value] || flatResults.value[0] || null
 })
 
+const activeOptionId = computed(() => (selectedResult.value ? optionId(selectedResultIndex.value) : null))
+watch(activeOptionId, (id) => emit('active-change', id), { immediate: true })
+
+const scrollActiveIntoView = async () => {
+  await nextTick()
+  if (typeof document === 'undefined') return
+  document.getElementById(optionId(selectedResultIndex.value))?.scrollIntoView?.({ block: 'nearest' })
+}
+
 const navigateNext = () => {
   if (flatResults.value.length === 0) return
   selectedResultIndex.value = (selectedResultIndex.value + 1) % flatResults.value.length
+  scrollActiveIntoView()
 }
 
 const navigatePrev = () => {
   if (flatResults.value.length === 0) return
   selectedResultIndex.value = (selectedResultIndex.value - 1 + flatResults.value.length) % flatResults.value.length
+  scrollActiveIntoView()
 }
 
 const getSelectedResult = (): SearchResultItem | null => {
@@ -218,19 +291,19 @@ const cycleView = (direction: number = 1) => {
   activeView.value = activeView.value === 'results' ? 'tags' : 'results'
 }
 
-// Substring fuzzy match highlighter
-const highlightMatch = (text: string, query?: string): string => {
-  if (!text) return ''
-  const q = (query || props.freeText || '').trim()
-  if (!q) return text
-  try {
-    const clean = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const regex = new RegExp(`(${clean})`, 'gi')
-    return text.replace(regex, '<mark class="bg-primary/25 text-primary font-bold px-0.5 rounded">$1</mark>')
-  } catch {
-    return text
-  }
+// Matched query tokens as text segments (entity names are backend data: never rendered as HTML)
+const highlight = (text: string) => highlightSegments(text, props.freeText || '')
+
+const hasQuery = computed(() => (props.freeText || '').trim().length >= 2)
+
+const statusDotClass = (status?: string) => {
+  const s = (status || '').toLowerCase()
+  if (['online', 'active', 'running', 'instorage', 'inmachine', 'resolved', 'closed'].includes(s)) return 'bg-emerald-500'
+  if (['offline', 'decommissioned', 'critical', 'faulted'].includes(s)) return 'bg-rose-500'
+  return 'bg-amber-500'
 }
+
+const selectedResultLink = computed(() => (selectedResult.value ? resolveResultLink(selectedResult.value) : ''))
 
 // Scoping prefix pills
 const scopingTags = [
@@ -242,9 +315,7 @@ const scopingTags = [
 ]
 
 // Total live matches count
-const totalMatchesCount = computed(() => {
-  return primaryItems.value.length + crossTableItems.value.length + props.autoSuggestions.length + props.valueSuggestions.length
-})
+const totalMatchesCount = computed(() => flatResults.value.length)
 
 function handleBrowseTagClick(key: string) {
   selectedBrowseKey.value = key
@@ -284,7 +355,7 @@ defineExpose({
           :class="activeView === 'results' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
         >
           <Search class="w-3 h-3" />
-          <span>Results & Autocomplete</span>
+          <span>Results</span>
           <span
             v-if="totalMatchesCount > 0"
             class="px-1.5 py-0.2 rounded-full text-[9px] font-mono leading-none"
@@ -325,7 +396,7 @@ defineExpose({
 
       <div class="flex items-center gap-2.5 text-[10px] text-muted-foreground font-mono">
         <span class="hidden lg:inline bg-muted/60 px-1.5 py-0.5 rounded border border-border/60">
-          <kbd>^J</kbd> / <kbd>^K</kbd> navigate
+          <kbd>↑</kbd> <kbd>↓</kbd> navigate · <kbd>↵</kbd> open
         </span>
         <span class="hidden sm:inline">{{ totalStoredValuesCount }} indexed values</span>
       </div>
@@ -552,92 +623,126 @@ defineExpose({
           </div>
         </div>
 
-        <!-- Stage 1: Primary Indexing Table Matches -->
-        <div v-if="primaryItems.length > 0" class="p-2 space-y-1">
-          <div class="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-muted-foreground px-2 py-1">
-            <span class="flex items-center gap-1.5">
-              <Database class="w-3 h-3 text-primary" />
-              <span>Primary Results ({{ primaryItems.length }})</span>
-            </span>
-            <span class="font-mono text-muted-foreground uppercase">{{ instanceId }}</span>
+        <!-- Search status: failure / partial outage -->
+        <div v-if="error" role="alert" class="p-3 bg-destructive/10 flex items-start justify-between gap-3">
+          <div class="flex items-start gap-2 text-xs text-destructive">
+            <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{{ error }}</span>
           </div>
-
-          <div
-            v-for="item in primaryItems"
-            :key="item.id"
-            @click="emit('select-result', item)"
-            @mouseenter="selectedResultIndex = flatResults.indexOf(item)"
-            class="flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all group"
-            :class="flatResults.indexOf(item) === selectedResultIndex ? 'bg-primary/10 border-l-2 border-primary text-primary font-medium' : 'hover:bg-muted/60 text-foreground'"
+          <button
+            type="button"
+            @click="emit('retry')"
+            class="shrink-0 px-2 py-1 rounded-lg border border-destructive/40 text-[10px] font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
           >
-            <div class="flex items-center gap-2.5 min-w-0">
-              <div
-                class="size-1.5 rounded-full shrink-0"
-                :class="flatResults.indexOf(item) === selectedResultIndex ? 'bg-primary scale-125' : 'bg-muted-foreground/40'"
-              />
-              <div class="min-w-0 truncate">
-                <div class="text-xs font-semibold truncate flex items-center gap-2">
-                  <span v-html="highlightMatch(item.name)" />
-                  <span
-                    v-if="item.status"
-                    class="size-1.5 rounded-full shrink-0"
-                    :class="item.status === 'online' || item.status === 'active' ? 'bg-emerald-500' : 'bg-amber-500'"
-                  />
-                </div>
-                <div class="text-[10px] text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
-                  <span class="uppercase tracking-wider font-bold">{{ item.typeLabel || item.itemType }}</span>
-                  <span v-if="item.manufacturerName" class="truncate">• {{ item.manufacturerName }}</span>
-                  <span v-if="item.subtitle" class="font-mono opacity-80 truncate">({{ item.subtitle }})</span>
-                </div>
-              </div>
+            Retry
+          </button>
+        </div>
+        <div v-else-if="failedSources.length > 0" role="status" class="px-3 py-1.5 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+          <AlertTriangle class="w-3 h-3 shrink-0" />
+          <span>Results are incomplete: {{ failedSources.join(', ') }} could not be searched.</span>
+        </div>
+
+        <!-- Results grouped by entity type -->
+        <div
+          :id="listboxId"
+          ref="listRef"
+          role="listbox"
+          aria-label="Search results"
+          :aria-busy="isLoading"
+          class="divide-y divide-border/60"
+        >
+          <div
+            v-for="group in resultGroups"
+            :key="group.kind"
+            role="group"
+            :aria-label="`${group.label}, ${group.entries.length} results`"
+            class="p-2 space-y-1"
+          >
+            <div class="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-muted-foreground px-2 py-1">
+              <span class="flex items-center gap-1.5">
+                <component :is="group.icon" class="w-3 h-3 text-primary" />
+                <span>{{ group.label }}</span>
+              </span>
+              <span class="px-1.5 py-0.5 rounded-full bg-muted border border-border/60 font-mono leading-none">{{ group.entries.length }}</span>
             </div>
 
-            <div class="flex items-center gap-1.5 shrink-0 ml-2">
-              <span class="text-[8px] font-mono uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                {{ item.sourceTable || instanceId }}
-              </span>
-              <ArrowRight class="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
+            <div
+              v-for="entry in group.entries"
+              v-ctx:search="entry.item"
+              :id="optionId(entry.index)"
+              :key="`${group.kind}:${entry.item.id}`"
+              role="option"
+              :aria-selected="entry.index === selectedResultIndex"
+              @click="emit('select-result', entry.item)"
+              @mousemove="selectedResultIndex = entry.index"
+              class="flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors group border-l-2"
+              :class="entry.index === selectedResultIndex ? 'bg-primary/10 border-primary text-primary font-medium' : 'border-transparent hover:bg-muted/60 text-foreground'"
+            >
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span
+                  class="size-1.5 rounded-full shrink-0"
+                  :class="entry.item.status ? statusDotClass(entry.item.status) : 'bg-muted-foreground/40'"
+                  :title="entry.item.status || undefined"
+                />
+                <div class="min-w-0">
+                  <div class="text-xs font-semibold truncate">
+                    <template v-for="(seg, i) in highlight(entry.item.name)" :key="i">
+                      <mark v-if="seg.match" class="bg-primary/25 text-primary font-bold rounded-xs">{{ seg.text }}</mark>
+                      <template v-else>{{ seg.text }}</template>
+                    </template>
+                  </div>
+                  <div class="text-[10px] text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
+                    <span class="uppercase tracking-wider font-bold shrink-0">{{ entry.item.typeLabel || entry.item.itemType }}</span>
+                    <span v-if="entry.item.manufacturerName" class="truncate">• {{ entry.item.manufacturerName }}</span>
+                    <span v-if="entry.item.subtitle" class="font-mono opacity-80 truncate">
+                      <template v-for="(seg, i) in highlight(entry.item.subtitle)" :key="i">
+                        <mark v-if="seg.match" class="bg-primary/20 text-primary rounded-xs">{{ seg.text }}</mark>
+                        <template v-else>{{ seg.text }}</template>
+                      </template>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <ArrowRight
+                class="w-3.5 h-3.5 shrink-0 ml-2 transition-transform"
+                :class="entry.index === selectedResultIndex ? 'text-primary translate-x-0.5' : 'text-muted-foreground'"
+              />
             </div>
           </div>
         </div>
 
-        <!-- Stage 3: Cross-Table Matches -->
-        <div v-if="crossTableItems.length > 0" class="p-2 space-y-1 bg-muted/15">
-          <div class="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 px-2 py-1">
+        <!-- Loading (first load only; cached results stay visible while refreshing) -->
+        <div v-if="isLoading && flatResults.length === 0" role="status" class="p-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Loader2 class="w-3.5 h-3.5 animate-spin" />
+          <span>Searching…</span>
+        </div>
+
+        <!-- Recent searches (shown while the input is empty) -->
+        <div v-if="!hasQuery && recentSearches.length > 0 && flatResults.length === 0" class="p-2.5">
+          <div class="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">
             <span class="flex items-center gap-1.5">
-              <Network class="w-3 h-3 text-amber-600 dark:text-amber-400" />
-              <span>Cross-Table Links ({{ crossTableItems.length }})</span>
+              <History class="w-3 h-3" />
+              <span>Recent Searches</span>
             </span>
+            <button
+              type="button"
+              @click="emit('clear-recent')"
+              class="text-[9px] text-muted-foreground hover:text-foreground hover:underline font-bold uppercase tracking-wider cursor-pointer"
+            >
+              Clear
+            </button>
           </div>
-
-          <div
-            v-for="item in crossTableItems"
-            :key="item.id"
-            @click="emit('select-result', item)"
-            @mouseenter="selectedResultIndex = flatResults.indexOf(item)"
-            class="flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all group"
-            :class="flatResults.indexOf(item) === selectedResultIndex ? 'bg-amber-500/15 border-l-2 border-amber-500 text-amber-600 dark:text-amber-300 font-medium' : 'hover:bg-muted/60 text-foreground'"
-          >
-            <div class="flex items-center gap-2.5 min-w-0">
-              <div
-                class="size-1.5 rounded-full shrink-0"
-                :class="flatResults.indexOf(item) === selectedResultIndex ? 'bg-amber-500 scale-125' : 'bg-muted-foreground/40'"
-              />
-              <div class="min-w-0 truncate">
-                <div class="text-xs font-semibold truncate" v-html="highlightMatch(item.name)" />
-                <div class="text-[10px] text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
-                  <span class="uppercase tracking-wider font-semibold">{{ item.typeLabel || item.itemType }}</span>
-                  <span v-if="item.subtitle" class="font-mono truncate">({{ item.subtitle }})</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-1.5 shrink-0 ml-2">
-              <span class="text-[8px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                Cross
-              </span>
-              <ArrowRight class="w-3.5 h-3.5 text-muted-foreground group-hover:text-amber-500 transition-transform group-hover:translate-x-0.5" />
-            </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="q in recentSearches"
+              :key="q"
+              type="button"
+              @click="emit('select-recent', q)"
+              class="max-w-full truncate px-2.5 py-1 bg-card hover:bg-accent text-foreground border border-border hover:border-primary/50 rounded-full text-[11px] transition-colors cursor-pointer"
+            >
+              {{ q }}
+            </button>
           </div>
         </div>
 
@@ -672,15 +777,26 @@ defineExpose({
           </div>
         </div>
 
-        <!-- Empty search results placeholder with Telescope CheatSheet -->
-        <div v-if="flatResults.length === 0 && !isLoading" class="p-6 text-center space-y-3">
+        <!-- No matches for the typed query -->
+        <div v-if="flatResults.length === 0 && !isLoading && !error && hasQuery" class="p-6 text-center space-y-2">
+          <div class="p-3 mx-auto w-fit rounded-xl bg-muted/60 border border-border text-muted-foreground">
+            <Search class="size-6" />
+          </div>
+          <p class="text-xs font-semibold text-foreground break-words">No matches for “{{ freeText.trim() }}”</p>
+          <p class="text-[11px] text-muted-foreground max-w-sm mx-auto">
+            Check the spelling, try fewer words, or press <kbd class="px-1 py-0.5 rounded bg-card border font-mono text-[10px]">Enter</kbd> to run the query on the matching list page.
+          </p>
+        </div>
+
+        <!-- Idle placeholder -->
+        <div v-else-if="flatResults.length === 0 && !isLoading && !error && recentSearches.length === 0" class="p-6 text-center space-y-3">
           <div class="p-3 mx-auto w-fit rounded-xl bg-muted/60 border border-border text-muted-foreground">
             <Keyboard class="size-6" />
           </div>
           <div class="space-y-1">
-            <p class="text-xs font-semibold text-foreground">Telescope Search Ready</p>
+            <p class="text-xs font-semibold text-foreground">Search Ready</p>
             <p class="text-[11px] text-muted-foreground max-w-sm mx-auto">
-              Start typing to search stations, controllers, inventory, tickets, or use scoping tags like <code class="font-mono text-primary">@machine</code>, <code class="font-mono text-primary">#ticket</code>, or <code class="font-mono text-primary">!controller</code>.
+              Type at least two characters to search stations, controllers, tickets, people and inventory, or scope with <code class="font-mono text-primary">@machine</code>, <code class="font-mono text-primary">#ticket</code>, <code class="font-mono text-primary">!controller</code> or <code class="font-mono text-primary">*part</code>.
             </p>
           </div>
         </div>
@@ -715,13 +831,13 @@ defineExpose({
             <!-- Machine Preview Fields -->
             <div v-if="selectedResult.itemType === 'Machine' || selectedResult.typeLabel === 'Station'" class="space-y-2">
               <div class="p-2.5 rounded-lg bg-card border border-border/80 space-y-1.5">
-                <div class="flex items-center justify-between text-[11px]">
-                  <span class="text-muted-foreground">Entity Identifier:</span>
-                  <span class="font-mono font-semibold text-foreground">{{ selectedResult.id }}</span>
+                <div class="flex items-center justify-between gap-2 text-[11px]">
+                  <span class="text-muted-foreground shrink-0">Entity Identifier:</span>
+                  <span class="font-mono font-semibold text-foreground truncate" :title="selectedResult.id">{{ selectedResult.id }}</span>
                 </div>
                 <div v-if="selectedResult.status" class="flex items-center justify-between text-[11px]">
                   <span class="text-muted-foreground">Status:</span>
-                  <span class="font-semibold text-emerald-600 dark:text-emerald-400 capitalize">{{ selectedResult.status }}</span>
+                  <span class="font-semibold text-foreground capitalize">{{ selectedResult.status }}</span>
                 </div>
                 <div v-if="selectedResult.subtitle" class="flex items-center justify-between text-[11px]">
                   <span class="text-muted-foreground">Line / Topology:</span>
@@ -737,9 +853,51 @@ defineExpose({
                   <span class="text-muted-foreground">Hostname:</span>
                   <span class="font-mono font-semibold text-foreground">{{ selectedResult.name }}</span>
                 </div>
+                <div v-if="selectedResult.subtitle" class="flex items-center justify-between gap-2 text-[11px]">
+                  <span class="text-muted-foreground shrink-0">Network:</span>
+                  <span class="font-mono font-semibold text-foreground truncate">{{ selectedResult.subtitle }}</span>
+                </div>
                 <div class="flex items-center justify-between text-[11px]">
-                  <span class="text-muted-foreground">Connection:</span>
-                  <span class="font-semibold text-emerald-600 dark:text-emerald-400">Online & Pingable</span>
+                  <span class="text-muted-foreground">Last report:</span>
+                  <span class="font-semibold capitalize" :class="selectedResult.status === 'online' ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'">
+                    {{ selectedResult.status || 'unknown' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ticket Preview Fields -->
+            <div v-else-if="selectedResult.itemType === 'Ticket'" class="space-y-2">
+              <div class="p-2.5 rounded-lg bg-card border border-border/80 space-y-1.5">
+                <div v-if="selectedResult.status" class="flex items-center justify-between text-[11px]">
+                  <span class="text-muted-foreground">Status:</span>
+                  <span class="font-semibold text-foreground">{{ selectedResult.status }}</span>
+                </div>
+                <div v-if="selectedResult.metadata?.priority" class="flex items-center justify-between text-[11px]">
+                  <span class="text-muted-foreground">Priority:</span>
+                  <span class="font-semibold text-foreground">{{ selectedResult.metadata.priority }}</span>
+                </div>
+                <div v-if="selectedResult.metadata?.stationName" class="flex items-center justify-between gap-2 text-[11px]">
+                  <span class="text-muted-foreground shrink-0">Station:</span>
+                  <span class="font-semibold text-foreground truncate">{{ selectedResult.metadata.stationName }}</span>
+                </div>
+                <div v-if="selectedResult.metadata?.assignee" class="flex items-center justify-between gap-2 text-[11px]">
+                  <span class="text-muted-foreground shrink-0">Assignee:</span>
+                  <span class="font-semibold text-foreground truncate">{{ selectedResult.metadata.assignee }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- User Preview Fields -->
+            <div v-else-if="selectedResult.itemType === 'User'" class="space-y-2">
+              <div class="p-2.5 rounded-lg bg-card border border-border/80 space-y-1.5">
+                <div v-if="selectedResult.metadata?.email" class="flex items-center justify-between gap-2 text-[11px]">
+                  <span class="text-muted-foreground shrink-0">E-mail:</span>
+                  <span class="font-mono font-semibold text-foreground truncate">{{ selectedResult.metadata.email }}</span>
+                </div>
+                <div v-if="selectedResult.metadata?.role" class="flex items-center justify-between gap-2 text-[11px]">
+                  <span class="text-muted-foreground shrink-0">Role:</span>
+                  <span class="font-semibold text-foreground truncate">{{ selectedResult.metadata.role }}</span>
                 </div>
               </div>
             </div>
@@ -769,11 +927,11 @@ defineExpose({
           <div class="space-y-2 text-[11px]">
             <div class="flex items-center justify-between">
               <span>Navigate Down</span>
-              <kbd class="px-1.5 py-0.5 rounded bg-card border font-mono">Ctrl+J / ↓</kbd>
+              <kbd class="px-1.5 py-0.5 rounded bg-card border font-mono">↓</kbd>
             </div>
             <div class="flex items-center justify-between">
               <span>Navigate Up</span>
-              <kbd class="px-1.5 py-0.5 rounded bg-card border font-mono">Ctrl+K / ↑</kbd>
+              <kbd class="px-1.5 py-0.5 rounded bg-card border font-mono">↑</kbd>
             </div>
             <div class="flex items-center justify-between">
               <span>Select / Open</span>
@@ -781,21 +939,22 @@ defineExpose({
             </div>
             <div class="flex items-center justify-between">
               <span>Open in New Tab</span>
-              <kbd class="px-1.5 py-0.5 rounded bg-card border font-mono">Ctrl+V / Ctrl+X</kbd>
+              <kbd class="px-1.5 py-0.5 rounded bg-card border font-mono">Ctrl+Enter</kbd>
             </div>
             <div class="flex items-center justify-between">
               <span>Filter Scope Drawer</span>
               <kbd class="px-1.5 py-0.5 rounded bg-card border font-mono">Ctrl+F</kbd>
             </div>
             <div class="flex items-center justify-between">
-              <span>Cycle Tabs</span>
+              <span>Complete Suggestion</span>
               <kbd class="px-1.5 py-0.5 rounded bg-card border font-mono">Tab</kbd>
             </div>
           </div>
         </div>
 
         <!-- Split View Action Footer -->
-        <div v-if="selectedResult" class="pt-3 border-t border-border/60 flex items-center justify-between gap-2">
+        <div v-if="selectedResult" class="pt-3 border-t border-border/60 space-y-2">
+          <p class="text-[10px] font-mono text-muted-foreground truncate" :title="selectedResultLink">Opens {{ selectedResultLink }}</p>
           <button
             type="button"
             @click="emit('select-result', selectedResult)"

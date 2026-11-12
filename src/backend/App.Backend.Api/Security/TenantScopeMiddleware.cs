@@ -29,6 +29,11 @@ public sealed class TenantScopeMiddleware
     public const string OrgClaimType = "OrgId";
     public const string NoOrganizationSentinel = "__heimdall_no_organization__";
 
+    /// <summary><see cref="HttpContext.Items"/> key holding the tenant scope resolved for the request.</summary>
+    public const string ScopeItemKey = "Heimdall.TenantScope";
+    /// <summary>Cache scope of unscoped (platform administrator) requests.</summary>
+    public const string UnscopedCacheScope = "all";
+
     private readonly RequestDelegate _next;
 
     public TenantScopeMiddleware(RequestDelegate next) => _next = next;
@@ -38,11 +43,21 @@ public sealed class TenantScopeMiddleware
         var user = context.User;
         if (user.Identity?.IsAuthenticated == true)
         {
-            db.CurrentOrganizationId = await ResolveScopeAsync(user, authorization);
+            var scope = await ResolveScopeAsync(user, authorization);
+            db.CurrentOrganizationId = scope;
+            context.Items[ScopeItemKey] = scope ?? UnscopedCacheScope;
         }
 
         await _next(context);
     }
+
+    /// <summary>
+    /// Qualifies a cache key with the caller's tenant scope. Results of tenant-filtered queries
+    /// must be cached per scope: under a shared key the first caller's rows (for example a platform
+    /// administrator's unfiltered list) are served to every other tenant until the entry expires.
+    /// </summary>
+    public static string ScopedCacheKey(HttpContext? context, string key) =>
+        $"{key}:tenant:{(context?.Items[ScopeItemKey] as string) ?? UnscopedCacheScope}";
 
     public static async Task<string?> ResolveScopeAsync(
         System.Security.Claims.ClaimsPrincipal user, IAuthorizationService authorization)

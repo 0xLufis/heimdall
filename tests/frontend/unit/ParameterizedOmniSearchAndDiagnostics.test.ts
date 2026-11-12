@@ -40,7 +40,8 @@ describe('Parameterized useHeimdallSearch & GDPR Diagnostics Suite', () => {
       expect(item.subtitle).toContain('Line: Line 1')
       expect(item.subtitle).toContain('Controllers: 2')
       expect(item.status).toBe('online')
-      expect(item.link).toBe('/dashboard/machines?id=st-disp-01')
+      // Deep link opens the station workbench (machines.vue honours ?search & ?tree)
+      expect(item.link).toBe('/dashboard/machines?search=Dispensing+Station+1&tree=st-disp-01')
     })
 
     it('normalizes endpoint objects matching system_info.proto SystemInfoRequest', () => {
@@ -60,8 +61,11 @@ describe('Parameterized useHeimdallSearch & GDPR Diagnostics Suite', () => {
       expect(item.typeLabel).toBe('IPC')
       expect(item.subtitle).toContain('IP: 192.168.1.120')
       expect(item.subtitle).toContain('MAC: 02:65:54:CE:AE:FC')
-      expect(item.status).toBe('online')
-      expect(item.link).toBe('/dashboard/clients')
+      // A heartbeat from months ago is not "online": only reports within 5 minutes count
+      expect(item.status).toBe('offline')
+      expect(endpointTemplate.extractSearchItem({ ...rawEndpoint, last_online: new Date().toISOString() }).status).toBe('online')
+      // Deep link selects the controller on the clients page instead of the bare list
+      expect(item.link).toBe('/dashboard/clients?hostname=IPC-STATION-01')
     })
 
     it('normalizes inventory components with serialized and stock metadata', () => {

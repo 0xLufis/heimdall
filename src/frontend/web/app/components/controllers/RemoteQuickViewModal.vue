@@ -9,6 +9,13 @@ import RbacTooltip from '~/components/common/RbacTooltip.vue'
 import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 import { createRfbClient } from '~/composables/useRfbClient'
 import {
+  useControllerRemoteAccess,
+  normalizeVncEndpoint,
+  buildVncWebSocketUrl,
+  describeVncEndpoint,
+  type VncEndpoint
+} from '~/composables/useControllerRemoteAccess'
+import {
   Monitor,
   ExternalLink,
   Copy,
@@ -42,7 +49,8 @@ const emit = defineEmits<{
   (e: 'update:open', val: boolean): void
 }>()
 
-const { canExecuteRemote } = useRbacPermission()
+const { canExecuteRemote, canManageEndpoints } = useRbacPermission()
+const { fetchRemoteAccess, saveVncEndpoint, clearVncEndpoint } = useControllerRemoteAccess()
 
 type RemoteProvider = 'vnc' | 'dameware' | 'rdp'
 const activeProvider = ref<RemoteProvider>('vnc')
@@ -65,10 +73,38 @@ const errorMessage = ref('')
 const desktopName = ref('')
 const showSettings = ref(false)
 
-// Connection parameters
+// Connection parameters. They are resolved from the controller's own remote-access link
+// (backend: ClientPc/{id}/remote-access); nothing here points at a shared default machine.
+type LinkState = 'idle' | 'resolving' | 'linked' | 'unlinked' | 'error'
+const linkState = ref<LinkState>('idle')
+const linkedEndpoint = ref<VncEndpoint | null>(null)
+const linkError = ref('')
+const isSavingLink = ref(false)
 const vncHost = ref('')
-const vncPort = ref(8006)
+const vncPort = ref<number | null>(null)
 const vncPath = ref('websockify')
+const vncSecure = ref(false)
+// Bumped whenever the target controller changes so a late response for the previous one is dropped.
+let resolveGeneration = 0
+
+const pageHostname = () => (typeof window !== 'undefined' ? window.location.hostname : '')
+
+/** Endpoint currently entered in the form (linked values or operator edits); null when incomplete. */
+const formEndpoint = computed<VncEndpoint | null>(() =>
+  normalizeVncEndpoint({ host: vncHost.value, port: vncPort.value, path: vncPath.value, secure: vncSecure.value })
+)
+const endpointLabel = computed(() => describeVncEndpoint(formEndpoint.value, pageHostname()))
+const hasUnsavedEndpoint = computed(() => {
+  const form = formEndpoint.value
+  const linked = linkedEndpoint.value
+  if (!form) return false
+  if (!linked) return true
+  return form.host !== linked.host || form.port !== linked.port || form.path !== linked.path || form.secure !== linked.secure
+})
+/** Fleet-store controllers carry the flag under `telemetry`; ad-hoc objects carry it directly. */
+const isControllerOnline = computed(() => Boolean(props.controller?.telemetry?.isOnline ?? (props.controller as any)?.isOnline))
+/** Address used for the native clients (DameWare / RDP): the controller's own address. */
+const targetAddress = computed(() => props.controller?.ipAddress || props.controller?.hostname || '')
 
 // DOM references
 const vncContainerRef = ref<HTMLDivElement | null>(null)
@@ -99,26 +135,83 @@ const vncCanvasRef = ref<HTMLCanvasElement | null>(null)
 let rfbInstance: any = null
 let animationFrameId: number | null = null
 
-// Initialize host and port defaults based on controller
-const initConnectionParams = () => {
-  if (typeof window !== 'undefined') {
-    vncHost.value = window.location.hostname || '127.0.0.1'
-  } else {
-    vncHost.value = '127.0.0.1'
+const applyEndpointToForm = (endpoint: VncEndpoint | null) => {
+  linkedEndpoint.value = endpoint
+  vncHost.value = endpoint?.host || ''
+  vncPort.value = endpoint?.port ?? null
+  vncPath.value = endpoint?.path || 'websockify'
+  vncSecure.value = endpoint?.secure ?? false
+}
+
+/** Resolves the VNC endpoint linked to the current controller. Returns true when one is linked. */
+const resolveEndpoint = async (): Promise<boolean> => {
+  const generation = ++resolveGeneration
+  const controllerId = props.controller?.id
+  applyEndpointToForm(null)
+  linkError.value = ''
+  if (!controllerId) {
+    linkState.value = 'unlinked'
+    return false
   }
-  // Default to port 8006 for dockurr/windows
-  vncPort.value = 8006
-  vncPath.value = 'websockify'
+
+  linkState.value = 'resolving'
+  try {
+    const access = await fetchRemoteAccess(controllerId)
+    if (generation !== resolveGeneration) return false
+    applyEndpointToForm(access.vnc)
+    linkState.value = access.vnc ? 'linked' : 'unlinked'
+    if (!access.vnc) showSettings.value = canManageEndpoints.value
+    return !!access.vnc
+  } catch (err: any) {
+    if (generation !== resolveGeneration) return false
+    linkState.value = 'error'
+    linkError.value = err?.data?.message || err?.message || 'Could not resolve the remote access link for this controller.'
+    return false
+  }
+}
+
+const handleSaveLink = async () => {
+  const controllerId = props.controller?.id
+  const endpoint = formEndpoint.value
+  if (!controllerId || !endpoint || !canManageEndpoints.value) return
+  isSavingLink.value = true
+  linkError.value = ''
+  try {
+    const access = await saveVncEndpoint(controllerId, endpoint)
+    applyEndpointToForm(access.vnc)
+    linkState.value = access.vnc ? 'linked' : 'unlinked'
+  } catch (err: any) {
+    linkError.value = err?.data?.message || err?.message || 'Could not save the endpoint link.'
+  } finally {
+    isSavingLink.value = false
+  }
+}
+
+const handleUnlink = async () => {
+  const controllerId = props.controller?.id
+  if (!controllerId || !canManageEndpoints.value) return
+  isSavingLink.value = true
+  linkError.value = ''
+  try {
+    await clearVncEndpoint(controllerId)
+    disconnectRfb()
+    applyEndpointToForm(null)
+    linkState.value = 'unlinked'
+  } catch (err: any) {
+    linkError.value = err?.data?.message || err?.message || 'Could not remove the endpoint link.'
+  } finally {
+    isSavingLink.value = false
+  }
 }
 
 // Deep-link URIs
 const damewareUri = computed(() => {
-  const ip = props.controller?.ipAddress || vncHost.value || '127.0.0.1'
+  const ip = targetAddress.value
   return `dwmrc://${ip}?port=${damewarePort.value}&use_cur_creds=1`
 })
 
 const rdpDownloadContent = computed(() => {
-  const ip = props.controller?.ipAddress || vncHost.value || '127.0.0.1'
+  const ip = targetAddress.value
   return `screen mode id:i:2\nuse multimon:i:0\ndesktopwidth:i:1920\ndesktopheight:i:1080\nsession bpp:i:32\nwinposstr:s:0,1,0,0,800,600\nfull address:s:${ip}:${rdpPort.value}\nprompt for credentials:i:1\nnegotiate security layer:i:1`
 })
 
@@ -187,11 +280,16 @@ const connectRfb = async () => {
     return
   }
 
-  const host = vncHost.value || window.location.hostname || '127.0.0.1'
-  const port = vncPort.value || 8006
-  const cleanPath = vncPath.value ? vncPath.value.replace(/^\/+/, '') : 'websockify'
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${protocol}//${host}:${port}/${cleanPath}`
+  const endpoint = formEndpoint.value
+  if (!endpoint) {
+    connectionState.value = 'error'
+    errorMessage.value = linkState.value === 'unlinked'
+      ? `No VNC endpoint is linked to ${props.controller?.name || 'this controller'}.`
+      : 'The VNC endpoint is incomplete: a port between 1 and 65535 is required.'
+    return
+  }
+  const wsUrl = buildVncWebSocketUrl(endpoint, window.location)
+  const target = describeVncEndpoint(endpoint, window.location.hostname)
 
   try {
     const rfb = await createRfbClient(container, wsUrl, {
@@ -215,7 +313,7 @@ const connectRfb = async () => {
       isConnected.value = false
       if (!e.detail.clean) {
         connectionState.value = 'error'
-        errorMessage.value = 'VNC stream closed or unreachable. Verify Windows agent is running on port 8006.'
+        errorMessage.value = `VNC stream at ${target} closed or is unreachable.`
       }
     })
 
@@ -259,7 +357,20 @@ const handleSwitchToSimulation = () => {
 const handleSwitchToLive = () => {
   stopLoop()
   vncMode.value = 'live'
-  connectRfb()
+  if (formEndpoint.value) connectRfb()
+}
+
+/** (Re)starts the VNC tab for the current controller: resolve its link, then connect to it. */
+const startVncSession = async () => {
+  disconnectRfb()
+  stopLoop()
+  const linked = await resolveEndpoint()
+  if (!props.open || activeProvider.value !== 'vnc') return
+  if (vncMode.value === 'simulation') {
+    setTimeout(startLoop, 100)
+  } else if (linked) {
+    await connectRfb()
+  }
 }
 
 // ==========================================
@@ -337,7 +448,7 @@ const drawVncFrame = () => {
   ctx.font = '11px monospace'
   ctx.fillText(`Host: ${props.controller?.name} | IP: ${props.controller?.ipAddress} | OS: ${props.controller?.osVersion || 'Windows 10 IoT'}`, winX + 16, winY + 56)
   ctx.fillStyle = '#4ade80'
-  ctx.fillText(`Target AMS NetId: 192.168.10.101.1.1 | State: RUN | Cycle: 1.000 ms`, winX + 16, winY + 76)
+  ctx.fillText(`Simulated viewport (no live session) | Endpoint: ${endpointLabel.value}`, winX + 16, winY + 76)
   ctx.fillStyle = '#828a94'
   ctx.fillText(`IO Link Master: Channel 01..16 Active | Real-Time Latency: ${latencyMs.value} ms`, winX + 16, winY + 96)
 
@@ -390,26 +501,32 @@ const stopLoop = () => {
 // Lifecycle watcher
 watch(() => props.open, (newVal) => {
   if (newVal) {
-    initConnectionParams()
-    if (activeProvider.value === 'vnc') {
-      if (vncMode.value === 'live') {
-        connectRfb()
-      } else {
-        setTimeout(startLoop, 100)
-      }
-    }
+    startVncSession()
   } else {
+    resolveGeneration++
     disconnectRfb()
     stopLoop()
   }
 })
 
+// A different controller in the same dialog must never keep showing the previous one's desktop.
+watch(() => props.controller?.id, (newId, oldId) => {
+  if (newId === oldId) return
+  if (props.open) {
+    startVncSession()
+  } else {
+    resolveGeneration++
+    applyEndpointToForm(null)
+    linkState.value = 'idle'
+  }
+})
+
 watch(() => activeProvider.value, (newVal) => {
   if (newVal === 'vnc' && props.open) {
-    if (vncMode.value === 'live') {
-      connectRfb()
-    } else {
+    if (vncMode.value === 'simulation') {
       setTimeout(startLoop, 100)
+    } else if (formEndpoint.value) {
+      connectRfb()
     }
   } else {
     disconnectRfb()
@@ -424,23 +541,17 @@ const handleFullscreenChange = () => {
 }
 
 onMounted(() => {
-  initConnectionParams()
   if (typeof document !== 'undefined') {
     document.addEventListener('fullscreenchange', handleFullscreenChange)
   }
-  if (props.open && activeProvider.value === 'vnc') {
-    if (vncMode.value === 'live') {
-      connectRfb()
-    } else {
-      startLoop()
-    }
-  }
+  if (props.open) startVncSession()
 })
 
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }
+  resolveGeneration++
   disconnectRfb()
   stopLoop()
 })
@@ -466,13 +577,13 @@ onUnmounted(() => {
             <DialogTitle class="text-base font-semibold text-foreground flex items-center gap-2">
               <span>{{ controller.name }}</span>
               <Badge variant="outline" class="text-[10px] font-mono border-border bg-muted text-muted-foreground">
-                {{ controller.ipAddress || vncHost }}
+                {{ targetAddress || 'no address' }}
               </Badge>
               <Badge
-                :class="controller.isOnline ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-destructive/10 text-destructive border-destructive/30'"
+                :class="isControllerOnline ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-destructive/10 text-destructive border-destructive/30'"
                 class="text-[10px] border"
               >
-                {{ controller.isOnline ? 'Online' : 'Offline' }}
+                {{ isControllerOnline ? 'Online' : 'Offline' }}
               </Badge>
             </DialogTitle>
             <DialogDescription class="text-xs text-muted-foreground mt-0.5">
@@ -550,16 +661,31 @@ onUnmounted(() => {
                 </template>
                 <template v-else-if="connectionState === 'connecting'">
                   <span class="size-2 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse"></span>
-                  <span class="font-mono text-amber-600 dark:text-amber-300 text-[11px]">Connecting ws://{{ vncHost }}:{{ vncPort }}...</span>
+                  <span class="font-mono text-amber-600 dark:text-amber-300 text-[11px]">Connecting {{ endpointLabel }}...</span>
                 </template>
                 <template v-else-if="connectionState === 'error'">
                   <span class="size-2 rounded-full bg-rose-500"></span>
                   <span class="font-mono text-rose-600 dark:text-rose-400 text-[11px]">VNC Connection Failed</span>
                 </template>
+                <template v-else-if="linkState === 'resolving'">
+                  <span class="size-2 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse"></span>
+                  <span class="font-mono text-amber-600 dark:text-amber-300 text-[11px]">Resolving endpoint...</span>
+                </template>
+                <template v-else-if="linkState === 'unlinked' && !formEndpoint">
+                  <span class="size-2 rounded-full bg-muted-foreground"></span>
+                  <span class="font-mono text-muted-foreground text-[11px]">No endpoint linked</span>
+                </template>
                 <template v-else>
                   <span class="size-2 rounded-full bg-muted-foreground"></span>
                   <span class="font-mono text-muted-foreground text-[11px]">Disconnected</span>
                 </template>
+                <span
+                  v-if="formEndpoint && connectionState !== 'connecting'"
+                  class="font-mono text-[10px] text-muted-foreground hidden md:inline"
+                  :title="hasUnsavedEndpoint ? 'Endpoint entered for this session (not saved to the controller)' : 'Endpoint linked to this controller'"
+                >
+                  {{ endpointLabel }}<span v-if="hasUnsavedEndpoint"> (unsaved)</span>
+                </span>
               </div>
 
               <!-- Simulation Mode Indicator Badge -->
@@ -669,7 +795,9 @@ onUnmounted(() => {
                 <Sliders class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 VNC WebSocket Connection Parameters
               </span>
-              <span class="text-[10px] text-muted-foreground">Windows Docker Container: port 8006, path /websockify</span>
+              <span class="text-[10px] text-muted-foreground">
+                {{ linkedEndpoint ? `Linked to ${controller.name}: ${describeVncEndpoint(linkedEndpoint, pageHostname())}` : `No endpoint linked to ${controller.name}` }}
+              </span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
               <div>
@@ -677,7 +805,7 @@ onUnmounted(() => {
                 <input
                   v-model="vncHost"
                   type="text"
-                  placeholder="127.0.0.1"
+                  placeholder="(host serving this page)"
                   class="w-full bg-background border border-input rounded px-2 py-1 text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
@@ -686,7 +814,7 @@ onUnmounted(() => {
                 <input
                   v-model.number="vncPort"
                   type="number"
-                  placeholder="8006"
+                  placeholder="e.g. 6080"
                   class="w-full bg-background border border-input rounded px-2 py-1 text-xs text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
@@ -710,6 +838,37 @@ onUnmounted(() => {
                 </button>
               </div>
             </div>
+            <div class="flex items-center justify-between gap-3 flex-wrap pt-1">
+              <p class="text-[10px] text-muted-foreground">
+                The endpoint is stored on the controller. Leave the host empty when the VNC gateway is published on the host serving this page.
+              </p>
+              <div class="flex items-center gap-2">
+                <label class="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono cursor-pointer">
+                  <input v-model="vncSecure" type="checkbox" class="accent-indigo-600" />
+                  <span>wss://</span>
+                </label>
+                <RbacTooltip :disabled="!canManageEndpoints" :tooltip="RBAC_TOOLTIPS.ENDPOINT_MANAGEMENT">
+                  <button
+                    type="button"
+                    :disabled="!canManageEndpoints || !formEndpoint || !hasUnsavedEndpoint || isSavingLink"
+                    @click="handleSaveLink"
+                    class="py-1 px-3 bg-muted hover:bg-muted/80 text-foreground border border-border rounded text-xs font-medium disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                  >
+                    {{ isSavingLink ? 'Saving...' : 'Save link to controller' }}
+                  </button>
+                </RbacTooltip>
+                <button
+                  v-if="linkedEndpoint && canManageEndpoints"
+                  type="button"
+                  :disabled="isSavingLink"
+                  @click="handleUnlink"
+                  class="py-1 px-3 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 border border-rose-500/30 rounded text-xs font-medium disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  Unlink
+                </button>
+              </div>
+            </div>
+            <p v-if="linkError" class="text-[11px] text-rose-600 dark:text-rose-400">{{ linkError }}</p>
           </div>
 
           <!-- Main Viewport Canvas Container -->
@@ -760,10 +919,10 @@ onUnmounted(() => {
               <div class="space-y-1 max-w-md">
                 <h4 class="text-sm font-semibold text-foreground">Unable to Connect to Live VNC Stream</h4>
                 <p class="text-xs text-muted-foreground">
-                  {{ errorMessage || `Could not establish WebSocket connection to ws://${vncHost}:${vncPort}/${vncPath}` }}
+                  {{ errorMessage || `Could not establish a WebSocket connection to ${endpointLabel}` }}
                 </p>
                 <p class="text-[11px] text-muted-foreground mt-2">
-                  Ensure the Windows Docker container is running (<code class="text-foreground font-mono">docker compose up windows-agent</code>).
+                  Check that the remote desktop gateway linked to {{ controller.name }} is running and reachable from this browser.
                 </p>
               </div>
               <div class="flex items-center gap-3 pt-2">
@@ -782,6 +941,54 @@ onUnmounted(() => {
                 >
                   <Play class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   <span>Switch to Simulated Viewport</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- No endpoint linked / link could not be resolved -->
+            <div
+              v-if="vncMode === 'live' && connectionState !== 'error' && connectionState !== 'connecting' && connectionState !== 'connected' && (linkState === 'unlinked' || linkState === 'error') && !formEndpoint"
+              class="absolute inset-0 bg-background/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in"
+            >
+              <div class="p-3 rounded-full bg-muted border border-border text-muted-foreground">
+                <Monitor class="w-8 h-8" />
+              </div>
+              <div class="space-y-1 max-w-md">
+                <h4 class="text-sm font-semibold text-foreground">
+                  {{ linkState === 'error' ? 'Remote access link unavailable' : `No remote desktop linked to ${controller.name}` }}
+                </h4>
+                <p class="text-xs text-muted-foreground">
+                  {{ linkState === 'error'
+                    ? linkError
+                    : 'This controller has no VNC endpoint. Link its gateway (host, port, websocket path) to view its desktop here.' }}
+                </p>
+              </div>
+              <div class="flex items-center gap-3 pt-2">
+                <button
+                  v-if="linkState === 'error'"
+                  type="button"
+                  @click="startVncSession"
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                >
+                  <RefreshCw class="w-3.5 h-3.5" />
+                  <span>Retry</span>
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  @click="showSettings = true"
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                >
+                  <Settings2 class="w-3.5 h-3.5" />
+                  <span>{{ canManageEndpoints ? 'Link endpoint' : 'Enter endpoint for this session' }}</span>
+                </button>
+                <button
+                  type="button"
+                  @click="handleSwitchToSimulation"
+                  class="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-medium rounded-lg border border-border flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Play class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Simulated Viewport</span>
                 </button>
               </div>
             </div>
@@ -877,7 +1084,7 @@ onUnmounted(() => {
             <div class="p-4 rounded-lg bg-muted/40 border border-border space-y-2 font-mono text-xs">
               <div class="flex items-center justify-between text-muted-foreground">
                 <span>RDP Host Address:</span>
-                <span class="text-foreground">{{ controller.ipAddress || vncHost }}:{{ rdpPort }}</span>
+                <span class="text-foreground">{{ targetAddress || 'no address' }}:{{ rdpPort }}</span>
               </div>
               <div class="flex items-center justify-between text-muted-foreground">
                 <span>Target Architecture:</span>

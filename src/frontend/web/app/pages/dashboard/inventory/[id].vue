@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
@@ -80,32 +80,39 @@ const fetchData = async () => {
   }
 }
 
+/** Controller hosting this item (software / IPC components), when the record names one. */
+const hostController = computed<any | null>(() => {
+  const c = component.value
+  if (!c) return null
+  if (c.clientPc?.id) return c.clientPc
+  return c.clientPcId ? { id: c.clientPcId, hostname: c.clientPcHostname || '' } : null
+})
+
+// The viewer resolves the remote endpoint through this controller's id; pass only what is known
+// about it (no stand-in address, MAC or OS).
 const openRemoteForPc = (pc: any) => {
+  const lastOnline = pc.lastOnline || pc.lastSeen || null
+  const reportedRecently = lastOnline ? Date.now() - new Date(lastOnline).getTime() < 5 * 60 * 1000 : false
   remoteTargetController.value = {
-    id: pc.id || pc.hostname,
+    id: pc.id,
     name: pc.name || pc.hostname,
     hostname: pc.hostname,
-    ipAddress: pc.ipAddress || (typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'),
-    isOnline: pc.isOnline ?? true,
-    macAddress: pc.macAddress || '00:00:00:00:00:00',
-    osVersion: pc.osVersion || 'Windows 10 IoT Enterprise'
+    ipAddress: pc.ipAddress || undefined,
+    lastOnline,
+    isOnline: pc.isOnline ?? reportedRecently,
+    macAddress: pc.macAddress || '',
+    osVersion: pc.osVersion || undefined
   }
   isRemoteModalOpen.value = true
 }
 
 const handleSaveEdit = async (updatedItem: any) => {
   try {
-    if (updatedItem) {
-      component.value = { ...component.value, ...updatedItem }
-    }
-    try {
-      await $fetch(`/api/proxy/v1/Inventory/${id}`, {
-        method: 'PUT',
-        body: updatedItem
-      })
-    } catch {
-      // proxy fallback
-    }
+    // The BFF maps the page fields onto the backend item (identifier vs. display name, stock).
+    await $fetch(`/api/inventory/parts/${id}/edit`, {
+      method: 'PUT',
+      body: updatedItem
+    })
     showEditModal.value = false
     toast.success('Asset updated successfully')
     await fetchData()
@@ -335,8 +342,37 @@ onMounted(fetchData)
 
             <div class="space-y-1">
               <span class="text-[10px] font-mono text-muted-foreground uppercase">Assigned Machine</span>
-              <div class="p-2.5 rounded-lg bg-muted/20 border border-border text-xs font-mono text-foreground">
-                {{ component.machineId || component.linkedMachineId || 'Central Warehouse Storage (Unassigned)' }}
+              <NuxtLink
+                v-if="component.machineId || component.linkedMachineId"
+                :to="{ path: '/dashboard/machines', query: { tree: component.machineId || component.linkedMachineId } }"
+                class="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 border border-border hover:border-primary/50 text-xs font-mono text-foreground"
+                title="Open the station this part is installed on"
+              >
+                <span class="truncate">{{ component.machineName || component.machineId || component.linkedMachineId }}</span>
+              </NuxtLink>
+              <div v-else class="p-2.5 rounded-lg bg-muted/20 border border-border text-xs font-mono text-muted-foreground">
+                Not installed on a machine
+              </div>
+            </div>
+
+            <div v-if="hostController" class="space-y-1">
+              <span class="text-[10px] font-mono text-muted-foreground uppercase">Host Controller</span>
+              <div class="flex items-center gap-2">
+                <NuxtLink
+                  :to="{ path: '/dashboard/clients', query: { selected: hostController.id, hostname: hostController.hostname || undefined } }"
+                  class="flex-1 min-w-0 flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 border border-border hover:border-primary/50 text-xs font-mono text-foreground"
+                >
+                  <Monitor class="w-4 h-4 text-primary shrink-0" />
+                  <span class="truncate">{{ hostController.hostname || hostController.name || hostController.id }}</span>
+                </NuxtLink>
+                <button
+                  type="button"
+                  class="shrink-0 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 cursor-pointer"
+                  title="Open this controller's remote view"
+                  @click="openRemoteForPc(hostController)"
+                >
+                  Remote View
+                </button>
               </div>
             </div>
           </CardContent>

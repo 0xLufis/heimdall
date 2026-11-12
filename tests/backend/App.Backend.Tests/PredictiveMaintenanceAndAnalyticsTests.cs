@@ -138,19 +138,26 @@ public class PredictiveMaintenanceAndAnalyticsTests
     }
 
     [Fact]
-    public async Task GetMachineTrends_WithoutTelemetryHistory_ReturnsEmptySeriesWithCatalogLimits()
+    public async Task GetMachineTrends_WithoutTelemetryHistory_ReturnsEmptySeriesWithoutInventedLimits()
     {
         var service = CreateService();
 
         var trends = await service.GetMachineTrendsAsync("m-op20", "temperature", TimeSpan.FromHours(8));
 
         Assert.Equal("m-op20", trends.MachineId);
+        Assert.Equal("temperature_c", trends.MetricKey);
         Assert.Equal("°C", trends.Unit);
-        Assert.Equal(48.5, trends.NominalValue);
+        // No station reported a target and the backend has no tolerance source: nothing is made up.
+        Assert.Null(trends.NominalValue);
+        Assert.Null(trends.UpperTolerance);
+        Assert.Null(trends.LowerTolerance);
         Assert.Empty(trends.Points);
         Assert.Empty(trends.DetectedAnomalies);
+        Assert.Null(trends.StatisticalTrends);
         Assert.Null(trends.RecipeForecast);
         Assert.Empty(trends.AvailableRecipes);
+        Assert.Empty(trends.AvailableMetrics);
+        Assert.Equal(0, trends.BufferedSampleCount);
     }
 
     [Fact]
@@ -168,10 +175,13 @@ public class PredictiveMaintenanceAndAnalyticsTests
         var okFleet = Assert.IsType<OkObjectResult>((await controller.GetFleetSummary(default)).Result);
         var fleetDto = Assert.IsType<FleetSummaryDto>(okFleet.Value);
         Assert.Equal(0, fleetDto.TotalMachines);
-        Assert.Null(fleetDto.AvailabilityPercentage);
+        Assert.Equal(30, fleetDto.WindowDays);
+        Assert.Equal(0, fleetDto.ControllerCount);
+        Assert.Null(fleetDto.ControllerOnlinePercentage);
         Assert.Null(fleetDto.AverageMtbfHours);
+        Assert.Equal(0, fleetDto.MtbfMachineCount);
         Assert.Null(fleetDto.AverageMttrMinutes);
-        Assert.Null(fleetDto.SlaCompliancePercentage);
+        Assert.Equal(0, fleetDto.IncidentCount);
         Assert.Empty(fleetDto.TopFaultingMachines);
         Assert.Empty(fleetDto.StockDepletion);
         Assert.Equal(0, fleetDto.MaintenanceBacklog.Under24Hours + fleetDto.MaintenanceBacklog.OneToThreeDays + fleetDto.MaintenanceBacklog.OverThreeDays);
@@ -184,5 +194,11 @@ public class PredictiveMaintenanceAndAnalyticsTests
 
         var okStations = Assert.IsType<OkObjectResult>((await controller.GetStationKpis()).Result);
         Assert.Empty(Assert.IsType<List<StationKpiDto>>(okStations.Value));
+
+        var okFleetStations = Assert.IsType<OkObjectResult>((await controller.GetFleetStations()).Result);
+        var fleetStations = Assert.IsType<FleetStationsDto>(okFleetStations.Value);
+        Assert.Empty(fleetStations.Stations);
+        Assert.Equal(30, fleetStations.WindowDays);
+        Assert.Equal(60, fleetStations.TelemetryStaleAfterSeconds);
     }
 }

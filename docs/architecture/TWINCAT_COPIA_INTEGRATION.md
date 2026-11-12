@@ -33,6 +33,8 @@ To maintain 100% compliance with Copia's Terms of Service and security architect
    - The backend validates that the API key belongs to a named human engineer and **explicitly rejects** any attempts to use service account keys (such as `service-user`, `heimdall-probe`, or `shared-*`).
    - The cloud commit is attributed directly to the authenticated engineer's email, satisfying Copia's unique identity requirement under Exhibit A and Section 1.3(d).
 
+**Implementation status**: the two-stage model and its EULA guards are implemented in the backend (`CopiaIntegrationService`, `CopiaController`), but the edge part is not. The agent does not detect ADS downloads (its ADS endpoint is a simulation) and does not call the backend for Copia. Stage 1 is entered through REST (`POST /api/v1/copia/track-local` or `ingest-current-config`), and the backend records the change as a pending sync (in memory, with a generated local commit id `loc-…`) without running any Git operation. The Stage 2 push calls Copia only when `COPIA_DEVICE_LINK_ENABLED=true` and `COPIA_API_URL` are set; otherwise it is simulated.
+
 ### 1.2 Copia DeviceLink™ vs. Copia Source Control (No DeviceLink License Required)
 
 A common enterprise licensing question is: **"Does this workflow operate as intended and is it legal if our organization only purchases Copia Source Control user seats, without a Copia DeviceLink™ device license?"**
@@ -41,9 +43,9 @@ A common enterprise licensing question is: **"Does this workflow operate as inte
 
 | Dimension | Copia DeviceLink™ (Proprietary Add-On) | Heimdall Two-Stage Integration (Source Control Seats Only) |
 |---|---|---|
-| **What It Is** | Copia's proprietary appliance agent that actively connects to physical PLCs over OT networks and initiates automated cloud commits. | Heimdall's own edge daemon (`heimdall-agent`) connects to TwinCAT via standard Beckhoff ADS and manages local on-prem Git tracking. |
+| **What It Is** | Copia's proprietary appliance agent that actively connects to physical PLCs over OT networks and initiates automated cloud commits. | Design: Heimdall's own edge daemon (`heimdall-agent`) connects to TwinCAT via standard Beckhoff ADS and manages local on-prem Git tracking. Not implemented yet: the agent has no ADS client, and local tracking is a backend record (section 4.1). |
 | **Licensing Metric** | Per physical controller / connected asset. | **Zero DeviceLink licenses required.** Uses standard per-seat named user licenses for Copia Source Control. |
-| **Edge Git Operations** | Managed by Copia DeviceLink cloud services. | Purely local on-premise Git repository using open-source Git tooling (`heimdall-probe`). Zero Copia Cloud involvement. |
+| **Edge Git Operations** | Managed by Copia DeviceLink cloud services. | Design: purely local on-premise Git repository using open-source Git tooling (`heimdall-probe`). Zero Copia Cloud involvement. Today no Git command runs; the backend keeps a pending-sync record with a generated commit id. |
 | **Cloud Synchronization** | Fully automated background headless push to Copia Cloud. | Initiated by the authorized human engineer (`POST /api/v1/copia/sync-cloud` or `git push`) authenticated with their personal Copia PAT. |
 | **Copia EULA & ToS Compliance** | Requires DeviceLink subscription per device. | Fully complies with Copia Terms of Service Exhibit A ("Authorized User") and Section 1.3(d). Pushing user-created or user-reviewed commits via standard Git or PAT is the core intended purpose of Copia Source Control seats. |
 
@@ -51,25 +53,29 @@ Because Heimdall performs all edge runtime monitoring and local change tracking 
 
 ```
 +-----------------------------------------------------------------------------------------+
-|                                   FACTORY OT NETWORK                                    |
+|                                    FACTORY OT NETWORK                                   |
 |                                                                                         |
-|  +--------------------+           ADS Router           +-----------------------------+  |
+|  +--------------------+      ADS (agent side today:    +-----------------------------+  |
 |  | Beckhoff TwinCAT 3 | <============================> | Heimdall Agent (Daemon)     |  |
-|  | IPC / CX Controller|     Download / State Change    | - ADS Port 10000 Monitor    |  |
-|  +--------------------+                                | - Logic Checksum Hasher     |  |
+|  | IPC / CX Controller|    simulated, dev builds)      | - ADS state change trigger  |  |
+|  +--------------------+                                | - SHA-256 recipe file watch |  |
 |                                                        +--------------+--------------+  |
 +-----------------------------------------------------------------------|-----------------+
-                                                                        | HTTPS / SignalR
-                                                                        v
+                                                                        | MQTT 5: ADS state
+                                                                        v in system_info
 +-----------------------------------------------------------------------------------------+
 |                              HEIMDALL ON-PREM EDGE PLATFORM                             |
 |                                                                                         |
-|  +--------------------------------+       Commit       +-----------------------------+  |
-|  | Heimdall Backend API           | -----------------> | Local On-Prem Git Repo      |  |
-|  | - CopiaIntegrationService      |   (Stage 1)        | - User: heimdall-probe      |  |
-|  | - Rate-Limiting Debouncer      |                    | - Status: PendingAuth       |  |
-|  | - EULA Anti-Pooling Guard      |                    +-----------------------------+  |
-|  +---------------+----------------+                                                     |
+|  Stage 1 trigger (REST, authenticated; the agent does not send it yet):                 |
+|  POST /api/v1/copia/track-local or POST /api/v1/copia/ingest-current-config             |
+|                  |                                                                      |
+|                  v                                                                      |
+|  +---------------+----------------+       Stage 1      +-----------------------------+  |
+|  | Heimdall Backend API           | -----------------> | Local tracking record       |  |
+|  | - CopiaIntegrationService      |                    | - Author: heimdall-probe    |  |
+|  | - Rate-Limiting Debouncer      |                    | - PendingUserAuthorization  |  |
+|  | - EULA Anti-Pooling Guard      |                    | - generated loc-* commit id |  |
+|  +---------------+----------------+                    +-----------------------------+  |
 |                  | Generates Notification                                               |
 |                  v                                                                      |
 |  +--------------------------------+                                                     |
@@ -78,16 +84,18 @@ Because Heimdall performs all edge runtime monitoring and local change tracking 
 |  | - Personal Copia PAT / API Key |                                                     |
 |  +---------------+----------------+                                                     |
 +------------------|----------------------------------------------------------------------+
-                   | Stage 2 Sync with Personal Engineer API Key
-                   v
+                   | Stage 2: POST /api/v1/copia/sync-cloud with a personal Copia key
+                   v (pushed by the backend; simulated unless DeviceLink is configured)
 +-----------------------------------------------------------------------------------------+
 |                                  COPIA AUTOMATION CLOUD                                 |
 |                                                                                         |
 |  +--------------------------------+       Webhook      +-----------------------------+  |
-|  | Copia Cloud Repository         | -----------------> | Heimdall Backend Ingestion  |  |
-|  | - Attributed to Human Engineer |   HMAC-SHA256 Push | - SoftwareAsset Catalog     |  |
-|  | - Visual IEC 61131-3 Diffs     |                    | - Audit Event Log           |  |
-|  +--------------------------------+                    +-----------------------------+  |
+|  | Copia Cloud Repository         | -----------------> | Heimdall Backend Webhook    |  |
+|  | - Attributed to Human Engineer |  HMAC-SHA256 Push  | POST /api/v1/copia/webhook  |  |
+|  | - Visual IEC 61131-3 Diffs     |                    | - X-Copia-Signature-256     |  |
+|  +--------------------------------+                    | - SoftwareAsset.Version =   |  |
+|                                                        |   pushed commit hash        |  |
+|                                                        +-----------------------------+  |
 |                                                                                         |
 +-----------------------------------------------------------------------------------------+
 ```
@@ -236,13 +244,13 @@ Incoming ADS Event (Download / Login)
 ### 4.1 Stage 1: Local On-Premise Git Tracking (`heimdall-probe`)
 
 When an ADS event clears the debouncer:
-1. **Heimdall Edge Agent** captures the PLC project files and hashes them.
-2. **`ICopiaIntegrationService.TrackLocalPlcChangeAsync(...)`** creates a commit in the local edge Git repository:
+1. **Heimdall Edge Agent** captures the PLC project files and hashes them. *Not implemented*: the agent neither detects downloads nor captures project files. Stage 1 starts when an authenticated caller posts the change to `POST /api/v1/copia/track-local` (device, repository path, branch, modified files) or uploads a `CurrentConfig.tnzip` archive to `POST /api/v1/copia/ingest-current-config`. The debouncer (`ShouldProcessPlcEvent`) exists but these endpoints do not apply it.
+2. **`ICopiaIntegrationService.TrackLocalPlcChangeAsync(...)`** records the change; the design creates a commit in the local edge Git repository, but no Git command runs yet:
    - **Commit Author**: `heimdall-probe <heimdall-probe@internal>`
-   - **Commit Message**: `[heimdall-probe] Auto-tracked PLC changes for {deviceId} at {timestamp}`
-   - **Status**: Recorded as `PendingUserAuthorization`.
+   - **Commit Id**: a generated placeholder (`loc-` plus 8 hex characters); the commit message argument is not stored.
+   - **Status**: Recorded as `PendingUserAuthorization` in an in-memory pending-sync list (lost on restart).
 3. **Notification Generation**:
-   - An in-app notification is dispatched to engineers and dashboard users informing them that unpushed logic changes were captured locally.
+   - The response and `GET /api/v1/copia/pending-syncs` carry a notification message telling engineers that unpushed logic changes were captured locally; no notification is pushed to dashboards by the backend.
    - The notification directs the engineer to review the pending sync.
 
 ### 4.2 Stage 2: User-Authenticated Cloud Sync (Personal Copia PAT)
@@ -250,13 +258,13 @@ When an ADS event clears the debouncer:
 To synchronize changes to Copia Cloud:
 1. The engineer accesses **Settings > Security > Copia Automation Personal Credentials** (`/dashboard/settings`) or the pending changes card.
 2. The engineer enters their personal Copia API key / PAT. Keys are stored per-user and never shared.
-3. The engineer triggers **"Sync with My Key"** (`POST /api/v1/copia/sync-cloud`):
-   - Payload: `{ deviceId, commitHash, userApiKey, userEmail }`
+3. The engineer triggers **"Sync with My Key"** (BFF `POST /api/integrations/copia/sync`, which calls `POST /api/v1/copia/sync-cloud`):
+   - Payload: `{ syncId, userApiKey, userEmail, userDisplayName }` (the e-mail claim of the session takes precedence over `userEmail`)
 4. **Backend EULA Compliance Verification**:
    - If `userApiKey` is missing or empty, the sync is rejected (`HTTP 400`).
-   - If `userApiKey` matches known service patterns (`service-user`, `heimdall-probe`, `shared-*`, etc.), the backend throws an `InvalidOperationException`:
-     > *"Copia EULA Compliance Violation: Automated cloud sync using generic service account keys is prohibited by Copia Terms of Service (Section 1.3(d) & Exhibit A). Each user must authorize sync with their personal Copia API key to avoid user pooling."*
-   - Once validated, the commit is pushed to Copia Cloud authenticated as the individual engineer using their personal token.
+   - If `userApiKey` matches known service patterns (`service-user`, `heimdall-probe`, `shared-*`), the backend throws an `InvalidOperationException`, answered as `HTTP 400`:
+     > *"Copia EULA Compliance Violation: Generic service account keys or shared keys cannot be used for Copia Cloud synchronization. Individual user-licensed API tokens are mandatory."*
+   - Once validated, the commit is pushed to Copia Cloud authenticated as the individual engineer using their personal token. The push calls the Copia DeviceLink API only when `COPIA_DEVICE_LINK_ENABLED=true` and `COPIA_API_URL` are set; otherwise the sync is simulated and returns a generated cloud commit id.
    - The `SoftwareAsset` catalog is updated with the new verified version.
 
 ### 4.3 Webhook Ingestion & Visual Diff Verification
@@ -264,7 +272,7 @@ To synchronize changes to Copia Cloud:
 Once Copia commits the new PLC logic in the cloud, it dispatches an automated webhook (`POST /api/v1/copia/webhook`) to Heimdall.
 
 #### Webhook Security & Processing
-1. **HMAC-SHA256 Signature Verification**: Evaluates `X-Copia-Signature-256` against the configured shared secret using constant-time cryptographic comparisons (`CryptographicOperations.FixedTimeEquals`).
+1. **HMAC-SHA256 Signature Verification**: Evaluates `X-Copia-Signature-256` (`sha256=<hex>`) against the shared secret `COPIA_WEBHOOK_SECRET` using constant-time cryptographic comparisons (`CryptographicOperations.FixedTimeEquals`). The check runs only when the secret is set and the header is present; otherwise the anonymous endpoint accepts the payload unverified, so production must set `COPIA_WEBHOOK_SECRET`.
 2. **Metadata Extraction**:
    - Repository name & active branch
    - Commit hash (`after`)
@@ -273,7 +281,7 @@ Once Copia commits the new PLC logic in the cloud, it dispatches an automated we
 3. **SoftwareAsset Version Synchronization**:
    - Matches repository name to Heimdall's `SoftwareAsset` catalog.
    - Updates `SoftwareAsset.Version` to the verified Git commit hash.
-   - Notifies connected plant dashboards via SignalR.
+   - Dashboards are not notified (no SignalR event); they see the new version on their next load.
 
 ---
 
@@ -291,28 +299,28 @@ sequenceDiagram
 
     rect rgb(240, 248, 255)
         Note over PLC,Backend: Stage 1: Local Edge Tracking (Automated)
-        PLC->>Agent: ADS State Change (Online Change / Download)
-        Agent->>Backend: PostPlcDownloadEvent(AmsNetId, Timestamp)
-        Backend->>Backend: Debounce Guard (30s Window)
-        Backend->>LocalGit: Commit as "heimdall-probe <heimdall-probe@internal>"
-        LocalGit-->>Backend: Commit SHA (PendingUserAuthorization)
-        Backend->>Engineer: Dispatch Notification ("Local PLC changes detected on {deviceId}")
+        PLC->>Agent: ADS State Change (Online Change / Download), agent side simulated in dev builds
+        Agent->>Backend: MQTT 5 system_info (ADS state in the IndustrialOT component)
+        Note over Agent,Backend: Stage 1 starts with POST /api/v1/copia/track-local or /ingest-current-config (REST), which the agent does not call yet
+        Backend->>LocalGit: Record change as "heimdall-probe <heimdall-probe@internal>"
+        LocalGit-->>Backend: Pending sync (generated loc-* commit id, PendingUserAuthorization)
+        Backend->>Engineer: Pending sync listed ("Local PLC changes detected on {deviceId}")
     end
 
     rect rgb(255, 248, 240)
         Note over Engineer,Copia: Stage 2: User-Authenticated Cloud Sync (EULA Compliant)
-        Engineer->>Backend: Navigate to Settings & Review Pending Diffs
-        Engineer->>Backend: POST /api/v1/copia/sync-cloud (userApiKey, userEmail, commitSha)
-        
-        alt Missing or Generic Service Account Key
-            Backend-->>Engineer: 400 / 403 Forbidden (EULA Anti-Pooling Violation)
+        Engineer->>Backend: Review pending syncs (GET /api/v1/copia/pending-syncs via the BFF)
+        Engineer->>Backend: POST /api/v1/copia/sync-cloud (syncId, userApiKey, userEmail)
+
+        alt Missing or Generic Service Account Key (service-user, heimdall-probe, shared-*)
+            Backend-->>Engineer: 400 Bad Request (EULA Anti-Pooling Violation)
         else Valid Personal Copia API Key / PAT
-            Backend->>Copia: Push Local Commit Authenticated as Engineer (PAT)
+            Backend->>Copia: Push Local Commit Authenticated as Engineer (DeviceLink API when configured, else simulated)
             Copia-->>Backend: 200 OK (Synchronized to Remote)
+            Backend-->>Engineer: 200 CopiaCloudSyncResult (cloud commit, synced at)
             Copia->>Copia: Generate Visual IEC 61131-3 Diffs
-            Copia->>Backend: POST /api/v1/copia/webhook (HMAC-SHA256 Signed)
-            Backend->>Backend: Verify HMAC & Update SoftwareAsset.Version in DB
-            Backend-->>Engineer: Broadcast Asset Updated via SignalR
+            Copia->>Backend: POST /api/v1/copia/webhook (X-Copia-Signature-256, HMAC-SHA256)
+            Backend->>Backend: Verify HMAC (COPIA_WEBHOOK_SECRET) & Update SoftwareAsset.Version in DB
         end
     end
 ```
@@ -325,17 +333,18 @@ sequenceDiagram
 
 | Endpoint | Method | Description | Auth Requirement |
 |---|---|---|---|
-| `/api/v1/copia/track-local` | `POST` | Records local Git commit via `heimdall-probe` | Internal Edge Agent |
+| `/api/v1/copia/track-local` | `POST` | Records a pending local change attributed to `heimdall-probe` (generated commit id, no Git operation) | Authenticated caller (`[Authorize]`); the edge agent does not call it yet |
+| `/api/v1/copia/ingest-current-config` | `POST` | Extracts an uploaded `CurrentConfig.tnzip`, filters volatile files and records a pending sync | Authenticated caller (`[Authorize]`) |
 | `/api/v1/copia/pending-syncs` | `GET` | Lists unpushed local changes pending user key | Authenticated User |
-| `/api/v1/copia/sync-cloud` | `POST` | Synchronizes pending local Git commit to Copia Cloud | Personal User PAT (`userApiKey` required; service keys rejected) |
-| `/api/v1/copia/webhook` | `POST` | Receives push events from Copia Cloud | `X-Copia-Signature-256` HMAC validation |
+| `/api/v1/copia/sync-cloud` | `POST` | Synchronizes a pending sync to Copia Cloud (DeviceLink API when configured, otherwise simulated) | Personal User PAT (`userApiKey` required; service keys rejected) |
+| `/api/v1/copia/webhook` | `POST` | Receives push events from Copia Cloud | Anonymous; `X-Copia-Signature-256` HMAC checked only when `COPIA_WEBHOOK_SECRET` is set and the header is present |
 
 ### Frontend BFF Endpoints (`frontend/web/server/api/`)
 
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/user/copia-key` | `GET` | Retrieves masked personal Copia key status |
-| `/api/user/copia-key` | `POST` | Saves personal Copia API key in user session store |
+| `/api/user/copia-key` | `POST` | Saves the personal Copia API key in the BFF's in-memory key store (per user, lost on restart) |
 | `/api/integrations/copia/pending-syncs` | `GET` | Fetches pending sync queue for the current user |
 | `/api/integrations/copia/sync` | `POST` | Executes cloud sync using stored personal user key |
 

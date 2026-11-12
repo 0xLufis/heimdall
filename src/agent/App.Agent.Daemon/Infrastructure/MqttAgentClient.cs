@@ -29,6 +29,8 @@ public class MqttAgentClient : IMqttAgentClient
     private IMqttClient? _client;
     private Func<ServerCommand, Task>? _commandCallback;
     private string? _subscribedMachineId;
+    private string? _willTopic;
+    private Func<byte[]>? _willPayloadFactory;
 
     public bool IsConnected => _client?.IsConnected ?? false;
     public string BrokerHost => ResolveBrokerEndpoint().Host;
@@ -108,6 +110,8 @@ public class MqttAgentClient : IMqttAgentClient
                 clientOptionsBuilder.WithCredentials("heimdall_agent", agentKey);
             }
 
+            ApplyLastWill(clientOptionsBuilder, agentKey);
+
             // Handle client certificates if configured
             if (config.AuthType == "HeimdallCert" || config.AuthType == "UserCert")
             {
@@ -170,6 +174,60 @@ public class MqttAgentClient : IMqttAgentClient
         finally
         {
             _connectionLock.Release();
+        }
+    }
+
+    public void ConfigureLastWill(string topic, Func<byte[]> payloadFactory)
+    {
+        _willTopic = topic;
+        _willPayloadFactory = payloadFactory;
+    }
+
+    /// <summary>
+    /// Adds the configured last will (QoS 1, not retained, published immediately when the broker
+    /// detects the loss) to a connect. The will carries the same x-agent-key user property as every
+    /// publish, so the backend authenticates it like any other event.
+    /// </summary>
+    public void ApplyLastWill(MqttClientOptionsBuilder builder, string? agentKey)
+    {
+        if (string.IsNullOrEmpty(_willTopic) || _willPayloadFactory == null) return;
+
+        byte[] payload;
+        try
+        {
+            payload = _willPayloadFactory();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not build the MQTT last will; connecting without one.");
+            return;
+        }
+
+        builder.WithWillTopic(_willTopic)
+            .WithWillPayload(payload)
+            .WithWillQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+            .WithWillRetain(false);
+        if (!string.IsNullOrEmpty(agentKey))
+        {
+            builder.WithWillUserProperty("x-agent-key", (ReadOnlyMemory<byte>)System.Text.Encoding.UTF8.GetBytes(agentKey));
+        }
+    }
+
+    public async Task DisconnectGracefullyAsync(CancellationToken cancellationToken = default)
+    {
+        var client = _client;
+        if (client == null || !client.IsConnected) return;
+
+        try
+        {
+            await client.DisconnectAsync(new MqttClientDisconnectOptionsBuilder()
+                .WithReason(MqttClientDisconnectOptionsReason.NormalDisconnection)
+                .WithReasonString("agent stopping")
+                .Build(), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Graceful MQTT disconnect failed");
         }
     }
 

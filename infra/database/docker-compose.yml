@@ -8,12 +8,14 @@ services:
     ports:
       - "127.0.0.1:5050:80"
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@heimdall.local}
+      # pgAdmin refuses reserved/special-use domains such as .local when it initialises.
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@heimdall.dev}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-secret}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     volumes:
-      - ./pgadmin:/var/lib/pgadmin
+      # Named volume: pgAdmin runs as uid 5050 and cannot write to a host bind mount owned by root/you.
+      - pgadmin_data:/var/lib/pgadmin
       - ./servers.json:/pgadmin4/servers.json:ro
     networks:
       - heimdall_net
@@ -38,13 +40,16 @@ services:
     volumes:
       - ./data:/var/lib/postgresql/data
       - ./logs:/var/log/postgresql
-      - ./certs:/var/lib/postgresql/certs:ro
+      - ./certs:/certs:ro
+      - ./pg-entrypoint.sh:/usr/local/bin/pg-entrypoint.sh:ro
       - ./init:/docker-entrypoint-initdb.d
+    # Installs the bind-mounted TLS key with the ownership PostgreSQL requires, then runs the stock entrypoint.
+    entrypoint: ["bash", "/usr/local/bin/pg-entrypoint.sh"]
     command: >
       postgres 
       -c ssl=on
-      -c ssl_cert_file=/var/lib/postgresql/certs/server.crt
-      -c ssl_key_file=/var/lib/postgresql/certs/server.key
+      -c ssl_cert_file=/etc/postgresql-tls/server.crt
+      -c ssl_key_file=/etc/postgresql-tls/server.key
       -c max_connections=300
       -c logging_collector=on
       -c log_directory=/var/log/postgresql
@@ -82,6 +87,9 @@ services:
 networks:
   heimdall_net:
     driver: bridge
+
+volumes:
+  pgadmin_data:
 
 secrets:
   pg_user:

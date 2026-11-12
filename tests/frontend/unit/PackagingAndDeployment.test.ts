@@ -1,4 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+// Enrollment approval issues the computer certificate from the backend PKI (Heimdall CA).
+vi.mock('~~/server/utils/backendFetch', () => ({
+  backendFetch: vi.fn(async (_event: unknown, path: string, options: any) => ({
+    record: { commonName: options.body.hostname, thumbprint: 'A1B2C3D4E5F60718293A4B5C6D7E8F9012345678', validTo: '2027-11-12T00:00:00Z' },
+    certificatePem: '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----',
+    path
+  }))
+}))
+
 import healthHandler from '../../../src/frontend/web/server/api/health.get'
 import readyHandler from '../../../src/frontend/web/server/api/ready.get'
 import enrollDeviceHandler from '../../../src/frontend/web/server/api/pki/enroll-device.post'

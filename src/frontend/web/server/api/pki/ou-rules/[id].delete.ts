@@ -1,6 +1,3 @@
-import { deleteOuRule } from '../../../utils/pkiStore'
-export default defineEventHandler((event) => {
-  const id = getRouterParam(event, 'id')
-  if (id) deleteOuRule(id)
-  return { message: 'Rule deleted successfully' }
-})
+import { proxyToBackend } from '../../../utils/backendProxy'
+
+export default defineEventHandler(event => proxyToBackend(event, 'v1/certificatemanagement', `ou-rules/${getRouterParam(event, 'id') || ''}`, 'PKI'))

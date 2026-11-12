@@ -87,7 +87,7 @@ public class PluginSigningAndSandboxTests : IDisposable
     }
 
     [Fact]
-    public async Task PluginManager_AcceptsSignedPlugin_InProductionMode()
+    public async Task PluginManager_RejectsServerKeyOnlySignedPlugin_InProductionMode()
     {
         var pluginService = new PluginService(_dbContext, NullLogger<PluginService>.Instance);
         string publicKeyPem = pluginService.GetMasterPublicKeyPem();
@@ -131,13 +131,11 @@ public class PluginSigningAndSandboxTests : IDisposable
 
         var result = await pluginManager.InstallPluginAsync(bundle);
 
-        Assert.True(result.Success);
-        Assert.False(result.IsSandboxed);
-        Assert.Equal(ErrorCode.None, result.ErrorCode);
-
-        var installed = pluginManager.GetInstalledPlugins();
-        Assert.Single(installed);
-        Assert.True(installed[0].IsSigned);
+        // A single (server master key) signature is no longer enough outside dev mode: plugins must be
+        // signed by the installing user and countersigned by the server (PluginDoubleSigningTests).
+        Assert.False(result.Success);
+        Assert.Equal(ErrorCode.PluginSignatureInvalid, result.ErrorCode);
+        Assert.Empty(pluginManager.GetInstalledPlugins());
     }
 
     [Fact]

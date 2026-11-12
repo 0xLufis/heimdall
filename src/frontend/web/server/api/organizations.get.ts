@@ -1,5 +1,11 @@
-import { defineEventHandler } from 'h3'
-import { getPlantOrganizations, getPlantActiveDirectoryOUs } from "../utils/datasetLoader"
+import { defineEventHandler, createError } from 'h3'
+import { count, eq, inArray } from 'drizzle-orm'
+import { useDb } from '../utils/db'
+import * as hbSchema from '../database/drizzle/schema'
+import { getPlantActiveDirectoryOUs } from '../utils/datasetLoader'
+import { requireUser } from '../utils/authz'
+import { canManageOrganizations, isOrganizationAdminRole, isPlatformAdminRole } from '../../app/utils/roles'
+import { evaluateOrganizationAction } from '../utils/organizationRules'
 
 
 export interface EnrichedOrganization {
@@ -17,10 +23,23 @@ export interface EnrichedOrganization {
 
 export interface OrganizationsResponse {
   success: boolean
+  /** The caller may create organizations (OrganizationManagement policy). */
+  canCreate?: boolean
   organizations: EnrichedOrganization[]
 }
 
+/**
+ * Organization directory with real member counts, read from Better-Auth's `auth.organization`.
+ *
+ * Requires a signed-in caller. Platform administrators (the backend's SystemAdministration policy)
+ * see every organization; everyone else only the organizations they are a member of. Each entry
+ * says whether the caller may manage / delete it (OrganizationManagement policy). It used to be
+ * anonymous, and when the backend was unreachable it answered with the demo plant dataset and an
+ * invented member count.
+ */
 export default defineEventHandler(async (event): Promise<OrganizationsResponse> => {
+  const user = await requireUser(event)
+
   let ous: any[] = []
   try {
     ous = getPlantActiveDirectoryOUs()
@@ -37,51 +56,62 @@ export default defineEventHandler(async (event): Promise<OrganizationsResponse> 
     })
   }
 
-  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   try {
-    const res = await $fetch<any>(`${backendBase}/api/v1/organization`, {
-      headers: event.headers as any
-    })
-    const orgList = res?.organizations || res
-    if (Array.isArray(orgList) && orgList.length > 0) {
-      const enriched = orgList.map((o: any) => {
-        const matched = findMatchingOu(o.name, o.slug || o.id || '')
+    const db = useDb()
+
+    const canCreate = canManageOrganizations(user.role, user.permissions)
+    const memberships = await db
+      .select({ organizationId: hbSchema.member.organizationId, role: hbSchema.member.role })
+      .from(hbSchema.member)
+      .where(eq(hbSchema.member.userId, user.id))
+    const myRole = new Map(memberships.map(m => [m.organizationId, m.role]))
+
+    let visibleIds: string[] | null = null
+    if (!isPlatformAdminRole(user.role) && !isOrganizationAdminRole(user.role)) {
+      visibleIds = [...myRole.keys()]
+      if (visibleIds.length === 0) return { success: true, canCreate, organizations: [] }
+    }
+
+    const orgQuery = db
+      .select({
+        id: hbSchema.organization.id,
+        name: hbSchema.organization.name,
+        slug: hbSchema.organization.slug,
+        createdAt: hbSchema.organization.createdAt
+      })
+      .from(hbSchema.organization)
+    const [orgs, memberCounts] = await Promise.all([
+      visibleIds ? orgQuery.where(inArray(hbSchema.organization.id, visibleIds)) : orgQuery,
+      db
+        .select({ organizationId: hbSchema.member.organizationId, members: count() })
+        .from(hbSchema.member)
+        .groupBy(hbSchema.member.organizationId)
+    ])
+
+    const countByOrg = new Map(memberCounts.map(m => [m.organizationId, Number(m.members)]))
+    const organizations = orgs
+      .map(o => {
+        const slug = o.slug || o.id
+        const matched = findMatchingOu(o.name, slug)
         return {
-          ...o,
+          id: o.id,
+          name: o.name,
+          slug,
+          createdAt: o.createdAt ? new Date(o.createdAt).toISOString() : undefined,
+          memberCount: countByOrg.get(o.id) ?? 0,
+          // What the caller may do here (same rules as the /api/organizations/* mutation routes).
+          canManage: evaluateOrganizationAction(user, 'update', { actorMemberRole: myRole.get(o.id) }) === null,
+          canDelete: evaluateOrganizationAction(user, 'delete', { actorMemberRole: myRole.get(o.id) }) === null,
           ouPath: matched?.ouPath,
           vlanId: matched?.vlanId,
           vlanName: matched?.vlanName
         }
       })
-      return { success: true, organizations: enriched }
-    }
-  } catch (e: any) {
-    // Graceful fallback if backend is unavailable or starting up
-  }
+      .sort((a, b) => a.name.localeCompare(b.name))
 
-  // Graceful fallback to canonical plant dataset (OU-based plant hierarchy)
-  try {
-    const plantOrgs = getPlantOrganizations()
-    if (plantOrgs && plantOrgs.length > 0) {
-      const fallbackList = plantOrgs.map(po => {
-        const matched = findMatchingOu(po.name, po.slug)
-        return {
-          id: po.id,
-          name: po.name,
-          slug: po.slug,
-          description: po.description,
-          createdAt: new Date().toISOString(),
-          memberCount: matched ? matched.candidateHostnames?.length || matched.hostCount || 4 : 4,
-          ouPath: matched?.ouPath,
-          vlanId: matched?.vlanId,
-          vlanName: matched?.vlanName
-        }
-      })
-      return { success: true, organizations: fallbackList }
-    }
-  } catch (err) {
-    console.error("Error reading plant dataset organizations:", err)
+    return { success: true, canCreate, organizations }
+  } catch (err: any) {
+    console.warn('[organizations] Failed to read organizations:', err?.message || err)
+    throw createError({ statusCode: 503, statusMessage: 'The organization directory is currently unavailable.' })
   }
-
-  return { success: true, organizations: [] }
 })

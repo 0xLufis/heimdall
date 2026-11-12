@@ -24,7 +24,6 @@ export interface Projected3dNode {
 /** Health state of a CAD node, derived by the caller from real component data. */
 export type CadNodeStatus = 'healthy' | 'warning' | 'fault'
 
-export const DEFAULT_CAD_MODEL_URL = '/sample/station_digital_twin.glb'
 
 const STATUS_EMISSIVE: Record<CadNodeStatus, { color: number; intensity: number }> = {
   healthy: { color: 0x10b981, intensity: 0.35 },
@@ -203,7 +202,11 @@ export const useCadModelViewer = () => {
       }
 
       // 7. Load 3D Model
-      await loadModel(options.modelUrl || DEFAULT_CAD_MODEL_URL, THREE, GLTFLoader)
+      // The model is whatever the caller's component is linked to; without a link the scene stays
+      // empty. There is deliberately no default model to fall back to.
+      if (options.modelUrl) {
+        await loadModel(options.modelUrl, THREE, GLTFLoader)
+      }
       if (isDisposed) return
 
       // 8. Render loop (scratch objects reused across frames)

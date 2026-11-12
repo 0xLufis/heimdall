@@ -185,13 +185,30 @@ describe('3D CAD Digital Twin & Component Identity Linking Suite', () => {
     it('mounts, degrades to an error state without WebGL and never shows fabricated telemetry', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => {})
       const wrapper = mount(Machine3dDigitalTwin, {
-        props: { components: [{ cad3dNodePath: 'GANTRY-X-01', equipmentStatus: 'UnderRepair', name: 'Axis' }] }
+        props: {
+          modelUrl: '/sample/station_digital_twin.glb',
+          components: [{ cad3dNodePath: 'GANTRY-X-01', equipmentStatus: 'UnderRepair', name: 'Axis' }]
+        }
       })
       await flushPromises()
       await vi.dynamicImportSettled()
       await flushPromises()
       expect(wrapper.text()).toContain('Failed to Load CAD Model')
+      expect(wrapper.text()).not.toContain('No 3D model linked')
       expect(wrapper.text()).not.toContain('mm/s')
+      wrapper.unmount()
+    })
+
+    it('shows an explicit "no model linked" state instead of loading a default model', async () => {
+      const raf = vi.spyOn(window, 'requestAnimationFrame')
+      const wrapper = mount(Machine3dDigitalTwin, { props: { stationId: 'station-without-model', components: [] } })
+      await flushPromises()
+      await vi.dynamicImportSettled()
+      await flushPromises()
+      expect(wrapper.text()).toContain('No 3D model linked to this station')
+      expect(wrapper.text()).not.toContain('Failed to Load CAD Model')
+      // No viewer was initialised, so nothing was fetched or rendered for an unlinked station.
+      expect(raf).not.toHaveBeenCalled()
       wrapper.unmount()
     })
   })

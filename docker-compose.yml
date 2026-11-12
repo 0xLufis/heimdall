@@ -19,13 +19,16 @@ services:
     volumes:
       - ./infra/database/data:/var/lib/postgresql/data
       - ./infra/database/logs:/var/log/postgresql
-      - ./infra/database/certs:/var/lib/postgresql/certs:ro
+      - ./infra/database/certs:/certs:ro
+      - ./infra/database/pg-entrypoint.sh:/usr/local/bin/pg-entrypoint.sh:ro
       - ./infra/database/init:/docker-entrypoint-initdb.d:ro
+    # Installs the bind-mounted TLS key with the ownership PostgreSQL requires, then runs the stock entrypoint.
+    entrypoint: ["bash", "/usr/local/bin/pg-entrypoint.sh"]
     command: >
       postgres
       -c ssl=on
-      -c ssl_cert_file=/var/lib/postgresql/certs/server.crt
-      -c ssl_key_file=/var/lib/postgresql/certs/server.key
+      -c ssl_cert_file=/etc/postgresql-tls/server.crt
+      -c ssl_key_file=/etc/postgresql-tls/server.key
       -c max_connections=300
       -c shared_preload_libraries=pg_stat_statements
       -c pg_stat_statements.track=all
@@ -68,18 +71,20 @@ services:
     ports:
       - "127.0.0.1:5050:80"
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@heimdall.local}
+      # pgAdmin refuses reserved/special-use domains such as .local when it initialises.
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@heimdall.dev}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-secret}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     volumes:
-      - ./infra/database/pgadmin:/var/lib/pgadmin
+      # Named volume: pgAdmin runs as uid 5050 and cannot write to a host bind mount owned by root/you.
+      - pgadmin_data:/var/lib/pgadmin
       - ./infra/database/servers.json:/pgadmin4/servers.json:ro
     networks:
       - heimdall_dev_net
     restart: unless-stopped
 
-  # 4. Backend REST API & gRPC Telemetry Collector (.NET 10 Hot-Reload)
+  # 4. Backend REST API, SignalR hub & embedded MQTT broker (.NET 10 Hot-Reload)
   backend:
     build:
       context: .
@@ -182,11 +187,14 @@ services:
       context: ./simulators/fleet
     container_name: heimdall_simulator
     ports:
-      - "5055:5055"
+      - "127.0.0.1:5055:5055"  # unauthenticated dev control API: loopback only on the host
     environment:
       - MQTT_BROKER_HOST=backend
       - MQTT_BROKER_PORT=1883
+      - HEIMDALL_AGENT_KEY=heimdall-dev-agent-key
+      - HTTP_HOST=0.0.0.0
       - HTTP_PORT=5055
+      - SIM_DATASET=${SIM_DATASET:-enterprise}
       - CSV_PATH=/workspace/seed_data/inventory_seed.csv
     volumes:
       - ./seed_data:/workspace/seed_data:ro
@@ -228,6 +236,11 @@ services:
       - ./infra/windows/shared:/shared
     networks:
       - heimdall_dev_net
+    # The agent inside the VM talks to `backend:5001` and the MQTT broker on `backend:1883`. Point that
+    # name at the Docker host: it reaches a backend started on the host (`just dev`, `dotnet run`) and,
+    # through its published ports, the `backend` container of the all-in-Docker stack as well.
+    extra_hosts:
+      - "backend:host-gateway"
     profiles:
       - windows
     restart: unless-stopped
@@ -235,6 +248,9 @@ services:
 networks:
   heimdall_dev_net:
     driver: bridge
+
+volumes:
+  pgadmin_data:
 
 secrets:
   pg_user:

@@ -178,38 +178,4 @@ describe('Telemetry Trends & Hub Suite', () => {
       expect(getPinnedWidgets().length).toBe(0)
     })
   })
-
-  describe('KPI Builder Sorting & Filtering Logic', () => {
-    it('sorts KPI widgets by priority correctly', () => {
-      const widgets = [
-        { id: '1', title: 'Normal Widget', priority: 'Normal', tag: 'OEE', currentValue: 50 },
-        { id: '2', title: 'Critical Widget', priority: 'Critical', tag: 'Thermal', currentValue: 90 },
-        { id: '3', title: 'High Widget', priority: 'High', tag: 'Energy', currentValue: 75 }
-      ]
-
-      const pMap: Record<string, number> = { Critical: 3, High: 2, Normal: 1 }
-      widgets.sort((a, b) => pMap[b.priority] - pMap[a.priority])
-
-      expect(widgets[0].priority).toBe('Critical')
-      expect(widgets[1].priority).toBe('High')
-      expect(widgets[2].priority).toBe('Normal')
-    })
-
-    it('filters KPI widgets by tag organization', () => {
-      const widgets = [
-        { id: '1', title: 'OEE 1', tag: 'OEE' },
-        { id: '2', title: 'Power 1', tag: 'Energy' },
-        { id: '3', title: 'Temp 1', tag: 'Thermal' },
-        { id: '4', title: 'Hydro 1', tag: 'Hydraulic' }
-      ]
-
-      const energyWidgets = widgets.filter(w => w.tag === 'Energy')
-      expect(energyWidgets.length).toBe(1)
-      expect(energyWidgets[0].id).toBe('2')
-
-      const hydraulicWidgets = widgets.filter(w => w.tag === 'Hydraulic')
-      expect(hydraulicWidgets.length).toBe(1)
-      expect(hydraulicWidgets[0].id).toBe('4')
-    })
-  })
 })

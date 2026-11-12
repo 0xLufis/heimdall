@@ -1,7 +1,9 @@
 import { defineEventHandler, createError } from 'h3'
 import { deleteSecurityGroupMapping } from '../../../utils/securityGroupMappingsStore'
+import { requirePolicy } from '../../../utils/authz'
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
+  await requirePolicy(event, 'ItAdministration')
   const id = event.context.params?.id
   if (!id) {
     throw createError({

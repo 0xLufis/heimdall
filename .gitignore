@@ -95,3 +95,6 @@ infra/windows/shared/agent/
 *.sql
 !src/frontend/web/server/database/drizzle/*.sql
 !**/migrations/**/*.sql
+
+# Dev logs (justfile LOG_DIR, backend Logging:File in Development)
+.logs/

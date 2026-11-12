@@ -33,6 +33,13 @@ import MachineQrModal from '~/components/tickets/MachineQrModal.vue'
 const QrScanner = defineAsyncComponent(() => import('~/components/ui/qr-scanner/QrScanner.vue'))
 import { useMaintenance } from '~/composables/useMaintenance'
 import { useFeatureFlags } from '~/composables/useFeatureFlags'
+import { useStations } from '~/composables/useStations'
+import {
+  parseTicketsQuery,
+  normalizeTicketsDeepLink,
+  filterTicketsByDeepLink,
+  describeStationFilter
+} from '~/utils/deepLinkQueries'
 import { parseQrUri } from '~/utils/qrActionGenerator'
 import { authClient } from '~/utils/auth-client'
 import type { MaintenanceTicket, TicketStatus } from '~/types/maintenance'
@@ -130,7 +137,8 @@ const availableTags = computed(() => {
 watch(() => [route.query, tickets.value], () => {
   const q = route.query
   if (q.create === 'true') {
-    router.push({
+    // replace: "back" from the form must not land on ?create=true and bounce forward again
+    router.replace({
       path: '/dashboard/tickets/new',
       query: { ...route.query, create: undefined }
     })
@@ -145,42 +153,46 @@ watch(() => [route.query, tickets.value], () => {
       }
     }
   }
-  if (q.team) {
-    const teamStr = String(q.team)
-    if (!selectedTags.value.includes(teamStr)) {
-      selectedTags.value.push(teamStr)
-    }
-  }
-  if (q.technician) {
-    const techStr = String(q.technician)
-    if (!selectedTags.value.includes(techStr)) {
-      selectedTags.value.push(techStr)
-    }
-  }
 }, { immediate: true })
 
+// ── URL filters (?query= ?stationId= ?handle= ?team= ?technician=) ─────────────
+// The station directory widens station / team matching to every identifier a station is known
+// by; it is only loaded when such a filter is present.
+const { stations, fetchStations } = useStations({ autoFetch: false })
+const deepLink = computed(() => parseTicketsQuery(route.query))
+const urlFilter = computed(() => normalizeTicketsDeepLink(deepLink.value, tickets.value, stations.value))
+const needsStationDirectory = computed(() => !!(deepLink.value.stationId || deepLink.value.handle || deepLink.value.team))
+const loadStationDirectory = () => {
+  if (needsStationDirectory.value && stations.value.length === 0) fetchStations()
+}
+watch(needsStationDirectory, loadStationDirectory)
+
+/** Active URL filters as removable chips (each lists the query keys it stands for). */
+const urlFilterChips = computed(() => {
+  const link = urlFilter.value
+  const chips: Array<{ key: string; label: string; value: string; params: string[] }> = []
+  if (link.stationId || link.handle) {
+    chips.push({ key: 'station', label: 'Station', value: describeStationFilter(link, stations.value), params: ['stationId', 'handle'] })
+  }
+  if (link.text) chips.push({ key: 'text', label: 'Search', value: link.text, params: ['query', 'search', ...(deepLink.value.text ? [] : ['stationId'])] })
+  if (link.team) chips.push({ key: 'team', label: 'Team', value: link.team, params: ['team'] })
+  if (link.technician) chips.push({ key: 'technician', label: 'Technician', value: link.technician, params: ['technician'] })
+  return chips
+})
+
+const clearUrlFilter = (params: string[]) => {
+  const query = { ...route.query }
+  for (const key of params) delete query[key]
+  router.replace({ query })
+}
+
 onMounted(async () => {
+  loadStationDirectory()
   await fetchTickets()
 })
 
 const displayedTickets = computed(() => {
-  let list = tickets.value
-  const q = route.query
-
-  if (q.stationId && q.create !== 'true') {
-    const target = (q.stationId as string).toLowerCase()
-    list = list.filter(t => 
-      t.stationId?.toLowerCase() === target ||
-      t.machineId?.toLowerCase() === target ||
-      t.title?.toLowerCase().includes(target) ||
-      (t.tags && t.tags.some(tag => tag.toLowerCase() === target))
-    )
-  }
-
-  if (q.technician) {
-    const tech = (q.technician as string).toLowerCase()
-    list = list.filter(t => t.assignedTechnicianName?.toLowerCase().includes(tech))
-  }
+  let list = filterTicketsByDeepLink(tickets.value, urlFilter.value, stations.value)
 
   if (selectedTags.value.length > 0) {
     list = list.filter(t => {
@@ -535,6 +547,32 @@ async function onResumeTicket(ticketId: string) {
         <X class="size-3.5" />
         <span>Clear Filter</span>
       </button>
+    </div>
+
+    <!-- URL Filter Chips: what a deep link (search, context menu, station view) narrowed the list to -->
+    <div
+      v-if="urlFilterChips.length > 0"
+      data-testid="ticket-url-filters"
+      class="flex flex-wrap items-center gap-2 px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-700 dark:text-indigo-300 shadow-xs"
+    >
+      <Filter class="size-3.5 text-indigo-600 dark:text-indigo-400" />
+      <span
+        v-for="chip in urlFilterChips"
+        :key="chip.key"
+        class="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded-md bg-background/70 border border-indigo-500/20"
+      >
+        <span class="text-muted-foreground">{{ chip.label }}:</span>
+        <strong class="text-foreground max-w-[260px] truncate">{{ chip.value }}</strong>
+        <button
+          type="button"
+          class="p-0.5 rounded hover:bg-indigo-500/20 cursor-pointer"
+          :aria-label="`Remove ${chip.label} filter`"
+          @click="clearUrlFilter(chip.params)"
+        >
+          <X class="size-3" />
+        </button>
+      </span>
+      <span class="text-muted-foreground">({{ displayedTickets.length }} incident{{ displayedTickets.length === 1 ? '' : 's' }} matched)</span>
     </div>
 
     <!-- Tag Cloud Filter Bar -->

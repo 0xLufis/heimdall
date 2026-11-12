@@ -25,7 +25,7 @@ const emit = defineEmits<{
           <CheckCircle2 class="w-7 h-7" />
         </div>
         <div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Badge variant="outline" class="text-[10px] px-2 py-0.5 border-emerald-500/40 text-emerald-400 bg-emerald-500/10 font-mono">
               Ticket Dispatched Successfully
             </Badge>

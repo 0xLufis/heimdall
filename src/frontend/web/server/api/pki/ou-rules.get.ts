@@ -1,2 +1,3 @@
-import { getOuRules } from '../../utils/pkiStore'
-export default defineEventHandler(() => getOuRules())
+import { proxyToBackend } from '../../utils/backendProxy'
+
+export default defineEventHandler(event => proxyToBackend(event, 'v1/certificatemanagement', 'ou-rules', 'PKI'))

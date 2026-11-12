@@ -16,7 +16,7 @@ public static partial class StringSanitizer
     private static partial Regex UnsafeCharRegex();
 
     /// <summary>
-    /// Strips carriage returns, line feeds, and tabs to prevent log/header/gRPC injection.
+    /// Strips carriage returns, line feeds, and tabs to prevent log and header injection.
     /// </summary>
     public static string StripCrlf(string? input)
     {

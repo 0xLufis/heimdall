@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using App.Agent.Daemon.Infrastructure.Identity;
 using App.Agent.Daemon.Interfaces;
 using App.Contracts.Enums;
 using App.Shared.Drivers;
@@ -115,19 +116,40 @@ public class SystemInfoService : ISystemInfoService
     private static DateTimeOffset _hardwareCachedAt = DateTimeOffset.MinValue;
     private static SoftwareInfo? _cachedSoftware;
     private static DateTimeOffset _softwareCachedAt = DateTimeOffset.MinValue;
-    private static string? _cachedMachineIdentifier;
     private static string? _cachedMacAddress;
 
-    public TimeSpan HardwareCacheTtl => TimeSpan.FromSeconds(_configService?.Config.HardwarePollIntervalSeconds ?? 30);
+    public TimeSpan HardwareCacheTtl => TimeSpan.FromSeconds(Math.Max(1, _configService?.Config.HardwarePollIntervalSeconds ?? 30));
+
+    private readonly IMachineIdentity? _identity;
+    private static readonly object _identityLock = new();
+    private static IMachineIdentity? _fallbackIdentity;
 
     public SystemInfoService(
         ILogger<SystemInfoService> logger,
         IDriverDiscoveryService driverDiscoveryService,
-        IConfigurationService? configService = null)
+        IConfigurationService? configService = null,
+        IMachineIdentity? identity = null)
     {
         _logger = logger;
         _driverDiscoveryService = driverDiscoveryService;
         _configService = configService;
+        _identity = identity;
+    }
+
+    /// <summary>
+    /// The persisted, validated identity when one is injected; otherwise an in-memory resolver over
+    /// the same hardware sources (nothing is written to disk).
+    /// </summary>
+    private IMachineIdentity Identity
+    {
+        get
+        {
+            if (_identity != null) return _identity;
+            lock (_identityLock)
+            {
+                return _fallbackIdentity ??= new MachineIdentityResolver(null, MachineIdentityResolver.DefaultProbes(), logger: _logger);
+            }
+        }
     }
 
     public SystemInfoData GetSystemInfo()
@@ -196,55 +218,36 @@ public class SystemInfoService : ISystemInfoService
         return data;
     }
 
-    private string GetMachineIdentifier()
-    {
-        if (!string.IsNullOrEmpty(_cachedMachineIdentifier)) return _cachedMachineIdentifier;
+    /// <summary>
+    /// The machine identifier comes from <see cref="IMachineIdentity"/>: validated (no placeholder
+    /// UUIDs), persisted, and stable when the hardware query fails after a reboot. It is resolved once
+    /// per process by the identity itself, so there is nothing to cache or to fall back to here.
+    /// </summary>
+    private string GetMachineIdentifier() => Identity.MachineIdentifier;
 
-        string id = $"{Environment.MachineName}-{Environment.OSVersion}";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            try
-            {
-                using var searcher = new ManagementObjectSearcher("SELECT UUID FROM Win32_ComputerSystemProduct");
-                foreach (var obj in searcher.Get())
-                {
-                    id = obj["UUID"]?.ToString() ?? "Unknown UUID";
-                    break;
-                }
-            }
-            catch { }
-        }
-        else
-        {
-            try
-            {
-                if (File.Exists("/etc/machine-id")) id = File.ReadAllText("/etc/machine-id").Trim();
-                else if (File.Exists("/var/lib/dbus/machine-id")) id = File.ReadAllText("/var/lib/dbus/machine-id").Trim();
-            }
-            catch { }
-        }
-
-        _cachedMachineIdentifier = id;
-        return id;
-    }
-
+    /// <summary>
+    /// A validated 48-bit MAC address, or an empty string when no adapter has one (the report is then
+    /// rejected by the sanity checks instead of being keyed under 00:00:00:00:00:00 on the server).
+    /// </summary>
     private string GetMacAddress()
     {
         if (!string.IsNullOrEmpty(_cachedMacAddress)) return _cachedMacAddress;
 
-        var nic = NetworkInterface
-            .GetAllNetworkInterfaces()
-            .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-            .OrderByDescending(nic => nic.Speed)
-            .FirstOrDefault();
-
-        string mac = "00:00:00:00:00:00";
-        if (nic != null)
+        string mac;
+        try
         {
-            mac = string.Join(":", nic.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")));
+            mac = Identity.ResolveMacAddress();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error determining the MAC address");
+            mac = string.Empty;
         }
 
-        _cachedMacAddress = mac;
+        if (!string.IsNullOrEmpty(mac))
+        {
+            _cachedMacAddress = mac; // only a valid address is cached; an empty one is retried next cycle
+        }
         return mac;
     }
 

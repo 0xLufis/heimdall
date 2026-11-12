@@ -246,7 +246,7 @@ const onFilterClick = (type: 'tracking' | 'condition' | 'operational' | 'alert',
               </td>
             </tr>
 
-            <tr v-for="part in parts" :key="part.id" class="hover:bg-muted/20 transition-colors">
+            <tr v-for="part in parts" :key="part.id" v-ctx:inventory="part" class="hover:bg-muted/20 transition-colors">
               <!-- Name & Identifier -->
               <td class="p-3">
                 <div class="flex items-center gap-2">

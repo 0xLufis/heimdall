@@ -14,9 +14,24 @@
 
 set shell := ["bash", "-c"]
 
-LOG_DIR := "/tmp/heimdall_logs"
+# Dev logs live on disk (git-ignored), never in /tmp: /tmp is RAM-backed on dev machines. Every service's
+# console output goes through tools/logpipe.py (size + age bounded: HEIMDALL_LOG_MAX_MB, HEIMDALL_LOG_BACKUPS,
+# HEIMDALL_LOG_MAX_AGE_DAYS); the backend also writes its own rotating log to .logs/backend/ (Logging:File).
+LOG_DIR := justfile_directory() + "/.logs"
+LOGPIPE := "python3 tools/logpipe.py"
 PID_DIR := "/tmp/heimdall_dev_pids"
+# Stops services by the session that `setsid` gives each one (PID file) plus the owner of its ports; never by
+# command-line text (pkill -f also killed tool shells and running builds). See tools/devproc.py.
+DEVPROC := "python3 tools/devproc.py"
+# dotnet watch for the .NET services: rebuild + restart on every save. No hot reload: on SDK 10.0.113 C# edits
+# crashed the watcher in Roslyn's edit-and-continue (ArgumentException), after which nothing restarted. The
+# cleanup timeout makes the watcher wait for the old instance to exit before relaunching (default: SIGKILL right
+# after SIGTERM, which orphaned the app behind `dotnet run` with its ports); no MSBuild node reuse, so no idle
+# nodes outlive a build or get shared with other builds.
+DOTNET_WATCH_ENV := "DOTNET_WATCH_PROCESS_CLEANUP_TIMEOUT_MS=15000 MSBUILDDISABLENODEREUSE=1 DOTNET_WATCH_SUPPRESS_EMOJIS=1"
 SHARED_WIN_AGENT_DIR := "infra/windows/shared/agent"
+# Python for the simulators: the project venv (paho-mqtt + protobuf from simulators/fleet/requirements.txt) when present
+SIM_PYTHON := if path_exists("venv/bin/python") == "true" { "venv/bin/python" } else { "python3" }
 
 # Display available commands
 default:
@@ -30,30 +45,61 @@ default:
 dev-setup *ARGS:
     @python3 tools/dev_setup.py {{ARGS}}
 
-# Launch optional pgAdmin 4 portal targeting local PostgreSQL development instance
+# Launch optional pgAdmin 4 portal for the local PostgreSQL development instance (actions: up, down, restart, logs, reset)
 pgadmin ACTION="up":
     #!/usr/bin/env bash
     set -euo pipefail
+    # pgAdmin must join the compose project (= docker network) of the PostgreSQL container that is
+    # actually running: `just db-up` uses infra/database, the all-in-docker stack uses the root file.
+    if docker ps --format '{{ '{{' }}.Names{{ '}}' }}' 2>/dev/null | grep -qx heimdall_postgres; then
+        COMPOSE_DIR="."
+    else
+        COMPOSE_DIR="infra/database"
+    fi
+    pg_compose() { (cd "$COMPOSE_DIR" && docker compose --profile pgadmin "$@"); }
+    wait_ready() {
+        for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:5050/misc/ping 2>/dev/null; then return 0; fi
+            sleep 1
+        done
+        return 1
+    }
+    start() {
+        if [ "$COMPOSE_DIR" = "infra/database" ]; then just db-up; fi
+        pg_compose up -d pgadmin
+        if wait_ready; then
+            echo "✓ pgAdmin 4 online at http://localhost:5050 (desktop mode: no pgAdmin login)."
+            echo "  Server 'Heimdall Development PostgreSQL' is pre-registered (host postgres, user from"
+            echo "  infra/database/secrets/pg_user.txt); enter the password from infra/database/secrets/pg_pw.txt."
+        else
+            echo "✗ pgAdmin did not become ready on http://localhost:5050. Last log lines:" >&2
+            pg_compose logs --tail=30 pgadmin >&2 || true
+            exit 1
+        fi
+    }
     case "{{ACTION}}" in
         up|start)
-            docker compose --profile pgadmin up -d pgadmin
-            echo "✓ pgAdmin 4 portal online at http://localhost:5050 (admin@heimdall.local / secret)."
+            start
             ;;
         down|stop)
-            docker compose --profile pgadmin stop pgadmin
+            pg_compose stop pgadmin
             echo "✓ pgAdmin 4 portal stopped."
             ;;
         restart)
-            docker compose --profile pgadmin stop pgadmin
-            sleep 1
-            docker compose --profile pgadmin up -d pgadmin
-            echo "✓ pgAdmin 4 portal restarted at http://localhost:5050."
+            pg_compose stop pgadmin
+            start
             ;;
         logs)
-            docker compose --profile pgadmin logs -f --tail=50 pgadmin
+            pg_compose logs -f --tail=50 pgadmin
+            ;;
+        reset)
+            # Drops pgAdmin's own state (saved passwords, preferences); servers.json is re-imported on next start.
+            pg_compose rm -sf pgadmin
+            (cd "$COMPOSE_DIR" && docker volume rm "$(basename "$(pwd)")_pgadmin_data" 2>/dev/null) || true
+            echo "✓ pgAdmin state removed. Run 'just pgadmin' to start fresh."
             ;;
         *)
-            echo "Available pgadmin actions: up, down, restart, logs"
+            echo "Available pgadmin actions: up, down, restart, logs, reset"
             ;;
     esac
 
@@ -88,46 +134,33 @@ clean:
     #!/usr/bin/env bash
     set -euo pipefail
     echo ">> Cleaning Heimdall development processes and ports..."
-    for pid_file in {{PID_DIR}}/*.pid; do
-        if [ -f "$pid_file" ]; then
-            pid=$(cat "$pid_file" 2>/dev/null || true)
-            if [ -n "$pid" ]; then
-                kill -9 "$pid" 2>/dev/null || true
-            fi
-            rm -f "$pid_file"
-        fi
-    done
-    pkill -9 -f "App.Backend.Api" 2>/dev/null || true
-    pkill -9 -f "App.Agent.Daemon" 2>/dev/null || true
-    pkill -9 -f "dotnet watch.*App.Backend.Api" 2>/dev/null || true
-    pkill -9 -f "dotnet watch.*App.Agent.Daemon" 2>/dev/null || true
-    pkill -9 -f "bun.*run.*dev" 2>/dev/null || true
-    pkill -9 -f "nuxt dev" 2>/dev/null || true
-    pkill -9 -f "fleet_simulator.py" 2>/dev/null || true
-    if command -v fuser >/dev/null 2>&1; then
-        fuser -k 5099/tcp 2>/dev/null || true
-        fuser -k 5001/tcp 2>/dev/null || true
-        fuser -k 3000/tcp 2>/dev/null || true
-        fuser -k 5055/tcp 2>/dev/null || true
-        fuser -k 5998/tcp 2>/dev/null || true
-    fi
-    echo "✓ Environment cleanly cleared. Ports 5099, 5001, 3000, 5055, 5998 released."
+    # Same targeting as `just stop` (session from the PID file + port owners), with a 2 s grace before SIGKILL.
+    {{DEVPROC}} stop "Backend API" --pidfile {{PID_DIR}}/backend.pid --ports 5099,5001,1883 --grace 2
+    {{DEVPROC}} stop "Agent Daemon" --pidfile {{PID_DIR}}/agent.pid --ports 5998 --grace 2
+    {{DEVPROC}} stop "Nuxt Frontend" --pidfile {{PID_DIR}}/frontend.pid --ports 3000 --grace 2
+    {{DEVPROC}} stop "Fleet Simulator" --pidfile {{PID_DIR}}/simulator.pid --ports 5055 --grace 2
+    rm -f {{PID_DIR}}/*.pid
+    echo "✓ Environment cleared. Ports 5099, 5001, 1883, 3000, 5055, 5998 released (except ones held by containers)."
 
-# Stream service logs (backend, frontend, agent, simulator, windows, db)
+# Stream service logs (backend, backend-file, frontend, agent, simulator, windows, db)
 logs SERVICE="all":
     #!/usr/bin/env bash
+    # -F follows the file name across rotations (logpipe / the backend file logger rename the full file).
     case "{{SERVICE}}" in
         backend)
-            tail -n 60 -f {{LOG_DIR}}/backend.log 2>/dev/null || tail -n 60 -f /tmp/heimdall-backend.log
+            tail -n 60 -F {{LOG_DIR}}/backend.log
+            ;;
+        backend-file)
+            tail -n 60 -F {{LOG_DIR}}/backend/backend.log
             ;;
         frontend)
-            tail -n 60 -f {{LOG_DIR}}/frontend.log 2>/dev/null || tail -n 60 -f /tmp/heimdall-nuxt.log
+            tail -n 60 -F {{LOG_DIR}}/frontend.log
             ;;
         agent)
-            tail -n 60 -f {{LOG_DIR}}/agent.log 2>/dev/null || tail -n 60 -f /tmp/heimdall-agent.log
+            tail -n 60 -F {{LOG_DIR}}/agent.log
             ;;
         simulator)
-            tail -n 60 -f {{LOG_DIR}}/simulator.log 2>/dev/null || tail -n 60 -f /tmp/heimdall-simulator.log
+            tail -n 60 -F {{LOG_DIR}}/simulator.log
             ;;
         windows|winagent)
             docker compose --profile windows logs -f --tail=60 windows-agent
@@ -136,11 +169,13 @@ logs SERVICE="all":
             docker compose -f infra/database/docker-compose.yml logs -f --tail=60
             ;;
         all|*)
-            echo "Available log targets: backend, frontend, agent, simulator, windows, db"
-            echo "  • Backend API:     {{LOG_DIR}}/backend.log"
+            echo "Available log targets: backend, backend-file, frontend, agent, simulator, windows, db"
+            echo "  • Backend API:     {{LOG_DIR}}/backend.log (console output, incl. build errors)"
+            echo "  • Backend file log:{{LOG_DIR}}/backend/backend.log (rotating, see Logging:File)"
             echo "  • Web Frontend:    {{LOG_DIR}}/frontend.log"
             echo "  • Edge Agent:      {{LOG_DIR}}/agent.log"
             echo "  • Simulator:       {{LOG_DIR}}/simulator.log"
+            echo "  Rotated copies: <name>.log.1 (newest) .. .log.N; previous run = .log.1"
             ;;
     esac
 
@@ -174,35 +209,52 @@ start-service TARGET:
             ;;
         backend|grpc)
             just db-up
-            if ! [ -f {{PID_DIR}}/backend.pid ] || ! kill -0 $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null; then
-                echo ">> Starting Backend REST API & gRPC Ingestion..."
-                setsid dotnet watch --project src/backend/App.Backend.Api run </dev/null > {{LOG_DIR}}/backend.log 2>&1 &
+            if {{DEVPROC}} running --pidfile {{PID_DIR}}/backend.pid; then
+                echo "Backend already running (session $(cat {{PID_DIR}}/backend.pid)); 'just restart backend' restarts it."
+            else
+                {{DEVPROC}} ports-free 5099,5001,1883 --service backend
+                echo ">> Starting Backend REST API & embedded MQTT broker (dotnet watch: rebuild + restart on save)..."
+                # Console output -> .logs/backend.log through the rotating log pipe (a detached sibling: it
+                # ends at EOF and survives Ctrl-C); the backend's own rotating file log -> .logs/backend/.
+                {{DOTNET_WATCH_ENV}} Logging__File__Path="{{LOG_DIR}}/backend" setsid dotnet watch --no-hot-reload --project src/backend/App.Backend.Api run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/backend.log" --pidfile {{PID_DIR}}/backend.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/backend.pid
-                ln -sf {{LOG_DIR}}/backend.log /tmp/heimdall-backend.log 2>/dev/null || true
             fi
             ;;
         frontend)
-            if ! [ -f {{PID_DIR}}/frontend.pid ] || ! kill -0 $(cat {{PID_DIR}}/frontend.pid 2>/dev/null) 2>/dev/null; then
-                echo ">> Starting Nuxt 4 Web Frontend on http://localhost:3000..."
-                setsid bun run --cwd src/frontend/web dev </dev/null > {{LOG_DIR}}/frontend.log 2>&1 &
+            if ! {{DEVPROC}} running --pidfile {{PID_DIR}}/frontend.pid; then
+                {{DEVPROC}} ports-free 3000 --service frontend
+                # Dev feature flags from the committed .env.dev (HEIMDALL_ENABLE_DEV & co.: anonymous dev admin in
+                # the BFF, kiosk demo tokens and dev auth bypass, debug features). Only these keys: the rest of the
+                # file is meant for the backend/docker (its DATABASE_URL is the backend's DB role, its
+                # BETTER_AUTH_SECRET differs from the frontend's dev default and would void sessions and MFA
+                # secrets). Variables already set win: HEIMDALL_ENABLE_DEV=false just start frontend
+                while IFS='=' read -r key value; do
+                    case "$key" in
+                        HEIMDALL_ENABLE_DEV|HEIMDALL_ENABLE_DEBUG|HEIMDALL_DEBUG|NUXT_PUBLIC_ENABLE_DEV_FEATURES|NUXT_PUBLIC_ENABLE_DEBUG_FEATURES|ENABLE_DEV_HTTP_SEED)
+                            if [ -z "${!key+x}" ]; then export "$key=$value"; fi
+                            ;;
+                    esac
+                done < <(grep -E '^[A-Z_]+=' .env.dev 2>/dev/null || true)
+                echo ">> Starting Nuxt 4 Web Frontend on http://localhost:3000 (HEIMDALL_ENABLE_DEV=${HEIMDALL_ENABLE_DEV:-unset})..."
+                setsid bun run --cwd src/frontend/web dev </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/frontend.log" --pidfile {{PID_DIR}}/frontend.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/frontend.pid
-                ln -sf {{LOG_DIR}}/frontend.log /tmp/heimdall-nuxt.log 2>/dev/null || true
             fi
             ;;
         agent)
-            if ! [ -f {{PID_DIR}}/agent.pid ] || ! kill -0 $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null; then
+            if ! {{DEVPROC}} running --pidfile {{PID_DIR}}/agent.pid; then
                 echo ">> Starting Host Linux Edge Agent Daemon..."
-                setsid dotnet watch --project src/agent/App.Agent.Daemon run </dev/null > {{LOG_DIR}}/agent.log 2>&1 &
+                {{DOTNET_WATCH_ENV}} setsid dotnet watch --no-hot-reload --project src/agent/App.Agent.Daemon run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/agent.log" --pidfile {{PID_DIR}}/agent.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/agent.pid
-                ln -sf {{LOG_DIR}}/agent.log /tmp/heimdall-agent.log 2>/dev/null || true
             fi
             ;;
         simulator)
-            if ! [ -f {{PID_DIR}}/simulator.pid ] || ! kill -0 $(cat {{PID_DIR}}/simulator.pid 2>/dev/null) 2>/dev/null; then
-                echo ">> Starting Edge Fleet Simulator (:5055)..."
-                setsid python3 -u simulators/fleet/fleet_simulator.py </dev/null > {{LOG_DIR}}/simulator.log 2>&1 &
+            if ! {{DEVPROC}} running --pidfile {{PID_DIR}}/simulator.pid; then
+                {{DEVPROC}} ports-free 5055 --service simulator
+                # SIM_DATASET=enterprise (just db-seed) | demo (just demo-seed) | all. Only pick a dataset that is seeded:
+                # the backend auto-registers unknown controllers that report in.
+                echo ">> Starting Edge Fleet Simulator (MQTT -> :1883, control API 127.0.0.1:5055, dataset ${SIM_DATASET:-enterprise})..."
+                setsid {{SIM_PYTHON}} -u simulators/fleet/fleet_simulator.py --dataset "${SIM_DATASET:-enterprise}" --station-interval "${SIM_STATION_INTERVAL:-4}" </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/simulator.log" --pidfile {{PID_DIR}}/simulator.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/simulator.pid
-                ln -sf {{LOG_DIR}}/simulator.log /tmp/heimdall-simulator.log 2>/dev/null || true
             fi
             ;;
         windows|windows_agent|windows_vnc|windows_ads|windows_opc|winagent)
@@ -210,9 +262,10 @@ start-service TARGET:
             ;;
         all)
             just db-up
-            just start-service backend
-            just start-service frontend
-            just start-service simulator
+            # A service whose port is taken (e.g. a backend run by hand) is reported and skipped, not fatal.
+            just start-service backend || true
+            just start-service frontend || true
+            just start-service simulator || true
             just windows-start
             echo "✓ All core development services successfully launched."
             ;;
@@ -238,55 +291,18 @@ stop-service TARGET:
         db|database)
             just db-down
             ;;
+        # Each service: every process of its setsid session (PID file), then whoever still holds its ports.
         backend|grpc)
-            if [ -f {{PID_DIR}}/backend.pid ]; then
-                kill $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null || true
-                rm -f {{PID_DIR}}/backend.pid
-            fi
-            pkill -f "dotnet watch.*src/backend/App.Backend.Api" 2>/dev/null || true
-            pkill -f "dotnet watch.*backend/App.Backend.Api" 2>/dev/null || true
-            pkill -f "App.Backend.Api" 2>/dev/null || true
-            if command -v fuser >/dev/null 2>&1; then
-                fuser -k 5099/tcp 2>/dev/null || true
-                fuser -k 5001/tcp 2>/dev/null || true
-            fi
-            echo "Backend API stopped."
+            {{DEVPROC}} stop "Backend API" --pidfile {{PID_DIR}}/backend.pid --ports 5099,5001,1883
             ;;
         frontend)
-            if [ -f {{PID_DIR}}/frontend.pid ]; then
-                kill $(cat {{PID_DIR}}/frontend.pid 2>/dev/null) 2>/dev/null || true
-                rm -f {{PID_DIR}}/frontend.pid
-            fi
-            pkill -f "bun.*run.*dev" 2>/dev/null || true
-            pkill -f "nuxt dev" 2>/dev/null || true
-            if command -v fuser >/dev/null 2>&1; then
-                fuser -k 3000/tcp 2>/dev/null || true
-            fi
-            echo "Nuxt Frontend stopped."
+            {{DEVPROC}} stop "Nuxt Frontend" --pidfile {{PID_DIR}}/frontend.pid --ports 3000
             ;;
         agent)
-            if [ -f {{PID_DIR}}/agent.pid ]; then
-                kill $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null || true
-                rm -f {{PID_DIR}}/agent.pid
-            fi
-            pkill -f "dotnet watch.*src/agent/App.Agent.Daemon" 2>/dev/null || true
-            pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
-            pkill -f "App.Agent.Daemon" 2>/dev/null || true
-            if command -v fuser >/dev/null 2>&1; then
-                fuser -k 5998/tcp 2>/dev/null || true
-            fi
-            echo "Agent Daemon stopped."
+            {{DEVPROC}} stop "Agent Daemon" --pidfile {{PID_DIR}}/agent.pid --ports 5998
             ;;
         simulator)
-            if [ -f {{PID_DIR}}/simulator.pid ]; then
-                kill $(cat {{PID_DIR}}/simulator.pid 2>/dev/null) 2>/dev/null || true
-                rm -f {{PID_DIR}}/simulator.pid
-            fi
-            pkill -f "fleet_simulator.py" 2>/dev/null || true
-            if command -v fuser >/dev/null 2>&1; then
-                fuser -k 5055/tcp 2>/dev/null || true
-            fi
-            echo "Fleet Simulator stopped."
+            {{DEVPROC}} stop "Fleet Simulator" --pidfile {{PID_DIR}}/simulator.pid --ports 5055
             ;;
         windows|windows_agent|windows_vnc|windows_ads|windows_opc|winagent)
             just windows-stop
@@ -434,7 +450,8 @@ db-seed:
     python3 seed_data/seed_pipeline.py --generate-all --validate
     if docker ps | grep -q "postgres_heimdall"; then
         docker exec -i postgres_heimdall psql -v ON_ERROR_STOP=1 -U postgres -d heimdall_dev_db < seed_data/incremental_seed.sql >/dev/null
-        echo "✓ Enterprise dataset (100 machines, 16 orgs, 550 spare parts) applied to heimdall_dev_db."
+        echo "✓ Enterprise reference data (100 machines, 56 IPCs, 26 machine groups, 16 orgs, 107 users, 550 spares) applied to heimdall_dev_db."
+        echo "  No tickets / telemetry are seeded: run the simulator (just sim-reset) to produce plant activity."
     fi
 
 # ARGS go to scripts/seed_demo_data.py, e.g. `just demo-seed --reset --unpin-conflicts` (see seed_data/demo/README.md)
@@ -459,6 +476,37 @@ demo-check:
 # Register the demo Lua scripts and replay demo telemetry into the running backend (repeat after each backend restart)
 demo-runtime:
     @python3 scripts/seed_demo_data.py --skip-db --push-runtime
+
+# ARGS go to fleet_simulator.py, e.g. `just sim-demo --scenario demo_story --speed 10 --seed 7`
+# Run the fleet simulator in the foreground against the Nordvik NV1 demo dataset (live station telemetry for the demo plant)
+sim-demo *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just stop-service simulator >/dev/null 2>&1 || true
+    exec {{SIM_PYTHON}} -u simulators/fleet/fleet_simulator.py --dataset demo {{ARGS}}
+
+# One command: reseed DATASET (enterprise | demo) and restart the background simulator on it with plant activity
+# (telemetry, heartbeats, tickets and spare-part use through the backend API). Needs the backend running.
+sim-reset DATASET="enterprise":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{DATASET}}" in
+        enterprise) just db-seed; export SIM_DATASET=enterprise ;;
+        demo)       just demo-seed --unpin-conflicts; export SIM_DATASET=all ;;
+        *)          echo "DATASET must be enterprise or demo"; exit 1 ;;
+    esac
+    just stop-service simulator >/dev/null 2>&1 || true
+    just start-service simulator
+    echo "✓ Simulator restarted on dataset ${SIM_DATASET}. Status: curl -s 127.0.0.1:5055/api/status | jq .maintenance"
+
+# Set the simulated failure rate (failures per station and simulated hour) and optionally the speed, e.g. `just sim-rate 0.3 10`
+sim-rate RATE="0.05" SPEED="1":
+    @curl -fsS -X POST -H 'Content-Type: application/json' -d '{"incident_rate": {{RATE}}}' http://127.0.0.1:5055/api/activity && echo
+    @curl -fsS -X POST -H 'Content-Type: application/json' -d '{"speed": {{SPEED}}}' http://127.0.0.1:5055/api/speed && echo
+
+# Trigger a simulator scenario on the running simulator, e.g. `just sim-scenario demo_story` or `just sim-scenario clear`
+sim-scenario NAME="demo_story":
+    @curl -fsS -X POST -H 'Content-Type: application/json' -d '{"name":"{{NAME}}"}' http://127.0.0.1:5055/api/scenario && echo
 
 # Remove all demo rows (ids de30de30-* / demo-*) from the dev database and reload them
 demo-reset *ARGS:
@@ -622,12 +670,17 @@ test-frontend:
 test-seed:
     @echo ">> Validating Seed Data Pipeline & Referential Integrity..."
     @python3 seed_data/seed_pipeline.py --validate
-    @python3 scripts/seed_demo_data.py --dry-run >/dev/null && echo "✓ Demo dataset (seed_data/demo) valid"
+    @python3 scripts/seed_demo_data.py --dry-run >/dev/null && echo "✓ Demo dataset (seed_data/demo) valid, references resolve"
+    @python3 -m unittest discover -s seed_data -p "test_*.py" 2>&1 | tail -1
 
-# Run edge fleet simulator smoke test
+# Run edge fleet simulator smoke test (publishes 5 heartbeats + 5 station blocks to the backend's MQTT broker)
 test-smoke:
     @echo ">> Running Fleet Simulator Smoke Test..."
-    @python3 simulators/fleet/fleet_simulator.py --smoke-test --count 5 || echo "Note: Smoke test requires active local gRPC service on port 5001."
+    @{{SIM_PYTHON}} simulators/fleet/fleet_simulator.py --smoke-test --count 5 || echo "Note: Smoke test requires the backend's embedded MQTT broker on port 1883 (just start backend) and paho-mqtt/protobuf (pip install -r simulators/fleet/requirements.txt)."
+
+# Run the fleet simulator unit tests (station model, PLC block encoding, MQTT framing, control API; no backend needed)
+test-simulator:
+    @cd simulators/fleet && ../../{{SIM_PYTHON}} -m unittest discover -p "test_*.py"
 
 # Build mobile PWA production assets
 mobile-build:

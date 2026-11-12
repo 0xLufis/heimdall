@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue'
+import { ref, shallowRef, shallowReactive, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue'
 import type { MaintenanceEvent, MaintenanceTicket } from '~/types/maintenance'
 
 /**
@@ -31,6 +31,13 @@ export interface StationTelemetryKpi {
   targetCycleTimeSeconds: number | null
   totalPartsProduced: number | null
   scrapParts: number | null
+  // Last reported machine dynamics (REST snapshot only; live values arrive as oscillation samples).
+  vibrationMmS: number | null
+  spindleRpm: number | null
+  cycleTimeMs: number | null
+  powerKw: number | null
+  temperatureC: number | null
+  frequencyHz: number | null
   /** UNKNOWN: no telemetry-reported state. */
   operationalStatus: 'RUNNING' | 'IDLE' | 'WARNING' | 'FAULTED' | 'MAINTENANCE' | 'UNKNOWN'
   activeTicketCount: number
@@ -135,6 +142,12 @@ export function normalizeStationKpi(raw: unknown, previous?: StationTelemetryKpi
     targetCycleTimeSeconds: toNumber(r.targetCycleTimeSeconds, p?.targetCycleTimeSeconds ?? null),
     totalPartsProduced: toNumber(r.totalPartsProduced, p?.totalPartsProduced ?? null),
     scrapParts: toNumber(r.scrapParts, p?.scrapParts ?? null),
+    vibrationMmS: toNumber(r.vibrationMmS, p?.vibrationMmS ?? null),
+    spindleRpm: toNumber(r.spindleRpm, p?.spindleRpm ?? null),
+    cycleTimeMs: toNumber(r.cycleTimeMs, p?.cycleTimeMs ?? null),
+    powerKw: toNumber(r.powerKw, p?.powerKw ?? null),
+    temperatureC: toNumber(r.temperatureC, p?.temperatureC ?? null),
+    frequencyHz: toNumber(r.frequencyHz, p?.frequencyHz ?? null),
     operationalStatus,
     activeTicketCount: toNumber(r.activeTicketCount, p?.activeTicketCount ?? 0),
     criticalTicketCount: toNumber(r.criticalTicketCount, p?.criticalTicketCount ?? 0),
@@ -177,8 +190,26 @@ export function normalizeStationOscillation(
   }
 }
 
-const globalStationKpis = ref<Record<string, StationTelemetryKpi>>({})
-const globalStationOscillations = ref<Record<string, StationOscillationData>>({})
+type StationKpiIndex = Record<string, StationTelemetryKpi>
+type StationOscillationIndex = Record<string, StationOscillationData>
+
+/**
+ * Hub updates reach the reactive store at most this often. Messages arriving in between are
+ * merged per station and committed together, so a burst costs one render instead of one per
+ * message. The first update after a quiet period, and any change of a station's operational status
+ * (a fault, a recovery), are committed at once.
+ */
+export const LIVE_COMMIT_INTERVAL_MS = 250
+
+/** false: nothing to apply; 'staged': wait for the next commit; 'urgent': commit now. */
+type StageResult = false | 'staged' | 'urgent'
+
+// The maps are reactive per key (shallowReactive inside a shallowRef): a live update replaces one
+// station's entry, so only the views that show that station re-render, and a full fetch swaps the
+// whole map. Replacing the map on every message re-rendered every station card for each of the
+// ~60 hub messages a second that 100 simulated stations produce, which froze the machines page.
+const globalStationKpis = shallowRef<StationKpiIndex>(shallowReactive<StationKpiIndex>({}))
+const globalStationOscillations = shallowRef<StationOscillationIndex>(shallowReactive<StationOscillationIndex>({}))
 const isStationKpisLoading = ref(false)
 const stationKpisError = ref<string | null>(null)
 const isLiveStreamSubscribed = ref(false)
@@ -189,48 +220,137 @@ let liveStreamGeneration = 0
 let liveStreamStarting = false
 let activeSubscribers = 0
 
-const indexKpi = (map: Record<string, StationTelemetryKpi>, kpi: StationTelemetryKpi) => {
+// Live updates received but not yet committed (plain objects: staging triggers nothing).
+let stagedKpis: StationKpiIndex = {}
+let stagedOscillations: StationOscillationIndex = {}
+let hasStagedUpdates = false
+let commitTimer: ReturnType<typeof setTimeout> | null = null
+
+const indexKpi = (map: StationKpiIndex, kpi: StationTelemetryKpi) => {
   map[stationKey(kpi.handle)] = kpi
   if (kpi.stationId) map[stationKey(kpi.stationId)] = kpi
 }
 
-const applyLiveKpi = (rawKpi: unknown, fallbackKey: string) => {
+const stageLiveKpi = (rawKpi: unknown, fallbackKey: string): StageResult => {
   const raw = (rawKpi && typeof rawKpi === 'object') ? rawKpi as Record<string, unknown> : null
-  if (!raw) return
+  if (!raw) return false
   const key = stationKey(toText(raw.handle, '') || toText(raw.stationId, '') || fallbackKey)
-  if (!key) return
-  const previous = globalStationKpis.value[key] ?? null
+  if (!key) return false
+  const committed = globalStationKpis.value[key]
+  const previous = stagedKpis[key] ?? committed ?? null
   const merged = normalizeStationKpi({ stationId: fallbackKey, ...raw }, previous)
-  if (!merged) return
-  const next = { ...globalStationKpis.value }
-  indexKpi(next, merged)
-  globalStationKpis.value = next
-  lastRefreshedAt.value = new Date()
+  if (!merged) return false
+  indexKpi(stagedKpis, merged)
+  // A station whose state changed (or that is new) is not left waiting for the next commit.
+  return committed && committed.operationalStatus === merged.operationalStatus ? 'staged' : 'urgent'
 }
 
-const applyLiveOscillation = (rawOsc: unknown, fallbackKey: string) => {
+const stageLiveOscillation = (rawOsc: unknown, fallbackKey: string) => {
   const raw = (rawOsc && typeof rawOsc === 'object') ? rawOsc as Record<string, unknown> : null
-  if (!raw) return
+  if (!raw) return false
   const key = stationKey(toText(raw.stationId, '') || fallbackKey)
-  if (!key) return
+  if (!key) return false
   const handleKey = stationKey(toText(raw.handle, ''))
-  const previous = globalStationOscillations.value[key] ?? (handleKey ? globalStationOscillations.value[handleKey] : undefined) ?? null
+  const latest = (k: string) => stagedOscillations[k] ?? globalStationOscillations.value[k]
+  const previous = latest(key) ?? (handleKey ? latest(handleKey) : undefined) ?? null
   const next = normalizeStationOscillation(raw, key, previous)
-  if (!next) return
+  if (!next) return false
   // Index by machine id (3D twin) and floor-plan handle (plant map).
-  const map = { ...globalStationOscillations.value, [key]: next }
+  stagedOscillations[key] = next
   const nextHandleKey = stationKey(next.handle)
-  if (nextHandleKey) map[nextHandleKey] = next
-  globalStationOscillations.value = map
+  if (nextHandleKey) stagedOscillations[nextHandleKey] = next
+  return true
 }
 
-/** Routes a maintenance-hub event into the telemetry store. Exported for tests. */
-export const handleStationTelemetryEvent = (ev: MaintenanceEvent) => {
+const stageEvent = (ev: MaintenanceEvent): StageResult => {
+  let staged: StageResult = false
   if (ev.type === 'StationTelemetryReceived') {
-    applyLiveKpi(ev.summary, ev.stationName || '')
+    staged = stageLiveKpi(ev.summary, ev.stationName || '')
   } else if (ev.type === 'StationOscillationReceived') {
-    applyLiveOscillation(ev.summary, ev.stationName || '')
+    staged = stageLiveOscillation(ev.summary, ev.stationName || '') ? 'staged' : false
   }
+  if (staged) hasStagedUpdates = true
+  return staged
+}
+
+/** Writes staged updates into the reactive maps, one key at a time. Returns whether there were any. */
+const commitStagedUpdates = () => {
+  if (!hasStagedUpdates) return false
+  const kpis = stagedKpis
+  const oscillations = stagedOscillations
+  stagedKpis = {}
+  stagedOscillations = {}
+  hasStagedUpdates = false
+  const kpiMap = globalStationKpis.value
+  let kpiCount = 0
+  for (const key in kpis) {
+    kpiMap[key] = kpis[key]!
+    kpiCount++
+  }
+  const oscillationMap = globalStationOscillations.value
+  for (const key in oscillations) oscillationMap[key] = oscillations[key]!
+  if (kpiCount > 0) lastRefreshedAt.value = new Date()
+  return true
+}
+
+const scheduleCommit = () => {
+  commitTimer = setTimeout(() => {
+    commitTimer = null
+    // Messages kept arriving during the interval: commit them and keep throttling.
+    if (commitStagedUpdates()) scheduleCommit()
+  }, LIVE_COMMIT_INTERVAL_MS)
+}
+
+/**
+ * Hub listener: stages the update and commits at most once per {@link LIVE_COMMIT_INTERVAL_MS},
+ * except for status changes, which are committed at once (with everything staged before them).
+ */
+const queueStationTelemetryEvent = (ev: MaintenanceEvent) => {
+  const staged = stageEvent(ev)
+  if (!staged || (commitTimer && staged !== 'urgent')) return
+  commitStagedUpdates()
+  if (!commitTimer) scheduleCommit()
+}
+
+const cancelScheduledCommit = () => {
+  if (commitTimer) clearTimeout(commitTimer)
+  commitTimer = null
+}
+
+// getStationSla matches a title when the key is bounded by characters outside [A-Z0-9-].
+const TITLE_TOKEN = /[A-Z0-9-]+/g
+const SINGLE_TOKEN = /^[A-Z0-9-]+$/
+
+/**
+ * Groups tickets by every station key they can match in `getStationSla` (station id, tags, whole
+ * tokens of the title), so callers that need the SLA of many stations (the plant map's pins) scan
+ * the ticket list once instead of once per station. The lookup returns a superset of a station's
+ * tickets; `getStationSla` still applies the exact rules to it.
+ */
+export function indexTicketsByStation(tickets: readonly MaintenanceTicket[]) {
+  const byKey = new Map<string, MaintenanceTicket[]>()
+  const add = (key: string, ticket: MaintenanceTicket) => {
+    if (!key) return
+    const list = byKey.get(key)
+    if (!list) byKey.set(key, [ticket])
+    else if (list[list.length - 1] !== ticket) list.push(ticket)
+  }
+  for (const ticket of tickets) {
+    if (ticket.stationId) add(ticket.stationId.toUpperCase(), ticket)
+    for (const tag of ticket.tags || []) add(tag.toUpperCase(), ticket)
+    for (const token of ticket.title?.toUpperCase().match(TITLE_TOKEN) || []) add(token, ticket)
+  }
+  return (handleOrId: string): readonly MaintenanceTicket[] => {
+    const key = stationKey(handleOrId)
+    if (!key) return []
+    // A key with characters outside the token alphabet can match across token boundaries: scan all.
+    return SINGLE_TOKEN.test(key) ? (byKey.get(key) ?? []) : tickets
+  }
+}
+
+/** Applies one maintenance-hub event to the telemetry store immediately. Exported for tests. */
+export const handleStationTelemetryEvent = (ev: MaintenanceEvent) => {
+  if (stageEvent(ev)) commitStagedUpdates()
 }
 
 export const useStationTelemetry = () => {
@@ -250,8 +370,9 @@ export const useStationTelemetry = () => {
       if (!Array.isArray(data)) {
         throw new Error('Unexpected station KPI response shape')
       }
-      // A full fetch is authoritative; a line-filtered fetch only refreshes that line.
-      const map: Record<string, StationTelemetryKpi> = lineId ? { ...stationKpis.value } : {}
+      // A full fetch is authoritative; a line-filtered fetch only refreshes that line. Live updates
+      // still waiting for their commit are newer than either and are applied on top.
+      const map: StationKpiIndex = lineId ? { ...stationKpis.value } : {}
       if (lineId) {
         for (const [k, v] of Object.entries(map)) {
           if (v.lineId.toUpperCase() === lineId.toUpperCase()) delete map[k]
@@ -261,7 +382,7 @@ export const useStationTelemetry = () => {
         const kpi = normalizeStationKpi(item)
         if (kpi) indexKpi(map, kpi)
       }
-      stationKpis.value = map
+      stationKpis.value = shallowReactive(map)
       stationKpisError.value = null
       lastRefreshedAt.value = new Date()
     } catch (err: any) {
@@ -278,7 +399,7 @@ export const useStationTelemetry = () => {
   }
 
   // Correlate tickets to compute real-time SLA metrics for any station
-  const getStationSla = (handleOrId: string, allTickets: MaintenanceTicket[] = []): StationSlaSummary => {
+  const getStationSla = (handleOrId: string, allTickets: readonly MaintenanceTicket[] = []): StationSlaSummary => {
     const key = stationKey(handleOrId)
     const now = Date.now()
 
@@ -359,9 +480,11 @@ export const useStationTelemetry = () => {
     return globalStationOscillations.value[stationKey(handleOrId)] ?? null
   }
 
-  /** Applies a (partial) oscillation sample, e.g. from the SignalR hub. */
+  /** Applies a (partial) oscillation sample now (with any updates still waiting for their commit). */
   const updateStationOscillation = (stationId: string, partial: Partial<StationOscillationData>) => {
-    applyLiveOscillation({ ...partial, stationId: partial.stationId || stationId }, stationId)
+    if (!stageLiveOscillation({ ...partial, stationId: partial.stationId || stationId }, stationId)) return
+    hasStagedUpdates = true
+    commitStagedUpdates()
   }
 
   /**
@@ -380,7 +503,7 @@ export const useStationTelemetry = () => {
       if (generation !== liveStreamGeneration || unsubscribeMaintenanceEvents) return
       const svc = getMaintenanceService()
       if (svc && typeof svc.subscribeToEvents === 'function') {
-        unsubscribeMaintenanceEvents = svc.subscribeToEvents(handleStationTelemetryEvent)
+        unsubscribeMaintenanceEvents = svc.subscribeToEvents(queueStationTelemetryEvent)
         isLiveStreamSubscribed.value = true
       }
     }).catch(() => {
@@ -397,6 +520,9 @@ export const useStationTelemetry = () => {
       } catch { /* listener already gone */ }
       unsubscribeMaintenanceEvents = null
     }
+    // Keep what already arrived (the store outlives its subscribers), but stop the timer.
+    cancelScheduledCommit()
+    commitStagedUpdates()
     isLiveStreamSubscribed.value = false
   }
 

@@ -1,7 +1,12 @@
 import { ref, onMounted, getCurrentInstance } from 'vue'
 import type { ProductionStation } from '~/types/domain'
 
-export const useStations = () => {
+export interface UseStationsOptions {
+  /** Load the shared station list on mount when it is empty (default true). */
+  autoFetch?: boolean
+}
+
+export const useStations = (options: UseStationsOptions = {}) => {
   const stations = useState<ProductionStation[]>('global_stations', () => [])
   const selectedStation = useState<ProductionStation | null>('global_selected_station', () => null)
   const isLoading = ref(false)
@@ -72,7 +77,7 @@ export const useStations = () => {
     await fetchStations()
   }
 
-  if (getCurrentInstance()) {
+  if (getCurrentInstance() && options.autoFetch !== false) {
     onMounted(() => {
       if (stations.value.length === 0) {
         fetchStations()

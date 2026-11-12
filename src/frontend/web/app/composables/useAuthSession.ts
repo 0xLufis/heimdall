@@ -1,4 +1,4 @@
-import { computed, ref, onMounted, getCurrentInstance } from 'vue'
+import { computed, ref, onMounted, getCurrentInstance, effectScope } from 'vue'
 import { authClient } from '~/utils/auth-client'
 import { useFeatureFlags } from '~/composables/useFeatureFlags'
 
@@ -151,8 +151,22 @@ export const useAuthSession = () => {
   const { enableDevFeatures, enableDebugFeatures } = useFeatureFlags()
   const isPersonaSimulationAllowed = computed(() => enableDevFeatures.value || enableDebugFeatures.value)
 
-  const sessionQuery = authClient.useSession()
-  const activeOrgQuery = authClient.useActiveOrganization()
+  // better-auth's Vue stores subscribe to the client's module-level atoms and unsubscribe when the
+  // current effect scope is disposed. Component scopes are never disposed during SSR, so on the
+  // server every render left its listeners (about 48 per page) on the shared atoms. There, the
+  // subscriptions live in a scope that is stopped once the page has been rendered.
+  const serverStoreScope = import.meta.server ? effectScope(true) : null
+  const sessionQuery = serverStoreScope ? serverStoreScope.run(() => authClient.useSession())! : authClient.useSession()
+  const activeOrgQuery = serverStoreScope ? serverStoreScope.run(() => authClient.useActiveOrganization())! : authClient.useActiveOrganization()
+  if (serverStoreScope) {
+    const nuxtApp = tryUseNuxtApp()
+    if (nuxtApp) {
+      nuxtApp.hooks.hookOnce('app:rendered', () => serverStoreScope.stop())
+      nuxtApp.hooks.hookOnce('app:error', () => serverStoreScope.stop())
+    } else {
+      serverStoreScope.stop()
+    }
+  }
   const isSwitchingOrg = ref(false)
 
   const testCookie = typeof useCookie !== 'undefined'

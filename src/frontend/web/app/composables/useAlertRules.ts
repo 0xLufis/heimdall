@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import type { AlertRule, AlertEvent, TelemetryMetricSample, RuleOperator, AlertSeverity } from '~/types/alertRules'
 import { useMaintenance } from '~/composables/useMaintenance'
 
-// Initial standard rules catalog
+// Standard rules catalog (definitions only: thresholds are editable defaults, trigger history starts empty)
 const defaultRules: AlertRule[] = [
   {
     id: 'rule-jit-01',
@@ -22,8 +22,7 @@ const defaultRules: AlertRule[] = [
     ticketPriority: 'Critical',
     assignedTechnicianName: 'Controls Lead Engineer',
     cooldownMinutes: 15,
-    triggerCount: 3,
-    lastTriggeredAt: new Date(Date.now() - 3600000).toISOString()
+    triggerCount: 0
   },
   {
     id: 'rule-temp-02',
@@ -45,8 +44,7 @@ const defaultRules: AlertRule[] = [
     ticketPriority: 'Critical',
     assignedTechnicianName: 'Shift Maintenance Tech',
     cooldownMinutes: 20,
-    triggerCount: 6,
-    lastTriggeredAt: new Date(Date.now() - 1800000).toISOString()
+    triggerCount: 0
   },
   {
     id: 'rule-vib-03',
@@ -66,8 +64,7 @@ const defaultRules: AlertRule[] = [
     ticketPriority: 'High',
     assignedTechnicianName: 'Mechanical Reliability Specialist',
     cooldownMinutes: 30,
-    triggerCount: 2,
-    lastTriggeredAt: new Date(Date.now() - 7200000).toISOString()
+    triggerCount: 0
   },
   {
     id: 'rule-cpu-04',
@@ -87,8 +84,7 @@ const defaultRules: AlertRule[] = [
     ticketPriority: 'Medium',
     assignedTechnicianName: 'IT/OT System Admin',
     cooldownMinutes: 30,
-    triggerCount: 1,
-    lastTriggeredAt: new Date(Date.now() - 14400000).toISOString()
+    triggerCount: 0
   },
   {
     id: 'rule-ram-05',
@@ -128,8 +124,7 @@ const defaultRules: AlertRule[] = [
     ticketPriority: 'High',
     assignedTechnicianName: 'Facility Engineering Tech',
     cooldownMinutes: 15,
-    triggerCount: 4,
-    lastTriggeredAt: new Date(Date.now() - 900000).toISOString()
+    triggerCount: 0
   },
   {
     id: 'rule-fb-07',
@@ -149,72 +144,12 @@ const defaultRules: AlertRule[] = [
     ticketPriority: 'High',
     assignedTechnicianName: 'Fieldbus Network Engineer',
     cooldownMinutes: 20,
-    triggerCount: 2
+    triggerCount: 0
   }
 ]
 
-// Initial seed alerts
-const initialAlerts: AlertEvent[] = [
-  {
-    id: 'alt-001',
-    ruleId: 'rule-temp-02',
-    ruleName: 'Laser / Spindle Bearing Over-Temperature',
-    category: 'thermal',
-    severity: 'Critical',
-    targetId: 'm-op20',
-    targetName: 'OP20-Weld Laser Cell',
-    metricKey: 'motor_temp_c',
-    metricLabel: 'Core Bearing Temp',
-    measuredValue: 78.4,
-    threshold: 72.0,
-    unit: '°C',
-    condition: '>',
-    triggeredAt: new Date(Date.now() - 1800000).toISOString(),
-    status: 'active',
-    ticketId: 'tkt-auto-01',
-    ticketNumber: 'TKT-2026-0084'
-  },
-  {
-    id: 'alt-002',
-    ruleId: 'rule-pneu-06',
-    ruleName: 'Pneumatic Header Line Pressure Sag',
-    category: 'pneumatics',
-    severity: 'Critical',
-    targetId: 'm-op10',
-    targetName: 'OP10-Dispense Bonding Cell',
-    metricKey: 'pneumatic_pressure_bar',
-    metricLabel: 'Pneumatic Pressure',
-    measuredValue: 4.8,
-    threshold: 5.4,
-    unit: 'bar',
-    condition: '<',
-    triggeredAt: new Date(Date.now() - 900000).toISOString(),
-    status: 'active',
-    ticketId: 'tkt-auto-02',
-    ticketNumber: 'TKT-2026-0085'
-  },
-  {
-    id: 'alt-003',
-    ruleId: 'rule-vib-03',
-    ruleName: 'Robotic Axis Mechanical Vibration RMS',
-    category: 'vibration',
-    severity: 'High',
-    targetId: 'm-op50',
-    targetName: 'OP50-Fasten Screwing Station',
-    metricKey: 'vibration_rms_mms',
-    metricLabel: 'Vibration RMS Velocity',
-    measuredValue: 3.12,
-    threshold: 2.7,
-    unit: 'mm/s',
-    condition: '>',
-    triggeredAt: new Date(Date.now() - 7200000).toISOString(),
-    status: 'acknowledged',
-    acknowledgedAt: new Date(Date.now() - 3600000).toISOString(),
-    acknowledgedBy: 'Shift Supervisor',
-    ticketId: 'tkt-auto-03',
-    ticketNumber: 'TKT-2026-0082'
-  }
-]
+// Alerts only ever come from a rule evaluation (evaluateTelemetry); none are seeded.
+const initialAlerts: AlertEvent[] = []
 
 // Global singleton state
 const rules = ref<AlertRule[]>(defaultRules)
@@ -337,8 +272,7 @@ export const useAlertRules = () => {
             event.ticketNumber = newTicket.ticketNumber
           }
         } catch {
-          // Fallback ticket number if creation encounters error
-          event.ticketNumber = `TKT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`
+          // Ticket creation failed: the alert stays without a ticket (no number is made up).
         }
       }
 

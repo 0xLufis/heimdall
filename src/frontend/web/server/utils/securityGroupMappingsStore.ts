@@ -168,11 +168,14 @@ export function createSecurityGroupMapping(input: CreateMappingInput): {
 
   mappingsStore.set(id, mapping)
 
+  // Requester / approver are free-text audit fields. Auto-provisioned profiles for them must not
+  // carry a privileged role: the requester used to be created with the *mapped* role (e.g.
+  // system_admin) and the approver as it_admin, with a verified e-mail address.
   if (mapping.requestedBy) {
-    ensureBetterAuthProfile(mapping.requestedBy, { role: mapping.mappedRole }).catch(() => {})
+    ensureBetterAuthProfile(mapping.requestedBy).catch(() => {})
   }
   if (mapping.approvedBy) {
-    ensureBetterAuthProfile(mapping.approvedBy, { role: 'it_admin' }).catch(() => {})
+    ensureBetterAuthProfile(mapping.approvedBy).catch(() => {})
   }
 
   let auditTicket: MaintenanceTicket | undefined

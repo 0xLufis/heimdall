@@ -6,6 +6,7 @@ import {
   ensureTicketInStore
 } from '../../../utils/ticketsStore'
 import type { TicketAttachment } from '../../../utils/ticketsStore'
+import { backendAuthHeaders } from '../../../utils/backendProxy'
 
 export default defineEventHandler(async (event) => {
   const id = event.context.params?.id
@@ -18,9 +19,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'fileName is required' })
   }
 
+  // Backend calls run as the caller: session bearer and the session's organisation, never raw client headers.
+  const authHeaders = await backendAuthHeaders(event)
   let ticket = findTicketById(id)
   if (!ticket) {
-    ticket = await fetchAndCacheBackendTicket(id)
+    ticket = await fetchAndCacheBackendTicket(id, authHeaders)
   }
   if (!ticket) {
     ticket = ensureTicketInStore(id)

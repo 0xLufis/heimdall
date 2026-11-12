@@ -1,11 +1,4 @@
 import { defineEventHandler } from 'h3'
-import { partsInventoryStore } from '../../../utils/partsInventoryStore'
 
-export default defineEventHandler(() => {
-  const logs = partsInventoryStore.getAuditLog()
-  return {
-    success: true,
-    totalCount: logs.length,
-    auditLog: logs
-  }
-})
+/** The backend keeps no inventory ledger yet; the drawer shows its empty state. */
+export default defineEventHandler(() => ({ success: true, auditLog: [], available: false }))

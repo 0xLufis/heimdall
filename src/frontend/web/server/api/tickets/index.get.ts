@@ -1,5 +1,6 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { getTicketsStore, getStoppageStatsFromStore, mapBackendTicketToStore, upsertTicketsInStore } from '../../utils/ticketsStore'
+import { backendAuthHeaders } from '../../utils/backendProxy'
 
 const BACKEND_BASE = process.env.BACKEND_API_URL || 'http://localhost:5099'
 
@@ -19,6 +20,8 @@ const LIFECYCLE_ORDER: Record<string, number> = {
 }
 
 export default defineEventHandler(async (event) => {
+  // Backend calls run as the caller: session bearer and the session's organisation, never raw client headers.
+  const authHeaders = await backendAuthHeaders(event)
   const query = getQuery(event)
   const statusFilter = (query.status as string || 'all').trim()
   const priorityFilter = (query.priority as string || 'all').trim()
@@ -34,7 +37,7 @@ export default defineEventHandler(async (event) => {
   let rawList: any[] = []
   try {
     const res = await $fetch<any[]>(`${BACKEND_BASE}/api/v1/tickets`, {
-      headers: event.headers as any
+      headers: authHeaders
     })
     if (res && Array.isArray(res) && res.length > 0) {
       rawList = res
@@ -42,7 +45,7 @@ export default defineEventHandler(async (event) => {
   } catch (err: any) {
     try {
       const res = await $fetch<any[]>('http://localhost:5001/api/v1/tickets', {
-        headers: event.headers as any
+        headers: authHeaders
       })
       if (res && Array.isArray(res) && res.length > 0) {
         rawList = res

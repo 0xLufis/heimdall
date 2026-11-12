@@ -406,12 +406,20 @@ public class AssetRepository : IAssetRepository
             CustomIdentifier = station.CustomIdentifier,
             MachineType = station.MachineType,
             GroupId = station.GroupId,
-            // No per-station CAD model is persisted yet; the client decides on a fallback model.
-            Model3dUrl = null,
+            // Resolved from the station's own data (metadata.model3dUrl, else a component CAD reference);
+            // null when no model is linked. The client must not substitute a default model.
+            Model3dUrl = ComponentLinkResolver.ResolveModel3dUrl(station.Metadata, machineComponents.Select(ParseCadReference)),
             Controllers = controllers,
             InstalledParts = installedPartDtos,
             TotalComponentsCount = installedPartDtos.Count + controllers.Sum(ctrl => ctrl.InternalComponents.Count)
         };
+    }
+
+    private static EplanCadReference? ParseCadReference(MachineComponent component)
+    {
+        if (string.IsNullOrWhiteSpace(component.EplanCadRefJson)) return null;
+        try { return JsonSerializer.Deserialize<EplanCadReference>(component.EplanCadRefJson); }
+        catch (JsonException) { return null; }
     }
 
     public async Task<InventoryFilterResultDto> FilterInventoryAsync(InventoryFilterRequest request, CancellationToken cancellationToken = default)

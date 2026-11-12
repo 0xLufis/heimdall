@@ -5,6 +5,7 @@ import {
   fetchAndCacheBackendTicket,
   ensureTicketInStore
 } from '../../../utils/ticketsStore'
+import { backendAuthHeaders } from '../../../utils/backendProxy'
 
 export default defineEventHandler(async (event) => {
   const id = event.context.params?.id
@@ -17,9 +18,11 @@ export default defineEventHandler(async (event) => {
   const retractedBy = body.retractedBy || sessionUser?.name || 'Kiosk Operator'
   const reason = body.reason || 'Retracted from terminal kiosk'
 
+  // Backend calls run as the caller: session bearer and the session's organisation, never raw client headers.
+  const authHeaders = await backendAuthHeaders(event)
   let ticket = findTicketById(id)
   if (!ticket) {
-    ticket = await fetchAndCacheBackendTicket(id)
+    ticket = await fetchAndCacheBackendTicket(id, authHeaders)
   }
   if (!ticket) {
     ticket = ensureTicketInStore(id)
@@ -34,6 +37,7 @@ export default defineEventHandler(async (event) => {
   const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   $fetch(`${backendBase}/api/v1/tickets/${id}/retract`, {
     method: 'POST',
+    headers: authHeaders,
     body: {
       retractedBy,
       reason
@@ -42,6 +46,7 @@ export default defineEventHandler(async (event) => {
     if (backendBase.includes('5099')) {
       $fetch(`http://localhost:5001/api/v1/tickets/${id}/retract`, {
         method: 'POST',
+        headers: authHeaders,
         body: { retractedBy, reason }
       }).catch(() => {})
     }

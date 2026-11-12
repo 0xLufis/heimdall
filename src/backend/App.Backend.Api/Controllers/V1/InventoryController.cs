@@ -35,17 +35,24 @@ public class InventoryController : ControllerBase
     }
 
 
+    /// <summary>
+    /// Inventory rows are tenant-filtered, so their cached results are kept per tenant scope.
+    /// With shared keys one tenant was served another tenant's (or a platform administrator's
+    /// unfiltered) cached list.
+    /// </summary>
+    private string Scoped(string key) => App.Backend.Api.Security.TenantScopeMiddleware.ScopedCacheKey(HttpContext, key);
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetInventory()
     {
-        var tree = await _cache.GetOrSetAsync("inventory:tree", () => _assetRepository.GetInventoryTreeAsync(), TimeSpan.FromMinutes(10));
+        var tree = await _cache.GetOrSetAsync(Scoped("inventory:tree"), () => _assetRepository.GetInventoryTreeAsync(), TimeSpan.FromMinutes(10));
         return Ok(tree);
     }
 
     [HttpGet("machines")]
     public async Task<ActionResult<IEnumerable<Machine>>> GetMachines()
     {
-        var machines = await _cache.GetOrSetAsync("inventory:machines", () => _assetRepository.GetMachinesAsync(), TimeSpan.FromMinutes(10));
+        var machines = await _cache.GetOrSetAsync(Scoped("inventory:machines"), () => _assetRepository.GetMachinesAsync(), TimeSpan.FromMinutes(10));
         return Ok(machines);
     }
 
@@ -73,14 +80,14 @@ public class InventoryController : ControllerBase
     [HttpGet("client-pcs")]
     public async Task<ActionResult<IEnumerable<ClientPc>>> GetClientPcs()
     {
-        var pcs = await _cache.GetOrSetAsync("inventory:client_pcs", () => _assetRepository.GetClientPcsAsync(), TimeSpan.FromMinutes(2));
+        var pcs = await _cache.GetOrSetAsync(Scoped("inventory:client_pcs"), () => _assetRepository.GetClientPcsAsync(), TimeSpan.FromMinutes(2));
         return Ok(pcs);
     }
 
     [HttpGet("keys")]
     public async Task<ActionResult<IEnumerable<string>>> GetAvailableKeys()
     {
-        var keys = await _cache.GetOrSetAsync("inventory:metadata_keys", () => _assetRepository.GetSearchKeysAsync(), TimeSpan.FromHours(1));
+        var keys = await _cache.GetOrSetAsync(Scoped("inventory:metadata_keys"), () => _assetRepository.GetSearchKeysAsync(), TimeSpan.FromHours(1));
         return Ok(keys);
     }
 
@@ -104,14 +111,14 @@ public class InventoryController : ControllerBase
     [HttpGet("parts")]
     public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetParts()
     {
-        var parts = await _cache.GetOrSetAsync("inventory:parts", () => _assetRepository.GetPartsAsync(), TimeSpan.FromMinutes(10));
+        var parts = await _cache.GetOrSetAsync(Scoped("inventory:parts"), () => _assetRepository.GetPartsAsync(), TimeSpan.FromMinutes(10));
         return Ok(parts);
     }
 
     [HttpGet("stock")]
     public async Task<ActionResult<IEnumerable<BaseInventoryItem>>> GetStock()
     {
-        var stock = await _cache.GetOrSetAsync("inventory:stock", () => _assetRepository.GetStockAsync(), TimeSpan.FromMinutes(10));
+        var stock = await _cache.GetOrSetAsync(Scoped("inventory:stock"), () => _assetRepository.GetStockAsync(), TimeSpan.FromMinutes(10));
         return Ok(stock);
     }
 
@@ -134,7 +141,7 @@ public class InventoryController : ControllerBase
     public async Task<ActionResult<InventoryFilterResultDto>> FilterInventoryGet([FromQuery] InventoryFilterRequest request, CancellationToken cancellationToken)
     {
         var cacheKey = $"inventory:filter:{request.Query}:{request.Type}:{request.Classification}:{request.EquipmentStatus}:{request.Technology}:{request.StorageLocation}:{request.ManufacturerId}:{request.TeamId}:{request.SortBy}:{request.SortOrder}:{request.Page}:{request.PageSize}";
-        var result = await _cache.GetOrSetAsync(cacheKey, () => _assetRepository.FilterInventoryAsync(request, cancellationToken), TimeSpan.FromSeconds(30));
+        var result = await _cache.GetOrSetAsync(Scoped(cacheKey), () => _assetRepository.FilterInventoryAsync(request, cancellationToken), TimeSpan.FromSeconds(30));
         return Ok(result);
     }
 
@@ -145,7 +152,7 @@ public class InventoryController : ControllerBase
     public async Task<ActionResult<InventoryFilterResultDto>> FilterInventoryPost([FromBody] InventoryFilterRequest request, CancellationToken cancellationToken)
     {
         var cacheKey = $"inventory:filter:{request.Query}:{request.Type}:{request.Classification}:{request.EquipmentStatus}:{request.Technology}:{request.StorageLocation}:{request.ManufacturerId}:{request.TeamId}:{request.SortBy}:{request.SortOrder}:{request.Page}:{request.PageSize}";
-        var result = await _cache.GetOrSetAsync(cacheKey, () => _assetRepository.FilterInventoryAsync(request, cancellationToken), TimeSpan.FromSeconds(30));
+        var result = await _cache.GetOrSetAsync(Scoped(cacheKey), () => _assetRepository.FilterInventoryAsync(request, cancellationToken), TimeSpan.FromSeconds(30));
         return Ok(result);
     }
 
@@ -196,7 +203,7 @@ public class InventoryController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<BaseInventoryItem>> GetItem(Guid id)
     {
-        var item = await _cache.GetOrSetAsync($"inventory:item:{id}", () => _assetRepository.GetByIdAsync(id), TimeSpan.FromMinutes(5));
+        var item = await _cache.GetOrSetAsync(Scoped($"inventory:item:{id}"), () => _assetRepository.GetByIdAsync(id), TimeSpan.FromMinutes(5));
         if (item == null) return NotFound();
         return Ok(item);
     }

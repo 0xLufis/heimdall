@@ -9,7 +9,7 @@ using App.Shared.Protos;
 public interface ISystemInfoReporter
 {
     /// <summary>
-    /// Reports endpoint telemetry and inventory via gRPC to the central backend.
+    /// Reports endpoint telemetry and inventory to the central backend (MQTT).
     /// </summary>
     Task<SystemInfoResponse?> ReportInfoAsync(SystemInfoData data);
 

@@ -10,28 +10,36 @@ The frontend is implemented as a Nuxt application with a server-side **Nitro Bac
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                             BROWSER / MOBILE PWA                            │
+│                    BROWSER / MOBILE PWA / KIOSK TERMINAL                    │
 │                                                                             │
 │  ┌───────────────────────┐  ┌───────────────────────┐  ┌──────────────────┐ │
-│  │   Vue 3 Components    │  │ Reactive Composables  │  │ IndexedDB Offline│ │
-│  │   (Kanban, CAD Map,   │◄─┤ (useMaintenance,      │◄─┤ Multi-Store Cache│ │
-│  │   Asset DNA Editor)   │  │  useOmniSearch)       │  │ (idb v8)         │ │
-│  └───────────────────────┘  └───────────┬───────────┘  └──────────────────┘ │
-└─────────────────────────────────────────┼───────────────────────────────────┘
-                                          │ HTTP / WebSockets
-                                          ▼
+│  │ Vue 3 Pages &         │  │ Composables &         │  │ IndexedDB (idb)  │ │
+│  │ Components (Kanban,   │◄─┤ Providers (useMainte- │◄─┤ cached tickets,  │ │
+│  │ Plant Map, 3D Twin,   │  │ nance, useStation-    │  │ offline mutation │ │
+│  │ Kiosk Terminal)       │  │ Telemetry, search)    │  │ queue            │ │
+│  └───────────────────────┘  └───────────────────────┘  └──────────────────┘ │
+└─────────────────┬───────────────────────────────────────────────┬───────────┘
+                  │ HTTPS /api/* (Better-Auth session cookie)     │ SignalR
+                  │                                               │ /hubs/
+                  ▼                                               │ maintenance
+┌───────────────────────────────────────────────────────────┐     │ (WebSocket,
+│              NITRO BFF SERVER LAYER (Nuxt 4)              │     │ SSE, long
+│ * Better-Auth: sessions, organizations, MFA policy        │     │ polling)
+│ * Generic proxy /api/proxy/* and domain routes            │     │
+│   (server/api/**) with the session bearer token           │     │
+│ * X-Organization-Id taken from the session only           │     │
+│ * Kiosk /api/terminal/*: token, session or X-Client-Cert  │     │
+│ * Drizzle -> PostgreSQL auth schema                       │     │
+└─────────────────────────────┬─────────────────────────────┘     │
+                              │                                   │
+                              │ HTTP REST /api/v1                 │
+                              │ (dev :5099, prod compose :5001)   │
+                              │                                   │
+                              ▼                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           NITRO BFF SERVER LAYER                            │
-│                                                                             │
-│  * Reverse Proxy Route: /api/proxy/*                                        │
-│  * Session Authentication & Token Verification (Better-Auth)                │
-│  * Multi-Tenant Header Injection: X-Organization-Id                         │
-└─────────────────────────────────────────┬───────────────────────────────────┘
-                                          │ HTTP REST (Port 5099)
-                                          ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CENTRAL BACKEND API                               │
-│                         (ASP.NET Core / PostgreSQL)                         │
+│                             CENTRAL BACKEND API                             │
+│          (ASP.NET Core 10: REST /api/v1, SignalR /hubs/maintenance,         │
+│                embedded MQTT 5 broker; PostgreSQL 18, Redis)                │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -44,37 +52,35 @@ Browser clients do not connect directly to internal backend microservice ports. 
 
 ---
 
-## 2. Live Maintenance Ticketing & 8-Stage Kanban Architecture
+## 2. Live Maintenance Ticketing & 5-Status Kanban Architecture
 
-The maintenance ticketing module (`/dashboard/tickets`) coordinates real-time equipment incident handling, field telemetry snapshots, error template auto-fill, and photographic audit trails across an 8-column Kanban lifecycle.
+The maintenance ticketing module (`/dashboard/tickets`) coordinates real-time equipment incident handling, field telemetry snapshots, error template auto-fill, and photographic audit trails across a 5-column Kanban lifecycle; escalation is a separate flag, not a column.
 
 ```
-┌──────────┐   ┌─────────────┐   ┌───────────────┐   ┌───────────┐
-│   Open   │──►│ In Progress │──►│ Pending Parts │──►│ Resolved  │
-└────┬─────┘   └──────┬──────┘   └───────────────┘   └─────▲─────┘
-     │                │                                    │
-     │                ├────────────────────────────────────┤
-     ▼                ▼                                    │
-┌──────────┐   ┌────────────────────┐            ┌─────────┴─────────┐
-│Escalated │   │ Escalated External │            │  Closure Pending  │
-│ (Safety) │   │  (Vendor / SAP)    │            │ (AOK Calibration) │
-└──────────┘   └────────────────────┘            └─────────┬─────────┘
-                                                           │
-                                                           ▼
-                                                 ┌───────────────────┐
-                                                 │ Closed Unresolved │
-                                                 └───────────────────┘
+┌──────────┐   ┌─────────────┐   ┌────────────┐   ┌──────────┐
+│   Open   │──►│ In Progress │──►│  Resolved  │──►│  Closed  │
+└──────────┘   └───┬─────▲───┘   └────────────┘   └──────────┘
+                   │     │
+                   │     │ resume
+                   ▼     │
+               ┌─────────┴───┐  reason: Parts, External OK, Action,
+               │   Pending   │  Sign-off, Custom (+ details)
+               └─────────────┘
+
+Escalation is orthogonal to the status: a ticket in any column can be
+escalated (Notification, Hand-off, Parallel work) and de-escalated
+without moving it. Resolved tickets are closed manually or by auto-close.
 ```
 
 ### 2.1 Kanban Status Columns & Operational Roles
-* **`Open`**: Newly reported incidents awaiting review.
-* **`In Progress`**: Active diagnostics or repair by designated technician.
-* **`Pending Parts`**: Paused awaiting hardware components or seals.
-* **`Escalated`**: Safety-critical hardware lockouts (SIL desynchronization, light curtain muting faults).
-* **`Escalated External`**: Escalated to external enterprise teams or OEM vendors (e.g., SAP MES RFC dropout).
-* **`Closure Pending`**: Work complete, awaiting formal calibration verification or outside AOK sign-off.
-* **`Resolved`**: Verified operational, fully documented, and closed with MTTR metrics.
-* **`Closed Unresolved`**: Ticket retired without corrective action (e.g., duplicate, obsolete station).
+The backend stores exactly five statuses (`Open`, `InProgress`, `Pending`, `Resolved`, `Closed`):
+* **`Open`**: Newly reported incidents awaiting review. Reserving a ticket (`POST /api/v1/tickets/{id}/reserve`) assigns a technician but keeps the status.
+* **`In Progress`** (`InProgress`): Active diagnostics or repair by the designated technician; set by a status change or a QR pickup, which also records the reaction time.
+* **`Pending`**: Paused, with a reason: `Parts` (awaiting components or seals), `ExternalOk` (external sign-off, e.g. AOK calibration), `Action`, `SignOff`, `Custom`, plus free-text details. Resuming moves it back to `In Progress`.
+* **`Resolved`**: Verified operational and documented, with MTTR metrics.
+* **`Closed`**: Retired, either from `Resolved` (manually or by auto-close) or by retracting the ticket (e.g., duplicate, obsolete station).
+
+**Escalation** is orthogonal to the status: a ticket in any column can be escalated (`POST /api/v1/tickets/{id}/escalate`, handover state `Notification`, `HandOff` or `ParallelWork`; e.g. safety lockouts or an external vendor) and de-escalated without moving it.
 
 ### 2.2 Error Template Engine (`utils/errorTemplateEngine.ts`)
 Standardizes incident reporting across 4 industrial categories: `Prevention`, `Error`, `Improvement`, and `ETC`. Selecting a template automatically populates:
@@ -84,12 +90,12 @@ Standardizes incident reporting across 4 industrial categories: `Prevention`, `E
 - Telemetry keys to sample (e.g., `following_error_mm`, `motor_current_A`).
 - SFC serial tagging (`#SFC-...`).
 
-### 2.3 Zero-Dependency SVG Action QR Renderer (`utils/qrSvgRenderer.ts`)
-To prevent SSR container crashes from native Node/canvas QR dependencies, Heimdall implements an internal pure TypeScript QR generator:
-- Built-in Galois Field GF(256) matrix generator with Reed-Solomon Error Correction Level M.
+### 2.3 SVG Action QR Renderer (`utils/qrSvgRenderer.ts`)
+To avoid native Node/canvas QR dependencies in SSR containers, Heimdall renders QR codes as SVG:
+- The matrix comes from the `qrcode` library (ISO/IEC 18004, Reed-Solomon error correction level M); the in-house GF(256) encoder was replaced.
 - Synchronously renders vector SVG data URLs (`data:image/svg+xml;utf8,...`) without native canvas or C++ bindings.
 - Fully compatible with browser, Bun, Node.js, and Nitro SSR.
-- Supports composable URI actions (`report-incident`, `inspect-machine`, `claim-ticket`) via `utils/qrActionGenerator.ts`.
+- Supports composable URI actions (`report-incident`, `view-station`, `check-in`, `view-ticket`, `inspect-machine`, `verify-pm`) via `utils/qrActionGenerator.ts`.
 
 ### 2.4 Technician Delegation & Attendance Engine (`utils/technicianInheritance.ts`)
 Resolves preferred technicians dynamically through a 4-tier hierarchy:
@@ -105,21 +111,32 @@ Resolves preferred technicians dynamically through a 4-tier hierarchy:
 To deliver instantaneous alerts without wasteful client polling, the frontend integrates with the backend's SignalR hub (`/hubs/maintenance`):
 
 ### 3.1 Lifecycle & Reconnection Strategy
-The maintenance service initializes a `HubConnection` with automatic reconnection:
+`HeimdallSignalRMaintenanceProvider` (`app/services/maintenance/`) initializes a `HubConnection` with automatic reconnection. The hub URL is `runtimeConfig.public.signalrHubUrl` (`SIGNALR_HUB_URL`; outside production it defaults to `http://localhost:5099/hubs/maintenance`, in production to the same-origin `/hubs/maintenance`), and the access token is the Better-Auth session cookie:
 ```typescript
 const connection = new HubConnectionBuilder()
-  .withUrl('/hubs/maintenance', {
-    accessTokenFactory: () => authSessionToken.value
+  .withUrl(hubUrl, {
+    transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling,
+    withCredentials: true,
+    accessTokenFactory: () => {
+      const match = document.cookie.match(/(?:^|;\s*)better-auth\.session_token=([^;]+)/)
+      return match ? decodeURIComponent(match[1]) : ''
+    }
   })
   .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+  .configureLogging(LogLevel.Warning)
   .build();
 ```
 
 ### 3.2 Real-Time Events
-* `TicketCreated`: Appends the newly submitted ticket to the active board and triggers a device vibration pattern (`navigator.vibrate([100, 50, 100])` on mobile devices).
-* `TicketStatusUpdated`: Updates the status column of the target ticket in real time across all connected technician screens.
-* `NewTicketComment`: Injects new technician notes into the open ticket conversation drawer.
-* `CriticalAlertRaised`: Displays an alert banner when an edge controller reports an emergency stop or critical hardware fault.
+The backend sends these `IMaintenanceClient` events to the caller's organization group (`org:{id}`) and `platform-admins`; the provider forwards them to its listeners (Kanban board, notification center, plant map):
+* `TicketCreated`, `TicketUpdated`, `TicketDeleted`: Add, refresh or remove the ticket on the active board across all connected technician screens.
+* `StatusChanged`: Moves the target ticket to its new status column in real time.
+* `ReceiveNotification`: Shows a server notification.
+* `InventoryUpdated`, `TelemetryReceived`: Controller inventory and system-info updates (also sent on agent lifecycle changes).
+* `PlcMemoryReceived`: A PLC memory block's descriptor changed.
+* `StationTelemetryReceived`, `StationOscillationReceived`: Station KPIs and live dynamics for the plant map, station cards and the 3D twin.
+
+The provider also listens for `NewTicketComment` and `CriticalAlertRaised`, but the backend does not send them; there is no comment or critical-alert hub event yet.
 
 ---
 
@@ -159,25 +176,32 @@ When network connectivity returns (`window.addEventListener('online')`):
 
 ## 5. Interactive Plant Map Engine (`/dashboard/map`)
 
-Heimdall renders factory floor AutoCAD DXF drawings as interactive, vector-based SVG layouts on an HTML5 canvas.
+Heimdall renders factory floor AutoCAD DXF drawings as interactive SVG, with an HTML overlay layer for station pins and station cards.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          INTERACTIVE PLANT MAP                              │
+│                            INTERACTIVE PLANT MAP                            │
 │                                                                             │
-│  [Zoom: 120%] [Center View] [Layer: Production Floor A]                    │
+│  [Floor plan: Master Production Hall]   [Telemetry HUD: on]                 │
+│  [Filter: Alerts & SLA | All Nodes | Hover Focus]                           │
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │  DXF layers: walls, walkways, conveyors, safety zones, text             │ │
 │ │                                                                         │ │
-│ │   ┌───────────────┐                  ┌───────────────┐                  │ │
-│ │   │  LINE-01-OP10 │                  │  LINE-01-OP20 │                  │ │
-│ │   │  [Robot Cell] │                  │  [Press Sta.] │                  │ │
-│ │   │   Status: OK  │                  │  Status: WARN │                  │ │
-│ │   └───────┬───────┘                  └───────┬───────┘                  │ │
-│ │           │                                  │                          │ │
-│ │           ▼                                  ▼                          │ │
-│ │   (Pinned: IPC-01)                   (Pinned: IPC-02)                   │ │
-│ │                                                                         │ │
+│ │  ┌──────────────┐ [*]        ┌──────────────┐ [*]                       │ │
+│ │  │ LINE-01-OP10 │            │ LINE-01-OP20 │                           │ │
+│ │  │ DXF block    │            │ DXF block    │                           │ │
+│ │  └──────────────┘            └──────────────┘                           │ │
+│ │         click a pin                                                     │ │
+│ │             ▼                        [*] station pin, colour = state.   │ │
+│ │  ┌───────────────────────────────┐   Pins refresh in staggered 500 ms   │ │
+│ │  │ Station card: OEE, yield,     │   slots and at once on SignalR       │ │
+│ │  │ parts/h, tickets & SLA, live  │   ticket / alert / status events.    │ │
+│ │  │ dynamics, "+ Ticket"          │   The card replaces the pin while    │ │
+│ │  └───────────────────────────────┘   it is open.                        │ │
+│ │  Pin legend: critical, warning, maintenance, idle, running, no data     │ │
 │ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  [Zoom in] [Zoom out] [Reset bounds]                                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -192,44 +216,51 @@ Heimdall renders factory floor AutoCAD DXF drawings as interactive, vector-based
 * **Station Association**: In the map editor, clicking a machine block binds its handle to a `ProductionStation.PinnedObjectHandle`.
 * **Hover Interaction**: Hovering over a computer row in `/dashboard/clients` highlights its physical machine bounding box on the map canvas.
 
-### 5.3 Real-Time Telemetry HUD Overlays & Expandable Bubbles (`StationTelemetryBubble.vue`)
-To eliminate context switching between separate analytics tabs and the physical shopfloor geography, Heimdall layers an interactive HTML HUD directly over the SVG CAD map canvas:
+### 5.3 Station Pins & Station Cards (`MapStationOverlays.vue`, `StationMapPin.vue`, `StationTelemetryBubble.vue`)
+To avoid switching between analytics tabs and the shop-floor geography, the map layers an HTML overlay over the SVG drawing: a colour-coded pin per station, and the station card of an opened station.
 
-1. **Synchronized Viewport Transform & Dynamic Boundary Clamping**:
-   A reactive coordinate transformation maps CAD SVG user coordinates $(x, y)$ into viewport screen pixels using the active viewBox and container bounds:
+1. **Viewport transform and placement** (`utils/telemetryOverlayPlacement.ts`):
+   Drawing coordinates $(x, y)$ map to overlay pixels with the active viewBox and container size (`preserveAspectRatio="xMidYMid meet"`):
    $$\text{screenX} = \text{offsetX} + (x - \text{viewBox.x}) \times \text{scale}$$
    $$\text{screenY} = \text{offsetY} + (y - \text{viewBox.y}) \times \text{scale}$$
-   To guarantee bubbles and expanded cards remain 100% within the visible canvas viewport without being cut off by page headers, navigation toolbars, or screen edges:
-   * **Horizontal Viewport Clamping**: Bubble X coordinates are clamped between $X_{\min}$ (14px) and $X_{\max} - W_{\text{card}}$ (container width - 14px), preventing horizontal overflow.
-   * **Vertical Flip Strategy**: If placing the card above the station node overflows the upper boundary ($Y_0 - H - \text{gap} < Y_{\min}$, e.g. < 62px below the HUD toolbar), the placement dynamically flips below the station ($Y_0 + \text{gap}$).
-   * **Strict Height Bounding**: Cards are constrained to `max-h-[min(500px,calc(100vh-140px))]` with custom smooth scrollbars, ensuring complete legibility across smaller displays.
-   * **Accordion Single Focus**: Expanding an equipment card automatically collapses adjacent bubbles, eliminating card occlusion across dense workstation lines.
+   * **Pins** stand on their station (the tip touches the top edge of the station glyph) and are hidden rather than clamped when they would leave the safe area (14 px at the sides, 62 px under the HUD toolbar, 20 px at the bottom), so a pin never points at the wrong place.
+   * **Station cards** are clamped horizontally into the safe area, flip below the station when there is no room above, are height-bounded (`max-h-[min(500px,calc(100vh-140px))]`), and open one at a time; an open card replaces its station's pin.
 
-2. **Compact Floating Bubble**:
-   * **OEE Pill**: Color-coded metric indicator ($\ge 85\%$ Emerald, $70-84\%$ Amber, $< 70\%$ Rose).
-   * **Yield & Throughput**: Displays first-pass yield percentage and parts/hour rate (e.g. `99.2% · 142/h`).
-   * **SLA Urgency Alert**: Shows active ticket count and warning status (e.g. `⚠️ 2 SLA`, `🚨 SLA Breached!`).
+2. **Pin colours** (`utils/stationPinState.ts`), most urgent first:
 
-3. **Expanded Glassmorphic HUD Card**:
-   Clicking any bubble expands it into an equipment inspection card:
-   * **Operational Status Pill**: `RUNNING`, `IDLE`, `WARNING`, `FAULTED` with animated pulse indicators.
-   * **OEE Breakdown**: Gauge and micro progress bars for Availability %, Performance %, and Quality %.
-   * **First-Pass Yield**: Total Conforming Parts vs Scrap Parts.
-   * **Output Cadence**: Parts / Hour vs target (150/h) and measured cycle tact time.
-   * **Active SLA Incidents**: Real-time list of open maintenance tickets with priority badge, status, and direct link to ticket resolution drawer.
-   * **Direct Actions**: "+ Ticket" incident creation button and "Select Node" inspector focus.
+   | Colour | Meaning |
+   | :--- | :--- |
+   | Red | Faulted, or an SLA breached |
+   | Amber | Warning state, SLA due within 2 h or a critical ticket open, or OEE below 70 % while running |
+   | Purple | Maintenance |
+   | Blue | Idle |
+   | Green | Running |
+   | Grey | No telemetry, or no reported state |
 
-4. **HUD Map Controls Bar**:
-   * **Telemetry HUD Toggle**: Master toggle to show/hide overlays with pulsing status indicator.
-   * **Filter Modes**:
-     * `Alerts & SLA`: Automatically focuses only on stations with active maintenance tickets, low OEE (< 85%), or SLA breaches.
-     * `All Nodes`: Shows telemetry bubbles across every station in the production hall.
-     * `Hover Focus`: Displays the HUD bubble only for the currently hovered or selected station.
-   * **Fleet Metric Ticker**: Real-time production hall aggregate of Average OEE, Average Yield, Fleet Output Rate, and Active SLA tickets count.
+   The tooltip (also the pin's accessible name) gives the reason and the number of open tickets, e.g. `L01-OP100 · SLA due in 45m · 2 open tickets`. A legend under the map lists the colours.
 
-5. **Sub-Second Dynamic Oscillation Streaming & 3D Digital Twin HUD Viewport**:
-   * **SignalR Live Stream**: Direct integration with `/hubs/maintenance` listening to `StationTelemetryReceived` and `StationOscillationReceived` events for sub-second machine oscillations.
-   * **SVG Sparkline Waveform**: Live rolling vibration RMS oscilloscope waveform with gradient fill and pulse dot rendered directly inside expanded HUD bubbles.
+3. **Staggered refresh** (`composables/useStaggeredRefresh.ts`):
+   Pin states are sampled instead of bound to the live store. Each pin is recomputed once every 500 ms, a fifth of the pins every 100 ms, and a pin is redrawn only when its state changed. Hub events that matter at once refresh pins immediately, after the ticket list and KPI store have applied the same message: `TicketCreated`, `TicketUpdated`, `TicketDeleted`, `StatusChanged`, `CriticalAlert`, and a `StationTelemetryReceived` whose operational status differs from the pin's. SLA lookups use a per-station ticket index (`indexTicketsByStation`) built once per ticket-list change. The drawing itself does not animate: an animated element inside the SVG repaints the whole floor plan every frame. With live simulator traffic and all 128 pins shown, the page keeps the browser's main thread about 7 % busy (about 40 % with the former pills and pulsing station dots).
+
+4. **Station card** (click a pin):
+   * **Operational status** (`RUNNING`, `IDLE`, `WARNING`, `FAULTED`, `MAINTENANCE`, or `NO DATA`).
+   * **OEE breakdown**: Availability, Performance and Quality with micro progress bars.
+   * **First-pass yield**: yield and scrap parts.
+   * **Output cadence**: parts per hour against the target, and the measured cycle time.
+   * **SLA tickets**: open maintenance tickets with priority badge and a link to the ticket.
+   * **Actions**: "+ Ticket" and "Select Node".
+
+5. **HUD map controls**:
+   * **Telemetry HUD toggle**: shows or hides the overlay layer.
+   * **Filter modes**:
+     * `Alerts & SLA`: pins only on stations that are red or amber, or have open tickets.
+     * `All Nodes`: a pin on every visible station.
+     * `Hover Focus`: a pin only on the hovered or selected station.
+   * **Fleet metric ticker**: average OEE, average yield, fleet output rate and open SLA tickets.
+
+6. **Sub-Second Dynamic Oscillation Streaming & 3D Digital Twin HUD Viewport**:
+   * **SignalR Live Stream**: `/hubs/maintenance` delivers `StationTelemetryReceived` and `StationOscillationReceived`. The station telemetry store (`useStationTelemetry.ts`) applies them per station and commits at most every 250 ms, a change of operational status at once, so only the views of the stations that changed re-render.
+   * **SVG Sparkline Waveform**: Live rolling vibration RMS oscilloscope waveform with gradient fill and pulse dot rendered inside the station card.
    * **3D Three.js Projection**: `useCadModelViewer.ts` calculates real-time 2D screen coordinates from 3D mesh bounding boxes:
      $$\text{screenX} = (v_{\text{ndc}}.x \times 0.5 + 0.5) \times W_{\text{canvas}}$$
      $$\text{screenY} = (-v_{\text{ndc}}.y \times 0.5 + 0.5) \times H_{\text{canvas}}$$
@@ -267,7 +298,7 @@ Templates support dynamic token replacement during asset provisioning:
 
 ## 7. OmniSearch & AutoTagging Engine
 
-The global search interface (`useOmniSearch.ts`, `AutoTagEngine.ts`) supports multi-attribute fuzzy search and entity extraction across all assets, controllers, and tickets.
+The global search interface (`useHeimdallSearch.ts`, `utils/search/AutoTagEngine.ts`) supports multi-attribute fuzzy search and entity extraction across all assets, controllers, and tickets.
 
 ### 7.1 Entity Extraction
 The tokenizer detects structured patterns in search queries:
@@ -293,10 +324,10 @@ Supports explicit key-value queries:
   * `tickets`: Reactive list of maintenance tickets.
   * `updateTicketStatus(id, status)`: Transitions a ticket status with optimistic UI update.
   * `addComment(id, text)`: Appends a comment to a ticket.
-* **`useOmniSearch()`**: Manages the global search modal, debounced querying, and filter recommendations.
-  * `query`: Current search string.
-  * `results`: Search result items with match scoring.
-  * `performSearch(text)`: Executes fuzzy search query.
+* **`useHeimdallSearch()`**: Tag-aware search (debounced querying, auto-tagging, key / value suggestions, recent searches). `useGlobalSearchModal()` opens and closes the `Cmd+K` / `Ctrl+K` modal; `useTagContextSearch()` scopes a search to a page context.
+  * `rawInput`, `tags`, `freeText`: Current search string and its parsed tags.
+  * `results`, `primaryResults`, `crossTableResults`: Search result items with match scoring.
+  * `handleInputChange(text)`, `addTag(...)`, `removeTag(...)`: Update the query.
 * **`useGlobalContextMenu()`**: Manages application-wide right-click context menu state, viewport bounding, and target entity context data.
 * **`useAssetReferenceCache()`**: Caches manufacturers, suppliers, and known metadata keys across form modals.
 * **`useDashboard()`**: Provides summary KPI metrics, active edge node counts, and alert feeds.
@@ -360,19 +391,23 @@ Clicking any page header title or icon block across dashboard views (`tickets.vu
 To ensure intuitive discoverability and eliminate modal popup congestion, the platform organizes its frontend navigation into four explicit operational tiers:
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                      4-TIER SIDEBAR NAVIGATION                         │
-├─────────────────┬──────────────────┬─────────────────┬─────────────────┤
-│   MANAGEMENT    │       DATA       │   MAINTENANCE   │    SETTINGS     │
-├─────────────────┼──────────────────┼─────────────────┼─────────────────┤
-│ * Dashboard     │ * Live Telemetry │ * Tickets       │ * Users & Roles │
-│ * Inventory     │ * Fleet Analytics│ * Delegations   │ * Organizations │
-│ * Machines      │ * Templates      │                 │ * Security Grps │
-│ * Machine Groups│ * Telemetry Cfg  │                 │ * Governance    │
-│ * Client PCs    │                  │                 │ * Identity Studio│
-│ * Plant Map     │                  │                 │ * User Settings │
-│                 │                  │                 │ * Help & Support│
-└─────────────────┴──────────────────┴─────────────────┴─────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               4-TIER SIDEBAR NAVIGATION                                │
+├────────────────────────────┬───────────────────────┬─────────────┬─────────────────────┤
+│         MANAGEMENT         │          DATA         │ MAINTENANCE │       SETTINGS      │
+├────────────────────────────┼───────────────────────┼─────────────┼─────────────────────┤
+│ * Dashboard                │ * Live Telemetry      │ * Tickets   │ * Users & Roles     │
+│ * Inventory                │ * Fleet Analytics     │             │ * Organizations     │
+│ * Machines                 │ * Telemetry Templates │             │ * Security Groups   │
+│ * Machine Groups           │ * Telemetry Config    │             │ * System Governance │
+│ * Client PCs               │                       │             │ * Identity Studio   │
+│ * Plant Map                │                       │             │                     │
+│ * Lua Automation           │                       │             │                     │
+│ * Template & Recipe Studio │                       │             │                     │
+├────────────────────────────┴───────────────────────┴─────────────┴─────────────────────┤
+│ Sidebar footer: * User Settings   * Help & Support                                     │
+│ Items are hidden when their module is disabled or the RBAC capability is missing       │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 11.1 Dedicated Delegations & Roster Workspace (`/dashboard/delegations`)

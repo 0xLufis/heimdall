@@ -5,6 +5,7 @@ import {
   fetchAndCacheBackendTicket,
   ensureTicketInStore
 } from '../../../utils/ticketsStore'
+import { backendAuthHeaders } from '../../../utils/backendProxy'
 
 export default defineEventHandler(async (event) => {
   const id = event.context.params?.id
@@ -16,9 +17,11 @@ export default defineEventHandler(async (event) => {
   const sessionUser = (event.context as any)?.auth?.user
   const technician = body?.technician || sessionUser?.name || 'On-Floor Technician'
 
+  // Backend calls run as the caller: session bearer and the session's organisation, never raw client headers.
+  const authHeaders = await backendAuthHeaders(event)
   let ticket = findTicketById(id)
   if (!ticket) {
-    ticket = await fetchAndCacheBackendTicket(id)
+    ticket = await fetchAndCacheBackendTicket(id, authHeaders)
   }
   if (!ticket) {
     ticket = ensureTicketInStore(id)
@@ -32,11 +35,13 @@ export default defineEventHandler(async (event) => {
   const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   $fetch(`${backendBase}/api/v1/tickets/${id}/qr-pickup`, {
     method: 'POST',
+    headers: authHeaders,
     body: { technician }
   }).catch(() => {
     if (backendBase.includes('5099')) {
       $fetch(`http://localhost:5001/api/v1/tickets/${id}/qr-pickup`, {
         method: 'POST',
+        headers: authHeaders,
         body: { technician }
       }).catch(() => {})
     }

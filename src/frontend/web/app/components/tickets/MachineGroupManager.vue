@@ -23,6 +23,8 @@ const emit = defineEmits<{
 
 const groups = ref<MachineGroup[]>([])
 const isLoading = ref(false)
+const loadError = ref<string | null>(null)
+const isSaving = ref(false)
 const selectedGroupId = ref<string | null>(null)
 const isCreating = ref(false)
 const isEditing = ref(false)
@@ -60,9 +62,12 @@ async function fetchGroups() {
   isLoading.value = true
   try {
     const data = await $fetch<MachineGroup[]>('/api/machine-groups')
-    groups.value = data
-  } catch (err) {
+    groups.value = Array.isArray(data) ? data : []
+    loadError.value = null
+  } catch (err: any) {
     console.error('Failed to load machine groups', err)
+    // Keep the last list; an empty tree would read as "no groups configured".
+    loadError.value = err?.data?.message || err?.statusMessage || err?.message || 'Machine groups could not be loaded'
   } finally {
     isLoading.value = false
   }
@@ -72,7 +77,32 @@ onMounted(() => {
   fetchGroups()
 })
 
-const rootGroups = computed(() => groups.value.filter(g => !g.parentId))
+// Roots: no parent, or a parent that is not in the list (deleted / not visible), so a group
+// with a dangling parent stays reachable instead of disappearing from the tree.
+const rootGroups = computed(() => {
+  const ids = new Set(groups.value.map(g => g.id))
+  return groups.value.filter(g => !g.parentId || !ids.has(g.parentId))
+})
+
+/** Ids of a group and everything below it (cycle-safe). */
+function subtreeIds(rootId: string | null): Set<string> {
+  const result = new Set<string>()
+  if (!rootId) return result
+  const queue = [rootId]
+  while (queue.length > 0) {
+    const id = queue.pop()!
+    if (result.has(id)) continue
+    result.add(id)
+    for (const child of groups.value) if (child.parentId === id) queue.push(child.id)
+  }
+  return result
+}
+
+// A group cannot be moved under itself or one of its own sub-groups (that would detach the branch).
+const parentOptions = computed(() => {
+  const excluded = subtreeIds(isEditing.value ? selectedGroupId.value : null)
+  return groups.value.filter(g => !excluded.has(g.id))
+})
 
 function getChildGroups(parentId: string): MachineGroup[] {
   return groups.value.filter(g => g.parentId === parentId)
@@ -116,8 +146,9 @@ function toggleMachineType(type: string) {
 }
 
 async function saveGroup() {
-  if (!form.value.name.trim()) return
+  if (!form.value.name.trim() || isSaving.value) return
 
+  isSaving.value = true
   try {
     if (isCreating.value) {
       await $fetch('/api/machine-groups', {
@@ -130,11 +161,15 @@ async function saveGroup() {
         body: form.value
       })
     }
+    toast.success(isCreating.value ? 'Machine group created' : 'Machine group saved')
     await fetchGroups()
     isCreating.value = false
     isEditing.value = false
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to save machine group', err)
+    toast.error(err?.data?.message || err?.statusMessage || err?.message || 'Failed to save machine group')
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -146,7 +181,7 @@ async function deleteGroup(id: string) {
     toast.success('Machine group deleted')
   } catch (err: any) {
     console.error('Failed to delete group', err)
-    toast.error(err?.data?.message || err?.message || 'Failed to delete group')
+    toast.error(err?.data?.message || err?.statusMessage || err?.message || 'Failed to delete group')
   }
 }
 
@@ -253,11 +288,15 @@ const totalClustersCount = computed(() => {
           </div>
         </div>
 
-        <div v-if="isLoading" class="p-12 text-center text-muted-foreground text-xs border border-dashed border-border rounded-2xl">
+        <div v-if="loadError" class="p-3 text-xs text-foreground border border-border rounded-xl bg-muted" role="alert">
+          Machine groups could not be loaded: {{ loadError }}
+        </div>
+
+        <div v-if="isLoading && groups.length === 0" class="p-12 text-center text-muted-foreground text-xs border border-dashed border-border rounded-2xl">
           Loading machine group hierarchy...
         </div>
 
-        <div v-else-if="groups.length === 0" class="p-12 text-center text-muted-foreground text-xs border border-dashed border-border rounded-2xl">
+        <div v-else-if="groups.length === 0 && !loadError" class="p-12 text-center text-muted-foreground text-xs border border-dashed border-border rounded-2xl">
           No groups configured yet. Click "Add Root Group" to begin defining factory envelopes.
         </div>
 
@@ -443,7 +482,7 @@ const totalClustersCount = computed(() => {
                 class="w-full h-9 rounded-xl bg-background border border-border text-foreground text-xs px-3 focus:outline-hidden focus:border-primary"
               >
                 <option :value="null">None (Root Level Plant)</option>
-                <option v-for="g in groups.filter(item => item.id !== selectedGroupId)" :key="g.id" :value="g.id">
+                <option v-for="g in parentOptions" :key="g.id" :value="g.id">
                   {{ g.name }}
                 </option>
               </select>
@@ -506,6 +545,7 @@ const totalClustersCount = computed(() => {
               <Button
                 size="sm"
                 class="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl cursor-pointer"
+                :disabled="isSaving || !form.name.trim()"
                 @click="saveGroup"
               >
                 {{ isCreating ? 'Create Group' : 'Save Changes' }}

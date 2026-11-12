@@ -14,9 +14,13 @@ using App.Agent.Daemon.Configuration;
 // Load .env file
 Env.Load();
 
-// Enable cleartext HTTP/2 (h2c) support for local/intranet gRPC client connections to backend.
-// In production mTLS configurations, TLS termination is negotiated via configured HTTPS endpoints.
-AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+// Resilience bootstrap, before anything else can fail: file layout, process identity, the crash
+// recorder (so an unhandled exception during start-up is still recorded durably) and the recorder of
+// stop signals (registered before the host's own handlers, so the reason is known when it stops).
+var agentPaths = App.Agent.Daemon.Infrastructure.Persistence.AgentPaths.Resolve();
+var agentSession = new App.Agent.Daemon.Lifecycle.AgentSession();
+var crashRecorder = App.Agent.Daemon.Lifecycle.CrashRecorder.Install(agentPaths.CrashRecordFile, agentSession);
+var shutdownSignals = new App.Agent.Daemon.Lifecycle.ShutdownSignalMonitor();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
@@ -25,9 +29,14 @@ var featureFlags = builder.Configuration.ToAgentFeatureFlags(builder.Environment
 builder.Services.AddSingleton(featureFlags);
 
 // Enable OS native service lifecycle management (Windows Services & Linux systemd)
-if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+if (OperatingSystem.IsWindows())
 {
     builder.Host.UseWindowsService();
+    if (Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService())
+    {
+        // Same lifetime, but it records SERVICE_CONTROL_STOP vs SERVICE_CONTROL_SHUTDOWN for the stop report.
+        builder.Services.AddSingleton<IHostLifetime, App.Agent.Daemon.Lifecycle.AgentWindowsServiceLifetime>();
+    }
 }
 else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
 {
@@ -38,10 +47,39 @@ else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.R
 var agentUrls = Environment.GetEnvironmentVariable("AGENT_URLS") ?? "http://0.0.0.0:5998";
 builder.WebHost.UseUrls(agentUrls);
 
-builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.IConfigurationService, ConfigurationService>();
+// Recovery journal and persisted machine identity (created first: everything that persists state
+// reports damaged files through the journal).
+var recoveryJournal = new App.Agent.Daemon.Infrastructure.Persistence.RecoveryJournal(agentPaths.RecoveryNoticesFile);
+builder.Services.AddSingleton(agentPaths);
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Persistence.IRecoveryJournal>(recoveryJournal);
+builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Identity.IMachineIdentity>(sp =>
+    App.Agent.Daemon.Infrastructure.Identity.MachineIdentityResolver.CreateDefault(
+        agentPaths, recoveryJournal,
+        sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("MachineIdentity")));
+
+builder.Services.AddSingleton(agentSession);
+builder.Services.AddSingleton(crashRecorder);
+builder.Services.AddSingleton(shutdownSignals);
+builder.Services.AddSingleton<App.Agent.Daemon.Lifecycle.IOsShutdownEvidenceProvider, App.Agent.Daemon.Lifecycle.OsShutdownEvidenceProvider>();
+
+// Lifecycle / power report. Registered as the FIRST hosted service: it starts first (session marker,
+// last will) and stops last (its goodbye is the agent's final action).
+builder.Services.AddSingleton<App.Agent.Daemon.Lifecycle.AgentLifecycleService>();
+builder.Services.AddSingleton<App.Agent.Daemon.Lifecycle.IAgentLifecycle>(sp => sp.GetRequiredService<App.Agent.Daemon.Lifecycle.AgentLifecycleService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<App.Agent.Daemon.Lifecycle.AgentLifecycleService>());
+
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.IConfigurationService>(sp => new ConfigurationService(
+    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ConfigurationService>>(),
+    initialConfig: null,
+    paths: agentPaths,
+    recoveryJournal: recoveryJournal));
 builder.Services.AddSingleton<ConfigurationService>(sp => (ConfigurationService)sp.GetRequiredService<App.Agent.Daemon.Interfaces.IConfigurationService>());
 
-builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ITelemetrySpooler, App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler>();
+builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ITelemetrySpooler>(sp => new App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler(
+    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler>>(),
+    sp.GetRequiredService<App.Agent.Daemon.Interfaces.IConfigurationService>(),
+    agentPaths.SpoolDirectory,
+    recoveryJournal));
 builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler>(sp => (App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler)sp.GetRequiredService<App.Agent.Daemon.Interfaces.ITelemetrySpooler>());
 
 builder.Services.AddSingleton<App.Agent.Daemon.Extensions.IExtensionRegistry, App.Agent.Daemon.Extensions.ExtensionRegistry>();
@@ -66,6 +104,7 @@ builder.Services.AddSingleton<SystemInfoService>(sp => (SystemInfoService)sp.Get
 builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.IMqttAgentClient, App.Agent.Daemon.Infrastructure.MqttAgentClient>();
 builder.Services.AddSingleton<App.Agent.Daemon.Infrastructure.MqttAgentClient>(sp => (App.Agent.Daemon.Infrastructure.MqttAgentClient)sp.GetRequiredService<App.Agent.Daemon.Interfaces.IMqttAgentClient>());
 
+builder.Services.AddSingleton<TelemetrySanityFilter>();
 builder.Services.AddSingleton<App.Agent.Daemon.Interfaces.ISystemInfoReporter, SystemInfoReporter>();
 builder.Services.AddSingleton<SystemInfoReporter>(sp => (SystemInfoReporter)sp.GetRequiredService<App.Agent.Daemon.Interfaces.ISystemInfoReporter>());
 
@@ -475,11 +514,40 @@ app.MapGet("/api/status", (
     App.Agent.Daemon.Extensions.IExtensionRegistry extensionRegistry,
     App.Agent.Daemon.Infrastructure.Plugins.IPluginManager pluginManager,
     App.Agent.Daemon.Interfaces.IMqttAgentClient mqttClient,
-    App.Agent.Daemon.Interfaces.ITelemetrySpooler spooler) =>
+    App.Agent.Daemon.Interfaces.ITelemetrySpooler spooler,
+    TelemetrySanityFilter sanity,
+    App.Agent.Daemon.Infrastructure.Persistence.IRecoveryJournal recoveries,
+    App.Agent.Daemon.Lifecycle.AgentLifecycleService lifecycle,
+    App.Agent.Daemon.Lifecycle.CrashRecorder crashes,
+    SystemInfoReporter reporter) =>
 {
     var sysInfo = sysService.GetSystemInfo();
+    var localSpooler = spooler as App.Agent.Daemon.Infrastructure.Spooling.LocalTelemetrySpooler;
     return Results.Ok(new
     {
+        // Resilience diagnostics: sanity-check rejections, recovered files, previous-run classification.
+        diagnostics = new
+        {
+            sanity = new { counters = sanity.Counters, lastIssues = sanity.LastIssues },
+            contributorFailures = reporter.ContributorFailures,
+            spool = new
+            {
+                corruptRecordsSkipped = localSpooler?.CorruptRecordsSkipped ?? 0,
+                evictedRecords = localSpooler?.EvictedRecords ?? 0,
+                rejectedRecords = localSpooler?.RejectedRecords ?? 0
+            },
+            configuration = new { origin = configService.LastLoad?.Origin.ToString(), issues = configService.LastLoad?.Issues.Select(i => i.ToString()) },
+            recoveries = recoveries.Recent,
+            lifecycle = new
+            {
+                sessionId = lifecycle.SessionId,
+                previousRun = lifecycle.PreviousRun,
+                startupBackoffSeconds = lifecycle.StartupBackoff.TotalSeconds,
+                pendingEvents = lifecycle.PendingEvents,
+                eventsDelivered = lifecycle.EventsDelivered
+            },
+            unobservedTaskExceptions = crashes.UnobservedTaskExceptions
+        },
         hostname = sysInfo.Hostname,
         machineIdentifier = sysInfo.MachineIdentifier,
         macAddress = sysInfo.MacAddress,
@@ -619,9 +687,11 @@ app.MapGet("/api/config", (ConfigurationService configService) => configService.
 
 app.MapPost("/api/config", (ConfigurationService configService, AgentConfig newConfig) =>
 {
-    var config = configService.Config;
-    config.BackendUrl = newConfig.BackendUrl;
-    configService.SaveConfig(config);
+    // Validated on a copy: an unusable URL is refused and the active configuration stays untouched.
+    if (!configService.TryUpdate(config => config.BackendUrl = newConfig.BackendUrl, out var problems))
+    {
+        return Results.BadRequest(new { error = "Configuration rejected.", problems = problems.Select(p => p.ToString()) });
+    }
     return Results.Ok();
 });
 

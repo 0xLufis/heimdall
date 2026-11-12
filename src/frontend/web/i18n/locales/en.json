@@ -131,7 +131,6 @@
     "catalog": "Data-Point Catalog",
     "pinToOverview": "Pin to Overview",
     "pinnedToOverview": "Pinned to Overview",
-    "kpiBuilder": "KPI Graph Builder",
     "rollingCorridor": "Statistical Sigma Corridor",
     "linearRegression": "Linear Trend Slope",
     "window1m": "1 Minute",
@@ -150,7 +149,7 @@
     "inventory": "Inventory & Spare Parts",
     "inventoryDesc": "Serialized part tracking, warehouse bin allocation, WBS element linkage, and salvage flows.",
     "telemetry": "Industrial Telemetry",
-    "telemetryDesc": "Edge signal streaming, metric trends, recipe tool wear forecasting, and dynamic KPI builder.",
+    "telemetryDesc": "Edge signal streaming, metric trends, recipe tool wear forecasting, and Lua-defined KPIs.",
     "saveChanges": "Save Module Configuration",
     "moduleDisabledBanner": "This module is currently disabled by system administrators.",
     "minimalMode": "Minimal Deployment Mode"

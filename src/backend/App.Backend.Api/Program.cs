@@ -66,8 +66,19 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     }
 });
 
+if (builder.Environment.IsDevelopment())
+{
+    // dotnet watch restarts the backend on every save and waits for the old instance to exit (justfile):
+    // lingering connections must not hold that for the default 30 s.
+    builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.FromSeconds(5));
+}
+
 // Ensure Environment Variables are included in configuration
 builder.Configuration.AddEnvironmentVariables();
+
+// Rotating file log (Logging:File) and runtime log levels (api/v1/admin/logging). Added after the
+// environment variables so that runtime overrides take precedence over them.
+App.Backend.Api.Logging.HeimdallLoggingExtensions.AddHeimdallLogging(builder);
 
 // Strongly-typed Backend Feature Flags
 var featureFlags = builder.Configuration.ToBackendFeatureFlags(builder.Environment.EnvironmentName);
@@ -131,6 +142,12 @@ builder.Services.AddScoped<IComponentInventoryBridge, ComponentInventoryBridge>(
 builder.Services.AddScoped<IDelegationRecipeService, DelegationRecipeService>();
 builder.Services.AddScoped<IMachineRaisedTicketService, MachineRaisedTicketService>();
 builder.Services.AddScoped<IGenericTemplateService, GenericTemplateService>();
+// Scoped: the DbContext factory is registered scoped. The singleton PluginService resolves it per call.
+builder.Services.AddScoped<App.Backend.Api.Services.Pki.PkiService>(sp =>
+    new App.Backend.Api.Services.Pki.PkiService(
+        sp.GetRequiredService<IDbContextFactory<App.Shared.Data.AppDbContext>>(),
+        sp.GetRequiredService<ILogger<App.Backend.Api.Services.Pki.PkiService>>(),
+        sp.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton<App.Backend.Api.Services.Plugins.IPluginService>(sp =>
     new App.Backend.Api.Services.Plugins.PluginService(
         sp.GetRequiredService<IServiceScopeFactory>(),
@@ -209,9 +226,17 @@ builder.Services.AddAuthorization(options =>
     // Machine component lifecycle & part assignment
     options.AddPolicy(AuthorizationPolicies.ComponentManagement, policy =>
         policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.LeadEngineer, HeimdallRoles.ControlsEngineer, HeimdallRoles.Engineer, HeimdallRoles.Technician));
+
+    // Organization management (create; rename, members, invitations of the caller's own
+    // organizations; Heimdall admins: every organization). Heimdall admins and middle managers and up
+    // by role (OrganizationManagementRules.Roles), anyone else through the explicit per-user grant.
+    options.AddPolicy(AuthorizationPolicies.OrganizationManagement, policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.HasClaim(HeimdallClaimTypes.Permission, HeimdallPermissions.OrganizationsManage) ||
+            OrganizationManagementRules.Roles.Any(ctx.User.IsInRole)));
 });
 
-// --- 4. Controllers & SignalR & gRPC & Swagger & CORS & RateLimiting ---
+// --- 4. Controllers & SignalR & Swagger & CORS & RateLimiting ---
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -292,19 +317,22 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Industrial PC and Fleet Monitoring Backend API"
     });
 
+    // HTTP bearer scheme: paste the bare Better-Auth session token, Swagger UI adds the "Bearer " prefix
+    // the backend's auth handler expects.
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Enter 'Bearer {token}' or your Better-Auth session token.",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Description = "Better-Auth session token (without the 'Bearer ' prefix). In Development an unauthenticated request runs as the dev administrator.",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "Better-Auth session token"
     });
 
-    c.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    // The reference must be bound to the document, otherwise it serializes as an empty requirement
+    // and the token entered under "Authorize" is never sent.
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecuritySchemeReference("Bearer"),
+            new OpenApiSecuritySchemeReference("Bearer", document),
             new List<string>()
         }
     });
@@ -352,6 +380,12 @@ app.MapHub<MaintenanceHub>("/hubs/maintenance").RequireCors("HeimdallCorsPolicy"
 if (!featureFlags.EnableDevFeatures)
 {
     app.MapGet("/error", () => Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "An unexpected error occurred."));
+}
+
+if (app.Environment.IsDevelopment())
+{
+    // A restart can find the previous instance still releasing 5099/5001/1883 (DevelopmentPortWait).
+    DevelopmentPortWait.WaitForFreePorts(DevelopmentPortWait.BackendPorts(app.Configuration), TimeSpan.FromSeconds(10), app.Logger);
 }
 
 app.Run();

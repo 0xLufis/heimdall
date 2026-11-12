@@ -96,7 +96,7 @@ export const PLATFORM_MODULE_MANIFESTS: Record<PlatformModuleId, PlatformModuleM
     id: 'telemetry',
     name: 'Industrial Telemetry',
     displayNameKey: 'modules.telemetry',
-    description: 'Edge signal streaming, metric trends, recipe tool wear forecasting, and dynamic KPI builder.',
+    description: 'Edge signal streaming, metric trends, recipe tool wear forecasting, and Lua-defined KPIs.',
     displayDescKey: 'modules.telemetryDesc',
     version: '1.3.0',
     isRequired: false,

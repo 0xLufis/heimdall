@@ -75,7 +75,7 @@ const INITIAL_BUILTIN_PLUGINS: HeimdallPlugin[] = [
     id: 'industrial-telemetry',
     name: 'Industrial Telemetry & Trends',
     version: '1.0.0',
-    description: 'Real-time PLC signal streaming, tool wear forecasting, and dynamic KPI builder.',
+    description: 'Real-time PLC signal streaming, tool wear forecasting, and Lua-defined KPIs.',
     author: 'Heimdall Controls',
     icon: 'i-lucide-activity',
     category: 'operations',

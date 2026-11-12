@@ -40,6 +40,7 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'vue-sonner'
+import { HEIMDALL_ROLES } from '~/utils/roles'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -211,22 +212,7 @@ function handleCopyOuPath(ouPath: string) {
   }
 }
 
-const rolesList = [
-  'system_admin',
-  'heimdall_admin',
-  'it_admin',
-  'engineering_admin',
-  'admin',
-  'manager',
-  'group_leader',
-  'shift_leader',
-  'team_lead',
-  'engineer',
-  'controls_engineer',
-  'lead_engineer',
-  'technician',
-  'operator'
-]
+const rolesList = [...HEIMDALL_ROLES]
 
 async function fetchOus() {
   loadingOus.value = true

@@ -16,32 +16,32 @@ Conversely, a high-performance multi-core IPC may control multiple physical stat
 To model this reality without artificial constraints, Heimdall implements a **graph-relational data model** with explicit many-to-many (M:N) junctions and typed directional interconnects between equipment.
 
 ```
-┌─────────────────────────┐               M:N               ┌───────────────────────────┐
-│    ProductionStation    │◄───────────────────────────────►│   IndustrialController    │
-│  (e.g., LINE-A-OP10)    │       StationController         │   (IPC / PLC / Soft-PLC)  │
-└────────────┬────────────┘       (Role & Primary Flag)     └─────────────┬─────────────┘
-             │                                                            │
-             │ 1:N                                                        │ 1:N
-             ▼                                                            ▼
-┌─────────────────────────┐                                 ┌───────────────────────────┐
-│     StationHardware     │                                 │    ControllerHardware     │
-│    (Junction Entity)    │                                 │     (Junction Entity)     │
-└────────────┬────────────┘                                 └─────────────┬─────────────┘
-             │                                                            │
-             └──────────────────────────────┬─────────────────────────────┘
-                                            │
-                                            ▼
-                                ┌───────────────────────┐
-                                │   HardwareComponent   │
-                                │   (Sensors, Drives)   │
-                                └───────────┬───────────┘
-                                            │
-                                            │ 1:N
-                                            ▼
-                                ┌───────────────────────┐
-                                │     SoftwareAsset     │
-                                │   (Firmware, Logic)   │
-                                └───────────────────────┘
+┌────────────────────────────┐                M:N                ┌────────────────────────────┐
+│ ProductionStation          │◄─────────────────────────────────►│ IndustrialController       │
+│ Machine, table stations    │    StationController junction     │ ClientPc, table client_pcs │
+│ e.g. LINE-A-OP10           │       (Role, e.g. Primary)        │ IPC / PLC / Soft-PLC       │
+└─────────────┬──────────────┘                                   └─────────────┬──────────────┘
+              │                                                                │
+              │ 1:N                                                            │
+              ▼                                                                │
+┌────────────────────────────┐                                                 │ 1:N
+│ MachineComponent (slot)    │                                                 │ PC components
+│ table machine_components   │                                                 │ (client_pc_id)
+└─────────────┬──────────────┘                                                 │
+              │ current part                                                   │
+              │ (installed parts also carry machine_id)                        │
+              ▼                                                                ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│              BaseInventoryItem (table inventory_items, Table-per-Type children)             │
+│     HardwareComponent, PcHardware, SoftwareAsset; parent_id = recursive assembly tree       │
+└──────────────────────────────────────────────┬──────────────────────────────────────────────┘
+                                               │
+                                               │ HardwareComponent.Firmware 1:N
+                                               ▼
+                                   ┌───────────────────────┐
+                                   │     SoftwareAsset     │
+                                   │   (Firmware, Logic)   │
+                                   └───────────────────────┘
 ```
 
 ---
@@ -128,10 +128,11 @@ Represents edge compute nodes, industrial PCs, and soft-PLC hosts:
 
 ### 2.6 Station-to-Controller Junction (`StationControllers`)
 Models the many-to-many (M:N) mapping between physical stations and managing edge computers:
-* `StationId` (`uuid`, PK/FK): Production station.
-* `ClientPcId` (`uuid`, PK/FK): Industrial controller.
-* `ControlRole` (`varchar(32)`): Operational role (`Primary`, `Secondary`, `Safety`, `Motion`, `Vision`, `Gateway`).
-* `IsPrimary` (`boolean`): Flags the authoritative controller for scheduling and high-priority alarms.
+* `id` (`uuid`, PK): Junction row identifier.
+* `machine_id` (`uuid`, FK): Production station (`stations`).
+* `client_pc_id` (`uuid`, FK): Industrial controller (`client_pcs`).
+* `role` (`text`): Operational role (e.g. `Primary`, `Secondary`, `Gateway`, `Safety`, `Vision`). There is no separate primary flag, and no code treats `Primary` specially: PLC telemetry is attributed to the station bound to the sending IPC, and an IPC serving several stations names the station in the block metadata (`StationId`, `MachineId` or `Station`).
+* `created_at` (`timestamptz`) and `metadata` (`jsonb`): Edge properties.
 
 ### 2.7 Equipment Interconnects (`equipment_interconnects`)
 Directional fieldbus and network connections between edge nodes:
@@ -143,19 +144,19 @@ Directional fieldbus and network connections between edge nodes:
 
 ### 2.8 Incident Maintenance Tickets (`maintenance_tickets`)
 Tracks equipment malfunctions, maintenance requests, and repairs:
-* `id` (`uuid`, PK): Unique ticket identifier.
-* `ticket_number` (`varchar(32)`, unique): Human-readable sequential code (e.g., `TKT-2026-0042`).
+* `id` (`uuid`, PK): Unique ticket identifier. There is no separate ticket number column.
 * `title` (`varchar(255)`): Short summary of the defect or task.
 * `description` (`text`): Detailed observations, error codes, or symptoms.
-* `status` (`varchar(32)`): Lifecycle state (`Open`, `In_Progress`, `Pending_Parts`, `Resolved`, `Closed`).
-* `priority` (`varchar(32)`): Urgency (`Low`, `Medium`, `High`, `Critical`).
-* `station_id` (`uuid`, FK, nullable): Affected production station.
+* `status` (`text`): Lifecycle state, one of five (`Open`, `InProgress`, `Pending`, `Resolved`, `Closed`).
+* `pending_reason` (`text`) / `pending_details` (`text`): Why a `Pending` ticket waits (`None`, `Parts`, `ExternalOk`, `Action`, `SignOff`, `Custom`).
+* `is_escalated` (`boolean`) with `escalation_reason`, `escalation_target`, `escalation_handover_state`, `escalated_at` / `escalated_by`, `escalation_closed_at` / `escalation_closed_by`: Escalation, orthogonal to the status.
+* `priority` (`text`): Urgency (`Low`, `Medium`, `High`, `Critical`).
+* `is_line_stop` (`boolean`) / `line_stop_duration_minutes`: Line-stop flag and duration.
+* `machine_id` (`uuid`, FK, nullable): Affected production station.
 * `client_pc_id` (`uuid`, FK, nullable): Affected IPC/controller.
-* `inventory_item_id` (`uuid`, FK, nullable): Specific failed hardware component.
-* `reported_by` (`varchar(128)`): User identifier of the reporter.
-* `assigned_to` (`varchar(128)`, nullable): Assigned technician identifier.
-* `created_at` / `updated_at` (`timestamptz`): Audit timestamps.
-* `sla_due_at` (`timestamptz`, nullable): Service level agreement resolution deadline.
+* `equipment_id` (`uuid`, FK, nullable): Specific failed hardware component.
+* `created_by` (`text`): Reporter; `assigned_to` (`text`, nullable) and `reserved_by` (`varchar(128)`, nullable): Technician.
+* `created_at`, `started_at`, `qr_scanned_at`, `resolved_at` (`timestamptz`) and `reaction_time_minutes`: Audit timestamps and reaction time. There is no `updated_at` and no stored SLA deadline.
 
 ### 2.9 OmniSearch 2.0 Language-Server Search Pipeline
 Heimdall includes an advanced industrial search engine styled after autocompletion language servers:
@@ -172,23 +173,32 @@ Heimdall includes an advanced industrial search engine styled after autocompleti
 The relational store is partitioned into two schemas to enforce separation of concerns and least-privilege database access:
 
 ```
-Database: heimdall_dev_db
-├── Schema: backend (Managed by EF Core Migrations)
-│   ├── inventory_items / stations / hardware_assets / software_assets
+Database: heimdall_dev_db (staging: heimdall_staging_db, production: heimdall_db)
+├── Schema: backend (Managed by EF Core Migrations, snake_case naming)
+│   ├── inventory_items / stations / hardware_assets / software_assets / software_components / pc_hardware
 │   ├── client_pcs / StationControllers / equipment_interconnects
+│   ├── machine_groups / machine_group_memberships / machine_components / component_recipes
+│   ├── component_part_histories / machine_service_logs / machine_documents / license_assets
 │   ├── maintenance_tickets / ticket_comments / ticket_attachments
-│   ├── floor_plans / floor_plan_anchor
-│   ├── agent_events / queued_agent_commands
+│   ├── technician_rules / shift_absences / delegation_recipes / machine_delegation_bindings
+│   ├── personnel_groups / personnel_group_members / personnel_skills / skill_definitions
+│   ├── floor_plans / floor_plan_anchor / generic_templates / lua_scripts
+│   ├── agent_events / queued_agent_commands / diagnostic_snapshots
 │   ├── audit_logs / malformed_telemetry_quarantine
-│   └── security_group_mappings / system_settings
+│   ├── client_certificates / trusted_ca_certificates / ou_certificate_rules
+│   ├── security_group_mappings / security_groups / ad_ou_governances / system_settings
+│   └── manufacturers / suppliers / responsible_teams / known_tags / inventory_item_tags / ...
 │
-└── Schema: auth (Managed by Better-Auth Drizzle migrations)
-    ├── user (id, name, email, role, image, createdAt, updatedAt)
-    ├── session (id, userId, token, expiresAt, ipAddress, userAgent)
+└── Schema: auth (Managed by Better-Auth Drizzle migrations; user, session, organization and
+    │           member are also mapped in AppDbContext, excluded from EF migrations)
+    ├── user (id, name, email, role, username, image, banned, permissions, createdAt, updatedAt)
+    ├── session (id, userId, token, expiresAt, activeOrganizationId, ipAddress, userAgent)
     ├── account (id, userId, accountId, providerId, accessToken, ...)
     ├── verification (id, identifier, value, expiresAt)
     ├── organization (id, name, slug, logo, metadata, createdAt)
-    └── member (id, organizationId, userId, role, createdAt)
+    ├── member (id, organizationId, userId, role, createdAt)
+    ├── invitation (id, organizationId, email, role, status, expiresAt, inviterId)
+    └── auth_events (id, type, timestamp, status, userId, sessionId, organizationId, ...)
 ```
 
 ### Database Roles & Least Privilege:
@@ -217,31 +227,36 @@ Every query issued by EF Core automatically appends `AND (organization_id = @cur
 The backend adopts clean separation between controllers, business services, and repository layers:
 
 ```
-[ HTTP REST / JSON ]   [ HTTP/2 gRPC ]   [ MQTT 1883 ]   [ WebSockets / SignalR ]
-        │                     │                 │                   │
-        ▼                     ▼                 ▼                   ▼
-┌──────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────┐
-│ API Controllers  │  │   Telemetry Ingestion Service    │  │  MaintenanceHub  │
-│ (v1 Endpoints)   │  │   (ITelemetryIngestionService)   │  │ (Real-Time Hub)  │
-└────────┬─────────┘  └───────────────┬──────────────────┘  └────────┬─────────┘
-         │                            │                              │
-         └──────────────────────┬─────┴──────────────────────────────┘
-                                ▼
-        ┌────────────────────────────────────────────────────────────┐
-        │                 Application Domain Services                │
-        │ (PredictiveMaintenance, CopiaIntegration, ReportExportSvc) │
-        └─────────────────────────────┬──────────────────────────────┘
-                                      │
-         ┌────────────────────────────┴────────────────────────────┐
-         ▼                                                         ▼
-┌──────────────────┐                                      ┌──────────────────┐
-│   CacheService   │                                      │   Repositories   │
-│  (L1/L2 Hybrid)  │                                      │ (Asset, Machine, │
-└────────┬─────────┘                                      │ Technician, etc) │
-         │                                                └────────┬─────────┘
-         ▼                                                         │
- [ Redis / Memory ]                                                ▼
-                                                          [ PostgreSQL 18 ]
+  Nitro BFF / clients            Edge agents / fleet simulator                  Browsers
+  [ HTTP REST / JSON ]    [ MQTT 5 + protobuf, embedded broker :1883 ]  [ WebSockets / SignalR ]
+           │                                   │                                    ▲
+           ▼                                   ▼                                    │
+┌──────────────────────┐  ┌──────────────────────────────────────────┐  ┌───────────┴──────────┐
+│ BetterAuthHandler +  │  │ MqttBrokerService (MQTTnet, agent key)   │  │    MaintenanceHub    │
+│ TenantScopeMiddleware│  │ MqttIngestionHostedService               │  │  /hubs/maintenance   │
+│ API Controllers (v1) │  │ TelemetryIngestionService: change gate,  │  │ org:{id} + platform- │
+│                      │  │ freshness, lifecycle, queued commands    │  │ admins (server push) │
+└──────────┬───────────┘  └────────────────────┬─────────────────────┘  └───────────▲──────────┘
+           │                                   │                                    │
+           └─────────────────┬─────────────────┘                                    │
+                             ▼                                 IHubContext events   │
+        ┌──────────────────────────────────────────────────────────────┐            │
+        │                 Application Domain Services                  │            │
+        │ PredictiveMaintenance, LuaAutomation, PkiService,            ├────────────┘
+        │ GlobalSearch, CopiaIntegration, ReportExport, PluginService  │
+        └───────────────────────────────┬──────────────────────────────┘
+                                        │
+         ┌──────────────────────────────┴──────────────────────────────┐
+         ▼                                                             ▼
+┌──────────────────┐                                    ┌─────────────────────────────┐
+│   CacheService   │                                    │ Repositories and services   │
+│  (L1/L2 Hybrid)  │                                    │ (App.Infrastructure),       │
+└────────┬─────────┘                                    │ AppDbContext (EF Core)      │
+         │                                              └──────────────┬──────────────┘
+         ▼                                                             ▼
+ [ Redis / Memory ]                                            [ PostgreSQL 18 ]
+
+ Cross-cutting: Logging/ (bounded rotating file log, runtime levels via /api/v1/admin/logging)
 ```
 
 ### 4.1 Hybrid Multi-Tier Caching (`CacheService`)
@@ -255,27 +270,31 @@ To handle frequent telemetry queries without saturating the database, a two-leve
 Modifications to maintenance tickets or incoming critical alarms trigger real-time notifications:
 1. Controller or service updates entity in the database.
 2. Relevant cache keys are evicted.
-3. `IHubContext<MaintenanceHub, IMaintenanceClient>` broadcasts the event (`TicketStatusUpdated`, `TicketCreated`, `CriticalAlertRaised`) to subscribers in the target organization's SignalR group.
+3. `IHubContext<MaintenanceHub, IMaintenanceClient>` broadcasts the event to the owning organization's group (`org:{id}`) and to `platform-admins`, never to all clients. Events (`IMaintenanceClient`): `TicketCreated`, `TicketUpdated`, `TicketDeleted`, `StatusChanged`, `ReceiveNotification`, `InventoryUpdated`, `TelemetryReceived`, `PlcMemoryReceived` (only when a PLC block's descriptor changes), `StationTelemetryReceived`, `StationOscillationReceived`. The hub exposes no client-callable methods.
 
 
-### 4.3 Central Telemetry & Maintenance Interaction Sequence
+### 4.3 Telemetry Ingestion Pipeline
+
+Agents and the fleet simulator publish protobuf messages over MQTT 5 to the MQTTnet broker embedded in the backend (`heimdall/devices/{machine_identifier}/system_info | plc_memory | telemetry | events`), authenticated by an agent key. `MqttIngestionHostedService` subscribes with wildcards and hands each message to `TelemetryIngestionService`. See `EDGE_AGENT_AND_PROTOCOLS.md` for the protocol and `SEQUENCE_DIAGRAMS.md` for the full flow.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor EdgeNode as Edge Agent Daemon (C# / TwinCAT)
-    participant TelemetryIngestion as TelemetryIngestionService (gRPC / MQTT)
-    participant Repo as Asset / Controller Repositories (PostgreSQL)
-    participant Cache as CacheService (L1 Memory / L2 Redis)
-    participant Hub as MaintenanceHub (SignalR WebSocket)
-    actor Browser as Nuxt Web Dashboard (Vue 3 / Pinia)
-
-    EdgeNode->>+TelemetryIngestion: IngestTelemetryAsync(snapshot)
-    TelemetryIngestion->>Repo: UpsertClientPcTelemetryAsync(snapshot)
-    Repo-->>TelemetryIngestion: Entity committed
-    TelemetryIngestion->>Cache: SetAsync("telemetry:snapshot:{hostname}", snapshot, 5 min)
-    TelemetryIngestion->>+Hub: Clients.All.TelemetryReceived(hostname, mac, summary)
-    Hub-->>-Browser: WebSocket Broadcast
-    Browser->>Browser: Update reactive canvas & spatial view
-    TelemetryIngestion-->>-EdgeNode: TelemetryIngestionResult(success=true)
+flowchart LR
+    Agent["Edge agent / fleet simulator"] -- "MQTT 5, protobuf, agent key" --> Broker["Embedded MQTT broker :1883"]
+    Broker --> Ingest["MqttIngestionHostedService"]
+    Ingest --> Service["TelemetryIngestionService"]
+    Service --> Gate["PlcMemoryChangeGate<br/>(SHA-256 of the block: drop unchanged,<br/>keep-alive 10 s)"]
+    Gate -.->|"arrival, also of dropped blocks"| Fresh["StationFreshnessTracker<br/>(STALE / OFFLINE)"]
+    Gate --> Extract["StationTelemetryExtractor"]
+    Extract --> Cache[("Station snapshot<br/>L1 memory + L2 Redis")]
+    Extract --> Hub["SignalR /hubs/maintenance<br/>org:{id} + platform-admins"]
+    Extract --> Lua["Lua TelemetryChange scripts"]
+    Service --> DB[("PostgreSQL<br/>agent_events, client_pcs")]
+    Service --> Life["AgentLifecycleIngestor<br/>(started, stopping, last will)"]
+    Life --> DB
+    Ingest -.->|"queued commands on<br/>heimdall/devices/{id}/commands"| Broker
+    Hub --> Browser["Nuxt dashboard"]
 ```
+
+* **Freshness**: arrival of every PLC memory block is recorded, even when the block is dropped as unchanged. A station is stale after 3 missed samples of its learned interval (clamped 3 s to 5 min) and OFFLINE when its controllers' agents sent their MQTT last will.
+* **Lifecycle**: `AgentEventMessage` with source `AgentLifecycle` (started, stopping, connection_lost as last will) is stored by `AgentLifecycleIngestor` in `agent_events` and `client_pcs.system_metadata.AgentLifecycle`.
+* **Events**: `StationTelemetryReceived` and `StationOscillationReceived`.

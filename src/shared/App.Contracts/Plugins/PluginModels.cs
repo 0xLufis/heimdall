@@ -58,8 +58,17 @@ public record PluginPackageBundle
     /// <summary>File dictionary mapping relative file paths to their UTF-8 / Base64 contents.</summary>
     public Dictionary<string, string> Files { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Optional raw compressed archive payload (Base64).</summary>
+    /// <summary>
+    /// Base64 of the signed package file (<see cref="PluginPackageFile"/> JSON) for double-signed
+    /// plugins; agents verify the signatures over these exact bytes and that <see cref="Files"/> match it.
+    /// </summary>
     public string? PayloadBase64 { get; init; }
+
+    /// <summary>The installing user's signature over SHA-256 of the package (user certificate).</summary>
+    public PluginSignatureEnvelope? UserSignature { get; init; }
+
+    /// <summary>The Heimdall server's countersignature (computer certificate) over package hash + user signature.</summary>
+    public PluginSignatureEnvelope? ServerSignature { get; init; }
 }
 
 /// <summary>

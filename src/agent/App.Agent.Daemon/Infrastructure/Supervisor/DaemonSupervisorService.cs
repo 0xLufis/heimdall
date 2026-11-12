@@ -47,14 +47,24 @@ public class DaemonSupervisorService : IHostedService, IDaemonSupervisor, IDispo
     public DaemonSupervisorService(
         ConfigurationService configService,
         ILogger<DaemonSupervisorService> logger,
-        ISystemInfoService? systemInfoService = null)
+        ISystemInfoService? systemInfoService = null,
+        App.Agent.Daemon.Infrastructure.Persistence.AgentPaths? paths = null)
     {
         _configService = configService;
         _logger = logger;
         _systemInfoService = systemInfoService;
-        _dumpDirectory = Path.Combine(AppContext.BaseDirectory, "telemetry_spool", "crash_dumps");
+        // Next to the resolved spool: the install directory is read-only under the packaged Linux service.
+        _dumpDirectory = paths?.CrashDumpDirectory ?? Path.Combine(AppContext.BaseDirectory, "telemetry_spool", "crash_dumps");
 
-        Directory.CreateDirectory(_dumpDirectory);
+        try
+        {
+            Directory.CreateDirectory(_dumpDirectory);
+        }
+        catch (Exception ex)
+        {
+            // Crash dumps are diagnostics: an unwritable directory must not stop the agent from starting.
+            _logger.LogWarning(ex, "Crash dump directory {Directory} is not writable; crash dumps are disabled.", _dumpDirectory);
+        }
 
         // Hook unhandled domain exceptions for post-mortem diagnostics
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
@@ -161,7 +171,9 @@ public class DaemonSupervisorService : IHostedService, IDaemonSupervisor, IDispo
             string path = Path.Combine(_dumpDirectory, filename);
 
             string json = JsonSerializer.Serialize(record, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(path, json);
+            // Durable: flushed to disk and renamed into place, so a dump written just before the
+            // process (or the machine) dies is complete or absent, never torn.
+            App.Agent.Daemon.Infrastructure.Persistence.AtomicFile.Write(path, System.Text.Encoding.UTF8.GetBytes(json), keepPreviousAsBackup: false);
 
             _logger.LogError("Generated post-mortem diagnostic dump: {Path} (Reason: {Reason})", path, reason);
         }

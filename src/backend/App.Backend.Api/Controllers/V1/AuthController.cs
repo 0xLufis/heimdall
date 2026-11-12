@@ -31,16 +31,48 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Drops the caller's own cached session (see <see cref="App.Backend.Api.Security.BetterAuthHandler"/>).
+    /// Better-Auth owns the <c>auth</c> schema, so a role, active-organization, membership or ban
+    /// change is invisible to this API until the cached entry expires. The BFF calls this with the
+    /// affected session's token right after such a change. A caller can only ever evict its own
+    /// entry, which merely forces the next request to re-read the database.
+    /// </summary>
+    [HttpPost("session/evict")]
+    [Authorize]
+    public async Task<IActionResult> EvictSessionCache([FromServices] App.Backend.Api.Services.ICacheService? cache = null)
+    {
+        var token = App.Backend.Api.Security.BetterAuthHandler.ResolveSessionToken(Request);
+        if (token != null && cache != null)
+        {
+            await cache.RemoveAsync(App.Backend.Api.Security.BetterAuthHandler.SessionCacheKey(token));
+        }
+        return NoContent();
+    }
+
+    /// <summary>
+    /// User directory: id, name, e-mail, role and organizations of every user. Requires a signed-in
+    /// caller (it used to be anonymous). The directory is global by owner decision: every signed-in
+    /// user may list and look up all users across organizations. Changing users (role, ban,
+    /// sessions) stays with the user administrators in the BFF.
+    /// </summary>
     [HttpGet("users")]
-    public async Task<IActionResult> GetUsers([FromServices] App.Shared.Data.AppDbContext db)
+    [Authorize]
+    public async Task<IActionResult> GetUsers(
+        [FromServices] App.Shared.Data.AppDbContext db,
+        [FromServices] IAuthorizationService? authorization = null)
     {
         var users = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
-            db.AuthUsers.Select(u => new
+            db.AuthUsers.OrderBy(u => u.Name).Select(u => new
             {
                 id = u.Id,
                 name = u.Name,
                 email = u.Email,
-                role = u.Role
+                role = u.Role,
+                organizations = u.Members
+                    .OrderBy(m => m.OrganizationId)
+                    .Select(m => new { id = m.OrganizationId, name = m.Organization.Name })
+                    .ToList()
             }));
         return Ok(new { success = true, users });
     }
