@@ -306,7 +306,14 @@ builder.Services.AddSingleton<MqttIngestionHostedService>();
 builder.Services.AddSingleton<IMqttIngestionService>(sp => sp.GetRequiredService<MqttIngestionHostedService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MqttIngestionHostedService>());
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        // Same cycle handling as the MVC serializer above. Ticket broadcasts carry EF entities whose
+        // navigations loop (Machine → LineGroup → Parent → Children), and a payload that cannot be
+        // serialized makes SignalR abort every connection it was sent to.
+        options.PayloadSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
