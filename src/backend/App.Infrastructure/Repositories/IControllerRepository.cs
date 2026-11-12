@@ -9,6 +9,8 @@ public interface IControllerRepository
     Task<ClientPc> CreateAsync(ClientPc pc);
     Task<ClientPc> UpsertByMacAddressAsync(ClientPc pc);
     Task<ClientPc?> UpdateAsync(Guid id, string? name, string? hostname, string? macAddress, string? pinnedObjectHandle, List<Guid>? controlledMachineIds);
+    /// <summary>Sets (or clears, when null) the VNC endpoint linked to a controller. Returns null when the controller does not exist.</summary>
+    Task<ClientPc?> SetVncEndpointAsync(Guid id, App.Contracts.Inventory.RemoteAccessEndpointDto? vnc);
     Task<bool> DeleteAsync(Guid id);
     Task<int> GetCountAsync();
     Task<int> GetActiveCountAsync(TimeSpan activeThreshold);

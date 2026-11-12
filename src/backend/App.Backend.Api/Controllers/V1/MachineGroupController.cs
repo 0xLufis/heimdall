@@ -40,6 +40,12 @@ public class MachineGroupController : ControllerBase
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<ActionResult<MachineGroup>> Create([FromBody] MachineGroup group, CancellationToken cancellationToken)
     {
+        // Only the group's own columns are taken from the client: a posted parent / children /
+        // membership graph would otherwise be inserted along with it.
+        group.Parent = null;
+        group.Children = new();
+        group.Memberships = new();
+        group.Machines = new();
         var created = await _repository.CreateAsync(group, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
@@ -48,7 +54,15 @@ public class MachineGroupController : ControllerBase
     [Authorize(Policy = "EndpointConfigManagement")]
     public async Task<ActionResult<MachineGroup>> Update(Guid id, [FromBody] MachineGroup updates, CancellationToken cancellationToken)
     {
-        var updated = await _repository.UpdateAsync(id, updates, cancellationToken);
+        MachineGroup? updated;
+        try
+        {
+            updated = await _repository.UpdateAsync(id, updates, cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         if (updated == null) return NotFound();
         return Ok(updated);
     }

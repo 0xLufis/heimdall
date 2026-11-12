@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace App.Backend.Api.Controllers.V1;
 
 /// <summary>
-/// Controller providing predictive maintenance analytics, trend snapshots, OEE KPIs,
-/// and Power BI configuration.
+/// Fleet analytics computed from stored data: the grouped station list, maintenance summary,
+/// telemetry trend series and line / station KPIs.
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
@@ -28,19 +28,54 @@ public class AnalyticsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>Look-back window from the query string; null (service default) when absent or not positive.</summary>
+    private static TimeSpan? Window(int? windowDays) =>
+        windowDays is > 0 ? TimeSpan.FromDays(Math.Min(windowDays.Value, 3650)) : null;
+
     /// <summary>
-    /// Gets at-a-glance fleet-wide uptime summary, top-faulting machines, maintenance backlog,
-    /// and critical stock depletion warnings.
+    /// Age after which a station's last telemetry counts as stale: <c>Analytics:TelemetryStaleSeconds</c>
+    /// when configured, else the larger of the service default and three PLC keep-alive intervals
+    /// (<c>Telemetry:PlcMemory:KeepAliveSeconds</c>), so a longer keep-alive does not flag idle stations.
+    /// </summary>
+    private TimeSpan TelemetryStaleAfter()
+    {
+        var configured = _configuration.GetValue<double?>("Analytics:TelemetryStaleSeconds");
+        if (configured is > 0) return TimeSpan.FromSeconds(configured.Value);
+
+        var keepAlive = _configuration.GetValue<double?>("Telemetry:PlcMemory:KeepAliveSeconds") ?? 10;
+        return TimeSpan.FromSeconds(Math.Max(PredictiveMaintenanceService.DefaultTelemetryStaleAfter.TotalSeconds, keepAlive * 3));
+    }
+
+    /// <summary>
+    /// Fleet maintenance figures: controller connectivity, incidents / MTTR / repeat-incident
+    /// interval for the look-back window, top-faulting machines, backlog age and depleted stock.
     /// </summary>
     [HttpGet("fleet-summary")]
-    public async Task<ActionResult<FleetSummaryDto>> GetFleetSummary(CancellationToken cancellationToken)
+    public async Task<ActionResult<FleetSummaryDto>> GetFleetSummary([FromQuery] int? windowDays = null, CancellationToken cancellationToken = default)
     {
-        var summary = await _predictiveService.GetFleetSummaryAsync(cancellationToken);
+        var summary = await _predictiveService.GetFleetSummaryAsync(Window(windowDays), cancellationToken);
         return Ok(summary);
     }
 
     /// <summary>
-    /// Gets rolling telemetry trends, statistical regression corridors, and recipe-based failure forecast.
+    /// Fleet analytics station list: one row per visible machine with the dimensions it can be
+    /// grouped by (line, sub-line, project, business unit, machine type, organization), its latest
+    /// telemetry, ticket figures for the look-back window and controller connectivity.
+    /// </summary>
+    [HttpGet("fleet-stations")]
+    public async Task<ActionResult<FleetStationsDto>> GetFleetStations(
+        [FromQuery] int? windowDays = null,
+        [FromQuery] bool includeDecommissioned = false,
+        CancellationToken cancellationToken = default)
+    {
+        var stations = await _predictiveService.GetFleetStationsAsync(
+            Window(windowDays), includeDecommissioned, TelemetryStaleAfter(), cancellationToken);
+        return Ok(stations);
+    }
+
+    /// <summary>
+    /// Telemetry trend series of one station metric from the buffered history, with regression and
+    /// moving-average statistics. <paramref name="range"/>: 5m, 15m, 30m, 1h, 8h (default), 24h, 7d or all.
     /// </summary>
     [HttpGet("trends")]
     public async Task<ActionResult<MachineTrendSeriesDto>> GetMachineTrends(
@@ -49,11 +84,15 @@ public class AnalyticsController : ControllerBase
         [FromQuery] string range = "8h",
         [FromQuery] string? recipeId = null)
     {
-        TimeSpan timeRange = range.ToLower() switch
+        TimeSpan timeRange = (range ?? string.Empty).ToLowerInvariant() switch
         {
+            "5m" => TimeSpan.FromMinutes(5),
+            "15m" => TimeSpan.FromMinutes(15),
+            "30m" => TimeSpan.FromMinutes(30),
             "1h" => TimeSpan.FromHours(1),
             "24h" or "1d" => TimeSpan.FromHours(24),
             "7d" => TimeSpan.FromDays(7),
+            "all" => TimeSpan.FromDays(3650),
             _ => TimeSpan.FromHours(8)
         };
 

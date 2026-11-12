@@ -12,15 +12,37 @@ namespace App.Backend.Api.Controllers.V1;
 public class OrganizationController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IAuthorizationService? _authorizationService;
 
-    public OrganizationController(AppDbContext context)
+    public OrganizationController(AppDbContext context, IAuthorizationService? authorizationService = null)
     {
         _context = context;
+        _authorizationService = authorizationService;
     }
+
+    /// <summary>Same definition of "platform administrator" as <see cref="App.Backend.Api.Security.TenantScopeMiddleware"/>.</summary>
+    private async Task<bool> IsPlatformAdminAsync() =>
+        _authorizationService != null && User != null &&
+        (await _authorizationService.AuthorizeAsync(User, App.Contracts.Security.AuthorizationPolicies.SystemAdministration)).Succeeded;
+
+    /// <summary>
+    /// Organization directory with member counts. Platform administrators see every organization;
+    /// everyone else only the organizations they are a member of. It used to be anonymous and
+    /// returned all tenants to any caller.
+    /// </summary>
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult> GetOrganizations()
     {
-        var orgs = await _context.AuthOrganizations
+        IQueryable<AuthOrganization> visible = _context.AuthOrganizations;
+        if (!await IsPlatformAdminAsync())
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            visible = visible.Where(o => o.Members.Any(m => m.UserId == userId));
+        }
+
+        var orgs = await visible
             .Select(o => new
             {
                 id = o.Id,
@@ -58,7 +80,8 @@ public class OrganizationController : ControllerBase
         var isMember = await _context.AuthMembers
             .AnyAsync(m => m.OrganizationId == id && m.UserId == userId);
 
-        if (!isMember) return Forbid();
+        // Platform administrators govern every organization, so they do not need a membership row.
+        if (!isMember && !await IsPlatformAdminAsync()) return Forbid();
 
         var organization = await _context.AuthOrganizations
             .Include(o => o.Members)

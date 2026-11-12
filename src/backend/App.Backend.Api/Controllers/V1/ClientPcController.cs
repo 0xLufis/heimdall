@@ -48,7 +48,9 @@ public class ClientPcController : ControllerBase
     {
         if (_cache != null)
         {
-            var cached = await _cache.GetAsync<List<App.Backend.Api.Dtos.ClientPcDto>>("inventory:client_pcs");
+            // Client PCs are tenant-filtered: cache per tenant scope, never under one shared key.
+            var cached = await _cache.GetAsync<List<App.Backend.Api.Dtos.ClientPcDto>>(
+                App.Backend.Api.Security.TenantScopeMiddleware.ScopedCacheKey(HttpContext, "inventory:client_pcs"));
             if (cached != null)
             {
                 return Ok(cached);
@@ -87,7 +89,9 @@ public class ClientPcController : ControllerBase
 
         if (_cache != null)
         {
-            await _cache.SetAsync("inventory:client_pcs", dtos, TimeSpan.FromMinutes(2));
+            await _cache.SetAsync(
+                App.Backend.Api.Security.TenantScopeMiddleware.ScopedCacheKey(HttpContext, "inventory:client_pcs"),
+                dtos, TimeSpan.FromMinutes(2));
         }
 
         return Ok(dtos);
@@ -156,6 +160,79 @@ public class ClientPcController : ControllerBase
     }
 
     /// <summary>
+    /// Remote access links of one controller, resolved from the controller's own data
+    /// (<c>system_metadata.RemoteAccess</c>). <c>vnc</c> is null when no endpoint is linked.
+    /// </summary>
+    /// <param name="id">Unique identifier of the client PC.</param>
+    [HttpGet("{id}/remote-access")]
+    public async Task<ActionResult<App.Contracts.Inventory.ControllerRemoteAccessDto>> GetRemoteAccess(Guid id)
+    {
+        var pc = await _repository.GetByIdAsync(id);
+        if (pc == null) return NotFound();
+        return Ok(ToRemoteAccessDto(pc));
+    }
+
+    /// <summary>
+    /// Links a VNC (noVNC / websockify) endpoint to a controller.
+    /// </summary>
+    /// <param name="id">Unique identifier of the client PC.</param>
+    /// <param name="endpoint">Endpoint to link; an omitted host means the host serving the web UI.</param>
+    [HttpPut("{id}/remote-access/vnc")]
+    [Authorize(Policy = "EndpointConfigManagement")]
+    public async Task<ActionResult<App.Contracts.Inventory.ControllerRemoteAccessDto>> SetVncEndpoint(
+        Guid id, [FromBody] App.Contracts.Inventory.RemoteAccessEndpointDto endpoint)
+    {
+        if (!App.Contracts.Inventory.ComponentLinkResolver.TryNormalize(endpoint, out var normalized, out var error))
+        {
+            return BadRequest(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.InvalidInput, error ?? "Invalid VNC endpoint."));
+        }
+
+        var pc = await _repository.SetVncEndpointAsync(id, normalized);
+        if (pc == null) return NotFound();
+        await InvalidateClientPcCacheAsync();
+        return Ok(ToRemoteAccessDto(pc));
+    }
+
+    /// <summary>
+    /// Removes the VNC endpoint linked to a controller.
+    /// </summary>
+    /// <param name="id">Unique identifier of the client PC.</param>
+    [HttpDelete("{id}/remote-access/vnc")]
+    [Authorize(Policy = "EndpointConfigManagement")]
+    public async Task<IActionResult> ClearVncEndpoint(Guid id)
+    {
+        var pc = await _repository.SetVncEndpointAsync(id, null);
+        if (pc == null) return NotFound();
+        await InvalidateClientPcCacheAsync();
+        return NoContent();
+    }
+
+    private static App.Contracts.Inventory.ControllerRemoteAccessDto ToRemoteAccessDto(ClientPc pc) => new()
+    {
+        ControllerId = pc.Id,
+        Hostname = pc.Hostname,
+        IpAddress = pc.IpAddress,
+        Vnc = App.Contracts.Inventory.ComponentLinkResolver.ResolveVnc(pc.SystemMetadata)
+    };
+
+    private async Task InvalidateClientPcCacheAsync()
+    {
+        if (_cache == null) return;
+        try
+        {
+            // Drop the caller's and the platform-wide entry everywhere, and every other scope's
+            // local copy; remaining remote copies expire with the two-minute TTL.
+            await _cache.RemoveAsync(App.Backend.Api.Security.TenantScopeMiddleware.ScopedCacheKey(HttpContext, "inventory:client_pcs"));
+            await _cache.RemoveAsync(App.Backend.Api.Security.TenantScopeMiddleware.ScopedCacheKey(null, "inventory:client_pcs"));
+            await _cache.RemoveByPatternAsync("inventory:client_pcs*");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to evict the client PC cache after a remote access change");
+        }
+    }
+
+    /// <summary>
     /// Deletes a client PC record and its associations.
     /// </summary>
     /// <param name="id">Unique identifier of the client PC to delete.</param>
@@ -180,7 +257,9 @@ public class ClientPcController : ControllerBase
         {
             string userId = User.Identity?.Name ?? "system";
             string? userName = User.FindFirst("name")?.Value ?? User.Identity?.Name ?? "System Engineer";
-            string? orgId = Request.Headers["X-Organization-Id"].FirstOrDefault();
+            // The organization comes from the authenticated session, never from a client-supplied header
+            // (a direct caller could stamp the snapshot with another tenant's organization).
+            string? orgId = User.FindFirst(App.Backend.Api.Security.TenantScopeMiddleware.OrgClaimType)?.Value;
 
             var snapshot = await _repository.CreateDiagnosticSnapshotAsync(id, userId, userName, orgId);
 

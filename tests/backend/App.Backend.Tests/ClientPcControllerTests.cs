@@ -43,6 +43,14 @@ public class FakeControllerRepository : IControllerRepository
         return Task.FromResult<ClientPc?>(item);
     }
 
+    public Task<ClientPc?> SetVncEndpointAsync(Guid id, App.Contracts.Inventory.RemoteAccessEndpointDto? vnc)
+    {
+        var item = Items.FirstOrDefault(p => p.Id == id);
+        if (item == null) return Task.FromResult<ClientPc?>(null);
+        item.SystemMetadata = App.Contracts.Inventory.ComponentLinkResolver.WithVnc(item.SystemMetadata, vnc);
+        return Task.FromResult<ClientPc?>(item);
+    }
+
     public Task<bool> DeleteAsync(Guid id)
     {
         var item = Items.FirstOrDefault(p => p.Id == id);

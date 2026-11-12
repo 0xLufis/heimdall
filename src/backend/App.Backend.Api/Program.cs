@@ -292,19 +292,22 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Industrial PC and Fleet Monitoring Backend API"
     });
 
+    // HTTP bearer scheme: paste the bare Better-Auth session token, Swagger UI adds the "Bearer " prefix
+    // the backend's auth handler expects.
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Enter 'Bearer {token}' or your Better-Auth session token.",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Description = "Better-Auth session token (without the 'Bearer ' prefix). In Development an unauthenticated request runs as the dev administrator.",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "Better-Auth session token"
     });
 
-    c.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    // The reference must be bound to the document, otherwise it serializes as an empty requirement
+    // and the token entered under "Authorize" is never sent.
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecuritySchemeReference("Bearer"),
+            new OpenApiSecuritySchemeReference("Bearer", document),
             new List<string>()
         }
     });

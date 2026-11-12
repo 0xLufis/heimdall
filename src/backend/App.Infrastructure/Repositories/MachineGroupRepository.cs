@@ -48,6 +48,12 @@ public class MachineGroupRepository : IMachineGroupRepository
         var existing = await _context.MachineGroups.FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
         if (existing == null) return null;
 
+        if (updates.ParentId.HasValue && await WouldCreateCycleAsync(id, updates.ParentId.Value, cancellationToken))
+        {
+            // A cycle has no root: the whole branch would vanish from every tree view.
+            throw new InvalidOperationException("A machine group cannot be moved under itself or one of its own sub-groups.");
+        }
+
         existing.Name = updates.Name;
         existing.Description = updates.Description;
         existing.ParentId = updates.ParentId;
@@ -68,8 +74,37 @@ public class MachineGroupRepository : IMachineGroupRepository
         var existing = await _context.MachineGroups.FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
         if (existing == null) return false;
 
+        // parent_id is ON DELETE RESTRICT, so deleting a group that still has sub-groups failed with
+        // a database error. The sub-groups move up to the deleted group's own parent instead.
+        var children = await _context.MachineGroups.Where(g => g.ParentId == id).ToListAsync(cancellationToken);
+        foreach (var child in children)
+        {
+            child.ParentId = existing.ParentId;
+            child.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+        // Saved on its own so the references are gone before the DELETE reaches the database.
+        if (children.Count > 0) await _context.SaveChangesAsync(cancellationToken);
+
         _context.MachineGroups.Remove(existing);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>True when making <paramref name="newParentId"/> the parent of <paramref name="id"/> would close a loop.</summary>
+    private async Task<bool> WouldCreateCycleAsync(Guid id, Guid newParentId, CancellationToken cancellationToken)
+    {
+        if (newParentId == id) return true;
+        var parents = await _context.MachineGroups.AsNoTracking()
+            .Select(g => new { g.Id, g.ParentId })
+            .ToDictionaryAsync(g => g.Id, g => g.ParentId, cancellationToken);
+
+        var visited = new HashSet<Guid>();
+        Guid? cursor = newParentId;
+        while (cursor.HasValue && visited.Add(cursor.Value))
+        {
+            if (cursor.Value == id) return true;
+            cursor = parents.TryGetValue(cursor.Value, out var parent) ? parent : null;
+        }
+        return false;
     }
 }

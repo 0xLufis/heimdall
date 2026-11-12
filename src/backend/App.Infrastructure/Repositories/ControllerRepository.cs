@@ -100,7 +100,9 @@ public class ControllerRepository : IControllerRepository
 
         if (pc.SystemMetadata != null)
         {
-            targetPc.SystemMetadata = pc.SystemMetadata;
+            // The agent report replaces the document, but operator-managed links (remote access,
+            // PLC memory descriptor) are not the agent's to delete.
+            targetPc.SystemMetadata = App.Contracts.Inventory.ComponentLinkResolver.MergeAgentMetadata(targetPc.SystemMetadata, pc.SystemMetadata);
             changed = true;
         }
 
@@ -171,7 +173,8 @@ public class ControllerRepository : IControllerRepository
 
         if (pc == null) return null;
 
-        if (!string.IsNullOrEmpty(pinnedObjectHandle)) pc.PinnedObjectHandle = pinnedObjectHandle;
+        // null = leave the pin unchanged; an empty string removes it (unpin).
+        if (pinnedObjectHandle != null) pc.PinnedObjectHandle = string.IsNullOrWhiteSpace(pinnedObjectHandle) ? null : pinnedObjectHandle.Trim();
         if (!string.IsNullOrEmpty(name)) pc.Name = name;
         if (!string.IsNullOrEmpty(hostname)) pc.Hostname = hostname;
         if (!string.IsNullOrEmpty(macAddress)) pc.MacAddress = macAddress;
@@ -189,6 +192,16 @@ public class ControllerRepository : IControllerRepository
             }
         }
 
+        await _context.SaveChangesAsync();
+        return pc;
+    }
+
+    public async Task<ClientPc?> SetVncEndpointAsync(Guid id, App.Contracts.Inventory.RemoteAccessEndpointDto? vnc)
+    {
+        var pc = await _context.ClientPcs.FirstOrDefaultAsync(c => c.Id == id);
+        if (pc == null) return null;
+
+        pc.SystemMetadata = App.Contracts.Inventory.ComponentLinkResolver.WithVnc(pc.SystemMetadata, vnc);
         await _context.SaveChangesAsync();
         return pc;
     }

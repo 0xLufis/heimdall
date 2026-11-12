@@ -435,7 +435,26 @@ public class TelemetryIngestionService : ITelemetryIngestionService
             return false;
         }
 
-        _logger.LogInformation("Processing ADS PLC memory block from {MachineId} [Symbol={Symbol}, Group=0x{Group:X}, Offset={Offset}]",
+        // Change gate: agents publish every PLC block at their sample rate whether or not the memory
+        // moved. Re-processing identical blocks cost a DB write, a log line and up to three SignalR
+        // broadcasts each, so an unchanged block is dropped here and only let through as a keep-alive.
+        var now = DateTimeOffset.UtcNow;
+        var gateKey = PlcMemoryChangeGate.Key(machineIdentifier, memoryBlock);
+        var contentHash = PlcMemoryChangeGate.ContentHash(memoryBlock);
+        var metaSignature = PlcMemoryChangeGate.MetaSignature(memoryBlock);
+        var previous = await ReadPlcGateStateAsync(gateKey);
+
+        if (previous != null && previous.ContentHash == contentHash && now - previous.ForwardedAt < PlcKeepAlive)
+        {
+            return true;
+        }
+
+        // The persisted ClientPc metadata and the PlcMemoryReceived event only describe the block
+        // (type, quality, size), not its values, so they follow the descriptor rather than the content.
+        var metaChanged = previous == null || previous.MetaSignature != metaSignature;
+        var persistDue = metaChanged || now - previous!.PersistedAt >= PlcPersistInterval;
+
+        _logger.LogDebug("Processing ADS PLC memory block from {MachineId} [Symbol={Symbol}, Group=0x{Group:X}, Offset={Offset}]",
             machineIdentifier, memoryBlock.SymbolName, memoryBlock.IndexGroup, memoryBlock.IndexOffset);
 
         try
@@ -457,34 +476,36 @@ public class TelemetryIngestionService : ITelemetryIngestionService
                 db.ClientPcs.Add(pc);
                 await db.SaveChangesAsync();
             }
-            else
+
+            if (persistDue)
             {
-                pc.LastOnline = DateTimeOffset.UtcNow;
+                pc.LastOnline = now;
+
+                // Update PLC metadata on ClientPc
+                var metaObj = pc.SystemMetadata != null
+                    ? JsonNode.Parse(pc.SystemMetadata.RootElement.GetRawText())?.AsObject() ?? new JsonObject()
+                    : new JsonObject();
+
+                var plcNode = metaObj["AdsPlcMemory"]?.AsObject() ?? new JsonObject();
+                plcNode["AmsNetId"] = memoryBlock.AmsNetId;
+                plcNode["AmsPort"] = memoryBlock.AmsPort;
+                plcNode["IndexGroup"] = $"0x{memoryBlock.IndexGroup:X4}";
+                plcNode["IndexOffset"] = memoryBlock.IndexOffset;
+                plcNode["SymbolName"] = memoryBlock.SymbolName;
+                plcNode["PlcTypeName"] = memoryBlock.PlcTypeName;
+                plcNode["Quality"] = memoryBlock.Quality.ToString();
+                plcNode["LastUpdated"] = (memoryBlock.Timestamp != null ? memoryBlock.Timestamp.ToDateTimeOffset() : DateTimeOffset.UtcNow).ToString("o");
+                plcNode["RawBytesLength"] = memoryBlock.RawMemory.Length;
+
+                metaObj["AdsPlcMemory"] = plcNode;
+                pc.SystemMetadata = JsonSerializer.Deserialize<JsonDocument>(metaObj.ToJsonString());
+
+                await db.SaveChangesAsync();
+
             }
 
-            // Update PLC metadata on ClientPc
-            var metaObj = pc.SystemMetadata != null
-                ? JsonNode.Parse(pc.SystemMetadata.RootElement.GetRawText())?.AsObject() ?? new JsonObject()
-                : new JsonObject();
-
-            var plcNode = metaObj["AdsPlcMemory"]?.AsObject() ?? new JsonObject();
-            plcNode["AmsNetId"] = memoryBlock.AmsNetId;
-            plcNode["AmsPort"] = memoryBlock.AmsPort;
-            plcNode["IndexGroup"] = $"0x{memoryBlock.IndexGroup:X4}";
-            plcNode["IndexOffset"] = memoryBlock.IndexOffset;
-            plcNode["SymbolName"] = memoryBlock.SymbolName;
-            plcNode["PlcTypeName"] = memoryBlock.PlcTypeName;
-            plcNode["Quality"] = memoryBlock.Quality.ToString();
-            plcNode["LastUpdated"] = (memoryBlock.Timestamp != null ? memoryBlock.Timestamp.ToDateTimeOffset() : DateTimeOffset.UtcNow).ToString("o");
-            plcNode["RawBytesLength"] = memoryBlock.RawMemory.Length;
-
-            metaObj["AdsPlcMemory"] = plcNode;
-            pc.SystemMetadata = JsonSerializer.Deserialize<JsonDocument>(metaObj.ToJsonString());
-
-            await db.SaveChangesAsync();
-
-            // Broadcast real-time SignalR event
-            if (_hubContext != null)
+            // Broadcast real-time SignalR event (descriptor only, so only when the descriptor changed)
+            if (metaChanged && _hubContext != null)
             {
                 try
                 {
@@ -514,12 +535,55 @@ public class TelemetryIngestionService : ITelemetryIngestionService
 
             await PublishStationTelemetryAsync(db, pc, memoryBlock);
 
+            await WritePlcGateStateAsync(gateKey, new PlcMemoryGateState
+            {
+                ContentHash = contentHash,
+                MetaSignature = metaSignature,
+                ForwardedAt = now,
+                PersistedAt = persistDue ? now : previous!.PersistedAt
+            });
+
             return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing ADS PLC memory block for {MachineId}", machineIdentifier);
             return false;
+        }
+    }
+
+    /// <summary>An unchanged block is still forwarded this often, so "live" indicators do not go stale.</summary>
+    private TimeSpan PlcKeepAlive =>
+        TimeSpan.FromSeconds(_configuration.GetValue<double?>("Telemetry:PlcMemory:KeepAliveSeconds") ?? 10);
+
+    /// <summary>How often ClientPc.LastOnline / AdsPlcMemory metadata is refreshed while the descriptor is stable.</summary>
+    private TimeSpan PlcPersistInterval =>
+        TimeSpan.FromSeconds(_configuration.GetValue<double?>("Telemetry:PlcMemory:PersistIntervalSeconds") ?? 30);
+
+    private async Task<PlcMemoryGateState?> ReadPlcGateStateAsync(string key)
+    {
+        if (_cache == null) return null; // no cache: nothing to compare against, forward everything
+        try
+        {
+            return await _cache.GetAsync<PlcMemoryGateState>(key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read PLC memory change state; forwarding the block");
+            return null;
+        }
+    }
+
+    private async Task WritePlcGateStateAsync(string key, PlcMemoryGateState state)
+    {
+        if (_cache == null) return;
+        try
+        {
+            await _cache.SetAsync(key, state, PlcMemoryChangeGate.StateRetention);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to store PLC memory change state");
         }
     }
 
@@ -539,6 +603,11 @@ public class TelemetryIngestionService : ITelemetryIngestionService
     public async Task<bool> ProcessAgentEventAsync(AgentEventMessage eventMessage, string? callerAuthKey = null)
     {
         if (!ValidateCallerAuthentication(callerAuthKey)) return false;
+
+        if (AgentLifecycleIngestor.IsLifecycleEvent(eventMessage))
+        {
+            return await ProcessAgentLifecycleEventAsync(eventMessage);
+        }
 
         try
         {
@@ -565,6 +634,111 @@ public class TelemetryIngestionService : ITelemetryIngestionService
             _logger.LogError(ex, "Error processing AgentEventMessage from {MachineId}", eventMessage.MachineIdentifier);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Agent lifecycle / power report (start with previous-run classification, graceful stop, MQTT last
+    /// will, reconnect): one agent_events row per report (source "AgentLifecycle") plus the folded state
+    /// under <c>client_pcs.system_metadata.AgentLifecycle</c>. Duplicates (same event_id) are ignored;
+    /// invalid reports and reports for unknown devices go to the malformed-telemetry quarantine.
+    /// </summary>
+    private async Task<bool> ProcessAgentLifecycleEventAsync(AgentEventMessage eventMessage)
+    {
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            if (!AgentLifecycleIngestor.TryParse(eventMessage, now, out var report, out var error))
+            {
+                _logger.LogWarning("Quarantining invalid lifecycle report from {MachineId}: {Error}", eventMessage.MachineIdentifier, error);
+                await QuarantineLifecycleAsync(db, eventMessage, error!, null);
+                return false;
+            }
+
+            var pc = await db.ClientPcs.FirstOrDefaultAsync(p => p.MachineIdentifier == eventMessage.MachineIdentifier);
+            if (pc == null)
+            {
+                _logger.LogWarning("Quarantining lifecycle report {EventId} for unknown device {MachineId}", report!.EventId, eventMessage.MachineIdentifier);
+                await QuarantineLifecycleAsync(db, eventMessage, $"lifecycle report for unknown device '{eventMessage.MachineIdentifier}'", null);
+                return false;
+            }
+
+            var metadata = pc.SystemMetadata != null
+                ? JsonNode.Parse(pc.SystemMetadata.RootElement.GetRawText()) as JsonObject ?? new JsonObject()
+                : new JsonObject();
+            var lifecycle = metadata[AgentLifecycleIngestor.MetadataKey] as JsonObject;
+
+            if (AgentLifecycleIngestor.AlreadyApplied(lifecycle, report!.EventId))
+            {
+                _logger.LogDebug("Ignoring duplicate lifecycle report {EventId} from {MachineId}", report.EventId, eventMessage.MachineIdentifier);
+                return true;
+            }
+
+            metadata[AgentLifecycleIngestor.MetadataKey] = AgentLifecycleIngestor.Apply(lifecycle, report, now);
+            pc.SystemMetadata = JsonSerializer.Deserialize<JsonDocument>(metadata.ToJsonString());
+
+            db.AgentEvents.Add(new AgentEvent
+            {
+                Id = Guid.NewGuid(),
+                ClientPcId = pc.Id,
+                OrganizationId = pc.OrganizationId,
+                Source = AgentLifecycleIngestor.Source,
+                Level = report.Level,
+                Message = report.Message,
+                // A last will is stamped when its connection opened; it happened when it was delivered.
+                Timestamp = (report.Phase == "connection_lost" ? now : report.At).UtcDateTime
+            });
+
+            await db.SaveChangesAsync();
+            _logger.LogInformation("Agent lifecycle {Phase} from {MachineId}: {Message}", report.Phase, eventMessage.MachineIdentifier, report.Message);
+
+            if (_hubContext != null)
+            {
+                try
+                {
+                    await MaintenanceHubGroups.ForOrganization(_hubContext.Clients, pc.OrganizationId)
+                        .InventoryUpdated("MQTT_AgentLifecycle", pc.Hostname ?? eventMessage.Hostname, pc.MacAddress);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to broadcast lifecycle update over SignalR");
+                }
+            }
+
+            if (_cache != null)
+            {
+                try
+                {
+                    await _cache.RemoveAsync("inventory:client_pcs");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to evict the client PC cache after a lifecycle report");
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing lifecycle report from {MachineId}", eventMessage.MachineIdentifier);
+            return false;
+        }
+    }
+
+    private static async Task QuarantineLifecycleAsync(AppDbContext db, AgentEventMessage eventMessage, string reason, string? organizationId)
+    {
+        db.MalformedTelemetryRecords.Add(new MalformedTelemetryRecord
+        {
+            SourceIdentifier = string.IsNullOrWhiteSpace(eventMessage.MachineIdentifier) ? eventMessage.Hostname : eventMessage.MachineIdentifier,
+            IngestionChannel = AgentLifecycleIngestor.QuarantineChannel,
+            ErrorReason = reason,
+            RawPayload = Convert.ToBase64String(Google.Protobuf.MessageExtensions.ToByteArray(eventMessage)),
+            OrganizationId = organizationId ?? string.Empty,
+            QuarantinedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
     }
 
     public async Task<TelemetryBatchResponse> ProcessTelemetryBatchAsync(TelemetryBatchRequest batchRequest, string? callerAuthKey = null)

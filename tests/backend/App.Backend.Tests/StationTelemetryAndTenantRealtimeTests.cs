@@ -252,6 +252,57 @@ public class StationTelemetryAndTenantRealtimeTests
         Assert.All(hub.TestClients.Audiences, a => Assert.Equal($"Group:{MaintenanceHubGroups.PlatformAdminGroup}", a));
     }
 
+    // ---------------------------------------------------------------- PLC memory change gate
+
+    [Fact]
+    public async Task UnchangedPlcBlock_IsNotForwardedAgain_UntilItsContentChanges()
+    {
+        var (factory, _, _) = await SeedStationAsync("org-a");
+        var hub = new TestHubContext();
+        var cache = new FakeMemoryCacheService();
+        var t0 = new DateTimeOffset(2026, 11, 9, 10, 0, 0, TimeSpan.Zero);
+
+        Assert.True(await CreateIngestion(factory, hub, cache, null).ProcessPlcMemoryAsync("IPC-20", StationBlock(t0)));
+        Assert.Equal(2, hub.TestClients.Audiences.Count); // one audience for PlcMemoryReceived, one for the station events
+
+        // Same memory, newer sample timestamp: accepted, but nothing is forwarded.
+        Assert.True(await CreateIngestion(factory, hub, cache, null).ProcessPlcMemoryAsync("IPC-20", StationBlock(t0.AddSeconds(2))));
+        Assert.Equal(2, hub.TestClients.Audiences.Count);
+        Assert.Single(hub.TestClients.TestClient.StationOscillations);
+
+        // A value moved: station events are forwarded; the descriptor-only PlcMemoryReceived is not repeated.
+        var changed = StationBlock(t0.AddSeconds(4));
+        changed.StructuredValue.StructValue.Fields["fVibrationRms"] = new TelemetryValue { DoubleValue = 2.4 };
+        Assert.True(await CreateIngestion(factory, hub, cache, null).ProcessPlcMemoryAsync("IPC-20", changed));
+        Assert.Equal(3, hub.TestClients.Audiences.Count);
+        Assert.Equal(2, hub.TestClients.TestClient.StationOscillations.Count);
+        Assert.Equal(2.4, hub.TestClients.TestClient.StationOscillations[1].Data.VibrationMmS);
+
+        // The descriptor changed (quality): PlcMemoryReceived is sent again.
+        var degraded = changed.Clone();
+        degraded.Quality = QualityCode.QualityBad;
+        Assert.True(await CreateIngestion(factory, hub, cache, null).ProcessPlcMemoryAsync("IPC-20", degraded));
+        Assert.Equal(5, hub.TestClients.Audiences.Count);
+    }
+
+    [Fact]
+    public async Task UnchangedPlcBlock_IsForwardedAsKeepAlive_OnceTheKeepAliveWindowHasPassed()
+    {
+        var (factory, _, _) = await SeedStationAsync("org-a");
+        var hub = new TestHubContext();
+        var cache = new FakeMemoryCacheService();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Telemetry:PlcMemory:KeepAliveSeconds"] = "0" })
+            .Build();
+        TelemetryIngestionService Create() => new(NullLogger<TelemetryIngestionService>.Instance,
+            new FakeControllerRepository(), factory, new TestHostEnvironment(), config, hub, cache, null);
+
+        Assert.True(await Create().ProcessPlcMemoryAsync("IPC-20", StationBlock(DateTimeOffset.UtcNow)));
+        Assert.True(await Create().ProcessPlcMemoryAsync("IPC-20", StationBlock(DateTimeOffset.UtcNow)));
+
+        Assert.Equal(2, hub.TestClients.TestClient.StationOscillations.Count);
+    }
+
     // ---------------------------------------------------------------- KPIs from stored rows
 
     [Fact]
