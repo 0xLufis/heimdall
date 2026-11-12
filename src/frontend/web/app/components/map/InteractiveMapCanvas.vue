@@ -1,18 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useDxfMap } from '~/composables/useDxfMap'
-import { useStationTelemetry, type StationTelemetryKpi, type StationSlaSummary } from '~/composables/useStationTelemetry'
+import type { StationTelemetryKpi } from '~/composables/useStationTelemetry'
 import type { MaintenanceTicket } from '~/types/maintenance'
-import StationTelemetryBubble from '~/components/map/StationTelemetryBubble.vue'
+import MapStationOverlays from '~/components/map/MapStationOverlays.vue'
 import { ZoomIn, ZoomOut, Maximize2, Loader2, AlertCircle } from 'lucide-vue-next'
-import {
-  computeOverlayPlacement,
-  projectSvgPointToScreen,
-  PLANT_MAP_CARD_SIZE,
-  PLANT_MAP_OVERLAY_INSETS,
-  PLANT_MAP_PILL_SIZE,
-  type OverlayPlacement
-} from '~/utils/telemetryOverlayPlacement'
 
 const props = withDefaults(
   defineProps<{
@@ -58,7 +50,6 @@ const emit = defineEmits<{
 const svgContainer = ref<SVGSVGElement | null>(null)
 const mapContainerRef = ref<HTMLDivElement | null>(null)
 const { isLoading, error, parsedEntities, viewBox, loadAndParseDxf, zoom, pan } = useDxfMap(props.dxfUrl)
-const { getStationKpi, getStationSla } = useStationTelemetry()
 
 const hoveredEntity = ref<string | null>(null)
 const localExpandedHandles = ref<Set<string>>(new Set(props.expandedHandles))
@@ -81,18 +72,11 @@ const toggleExpand = (handle: string) => {
   }
 }
 
-const resolveKpi = (handle: string): StationTelemetryKpi | null => {
-  const fromProps = props.stationKpis?.[handle.toUpperCase()]
-  return fromProps ?? getStationKpi(handle)
-}
-
-const resolveSla = (handle: string): StationSlaSummary => {
-  return getStationSla(handle, props.stationTickets || [])
-}
-
 const stationInsertEntities = computed(() => {
   return parsedEntities.value.filter(e => e.type === 'INSERT' && e.position && (e.handle || e.name))
 })
+
+const expandedHandleList = computed(() => [...localExpandedHandles.value])
 
 // Reactive overlay-layer size: placements must be recomputed on container resize,
 // not only on pan / zoom (clientWidth reads inside render are not reactive).
@@ -104,65 +88,6 @@ const measureContainer = () => {
   if (!el) return
   containerSize.value = { width: el.clientWidth, height: el.clientHeight }
 }
-
-const shouldRenderBubble = (handle: string) => {
-  if (!props.showTelemetryOverlays) return false
-  if (isExpanded(handle)) return true
-  if (props.activePin === handle || hoveredEntity.value === handle) return true
-
-  if (props.overlayFilterMode === 'hover_only') {
-    return false
-  }
-
-  if (props.overlayFilterMode === 'alerts_only') {
-    const sla = resolveSla(handle)
-    if (sla.openTickets > 0) return true
-    const kpi = resolveKpi(handle)
-    // Stations without reported telemetry are not alerts.
-    if (!kpi) return false
-    return (kpi.oee !== null && kpi.oee < 85) || kpi.operationalStatus === 'FAULTED' || kpi.operationalStatus === 'WARNING'
-  }
-
-  // 'all' mode: render all on-screen stations
-  return true
-}
-
-/** One placement per rendered bubble, computed once per reactive change (pan/zoom/resize/expand). */
-const bubbleOverlays = computed(() => {
-  const { width: cw, height: ch } = containerSize.value
-  if (!props.showTelemetryOverlays || cw <= 0 || ch <= 0) return []
-  const vb = viewBox.value
-
-  const result: Array<{
-    handle: string
-    name: string
-    expanded: boolean
-    placement: OverlayPlacement
-    kpi: StationTelemetryKpi | null
-    sla: StationSlaSummary
-  }> = []
-
-  for (const entity of stationInsertEntities.value) {
-    const handle: string = entity.handle || entity.name
-    if (!shouldRenderBubble(handle)) continue
-    const screen = projectSvgPointToScreen(entity.position, vb, cw, ch)
-    if (!screen) continue
-    const expanded = isExpanded(handle)
-    const placement = computeOverlayPlacement({
-      anchorX: screen.x,
-      anchorY: screen.y,
-      containerWidth: cw,
-      containerHeight: ch,
-      size: expanded ? PLANT_MAP_CARD_SIZE : PLANT_MAP_PILL_SIZE,
-      insets: PLANT_MAP_OVERLAY_INSETS,
-      gapAbove: expanded ? 12 : 8,
-      gapBelow: expanded ? 16 : 14
-    })
-    if (!placement.visible) continue
-    result.push({ handle, name: entity.name, expanded, placement, kpi: resolveKpi(handle), sla: resolveSla(handle) })
-  }
-  return result
-})
 
 let isDragging = false
 let startDrag = { x: 0, y: 0 }
@@ -370,7 +295,7 @@ watch(() => props.dxfUrl, (newUrl) => {
               :cx="entity.center.x"
               :cy="entity.center.y"
               :r="(entity.radius || 10) + 6"
-              class="fill-teal-500/20 stroke-teal-400 stroke-2 animate-pulse"
+              class="fill-teal-500/20 stroke-teal-400 stroke-2"
             />
             <!-- Vessel Body -->
             <circle
@@ -457,7 +382,7 @@ watch(() => props.dxfUrl, (newUrl) => {
               width="32"
               height="32"
               rx="6"
-              class="fill-indigo-500/20 stroke-indigo-400 stroke-2 animate-pulse"
+              class="fill-indigo-500/20 stroke-indigo-400 stroke-2"
             />
 
             <!-- Station Housing Box -->
@@ -484,13 +409,12 @@ watch(() => props.dxfUrl, (newUrl) => {
               class="transition-colors"
             />
 
-            <!-- Status Dot -->
+            <!-- Centre dot (the station's state is shown by its pin in the overlay layer) -->
             <circle
               cx="0"
               cy="0"
               r="2.2"
-              :fill="isHighlighted(entity) ? '#ffffff' : '#10b981'"
-              class="animate-pulse"
+              :fill="isHighlighted(entity) ? '#ffffff' : '#94a3b8'"
             />
 
             <!-- Station Handle Badge (Only rendered on Hover or Search/Highlight) -->
@@ -524,46 +448,29 @@ watch(() => props.dxfUrl, (newUrl) => {
       </g>
     </svg>
 
-    <!-- HTML Overlays Layer for Crisp Telemetry Bubbles (Clamped to Viewport) -->
-    <div
+    <!-- HTML overlay layer: colour-coded station pins and opened station cards -->
+    <MapStationOverlays
       v-if="showTelemetryOverlays && !isLoading && !error"
-      class="absolute inset-0 pointer-events-none overflow-hidden z-20"
-    >
-      <div
-        v-for="bubble in bubbleOverlays"
-        :key="`bubble-${bubble.handle}`"
-        class="absolute transition-all duration-75 pointer-events-none flex"
-        :class="bubble.expanded ? 'items-start' : 'justify-center'"
-        :data-overlay-handle="bubble.handle"
-        :style="{
-          left: `${bubble.placement.left}px`,
-          top: `${bubble.placement.top}px`,
-          width: `${bubble.placement.width}px`,
-          zIndex: bubble.expanded ? 60 : 30
-        }"
-      >
-        <StationTelemetryBubble
-          :handle="bubble.handle"
-          :name="bubble.name"
-          :kpi="bubble.kpi"
-          :sla="bubble.sla"
-          :is-expanded="bubble.expanded"
-          :is-flipped-bottom="bubble.placement.isFlippedBottom"
-          :max-width-px="bubble.placement.width"
-          :max-height-px="bubble.expanded ? bubble.placement.height : undefined"
-          :arrow-offset-px="bubble.placement.arrowOffset"
-          :show-oee="showOee"
-          :show-yield="showYield"
-          :show-parts-hour="showPartsHour"
-          :show-sla="showSla"
-          :show-oscillation="showOscillation"
-          @toggle-expand="toggleExpand(bubble.handle)"
-          @select-station="emit('object-clicked', bubble.handle, bubble.name || 'Station')"
-          @create-ticket="emit('create-ticket', bubble.handle)"
-          @view-ticket="(id) => emit('view-ticket', id)"
-        />
-      </div>
-    </div>
+      :entities="stationInsertEntities"
+      :view-box="viewBox"
+      :container-width="containerSize.width"
+      :container-height="containerSize.height"
+      :filter-mode="overlayFilterMode"
+      :active-pin="activePin"
+      :hovered-handle="hoveredEntity"
+      :expanded-handles="expandedHandleList"
+      :station-kpis="stationKpis"
+      :station-tickets="stationTickets"
+      :show-oee="showOee"
+      :show-yield="showYield"
+      :show-parts-hour="showPartsHour"
+      :show-sla="showSla"
+      :show-oscillation="showOscillation"
+      @toggle-expand="toggleExpand"
+      @select-station="(handle: string, name: string) => emit('object-clicked', handle, name || 'Station')"
+      @create-ticket="(handle: string) => emit('create-ticket', handle)"
+      @view-ticket="(id: string) => emit('view-ticket', id)"
+    />
 
     <!-- Floating CAD Controls -->
     <div class="absolute bottom-6 right-6 flex flex-col gap-2 z-10">

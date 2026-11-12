@@ -196,9 +196,13 @@ type StationOscillationIndex = Record<string, StationOscillationData>
 /**
  * Hub updates reach the reactive store at most this often. Messages arriving in between are
  * merged per station and committed together, so a burst costs one render instead of one per
- * message. The first update after a quiet period is shown at once.
+ * message. The first update after a quiet period, and any change of a station's operational status
+ * (a fault, a recovery), are committed at once.
  */
 export const LIVE_COMMIT_INTERVAL_MS = 250
+
+/** false: nothing to apply; 'staged': wait for the next commit; 'urgent': commit now. */
+type StageResult = false | 'staged' | 'urgent'
 
 // The maps are reactive per key (shallowReactive inside a shallowRef): a live update replaces one
 // station's entry, so only the views that show that station re-render, and a full fetch swaps the
@@ -227,16 +231,18 @@ const indexKpi = (map: StationKpiIndex, kpi: StationTelemetryKpi) => {
   if (kpi.stationId) map[stationKey(kpi.stationId)] = kpi
 }
 
-const stageLiveKpi = (rawKpi: unknown, fallbackKey: string) => {
+const stageLiveKpi = (rawKpi: unknown, fallbackKey: string): StageResult => {
   const raw = (rawKpi && typeof rawKpi === 'object') ? rawKpi as Record<string, unknown> : null
   if (!raw) return false
   const key = stationKey(toText(raw.handle, '') || toText(raw.stationId, '') || fallbackKey)
   if (!key) return false
-  const previous = stagedKpis[key] ?? globalStationKpis.value[key] ?? null
+  const committed = globalStationKpis.value[key]
+  const previous = stagedKpis[key] ?? committed ?? null
   const merged = normalizeStationKpi({ stationId: fallbackKey, ...raw }, previous)
   if (!merged) return false
   indexKpi(stagedKpis, merged)
-  return true
+  // A station whose state changed (or that is new) is not left waiting for the next commit.
+  return committed && committed.operationalStatus === merged.operationalStatus ? 'staged' : 'urgent'
 }
 
 const stageLiveOscillation = (rawOsc: unknown, fallbackKey: string) => {
@@ -256,12 +262,12 @@ const stageLiveOscillation = (rawOsc: unknown, fallbackKey: string) => {
   return true
 }
 
-const stageEvent = (ev: MaintenanceEvent) => {
-  let staged = false
+const stageEvent = (ev: MaintenanceEvent): StageResult => {
+  let staged: StageResult = false
   if (ev.type === 'StationTelemetryReceived') {
     staged = stageLiveKpi(ev.summary, ev.stationName || '')
   } else if (ev.type === 'StationOscillationReceived') {
-    staged = stageLiveOscillation(ev.summary, ev.stationName || '')
+    staged = stageLiveOscillation(ev.summary, ev.stationName || '') ? 'staged' : false
   }
   if (staged) hasStagedUpdates = true
   return staged
@@ -295,16 +301,51 @@ const scheduleCommit = () => {
   }, LIVE_COMMIT_INTERVAL_MS)
 }
 
-/** Hub listener: stages the update and commits at most once per {@link LIVE_COMMIT_INTERVAL_MS}. */
+/**
+ * Hub listener: stages the update and commits at most once per {@link LIVE_COMMIT_INTERVAL_MS},
+ * except for status changes, which are committed at once (with everything staged before them).
+ */
 const queueStationTelemetryEvent = (ev: MaintenanceEvent) => {
-  if (!stageEvent(ev) || commitTimer) return
+  const staged = stageEvent(ev)
+  if (!staged || (commitTimer && staged !== 'urgent')) return
   commitStagedUpdates()
-  scheduleCommit()
+  if (!commitTimer) scheduleCommit()
 }
 
 const cancelScheduledCommit = () => {
   if (commitTimer) clearTimeout(commitTimer)
   commitTimer = null
+}
+
+// getStationSla matches a title when the key is bounded by characters outside [A-Z0-9-].
+const TITLE_TOKEN = /[A-Z0-9-]+/g
+const SINGLE_TOKEN = /^[A-Z0-9-]+$/
+
+/**
+ * Groups tickets by every station key they can match in `getStationSla` (station id, tags, whole
+ * tokens of the title), so callers that need the SLA of many stations (the plant map's pins) scan
+ * the ticket list once instead of once per station. The lookup returns a superset of a station's
+ * tickets; `getStationSla` still applies the exact rules to it.
+ */
+export function indexTicketsByStation(tickets: readonly MaintenanceTicket[]) {
+  const byKey = new Map<string, MaintenanceTicket[]>()
+  const add = (key: string, ticket: MaintenanceTicket) => {
+    if (!key) return
+    const list = byKey.get(key)
+    if (!list) byKey.set(key, [ticket])
+    else if (list[list.length - 1] !== ticket) list.push(ticket)
+  }
+  for (const ticket of tickets) {
+    if (ticket.stationId) add(ticket.stationId.toUpperCase(), ticket)
+    for (const tag of ticket.tags || []) add(tag.toUpperCase(), ticket)
+    for (const token of ticket.title?.toUpperCase().match(TITLE_TOKEN) || []) add(token, ticket)
+  }
+  return (handleOrId: string): readonly MaintenanceTicket[] => {
+    const key = stationKey(handleOrId)
+    if (!key) return []
+    // A key with characters outside the token alphabet can match across token boundaries: scan all.
+    return SINGLE_TOKEN.test(key) ? (byKey.get(key) ?? []) : tickets
+  }
 }
 
 /** Applies one maintenance-hub event to the telemetry store immediately. Exported for tests. */
@@ -358,7 +399,7 @@ export const useStationTelemetry = () => {
   }
 
   // Correlate tickets to compute real-time SLA metrics for any station
-  const getStationSla = (handleOrId: string, allTickets: MaintenanceTicket[] = []): StationSlaSummary => {
+  const getStationSla = (handleOrId: string, allTickets: readonly MaintenanceTicket[] = []): StationSlaSummary => {
     const key = stationKey(handleOrId)
     const now = Date.now()
 

@@ -50,8 +50,37 @@ const HIDDEN: OverlayPlacement = { visible: false, left: 0, top: 0, width: 0, he
 
 /** Default safe area of the plant map: floating HUD toolbar on top, legend / zoom controls at the bottom. */
 export const PLANT_MAP_OVERLAY_INSETS: OverlayInsets = { top: 62, right: 14, bottom: 20, left: 14 }
-export const PLANT_MAP_PILL_SIZE: OverlayBoxSize = { width: 220, height: 30 }
+/** Colour-coded station pin (its tip marks the station). */
+export const PLANT_MAP_PIN_SIZE: OverlayBoxSize = { width: 14, height: 18 }
 export const PLANT_MAP_CARD_SIZE: OverlayBoxSize = { width: 320, height: 390 }
+
+export interface PinPlacement {
+  visible: boolean
+  left: number
+  top: number
+}
+
+/**
+ * A pin stands on its anchor: tip at (anchorX, anchorY), body above it. Unlike cards, pins are not
+ * clamped into the safe area (a clamped pin would point at the wrong spot); a pin that does not fit
+ * entirely is hidden.
+ */
+export function computePinPlacement(input: {
+  anchorX: number
+  anchorY: number
+  containerWidth: number
+  containerHeight: number
+  insets: OverlayInsets
+  size?: OverlayBoxSize
+}): PinPlacement {
+  const { anchorX, anchorY, containerWidth: cw, containerHeight: ch, insets } = input
+  const size = input.size ?? PLANT_MAP_PIN_SIZE
+  if (![anchorX, anchorY, cw, ch].every(Number.isFinite)) return { visible: false, left: 0, top: 0 }
+  const left = anchorX - size.width / 2
+  const top = anchorY - size.height
+  const visible = left >= insets.left && left + size.width <= cw - insets.right && top >= insets.top && anchorY <= ch - insets.bottom
+  return { visible, left: Math.round(left), top: Math.round(top) }
+}
 
 export function computeOverlayPlacement(input: OverlayPlacementInput): OverlayPlacement {
   const { anchorX, anchorY, containerWidth: cw, containerHeight: ch, insets } = input

@@ -15,6 +15,7 @@ import { useMaintenance } from '~/composables/useMaintenance'
 import { useStationTelemetry, type StationTelemetryKpi } from '~/composables/useStationTelemetry'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
 import { queryText, resolveMapFocus } from '~/utils/deepLinkQueries'
+import { STATION_PIN_TONES, STATION_PIN_TONE_ORDER, PIN_LOW_OEE_PERCENT } from '~/utils/stationPinState'
 import { Activity, Flame, Gauge, Clock, ChevronRight, AlertTriangle, CheckCircle2, Radio, Zap } from 'lucide-vue-next'
 
 definePageMeta({
@@ -460,7 +461,7 @@ onMounted(() => {
                 @click="overlayFilterMode = 'alerts_only'"
                 class="px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
                 :class="overlayFilterMode === 'alerts_only' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold' : 'text-slate-400 hover:text-slate-200'"
-                title="Display bubbles only on stations with active SLA tickets or OEE warnings"
+                :title="`Pins only on stations that are faulted or in warning, SLA-critical, below ${PIN_LOW_OEE_PERCENT} % OEE, or with open tickets`"
               >
                 Alerts & SLA
               </button>
@@ -470,7 +471,7 @@ onMounted(() => {
                 @click="overlayFilterMode = 'all'"
                 class="px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
                 :class="overlayFilterMode === 'all' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-semibold' : 'text-slate-400 hover:text-slate-200'"
-                title="Display telemetry bubbles on all visible station nodes"
+                title="A colour-coded pin on every visible station"
               >
                 All Nodes
               </button>
@@ -480,7 +481,7 @@ onMounted(() => {
                 @click="overlayFilterMode = 'hover_only'"
                 class="px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
                 :class="overlayFilterMode === 'hover_only' ? 'bg-slate-800 text-slate-200 font-semibold' : 'text-slate-400 hover:text-slate-200'"
-                title="Show bubble only on hovered or selected station"
+                title="A pin only on the hovered or selected station"
               >
                 Hover Focus
               </button>
@@ -558,15 +559,13 @@ onMounted(() => {
           @view-ticket="handleViewTicket"
         />
 
-        <!-- Controls Legend Overlay -->
-        <div class="absolute bottom-4 left-4 p-3 bg-card/90 backdrop-blur-md rounded-lg border border-border shadow-sm flex items-center gap-4 z-10 pointer-events-none text-xs">
-          <div class="flex items-center gap-2">
-            <div class="size-2.5 rounded-full bg-indigo-500 shadow-sm"></div>
-            <span class="font-medium text-foreground">Interactive Handle</span>
+        <!-- Pin legend: colours are sampled every 500 ms (staggered) and on hub alerts / ticket changes -->
+        <div class="absolute bottom-4 left-4 right-24 p-2.5 bg-card/90 backdrop-blur-md rounded-lg border border-border shadow-sm flex flex-wrap items-center gap-x-3 gap-y-1 z-10 pointer-events-none text-[11px]" data-pin-legend>
+          <div v-for="tone in STATION_PIN_TONE_ORDER" :key="tone" class="flex items-center gap-1.5">
+            <span class="size-2.5 rounded-full shrink-0" :style="{ backgroundColor: STATION_PIN_TONES[tone].color }"></span>
+            <span class="font-medium text-foreground">{{ STATION_PIN_TONES[tone].label }}</span>
           </div>
-          <div class="flex items-center gap-2 border-l border-border pl-4">
-            <span class="text-muted-foreground">Scroll to Zoom • Drag to Pan • Click Bubbles to Expand</span>
-          </div>
+          <span class="text-muted-foreground sm:border-l sm:border-border sm:pl-3">Click a pin for details • Scroll to zoom • Drag to pan</span>
         </div>
       </div>
 

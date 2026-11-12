@@ -1,22 +1,6 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
-import {
-  Activity,
-  AlertTriangle,
-  Flame,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  X,
-  Plus,
-  ArrowUpRight,
-  Clock,
-  Gauge,
-  Cpu,
-  Layers,
-  Zap,
-  Radio
-} from 'lucide-vue-next'
+import { CheckCircle2, X, Plus, ArrowUpRight, Clock, Cpu, Radio } from 'lucide-vue-next'
 import { useStationTelemetry, type StationTelemetryKpi, type StationSlaSummary, type StationOscillationData } from '~/composables/useStationTelemetry'
 
 const props = withDefaults(
@@ -27,8 +11,6 @@ const props = withDefaults(
     kpi?: StationTelemetryKpi | null
     sla?: StationSlaSummary
     oscillation?: StationOscillationData | null
-    isExpanded?: boolean
-    mode?: 'compact' | 'expanded'
     showYield?: boolean
     showPartsHour?: boolean
     showOee?: boolean
@@ -45,8 +27,6 @@ const props = withDefaults(
     name: '',
     kpi: null,
     oscillation: null,
-    isExpanded: false,
-    mode: 'compact',
     showYield: true,
     showPartsHour: true,
     showOee: true,
@@ -99,8 +79,6 @@ const cardStyle = computed(() => {
   if (props.maxHeightPx && props.maxHeightPx > 0) style.maxHeight = `${props.maxHeightPx}px`
   return style
 })
-
-const pillStyle = computed(() => (props.maxWidthPx && props.maxWidthPx > 0 ? { maxWidth: `${props.maxWidthPx}px` } : {}))
 
 const arrowStyle = computed(() => {
   if (props.arrowOffsetPx === undefined) return {}
@@ -190,84 +168,8 @@ const statusBadgeClass = computed(() => {
 
 <template>
   <div class="station-telemetry-bubble font-sans select-none pointer-events-auto">
-    <!-- Compact Pill Overlay View -->
+    <!-- Station card (the map shows a colour-coded pin until it is opened) -->
     <div
-      v-if="!isExpanded"
-      @click.stop="emit('toggle-expand')"
-      :style="pillStyle"
-      class="compact-pill group flex items-center gap-1.5 overflow-hidden px-2 py-1 bg-slate-950/90 hover:bg-slate-900 border border-slate-700/80 hover:border-indigo-500/60 rounded-full shadow-lg backdrop-blur-md cursor-pointer transition-all duration-200 transform hover:scale-105"
-      :title="`Station ${handle}: Click to inspect telemetry & SLA tickets`"
-    >
-      <!-- SLA Urgent Indicator (Shown first if tickets exist) -->
-      <span
-        v-if="showSla && sla && sla.openTickets > 0"
-        :class="slaBadgeClass"
-        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold border font-mono tracking-tight"
-      >
-        <Flame v-if="sla.slaHealth === 'breached'" class="size-2.5 text-rose-400 shrink-0" />
-        <AlertTriangle v-else class="size-2.5 text-amber-400 shrink-0" />
-        <span>{{ sla.openTickets }} SLA</span>
-      </span>
-
-      <!-- No telemetry reported for this station -->
-      <span
-        v-if="!kpi"
-        class="no-telemetry inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border font-mono text-slate-400 bg-slate-500/10 border-slate-500/30"
-      >
-        <Gauge class="size-2.5 shrink-0" />
-        <span>No telemetry</span>
-      </span>
-
-      <template v-else>
-      <!-- OEE Badge -->
-      <span
-        v-if="showOee"
-        :class="oeeColorClass"
-        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold border font-mono"
-      >
-        <Gauge class="size-2.5 shrink-0" />
-        <span>{{ fmt(kpi.oee) }}%</span>
-      </span>
-
-      <!-- Yield & Parts/Hour -->
-      <span
-        v-if="showYield && showPartsHour"
-        class="text-[10px] text-slate-300 font-mono font-medium hidden sm:inline"
-      >
-        {{ fmt(kpi.yield) }}% · {{ fmt(kpi.partsPerHour) }}/h
-      </span>
-      <span
-        v-else-if="showYield"
-        class="text-[10px] text-slate-300 font-mono font-medium hidden sm:inline"
-      >
-        {{ fmt(kpi.yield) }}%
-      </span>
-      <span
-        v-else-if="showPartsHour"
-        class="text-[10px] text-slate-300 font-mono font-medium hidden sm:inline"
-      >
-        {{ fmt(kpi.partsPerHour) }}/h
-      </span>
-      </template>
-
-      <!-- Sub-Second Live Vibration & Stream Indicator -->
-      <span
-        v-if="showOscillation && activeOscillation"
-        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono border tracking-tight"
-        :class="activeOscillation.vibrationMmS > 3.0 ? 'text-amber-400 bg-amber-500/15 border-amber-500/35' : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30'"
-        :title="`Sub-Second Oscillation: ${activeOscillation.vibrationMmS.toFixed(2)} mm/s RMS | Spindle: ${fmt(activeOscillation.spindleRpm, 0)} RPM`"
-      >
-        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
-        <span>{{ activeOscillation.vibrationMmS.toFixed(1) }} mm/s</span>
-      </span>
-
-      <!-- Expand Indicator Chevron -->
-      <ChevronDown class="size-3 text-slate-400 group-hover:text-indigo-400 transition-colors" />
-    </div>
-
-    <!-- Expanded Full HUD Card View -->
-    <div
-      v-else
       @click.stop
       :style="cardStyle"
       class="expanded-card relative w-72 sm:w-80 max-h-[min(500px,calc(100vh-140px))] overflow-y-auto custom-scrollbar bg-slate-950/95 border border-slate-700 shadow-2xl rounded-xl p-3 backdrop-blur-xl text-slate-100 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-150"
@@ -305,7 +207,8 @@ const statusBadgeClass = computed(() => {
         <button
           @click.stop="emit('toggle-expand')"
           class="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
-          title="Collapse bubble"
+          title="Close station card"
+          aria-label="Close station card"
         >
           <X class="size-3.5" />
         </button>

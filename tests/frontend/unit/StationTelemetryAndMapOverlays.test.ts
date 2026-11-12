@@ -34,7 +34,8 @@ import {
   projectSvgPointToScreen,
   PLANT_MAP_CARD_SIZE,
   PLANT_MAP_OVERLAY_INSETS,
-  PLANT_MAP_PILL_SIZE
+  PLANT_MAP_PIN_SIZE,
+  computePinPlacement
 } from '../../../src/frontend/web/app/utils/telemetryOverlayPlacement'
 import StationTelemetryBubble from '../../../src/frontend/web/app/components/map/StationTelemetryBubble.vue'
 import type { MaintenanceTicket } from '../../../src/frontend/web/app/types/maintenance'
@@ -291,7 +292,7 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       b.unmount()
     })
 
-    it('commits a burst of hub messages once per interval without dropping samples', async () => {
+    it('commits a burst of hub messages once per interval without dropping samples; status changes at once', async () => {
       vi.useFakeTimers()
       fetchMock.mockResolvedValue([])
       const Consumer = defineComponent({ setup() { useStationTelemetry(); return () => h('div') } })
@@ -302,6 +303,8 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       expect(hubListeners.size).toBe(1)
       const [listener] = [...hubListeners]
       const sample = (i: number) => ({ type: 'StationOscillationReceived', stationName: 'L07-OP010', summary: { stationId: 'L07-OP010', vibrationMmS: i, timestamp: 1_700_000_000_000 + i } })
+      const kpi = (summary: Record<string, unknown>) => ({ type: 'StationTelemetryReceived', stationName: 'L07-OP010', summary: { handle: 'L07-OP010', ...summary } })
+      handleStationTelemetryEvent({ ...kpi({ operationalStatus: 'RUNNING', oee: 80 }), timestamp: '' } as any)
 
       // The first message after a quiet period is shown at once.
       listener!(sample(1))
@@ -310,19 +313,25 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       // Messages within the interval wait for the next commit.
       listener!(sample(2))
       listener!(sample(3))
-      listener!({ type: 'StationTelemetryReceived', stationName: 'L07-OP010', summary: { handle: 'L07-OP010', oee: 77.7 } })
+      listener!(kpi({ operationalStatus: 'RUNNING', oee: 77.7 }))
       expect(getStationOscillation('L07-OP010')?.vibrationMmS).toBe(1)
-      expect(getStationKpi('L07-OP010')).toBeNull()
+      expect(getStationKpi('L07-OP010')?.oee).toBe(80)
 
       vi.advanceTimersByTime(LIVE_COMMIT_INTERVAL_MS)
       expect(getStationOscillation('L07-OP010')?.history).toEqual([1, 2, 3])
       expect(getStationKpi('L07-OP010')?.oee).toBe(77.7)
 
-      // Traffic is still flowing, so the next message is staged too; stopping keeps it.
+      // A status change (here a fault) is committed at once, with what was staged before it.
       listener!(sample(4))
-      expect(getStationOscillation('L07-OP010')?.vibrationMmS).toBe(3)
+      listener!(kpi({ operationalStatus: 'FAULTED' }))
+      expect(getStationKpi('L07-OP010')?.operationalStatus).toBe('FAULTED')
+      expect(getStationOscillation('L07-OP010')?.vibrationMmS).toBe(4)
+
+      // Traffic is still flowing, so the next message is staged; stopping keeps it.
+      listener!(sample(5))
+      expect(getStationOscillation('L07-OP010')?.vibrationMmS).toBe(4)
       wrapper.unmount()
-      expect(getStationOscillation('L07-OP010')?.history).toEqual([1, 2, 3, 4])
+      expect(getStationOscillation('L07-OP010')?.history).toEqual([1, 2, 3, 4, 5])
     })
 
     it('computes SLA status correctly when zero tickets exist', () => {
@@ -411,30 +420,26 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       lastTelemetryAt: '2026-11-09T10:00:00Z'
     }
 
-    it('renders compact pill with OEE %, Yield %, and Parts/Hour', () => {
-      const wrapper = mount(StationTelemetryBubble, { props: { handle: 'L01-OP030', kpi: dummyKpi, isExpanded: false } })
+    it('renders the station card with OEE %, Yield % and Parts/Hour', () => {
+      const wrapper = mount(StationTelemetryBubble, { props: { handle: 'L01-OP030', kpi: dummyKpi } })
+      expect(wrapper.find('.expanded-card').exists()).toBe(true)
       expect(wrapper.text()).toContain('92.4%')
       expect(wrapper.text()).toContain('99.2%')
-      expect(wrapper.text()).toContain('142/h')
-      expect(wrapper.find('.compact-pill').exists()).toBe(true)
-      expect(wrapper.find('.expanded-card').exists()).toBe(false)
+      expect(wrapper.text()).toContain('142')
       expect(wrapper.find('.no-telemetry').exists()).toBe(false)
     })
 
     it('renders an explicit no-telemetry state instead of numbers when the station has no data', () => {
-      const compact = mount(StationTelemetryBubble, { props: { handle: 'L09-OP010', kpi: null } })
-      expect(compact.text()).toContain('No telemetry')
-      expect(compact.text()).not.toMatch(/\d+(\.\d+)?%/)
-
-      const expanded = mount(StationTelemetryBubble, { props: { handle: 'L09-OP010', kpi: null, isExpanded: true } })
-      expect(expanded.find('.no-telemetry').exists()).toBe(true)
-      expect(expanded.text()).toContain('NO DATA')
-      expect(expanded.text()).not.toContain('Live Machine Dynamics')
+      const card = mount(StationTelemetryBubble, { props: { handle: 'L09-OP010', kpi: null } })
+      expect(card.find('.no-telemetry').exists()).toBe(true)
+      expect(card.text()).toContain('NO DATA')
+      expect(card.text()).not.toMatch(/\d+(\.\d+)?%/)
+      expect(card.text()).not.toContain('Live Machine Dynamics')
     })
 
     it('shows a dash for production values the station has not reported', () => {
       const wrapper = mount(StationTelemetryBubble, {
-        props: { handle: 'L01-OP030', kpi: { ...dummyKpi, oee: null, yield: null, partsPerHour: null, scrapParts: null }, isExpanded: true }
+        props: { handle: 'L01-OP030', kpi: { ...dummyKpi, oee: null, yield: null, partsPerHour: null, scrapParts: null } }
       })
       expect(wrapper.text()).toContain('—%')
       expect(wrapper.text()).toContain('Scrap: — pcs')
@@ -444,46 +449,44 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
 
     it('does not render NaN widths when the backend reports no parts/hour target', () => {
       const wrapper = mount(StationTelemetryBubble, {
-        props: { handle: 'L01-OP030', kpi: { ...dummyKpi, targetPartsPerHour: null }, isExpanded: true }
+        props: { handle: 'L01-OP030', kpi: { ...dummyKpi, targetPartsPerHour: null } }
       })
       expect(wrapper.html()).not.toContain('NaN')
     })
 
     it('honours the size limits computed by the viewport clamp', () => {
       const wrapper = mount(StationTelemetryBubble, {
-        props: { handle: 'L01-OP030', kpi: dummyKpi, isExpanded: true, maxWidthPx: 250, maxHeightPx: 200, arrowOffsetPx: 40 }
+        props: { handle: 'L01-OP030', kpi: dummyKpi, maxWidthPx: 250, maxHeightPx: 200, arrowOffsetPx: 40 }
       })
       const style = wrapper.find('.expanded-card').attributes('style') || ''
       expect(style).toContain('width: 250px')
       expect(style).toContain('max-height: 200px')
     })
 
-    it('renders SLA alert badge in compact mode when open tickets exist', () => {
+    it('shows the SLA due text when open tickets exist', () => {
       const wrapper = mount(StationTelemetryBubble, {
         props: {
           handle: 'L01-OP030',
           kpi: dummyKpi,
-          sla: { totalTickets: 2, openTickets: 2, criticalTickets: 1, breachedTickets: 0, warningTickets: 1, slaHealth: 'warning', earliestDueText: 'Due in 40m', tickets: [] },
-          isExpanded: false
+          sla: { totalTickets: 2, openTickets: 2, criticalTickets: 1, breachedTickets: 0, warningTickets: 1, slaHealth: 'warning', earliestDueText: 'Due in 40m', tickets: [] }
         }
       })
-      expect(wrapper.text()).toContain('2 SLA')
+      expect(wrapper.text()).toContain('Due in 40m')
     })
 
-    it('emits toggle-expand when compact pill is clicked', async () => {
-      const wrapper = mount(StationTelemetryBubble, { props: { handle: 'L01-OP030', kpi: dummyKpi, isExpanded: false } })
-      await wrapper.find('.compact-pill').trigger('click')
+    it('emits toggle-expand from its close button', async () => {
+      const wrapper = mount(StationTelemetryBubble, { props: { handle: 'L01-OP030', kpi: dummyKpi } })
+      await wrapper.find('button[aria-label="Close station card"]').trigger('click')
       expect(wrapper.emitted('toggle-expand')).toBeTruthy()
     })
 
-    it('renders rich expanded HUD view when isExpanded is true', () => {
+    it('renders the rich station card', () => {
       const tickets = [{ id: 'tkt-201', title: 'Glue Dispenser Nozzle Clogged', status: 'Open', priority: 'High', stationId: 'L01-OP030', createdAt: '', updatedAt: '', comments: [] }] as unknown as MaintenanceTicket[]
       const wrapper = mount(StationTelemetryBubble, {
         props: {
           handle: 'L01-OP030',
           kpi: dummyKpi,
-          sla: { totalTickets: 1, openTickets: 1, criticalTickets: 0, breachedTickets: 0, warningTickets: 0, slaHealth: 'healthy', earliestDueText: 'Due in 2h', tickets },
-          isExpanded: true
+          sla: { totalTickets: 1, openTickets: 1, criticalTickets: 0, breachedTickets: 0, warningTickets: 0, slaHealth: 'healthy', earliestDueText: 'Due in 2h', tickets }
         }
       })
       expect(wrapper.find('.expanded-card').exists()).toBe(true)
@@ -493,14 +496,13 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       expect(wrapper.text()).toContain('Scrap: 10 pcs')
     })
 
-    it('emits select-station, create-ticket and view-ticket events from expanded HUD', async () => {
+    it('emits select-station, create-ticket and view-ticket events from the card', async () => {
       const tickets = [{ id: 'tkt-301', title: 'Nozzle Clean Required', status: 'Open', priority: 'Critical', stationId: 'L01-OP030', createdAt: '', updatedAt: '', comments: [] }] as unknown as MaintenanceTicket[]
       const wrapper = mount(StationTelemetryBubble, {
         props: {
           handle: 'L01-OP030',
           kpi: dummyKpi,
-          sla: { totalTickets: 1, openTickets: 1, criticalTickets: 1, breachedTickets: 0, warningTickets: 0, slaHealth: 'warning', earliestDueText: 'Due in 30m', tickets },
-          isExpanded: true
+          sla: { totalTickets: 1, openTickets: 1, criticalTickets: 1, breachedTickets: 0, warningTickets: 0, slaHealth: 'warning', earliestDueText: 'Due in 30m', tickets }
         }
       })
 
@@ -517,7 +519,7 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       expect(wrapper.emitted('view-ticket')?.[0]).toEqual(['tkt-301'])
     })
 
-    it('renders the live vibration badge only from a received sample', () => {
+    it('renders live machine dynamics only from a received sample', () => {
       const withSample = mount(StationTelemetryBubble, {
         props: {
           handle: 'L01-OP030',
@@ -526,22 +528,21 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
           showOscillation: true
         }
       })
-      expect(withSample.text()).toContain('1.5 mm/s')
-      expect(withSample.find('[title*="Sub-Second Oscillation"]').exists()).toBe(true)
+      expect(withSample.text()).toContain('Live Machine Dynamics')
+      expect(withSample.text()).toContain('1.50')
 
       const withoutSample = mount(StationTelemetryBubble, { props: { handle: 'NO-SAMPLE-STATION', kpi: dummyKpi, showOscillation: true } })
       expect(withoutSample.text()).not.toContain('mm/s')
     })
 
-    it('renders oscillation waveform, metrics and sample time in expanded mode', () => {
+    it('renders oscillation waveform, metrics and sample time', () => {
       const ts = Date.parse('2026-11-09T10:15:30Z')
       const wrapper = mount(StationTelemetryBubble, {
         props: {
           handle: 'L01-OP030',
           kpi: dummyKpi,
           oscillation: { stationId: 'L01-OP030', handle: 'L01-OP030', vibrationMmS: 1.62, spindleRpm: 2840, cycleTimeMs: 24000, powerKw: 4.8, temperatureC: 45.5, frequencyHz: 50.0, timestamp: ts, history: [1.2, 1.4, 1.3, 1.5, 1.62] },
-          showOscillation: true,
-          isExpanded: true
+          showOscillation: true
         }
       })
 
@@ -568,11 +569,11 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       expect(p.top + p.height).toBeLessThanOrEqual(ch - i.bottom)
     }
 
-    it('keeps pills and expanded cards fully inside the safe area for any on-screen anchor', () => {
+    it('keeps overlays of any size fully inside the safe area for any on-screen anchor', () => {
       for (const [cw, ch] of [[800, 600], [1280, 720], [360, 300], [300, 200]] as const) {
         for (let ax = 0; ax <= cw; ax += cw / 10) {
           for (let ay = 0; ay <= ch; ay += ch / 10) {
-            for (const size of [PLANT_MAP_PILL_SIZE, PLANT_MAP_CARD_SIZE]) {
+            for (const size of [{ width: 220, height: 30 }, PLANT_MAP_CARD_SIZE]) {
               const p = computeOverlayPlacement({ anchorX: ax, anchorY: ay, containerWidth: cw, containerHeight: ch, size, insets: PLANT_MAP_OVERLAY_INSETS })
               expect(p.visible).toBe(true)
               contained(p, cw, ch)
@@ -614,11 +615,22 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
     })
 
     it('hides overlays for anchors outside the canvas or when there is no safe area', () => {
-      const base = { containerWidth: 800, containerHeight: 600, size: PLANT_MAP_PILL_SIZE, insets: PLANT_MAP_OVERLAY_INSETS }
+      const base = { containerWidth: 800, containerHeight: 600, size: PLANT_MAP_CARD_SIZE, insets: PLANT_MAP_OVERLAY_INSETS }
       expect(computeOverlayPlacement({ ...base, anchorX: -5, anchorY: 300 }).visible).toBe(false)
       expect(computeOverlayPlacement({ ...base, anchorX: 400, anchorY: 601 }).visible).toBe(false)
       expect(computeOverlayPlacement({ ...base, anchorX: Number.NaN, anchorY: 300 }).visible).toBe(false)
       expect(computeOverlayPlacement({ ...base, containerHeight: 70, anchorX: 400, anchorY: 30 }).visible).toBe(false)
+    })
+
+    it('stands a pin on its anchor and hides it instead of clamping it', () => {
+      const base = { containerWidth: 800, containerHeight: 600, insets: PLANT_MAP_OVERLAY_INSETS }
+      const pin = computePinPlacement({ ...base, anchorX: 400, anchorY: 300 })
+      expect(pin).toEqual({ visible: true, left: 400 - PLANT_MAP_PIN_SIZE.width / 2, top: 300 - PLANT_MAP_PIN_SIZE.height })
+      // Under the floating toolbar, past the side insets or below the bottom inset: hidden, not moved.
+      expect(computePinPlacement({ ...base, anchorX: 400, anchorY: 62 + PLANT_MAP_PIN_SIZE.height - 1 }).visible).toBe(false)
+      expect(computePinPlacement({ ...base, anchorX: 14 + PLANT_MAP_PIN_SIZE.width / 2 - 1, anchorY: 300 }).visible).toBe(false)
+      expect(computePinPlacement({ ...base, anchorX: 400, anchorY: 600 - 20 + 1 }).visible).toBe(false)
+      expect(computePinPlacement({ ...base, anchorX: Number.NaN, anchorY: 300 }).visible).toBe(false)
     })
 
     it('projects drawing coordinates like an <svg> with xMidYMid meet', () => {
