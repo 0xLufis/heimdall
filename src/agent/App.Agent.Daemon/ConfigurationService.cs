@@ -1,8 +1,10 @@
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 
+using App.Agent.Daemon.Configuration;
+using App.Agent.Daemon.Infrastructure.Persistence;
 using App.Agent.Daemon.Interfaces;
 
 namespace App.Agent.Daemon;
@@ -168,16 +170,46 @@ public class AgentConfig
     /// Requires extension API callers to originate strictly from loopback addresses (127.0.0.1 / ::1).
     /// </summary>
     public bool RequireLoopbackForExtensions { get; set; } = false;
+
+    // Resilience
+    /// <summary>
+    /// Upper bound in bytes for one serialized report published to the backend. A report that is
+    /// still larger after its optional inventory lists were trimmed is rejected instead of sent.
+    /// </summary>
+    public int MaxReportPayloadBytes { get; set; } = 1048576; // 1 MiB
+
+    /// <summary>
+    /// Interval in seconds at which the session marker ("last seen alive") is flushed to disk. After a
+    /// power loss the next start can only tell when the machine went down to this precision.
+    /// </summary>
+    public int SessionHeartbeatSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Properties found in <c>agent.json</c> that this agent version does not know. They are kept and
+    /// written back unchanged so saving the configuration never drops settings of a newer version or
+    /// of deployment tooling.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
 }
 
 /// <summary>
-/// Thread-safe configuration manager providing atomic persistence,
-/// cryptographic signature verification, and environment variable fallbacks.
+/// Thread-safe configuration manager providing durable atomic persistence with a last-known-good
+/// backup, validation of loaded and updated values, cryptographic signature verification, and
+/// environment variable fallbacks.
 /// </summary>
 public class ConfigurationService : IConfigurationService
 {
+    private static readonly JsonSerializerOptions MergeReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+
     private readonly ILogger<ConfigurationService> _logger;
-    private readonly string _configPath;
+    private readonly AgentConfigStore _store;
+    private readonly IRecoveryJournal? _recoveryJournal;
     private readonly object _syncLock = new();
     private AgentConfig _config;
 
@@ -186,11 +218,41 @@ public class ConfigurationService : IConfigurationService
     /// </summary>
     /// <param name="logger">Diagnostic logger.</param>
     /// <param name="initialConfig">Optional initial configuration instance; loads from disk if null.</param>
-    public ConfigurationService(ILogger<ConfigurationService> logger, AgentConfig? initialConfig = null)
+    /// <param name="paths">File layout; resolved for this machine when null.</param>
+    /// <param name="recoveryJournal">Receives a notice when the configuration had to be recovered or repaired.</param>
+    public ConfigurationService(
+        ILogger<ConfigurationService> logger,
+        AgentConfig? initialConfig = null,
+        AgentPaths? paths = null,
+        IRecoveryJournal? recoveryJournal = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configPath = GetDefaultConfigPath();
-        _config = initialConfig ?? LoadConfig();
+        _recoveryJournal = recoveryJournal;
+
+        string configPath;
+        if (paths != null)
+        {
+            configPath = paths.ConfigFile;
+            if (paths.ConfigDirectoryWarning != null) _logger.LogWarning("{Warning}", paths.ConfigDirectoryWarning);
+        }
+        else
+        {
+            configPath = Path.Combine(AgentPaths.ResolveConfigDirectory(out var warning), AgentPaths.ConfigFileName);
+            if (warning != null) _logger.LogWarning("{Warning}", warning);
+        }
+
+        _store = new AgentConfigStore(configPath);
+
+        if (initialConfig != null)
+        {
+            _config = initialConfig;
+        }
+        else
+        {
+            LastLoad = _store.Load(Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL"));
+            _config = LastLoad.Config;
+            ReportLoadOutcome(LastLoad);
+        }
     }
 
     /// <summary>
@@ -207,75 +269,82 @@ public class ConfigurationService : IConfigurationService
         }
     }
 
-    private string GetDefaultConfigPath()
+    /// <summary>Full path of <c>agent.json</c>.</summary>
+    public string ConfigPath => _store.Path;
+
+    /// <summary>
+    /// How the configuration was obtained at start-up (primary file, backup, defaults, first run) and
+    /// which values had to be repaired. Null when the configuration was injected.
+    /// </summary>
+    public ConfigLoadResult? LastLoad { get; }
+
+    private void ReportLoadOutcome(ConfigLoadResult result)
     {
-        string basePath;
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Heimdall");
-        }
-        else
-        {
-            basePath = Path.Combine("/etc", "heimdall");
-        }
+        string defect = RecoveryNotice.DefectName(result.Defect);
 
-        if (!Directory.Exists(basePath))
+        switch (result.Origin)
         {
-            try
-            {
-                Directory.CreateDirectory(basePath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not create config directory {Path}. Falling back to local directory.", basePath);
-                basePath = AppContext.BaseDirectory;
-            }
-        }
-
-        return Path.Combine(basePath, "agent.json");
-    }
-
-    private AgentConfig LoadConfig()
-    {
-        lock (_syncLock)
-        {
-            AgentConfig config;
-            if (File.Exists(_configPath))
-            {
-                try
+            case ConfigOrigin.Backup:
+                _logger.LogWarning(
+                    "Configuration file {Path} was {Defect} ({Detail}); restored the last known good copy from {Backup}. Damaged file kept as {Quarantined}.",
+                    _store.Path, defect, result.Detail ?? "no detail", _store.BackupPath, result.QuarantinedCopy ?? "(not kept)");
+                _recoveryJournal?.Record(new RecoveryNotice
                 {
-                    var json = File.ReadAllText(_configPath);
-                    config = JsonSerializer.Deserialize<AgentConfig>(json) ?? new AgentConfig();
-                }
-                catch (Exception ex)
+                    Component = "config",
+                    File = _store.Path,
+                    Defect = defect,
+                    RecoveredFrom = "backup",
+                    Severity = "Warning",
+                    Detail = $"{result.Detail ?? "no detail"}; restored from {Path.GetFileName(_store.BackupPath)}" +
+                             (result.QuarantinedCopy != null ? $"; damaged file kept as {Path.GetFileName(result.QuarantinedCopy)}" : string.Empty)
+                });
+                break;
+
+            case ConfigOrigin.Defaults:
+                _logger.LogCritical(
+                    "Configuration file {Path} was {Defect} ({Detail}) and no usable backup exists. Running with safe defaults: " +
+                    "server public key, certificates and API keys are gone, signed commands are rejected and the extension API is loopback-only " +
+                    "until the configuration is restored. Damaged file kept as {Quarantined}.",
+                    _store.Path, defect, result.Detail ?? "no detail", result.QuarantinedCopy ?? "(not kept)");
+                _recoveryJournal?.Record(new RecoveryNotice
                 {
-                    _logger.LogError(ex, "Error loading config from {Path}", _configPath);
-                    config = new AgentConfig();
-                }
-            }
-            else
+                    Component = "config",
+                    File = _store.Path,
+                    Defect = defect,
+                    RecoveredFrom = "defaults",
+                    Severity = "Critical",
+                    Detail = $"{result.Detail ?? "no detail"}; no usable backup, safe defaults active (trust anchors and credentials reset, commands rejected)" +
+                             (result.QuarantinedCopy != null ? $"; damaged file kept as {Path.GetFileName(result.QuarantinedCopy)}" : string.Empty)
+                });
+                break;
+
+            case ConfigOrigin.FirstRun:
+                _logger.LogInformation("No configuration found; created {Path} with defaults.", _store.Path);
+                break;
+        }
+
+        if (result.Issues.Count > 0)
+        {
+            foreach (var issue in result.Issues)
             {
-                config = new AgentConfig();
-                var envBackendUrl = Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL");
-                if (!string.IsNullOrEmpty(envBackendUrl))
-                {
-                    config.BackendUrl = envBackendUrl;
-                }
-                SaveConfigInternal(config);
+                _logger.LogWarning("Configuration value rejected: {Issue}", issue.ToString());
             }
 
-            var envUrl = Environment.GetEnvironmentVariable("Backend__Url") ?? Environment.GetEnvironmentVariable("BACKEND_URL");
-            if (!string.IsNullOrEmpty(envUrl) && config.BackendUrl == "http://localhost:5001")
+            _recoveryJournal?.Record(new RecoveryNotice
             {
-                config.BackendUrl = envUrl;
-            }
-
-            return config;
+                Component = "config",
+                File = _store.Path,
+                Defect = "invalid",
+                RecoveredFrom = "defaults",
+                Severity = "Warning",
+                Detail = "values outside sane limits: " + string.Join("; ", result.Issues.Select(i => i.ToString()))
+            });
         }
     }
 
     /// <summary>
-    /// Atomically persists the specified configuration to disk.
+    /// Durably and atomically persists the specified configuration to disk and makes it the active
+    /// configuration. If it cannot be written the active configuration is left unchanged.
     /// </summary>
     /// <param name="config">The updated configuration instance.</param>
     public void SaveConfig(AgentConfig config)
@@ -287,21 +356,63 @@ public class ConfigurationService : IConfigurationService
         }
     }
 
-    private void SaveConfigInternal(AgentConfig config)
+    private bool SaveConfigInternal(AgentConfig config)
     {
-        try
+        if (_store.TrySave(config, out var error))
         {
-            var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-            string tmpPath = _configPath + ".tmp." + Guid.NewGuid().ToString("N");
-            File.WriteAllText(tmpPath, json);
-            File.Move(tmpPath, _configPath, overwrite: true);
             _config = config;
+            return true;
         }
-        catch (Exception ex)
+
+        _logger.LogError("Error saving config to {Path}: {Error}", _store.Path, error);
+        return false;
+    }
+
+    /// <summary>
+    /// Applies a change to a copy of the active configuration, validates the result and, only if it
+    /// is acceptable, persists and activates it. The active configuration object is never mutated.
+    /// </summary>
+    /// <returns>True when the change was validated, persisted and activated.</returns>
+    public bool TryUpdate(Action<AgentConfig> change, out IReadOnlyList<ConfigIssue> problems)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        lock (_syncLock)
         {
-            _logger.LogError(ex, "Error saving config to {Path}", _configPath);
+            AgentConfig candidate;
+            try
+            {
+                candidate = Clone(_config);
+                change(candidate);
+            }
+            catch (Exception ex)
+            {
+                problems = new[] { new ConfigIssue("(update)", ex.Message, true) };
+                return false;
+            }
+
+            return TryActivate(candidate, out problems);
         }
     }
+
+    private bool TryActivate(AgentConfig candidate, out IReadOnlyList<ConfigIssue> problems)
+    {
+        problems = AgentConfigValidator.Validate(candidate).Where(i => i.IsError).ToList();
+        if (problems.Count > 0)
+        {
+            return false;
+        }
+
+        if (!SaveConfigInternal(candidate))
+        {
+            problems = new[] { new ConfigIssue("(persistence)", $"could not write {_store.Path}", true) };
+            return false;
+        }
+
+        return true;
+    }
+
+    private static AgentConfig Clone(AgentConfig config) =>
+        JsonSerializer.Deserialize<AgentConfig>(JsonSerializer.Serialize(config)) ?? new AgentConfig();
 
     public bool VerifyCommandSignature(App.Shared.Protos.ServerCommand command)
     {
@@ -379,21 +490,54 @@ public class ConfigurationService : IConfigurationService
             return false;
         }
 
-        try
+        lock (_syncLock)
         {
-            var newConfig = JsonSerializer.Deserialize<AgentConfig>(jsonConfig);
-            if (newConfig != null)
+            AgentConfig candidate;
+            try
             {
-                SaveConfig(newConfig);
-                _logger.LogInformation("Configuration updated and verified via RSA signature.");
-                return true;
+                candidate = MergeOnto(_config, jsonConfig);
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException)
+            {
+                _logger.LogError("Configuration update rejected: payload is not a usable configuration object ({Error}).", ex.Message);
+                return false;
+            }
+
+            if (!TryActivate(candidate, out var problems))
+            {
+                _logger.LogError("Configuration update rejected, active configuration unchanged: {Problems}",
+                    string.Join("; ", problems.Select(p => p.ToString())));
+                return false;
             }
         }
-        catch (Exception ex)
+
+        _logger.LogInformation("Configuration updated and verified via RSA signature.");
+        return true;
+    }
+
+    /// <summary>
+    /// Overlays the properties present in <paramref name="jsonConfig"/> on the active configuration.
+    /// A payload therefore changes exactly what it names: a partial update no longer resets every
+    /// omitted setting (backend URL, server public key, API keys) to its default, and property names
+    /// are matched case-insensitively. To clear a value it has to be sent explicitly as null.
+    /// </summary>
+    internal static AgentConfig MergeOnto(AgentConfig current, string jsonConfig)
+    {
+        var documentOptions = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
+        if (JsonNode.Parse(jsonConfig, documentOptions: documentOptions) is not JsonObject incoming)
         {
-            _logger.LogError(ex, "Error applying new configuration after signature verification.");
+            throw new JsonException("configuration payload must be a JSON object");
         }
 
-        return false;
+        var merged = JsonSerializer.SerializeToNode(current)?.AsObject() ?? new JsonObject();
+        foreach (var property in incoming)
+        {
+            string key = merged.Select(existing => existing.Key)
+                .FirstOrDefault(existing => string.Equals(existing, property.Key, StringComparison.OrdinalIgnoreCase)) ?? property.Key;
+            merged[key] = property.Value?.DeepClone();
+        }
+
+        return merged.Deserialize<AgentConfig>(MergeReadOptions)
+               ?? throw new JsonException("configuration payload deserialized to null");
     }
 }

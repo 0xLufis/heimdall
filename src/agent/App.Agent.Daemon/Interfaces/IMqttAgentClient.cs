@@ -46,4 +46,14 @@ public interface IMqttAgentClient : IAsyncDisposable
     /// Subscribes to the device's command topic: heimdall/devices/{machineIdentifier}/commands.
     /// </summary>
     Task SubscribeToCommandsAsync(string machineIdentifier, Func<ServerCommand, Task> onCommandReceived, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Registers the MQTT Last Will published by the broker when the connection drops without a
+    /// normal DISCONNECT. The payload factory is called on every connect, so each connection carries
+    /// its own will. Applies from the next connect on.
+    /// </summary>
+    void ConfigureLastWill(string topic, Func<byte[]> payloadFactory) { }
+
+    /// <summary>Disconnects with a normal DISCONNECT (the broker discards the last will).</summary>
+    Task DisconnectGracefullyAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

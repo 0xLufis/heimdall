@@ -56,11 +56,94 @@ message TelemetryBatchResponse {
   string message = 3;
 }
 
+// ---------------------------------------------------------------------------------------------
+// AGENT LIFECYCLE / POWER REPORT  (contract "heimdall.lifecycle/1")
+//
+// Carried in the existing AgentEventMessage - no new message, no new field numbers, so stubs
+// generated from this file keep working unchanged.
+//
+//   topic    heimdall/devices/{machine_identifier}/events        QoS 1, not retained,
+//            MQTT 5 user property  x-agent-key = <agent key>     (same as every other publish)
+//   source   "AgentLifecycle"            (any other source is an ordinary agent event)
+//   level    "Info" | "Warning" | "Error" | "Critical"
+//   event_id unique per report; the backend ignores an event_id it already processed for the
+//            device (QoS 1 redelivery, agent retry). Convention: "lifecycle:{sessionId}:{phase}[:{n}]"
+//   message  one human-readable line (shown as-is in the dashboard activity feed)
+//   timestamp  when the reported thing happened (UTC)
+//   payload_json  a JSON object:
+//
+//   {
+//     "schema": "heimdall.lifecycle/1",
+//     "phase":  "started" | "online" | "stopping" | "connection_lost",
+//     "sessionId": "<new GUID per agent process>",
+//     "bootId":    "<opaque id of the current OS boot>",
+//     "agentVersion": "1.0.0",
+//     "processStartedAtUtc": "2026-11-12T01:00:00Z",
+//     "osBootedAtUtc":       "2026-11-11T22:14:03Z",
+//     "atUtc":               "2026-11-12T01:00:05Z",
+//
+//     "stop": {                       // phase = "stopping" only: the agent's last action
+//       "reason":    "os_shutdown" | "os_restart" | "service_stop" | "service_restart" | "agent_fault" | "unknown",
+//       "initiator": "user" | "operator" | "supervisor" | "update" | "system" | "unknown",
+//       "initiatedBy": "PLANT\\jdoe",          // account, when the OS tells (else null)
+//       "planned": true,                        // OS shutdown reason flag, when known (else null)
+//       "signal": "SERVICE_CONTROL_SHUTDOWN",   // what told the agent: SERVICE_CONTROL_STOP|SERVICE_CONTROL_SHUTDOWN|SIGTERM|SIGINT|SIGHUP|SIGQUIT|INTENT|HOST
+//       "detail": "free text"
+//     },
+//
+//     "previous": {                   // phase = "started" only: what happened to the run before this one
+//       "classification": "first_start"            // no earlier run known on this machine
+//                       | "os_shutdown"            // OS shut down / restarted in an orderly way and the agent said goodbye
+//                       | "service_stop"           // agent stopped gracefully, OS kept running (stop or restart of the service)
+//                       | "agent_crash"            // process died with a recorded unhandled exception, OS kept running
+//                       | "agent_killed"           // process died without goodbye and without crash record, OS kept running
+//                       | "unexpected_shutdown"    // no goodbye and the OS has booted since: power loss, hard reset, OS crash/BSOD
+//                       | "os_shutdown_unreported" // no goodbye, OS booted since, but the OS logged an orderly shutdown
+//                       | "unknown",               // the session marker was unreadable
+//       "cause": "os_crash" | "power_loss_or_reset" | null,   // refinement of unexpected_shutdown from OS evidence
+//       "osAction": "shutdown" | "restart" | null,            // for os_shutdown / os_shutdown_unreported, when known
+//       "initiator": "user" | "operator" | "supervisor" | "update" | "system" | "none" | "unknown",
+//       "initiatedBy": "PLANT\\jdoe" | null,
+//       "planned": true | false | null,
+//       "reason": "free text",
+//       "sessionId": "...", "bootId": "...", "agentVersion": "...",
+//       "startedAtUtc": "...", "lastSeenAliveAtUtc": "...", "endedAtUtc": "..." | null,
+//       "cleanShutdown": true, "sameBoot": false, "downtimeSeconds": 412,
+//       "crash": { "exceptionType": "...", "message": "...", "stackHash": "...", "topFrames": ["..."],
+//                  "atUtc": "...", "activity": "what the agent was doing", "agentVersion": "...", "terminating": true } | null,
+//       "evidence": [ { "source": "windows_eventlog" | "linux_journal" | "linux_wtmp" | "windows_registry",
+//                       "kind": "shutdown_initiated" | "unexpected_shutdown" | "kernel_power" | "bugcheck" | "clean_shutdown" | "service_crashed",
+//                       "eventId": 1074, "atUtc": "...", "user": "...", "process": "...", "reason": "...",
+//                       "reasonCode": "0x80020002", "shutdownType": "restart", "planned": true, "comment": "...", "bugcheckCode": "0x0000009f" } ]
+//     },
+//
+//     "recoveries": [ { "component": "config" | "identity" | "spool" | "secure_storage" | ..., "file": "...",
+//                       "defect": "missing" | "empty" | "zero_filled" | "truncated" | "malformed" | "invalid" | "changed",
+//                       "recoveredFrom": "backup" | "defaults" | "hardware" | "persisted" | "regenerated" | "skipped",
+//                       "severity": "Warning" | "Error" | "Critical", "detail": "...", "atUtc": "..." } ]   // phase = "started", optional
+//   }
+//
+// Phases
+//   started          first successful connection of a new agent process; carries "previous" (and "recoveries").
+//   online           the same process reconnected (clears an earlier connection_lost).
+//   stopping         best-effort goodbye on a graceful stop; carries "stop".
+//   connection_lost  registered as the MQTT Last Will at connect (same topic, QoS 1, x-agent-key as will user
+//                    property) and published by the broker when the connection drops without a goodbye.
+//                    It cannot tell agent crash, power loss, OS crash and network outage apart; the next
+//                    "started" report does. A graceful stop disconnects normally, so the will is discarded.
+//
+// A power cut or BSOD can send nothing: the server learns of it from connection_lost and, authoritatively,
+// from "previous.classification" = "unexpected_shutdown" in the next "started" report.
+//
+// Backend: persisted as one agent_events row (source "AgentLifecycle") plus the current state under
+// client_pcs.system_metadata.AgentLifecycle (returned by GET /api/v1/ClientPc). Invalid payloads go to
+// malformed_telemetry_quarantine (channel "MQTT_events_lifecycle").
+// ---------------------------------------------------------------------------------------------
 message AgentEventMessage {
   string machine_identifier = 1;
   string hostname = 2;
   string event_id = 3;
-  string source = 4; // "EtherCAT", "TwinCAT", "OPCUA", "System"
+  string source = 4; // "EtherCAT", "TwinCAT", "OPCUA", "System", "AgentLifecycle" (see contract above)
   string level = 5; // "Critical", "High", "Warning", "Info"
   string message = 6;
   google.protobuf.Timestamp timestamp = 7;

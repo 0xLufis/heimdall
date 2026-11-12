@@ -35,6 +35,7 @@ public class Worker : BackgroundService
     private bool _forceReportRequested = false;
     private string? _forceReportReason = null;
     private readonly AutoResetEvent _wakeUpSignal = new(false);
+    private readonly App.Agent.Daemon.Lifecycle.IAgentLifecycle? _lifecycle;
 
     public IAdsSimulationServer AdsServer => _adsServer;
     public IMinimalOpcServer OpcServer => _opcServer;
@@ -55,8 +56,10 @@ public class Worker : BackgroundService
         ITelemetryTriggerEngine? triggerEngine = null,
         App.Contracts.Configuration.AgentFeatureFlags? featureFlags = null,
         IAdsMemoryReporter? adsMemoryReporter = null,
-        IMqttAgentClient? mqttClient = null)
+        IMqttAgentClient? mqttClient = null,
+        App.Agent.Daemon.Lifecycle.IAgentLifecycle? lifecycle = null)
     {
+        _lifecycle = lifecycle;
         _logger = logger;
         _systemInfoService = systemInfoService;
         _systemInfoReporter = systemInfoReporter;
@@ -80,6 +83,16 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Crash-loop back-off: when the last runs kept dying right after start, do not hammer the
+        // collectors (and whatever made them crash) at full speed again.
+        var backoff = _lifecycle?.StartupBackoff ?? TimeSpan.Zero;
+        if (backoff > TimeSpan.Zero)
+        {
+            App.Agent.Daemon.Lifecycle.AgentActivity.Set("start-up back-off");
+            _logger.LogWarning("Delaying collectors by {Backoff} after repeated abnormal ends of the agent.", backoff);
+            await Task.Delay(backoff, stoppingToken);
+        }
+
         // Start industrial OT simulation services only when development features are enabled
         if (_featureFlags.EnableDevFeatures)
         {
@@ -136,6 +149,7 @@ public class Worker : BackgroundService
         {
             try
             {
+                App.Agent.Daemon.Lifecycle.AgentActivity.Set("collecting system info");
                 var systemInfo = _systemInfoService.GetSystemInfo();
 
                 // Populate Industrial OT telemetry
@@ -187,7 +201,8 @@ public class Worker : BackgroundService
                         systemInfo.Software = new SoftwareInfo();
                     }
 
-                    // Dispatch via gRPC / spooler and process returned commands
+                    // Dispatch via MQTT / spooler and process returned commands
+                    App.Agent.Daemon.Lifecycle.AgentActivity.Set("reporting system info");
                     var response = await _systemInfoReporter.ReportInfoAsync(systemInfo);
 
                     _lastReportedTime = DateTimeOffset.UtcNow;
@@ -208,8 +223,10 @@ public class Worker : BackgroundService
                     // Dispatch ADS PLC Memory telemetry via Protobuf over MQTT
                     if (_adsMemoryReporter != null && _featureFlags.EnableDevFeatures)
                     {
+                        App.Agent.Daemon.Lifecycle.AgentActivity.Set("reporting PLC memory");
                         await _adsMemoryReporter.ReportPlcMemoryAsync(systemInfo.MachineIdentifier, stoppingToken);
                     }
+                    App.Agent.Daemon.Lifecycle.AgentActivity.Set("idle");
                 }
                 else
                 {

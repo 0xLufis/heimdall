@@ -161,7 +161,9 @@ public class DaemonSupervisorService : IHostedService, IDaemonSupervisor, IDispo
             string path = Path.Combine(_dumpDirectory, filename);
 
             string json = JsonSerializer.Serialize(record, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(path, json);
+            // Durable: flushed to disk and renamed into place, so a dump written just before the
+            // process (or the machine) dies is complete or absent, never torn.
+            App.Agent.Daemon.Infrastructure.Persistence.AtomicFile.Write(path, System.Text.Encoding.UTF8.GetBytes(json), keepPreviousAsBackup: false);
 
             _logger.LogError("Generated post-mortem diagnostic dump: {Path} (Reason: {Reason})", path, reason);
         }
