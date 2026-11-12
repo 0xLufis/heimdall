@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, useId } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import type { SearchInstanceConfig, SearchResultItem, AutoTagResult } from '~/types/search'
@@ -8,6 +8,7 @@ import { Search as SearchIcon, X, Command } from 'lucide-vue-next'
 import { useGlobalSearchModal } from '~/composables/useGlobalSearchModal'
 import TagPillList from './TagPillList.vue'
 import AutoTagSuggestionDropdown from './AutoTagSuggestionDropdown.vue'
+import { resolveResultLink } from '~/utils/search/searchNavigation'
 
 const props = withDefaults(
   defineProps<{
@@ -30,6 +31,10 @@ const containerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 const dropdownRef = ref<any>(null)
 const isInteractingWithDropdown = ref(false)
+// Template expressions cannot reach browser globals such as setTimeout, so the release is a method.
+const releaseDropdownInteraction = () => {
+  setTimeout(() => { isInteractingWithDropdown.value = false }, 200)
+}
 const { focusTriggerSignal, isOpen: isGlobalModalOpen } = useGlobalSearchModal()
 
 const {
@@ -45,6 +50,11 @@ const {
   activePendingKey,
   searchKeyGroups,
   isLoading,
+  error,
+  failedSources,
+  recentSearches,
+  rememberSearch,
+  clearRecentSearches,
   effectiveQueryString,
   handleInputChange,
   addTag,
@@ -59,6 +69,10 @@ const {
 
 const isFocused = ref(false)
 const isMenuExplicitlyClosed = ref(false)
+
+// ARIA combobox wiring: the input owns the results listbox rendered by the dropdown
+const listboxId = `heimdall-search-${useId()}`
+const activeOptionId = ref<string | null>(null)
 
 const showDropdown = computed(() => {
   if (isMenuExplicitlyClosed.value || !isFocused.value) return false
@@ -88,26 +102,17 @@ watchDebounced(
   { debounce: props.config?.debounceMs ?? 250 }
 )
 
-const getResultUrl = (item: SearchResultItem): string => {
-  if (item.link) return item.link
-  if (item.itemType === 'ClientPc' || item.itemType === 'endpoint') {
-    return `/dashboard/clients?selected=${encodeURIComponent(item.id)}&hostname=${encodeURIComponent(item.name)}`
-  }
-  if (item.itemType === 'Machine' || item.itemType === 'station') {
-    return `/dashboard/machines?id=${encodeURIComponent(item.id)}&search=${encodeURIComponent(item.name)}`
-  }
-  if (item.itemType === 'Ticket') {
-    return `/dashboard/tickets?ticketId=${encodeURIComponent(item.id)}`
-  }
-  return `/dashboard/inventory/${encodeURIComponent(item.id)}`
+const closeDropdown = () => {
+  isFocused.value = false
+  isMenuExplicitlyClosed.value = true
 }
 
 const handleResultSelectNewTab = (item: SearchResultItem) => {
+  rememberSearch()
   emit('select-result', item)
-  isFocused.value = false
-  isMenuExplicitlyClosed.value = true
+  closeDropdown()
   if (typeof window !== 'undefined') {
-    window.open(getResultUrl(item), '_blank')
+    window.open(resolveResultLink(item), '_blank', 'noopener')
   }
 }
 
@@ -134,8 +139,8 @@ const handleKeydown = (e: KeyboardEvent) => {
     return
   }
 
-  // 3. Telescope Navigate Up: ArrowUp or Ctrl+K
-  if (e.key === 'ArrowUp' || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
+  // 3. Navigate Up: ArrowUp (Ctrl+K is the global "open search" shortcut and must not double as navigation)
+  if (e.key === 'ArrowUp') {
     e.preventDefault()
     if (showDropdown.value) {
       dropdownRef.value?.navigatePrev()
@@ -150,18 +155,19 @@ const handleKeydown = (e: KeyboardEvent) => {
     return
   }
 
-  // 5. Telescope Open in New Tab: Ctrl+V or Ctrl+X
-  if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'x')) {
+  // 5. Open in new tab: Ctrl/Cmd+Enter (clipboard shortcuts stay untouched)
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
     const selected = dropdownRef.value?.getSelectedResult()
     if (showDropdown.value && selected) {
       e.preventDefault()
       handleResultSelectNewTab(selected)
-      return
     }
+    return
   }
 
-  // 6. Tab: Complete top suggestion or cycle category tabs
-  if (e.key === 'Tab' && showDropdown.value) {
+  // 6. Tab: complete the top suggestion; with nothing to complete, Tab keeps its native
+  //    behaviour so keyboard users can leave the field.
+  if (e.key === 'Tab' && !e.shiftKey && showDropdown.value) {
     if (activePendingKey.value && valueSuggestions.value.length > 0) {
       e.preventDefault()
       selectValueSuggestion(valueSuggestions.value[0].value)
@@ -173,14 +179,10 @@ const handleKeydown = (e: KeyboardEvent) => {
       rawInput.value = ''
       isMenuExplicitlyClosed.value = false
       return
-    } else if (matchingKeys.value.length > 0 && !activePendingKey.value) {
+    } else if (rawInput.value.trim().length > 0 && matchingKeys.value.length > 0 && !activePendingKey.value) {
       e.preventDefault()
       selectKeySuggestion(matchingKeys.value[0].key)
       inputRef.value?.focus()
-      return
-    } else {
-      e.preventDefault()
-      dropdownRef.value?.cycleView(e.shiftKey ? -1 : 1)
       return
     }
   }
@@ -188,19 +190,24 @@ const handleKeydown = (e: KeyboardEvent) => {
   // 7. Enter: Activate selected result or execute search
   if (e.key === 'Enter') {
     e.preventDefault()
+    // A pending `key:` completion is what the user is typing right now: it wins over
+    // results that are still listed from the previous query.
+    if (activePendingKey.value && valueSuggestions.value.length > 0) {
+      selectValueSuggestion(valueSuggestions.value[0].value)
+      emit('search', effectiveQueryString.value)
+      return
+    }
     const selected = dropdownRef.value?.getSelectedResult()
     if (showDropdown.value && selected) {
       handleResultSelect(selected)
       return
     }
-    if (activePendingKey.value && valueSuggestions.value.length > 0) {
-      selectValueSuggestion(valueSuggestions.value[0].value)
-      emit('search', effectiveQueryString.value)
-    } else if (autoSuggestions.value.length > 0) {
+    if (autoSuggestions.value.length > 0) {
       addTag(autoSuggestions.value[0].tag)
       rawInput.value = ''
       isMenuExplicitlyClosed.value = false
     } else {
+      rememberSearch()
       executeSearch()
       emit('search', effectiveQueryString.value)
       emit('submit', effectiveQueryString.value)
@@ -225,20 +232,17 @@ const handleTagSuggestionSelect = (suggestion: AutoTagResult) => {
 }
 
 const handleResultSelect = (item: SearchResultItem) => {
+  rememberSearch()
   emit('select-result', item)
-  isFocused.value = false
-  isMenuExplicitlyClosed.value = true
-  if (item.link) {
-    router.push(item.link)
-  } else if (item.itemType === 'ClientPc' || item.itemType === 'endpoint') {
-    router.push({ path: '/dashboard/clients', query: { selected: item.id, hostname: item.name } })
-  } else if (item.itemType === 'Machine' || item.itemType === 'station') {
-    router.push({ path: '/dashboard/machines', query: { id: item.id, search: item.name } })
-  } else if (item.itemType === 'Ticket') {
-    router.push({ path: '/dashboard/tickets', query: { ticketId: item.id } })
-  } else {
-    router.push(`/dashboard/inventory/${item.id}`)
-  }
+  closeDropdown()
+  router.push(resolveResultLink(item))
+}
+
+const handleRecentSelect = (query: string) => {
+  rawInput.value = query
+  isMenuExplicitlyClosed.value = false
+  isFocused.value = true
+  inputRef.value?.focus()
 }
 
 const handleKeySelect = (key: string) => {
@@ -387,6 +391,15 @@ onUnmounted(() => {
         ref="inputRef"
         v-model="rawInput"
         type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-haspopup="listbox"
+        :aria-expanded="showDropdown"
+        :aria-controls="listboxId"
+        :aria-activedescendant="showDropdown && activeOptionId ? activeOptionId : undefined"
+        :aria-label="props.config?.placeholder || 'Search'"
+        autocomplete="off"
+        spellcheck="false"
         :placeholder="tags.length === 0 ? (props.config?.placeholder || 'OmniSearch: Search everything (e.g. Siemens, OP10, 15kW)...') : 'Type to add more filters...'"
         class="flex-1 min-w-[160px] bg-transparent border-0 text-sm font-semibold text-foreground placeholder:text-muted-foreground placeholder:font-normal focus:outline-none focus:ring-0 py-1"
         @input="isMenuExplicitlyClosed = false; handleInputChange(($event.target as HTMLInputElement).value)"
@@ -403,6 +416,7 @@ onUnmounted(() => {
           @click.stop="handleClear"
           class="p-1 text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
           title="Clear search"
+          aria-label="Clear search"
         >
           <X class="w-4 h-4" />
         </button>
@@ -423,9 +437,9 @@ onUnmounted(() => {
       v-if="showDropdown"
       class="absolute left-0 right-0 top-full mt-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
       @mousedown="isInteractingWithDropdown = true"
-      @mouseup="setTimeout(() => { isInteractingWithDropdown = false }, 200)"
+      @mouseup="releaseDropdownInteraction"
       @touchstart="isInteractingWithDropdown = true"
-      @touchend="setTimeout(() => { isInteractingWithDropdown = false }, 200)"
+      @touchend="releaseDropdownInteraction"
     >
       <AutoTagSuggestionDropdown
         ref="dropdownRef"
@@ -441,6 +455,14 @@ onUnmounted(() => {
         :is-loading="isLoading"
         :free-text="freeText"
         :instance-id="props.config?.instanceId || 'global'"
+        :error="error"
+        :failed-sources="failedSources"
+        :recent-searches="recentSearches"
+        :listbox-id="listboxId"
+        @active-change="activeOptionId = $event"
+        @select-recent="handleRecentSelect"
+        @clear-recent="clearRecentSearches"
+        @retry="executeSearch()"
         @select-tag="handleTagSuggestionSelect"
         @select-result="handleResultSelect"
         @select-key="handleKeySelect"

@@ -57,7 +57,13 @@ const liveTelemetry = ref<any>({
 })
 import { useTelemetryStream } from '~/composables/useTelemetryStream'
 
-const stream = useTelemetryStream({ targetMachineId: machineId.value })
+// The route id may be the machine id or its identifier; follow whichever the backend publishes under.
+const stream = useTelemetryStream({
+  target: () => ({
+    stationId: machineData.value?.id || machineId.value,
+    handle: machineData.value?.pinnedObjectHandle || machineData.value?.customIdentifier || machineId.value
+  })
+})
 
 watch(() => stream.latestValues.value, (newVals) => {
   if (newVals) {

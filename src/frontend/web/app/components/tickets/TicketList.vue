@@ -576,6 +576,7 @@ const processedTickets = computed(() => {
             <TableRow 
               v-for="tkt in processedTickets" 
               :key="tkt.id"
+              v-ctx:ticket="tkt"
               class="border-b border-border hover:bg-muted/50 transition-colors group cursor-pointer"
               :class="getRowAndonBorderClass(tkt)"
               @click="emit('selectTicket', tkt)"

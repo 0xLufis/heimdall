@@ -322,7 +322,7 @@ const getSeverityClass = (sev: AlertSeverity) => {
           <span class="text-xs text-muted-foreground">/ {{ rules.length }} enabled</span>
         </div>
         <div class="text-[11px] text-muted-foreground flex items-center gap-1">
-          <span>Covers Jitter, Thermal, Vib & Fieldbus</span>
+          <span>Rule definitions; edits are not saved</span>
         </div>
       </Card>
 
@@ -355,14 +355,14 @@ const getSeverityClass = (sev: AlertSeverity) => {
           <Activity class="w-4 h-4 text-teal-600 dark:text-teal-400" />
         </div>
         <div class="flex items-baseline gap-3 my-3">
-          <span class="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-            <span class="size-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
-            ACTIVE EVALUATION
+          <span class="text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <span class="size-2 rounded-full bg-zinc-500"></span>
+            Not connected to live telemetry
           </span>
         </div>
-        <div class="text-[11px] text-muted-foreground font-mono flex items-center gap-1">
-          <Clock class="w-3 h-3" />
-          <span>Last sweep: {{ new Date(lastEvaluationTime).toLocaleTimeString() }}</span>
+        <div class="text-[11px] text-muted-foreground flex items-center gap-1">
+          <Clock class="w-3 h-3 shrink-0" />
+          <span>Rules live in this browser session and run only from the trigger sandbox.</span>
         </div>
       </Card>
     </div>
@@ -456,7 +456,7 @@ const getSeverityClass = (sev: AlertSeverity) => {
         class="p-12 text-center rounded-2xl bg-muted/20 border border-border text-muted-foreground space-y-2">
         <CheckCircle2 class="w-10 h-10 text-emerald-600 dark:text-emerald-400 mx-auto" />
         <h4 class="text-sm font-semibold text-foreground">No Alerts In Current View</h4>
-        <p class="text-xs">All monitored industrial parameters are operating strictly within nominal bounds.</p>
+        <p class="text-xs">No rule evaluation has produced an alert in this browser session. Rules are not evaluated against live telemetry.</p>
       </div>
 
       <div v-else class="grid grid-cols-1 gap-3">

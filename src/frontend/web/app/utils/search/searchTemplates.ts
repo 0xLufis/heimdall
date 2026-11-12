@@ -1,4 +1,5 @@
 import type { SearchResultItem, TagPill } from '~/types/search'
+import { buildEntityLink } from './searchNavigation'
 
 export interface SearchTemplateDef<T = any> {
   name: string
@@ -34,7 +35,7 @@ export const machineTemplate: SearchTemplateDef = {
       status: raw.status || (raw.isOnline !== undefined ? (raw.isOnline ? 'online' : 'offline') : 'online'),
       sourceTable: 'machines',
       isCrossTable: false,
-      link: raw.id ? `/dashboard/machines?id=${raw.id}` : '/dashboard/machines',
+      link: buildEntityLink('machine', raw.id, name),
       metadata: raw.metadata || {}
     }
   },
@@ -44,6 +45,17 @@ export const machineTemplate: SearchTemplateDef = {
     status: raw.status || (raw.isOnline !== undefined ? (raw.isOnline ? 'online' : 'offline') : undefined),
     tech: raw.technology || raw.tech
   })
+}
+
+/** A controller counts as online when it reported within the last 5 minutes (same rule as useControllers). */
+const ONLINE_WINDOW_MS = 5 * 60 * 1000
+function endpointStatus(raw: any): 'online' | 'offline' {
+  if (typeof raw.isOnline === 'boolean') return raw.isOnline ? 'online' : 'offline'
+  if (typeof raw.telemetry?.isOnline === 'boolean') return raw.telemetry.isOnline ? 'online' : 'offline'
+  const stamp = raw.lastOnline || raw.lastSeen || raw.last_online
+  if (!stamp) return 'offline'
+  const at = new Date(stamp).getTime()
+  return Number.isFinite(at) && Date.now() - at < ONLINE_WINDOW_MS ? 'online' : 'offline'
 }
 
 /**
@@ -67,8 +79,7 @@ export const endpointTemplate: SearchTemplateDef = {
   extractSearchItem: (raw: any): SearchResultItem => {
     const hostname = raw.hostname || raw.name || 'Node'
     const mac = raw.macAddress || raw.mac_address || 'N/A'
-    const ip = raw.ipAddress || (raw.telemetry?.ipAddress) || 'DHCP'
-    const isOnline = raw.lastSeen || raw.last_online || raw.isOnline
+    const ip = raw.ipAddress || raw.telemetry?.ipAddress || raw.systemMetadata?.IPAddress || 'DHCP'
 
     return {
       id: raw.id || raw.machineIdentifier || raw.machine_identifier || raw.hostname || 'node-unknown',
@@ -77,17 +88,17 @@ export const endpointTemplate: SearchTemplateDef = {
       itemType: 'ClientPc',
       typeLabel: raw.controllerType || 'Industrial PC',
       subtitle: `IP: ${ip} • MAC: ${mac}`,
-      status: isOnline ? 'online' : 'offline',
+      status: endpointStatus(raw),
       sourceTable: 'nodes',
       isCrossTable: false,
-      link: '/dashboard/clients',
+      link: buildEntityLink('controller', raw.id, hostname),
       metadata: raw.metadata || raw.systemMetadata || {}
     }
   },
   extractKvFields: (raw: any) => ({
     ip: raw.ipAddress || raw.telemetry?.ipAddress,
     mac: raw.macAddress || raw.mac_address,
-    status: raw.lastSeen || raw.last_online || raw.isOnline ? 'online' : 'offline',
+    status: endpointStatus(raw),
     station: raw.machineIdentifier || raw.machine_identifier
   })
 }
@@ -132,7 +143,7 @@ export const inventoryTemplate: SearchTemplateDef = {
       status: raw.equipmentStatus || raw.status || (raw.isOnline !== undefined ? (raw.isOnline ? 'online' : 'offline') : undefined),
       sourceTable: 'inventory',
       isCrossTable: false,
-      link: raw.id ? `/dashboard/inventory/${raw.id}` : '/dashboard/inventory',
+      link: buildEntityLink('inventory', raw.id),
       metadata: raw.metadata || {}
     }
   },
@@ -169,7 +180,7 @@ export const userTemplate: SearchTemplateDef = {
       status: 'online',
       sourceTable: 'users',
       isCrossTable: false,
-      link: '/dashboard/settings',
+      link: buildEntityLink('user', raw.id),
       metadata: { email: raw.email, department: raw.department, role: raw.role }
     }
   },

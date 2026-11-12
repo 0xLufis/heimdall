@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import InteractiveMapCanvas from '~/components/map/InteractiveMapCanvas.vue'
 import MapPinningDialog from '~/components/dashboard/MapPinningDialog.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -9,10 +9,12 @@ import { MonitorIcon, MapPinIcon, Cpu, Layers, ChevronDown, Map as MapIcon } fro
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { useStations } from '~/composables/useStations'
 import { useControllers } from '~/composables/useControllers'
-import { useGlobalContextMenu, type ContextMenuContextData } from '~/composables/useGlobalContextMenu'
+import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
+import type { ContextMenuContextData } from '~/types/contextMenu'
 import { useMaintenance } from '~/composables/useMaintenance'
 import { useStationTelemetry, type StationTelemetryKpi } from '~/composables/useStationTelemetry'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
+import { queryText, resolveMapFocus } from '~/utils/deepLinkQueries'
 import { Activity, Flame, Gauge, Clock, ChevronRight, AlertTriangle, CheckCircle2, Radio, Zap } from 'lucide-vue-next'
 
 definePageMeta({
@@ -20,6 +22,7 @@ definePageMeta({
 })
 
 const router = useRouter()
+const route = useRoute()
 const { stations, fetchStations, updateStationPin } = useStations()
 const { controllers, fetchControllers, updateControllerPin } = useControllers()
 const { openContextMenu } = useGlobalContextMenu()
@@ -208,10 +211,10 @@ const handlePinUpdate = async (type: 'machine' | 'client' | 'lateral', targetId:
   }
 }
 
-const handleObjectContextMenu = (handle: string, blockName: string, e: MouseEvent) => {
+const handleObjectContextMenu = (handle: string, blockName: string, e: MouseEvent, scrollSidebar = true) => {
   activePin.value = handle
   activeBlockName.value = blockName
-  scrollToAsset(handle)
+  if (scrollSidebar) scrollToAsset(handle)
 
   const station = stations.value.find(s => s.pinnedObjectHandle === handle || s.name === handle || s.customIdentifier === handle)
   const controller = controllers.value.find(c => c.pinnedObjectHandle === handle || c.hostname === handle || c.name === handle)
@@ -278,7 +281,9 @@ const handleMapContextMenu = (e: MouseEvent) => {
 }
 
 const handlePinnedAssetContextMenu = (asset: any, e: MouseEvent) => {
-  handleObjectContextMenu(asset.handle, asset.name, e)
+  // The right-clicked row is on screen already; scrolling the list would move it from under the menu.
+  selectedAssetId.value = asset.id
+  handleObjectContextMenu(asset.handle, asset.name, e, false)
 }
 
 const pinnedAssets = computed(() => {
@@ -318,6 +323,39 @@ const activePinType = computed(() => {
   const type = pinnedAssets.value.find(a => a.handle === activePin.value)?.type
   return type === 'Client PC' ? 'client' : 'machine'
 })
+
+// ── Deep link: ?stationId=<handle> (telemetry hub, context menu) ──────────────
+// Selects the station on the plan and in the anchor list. The value is put on the map once per
+// request; when the directories arrive later it is upgraded to the pinned asset, unless the user
+// has selected something else in the meantime.
+const focusRequest = computed(() => queryText(route?.query?.stationId))
+let focusShown = ''
+let focusResolved = ''
+
+const applyFocusRequest = () => {
+  const wanted = focusRequest.value
+  if (!wanted) {
+    focusShown = ''
+    focusResolved = ''
+    return
+  }
+  if (focusResolved === wanted) return
+  const target = resolveMapFocus(wanted, stations.value, controllers.value)
+  if (!target) return
+  const isFirst = focusShown !== wanted
+  const untouched = activePin.value === wanted || activePin.value === target.handle
+  if (isFirst || (target.resolved && untouched)) {
+    focusShown = wanted
+    activePin.value = target.handle
+    activeBlockName.value = target.name || null
+  }
+  if (target.resolved) {
+    focusResolved = wanted
+    if (isFirst || untouched) scrollToAsset(target.handle)
+  }
+}
+
+watch([focusRequest, stations, controllers], applyFocusRequest, { immediate: true })
 
 onMounted(() => {
   if (stations.value.length === 0) fetchStations()
@@ -614,7 +652,7 @@ onMounted(() => {
                 :data-handle="asset.handle"
                 :ref="(el) => setAssetItemRef(asset.id, el)"
                 @click="selectAsset(asset)"
-                @contextmenu.prevent="handlePinnedAssetContextMenu(asset, $event)"
+                @contextmenu="handlePinnedAssetContextMenu(asset, $event)"
                 :class="(activePin === asset.handle || selectedAssetId === asset.id) ? 'bg-muted border-l-2 border-l-indigo-600 ring-1 ring-indigo-500/20' : 'hover:bg-muted/50'"
                 class="p-4 transition-all cursor-pointer group"
               >

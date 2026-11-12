@@ -113,6 +113,7 @@ function getStatusBadge(status: string) {
       <div
         v-for="tkt in dedicatedTickets"
         :key="tkt.id"
+        v-ctx:ticket="tkt"
         role="button"
         tabindex="0"
         @click="emit('selectTicket', tkt)"

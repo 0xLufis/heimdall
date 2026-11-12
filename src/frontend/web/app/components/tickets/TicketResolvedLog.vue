@@ -196,6 +196,7 @@ function sortIcon(key: SortKey) {
           <tr
             v-for="ticket in sortedTickets"
             :key="ticket.id"
+            v-ctx:ticket="ticket"
             class="border-b border-border hover:bg-muted/50 cursor-pointer transition-colors group"
             @click="openDrawer(ticket)"
           >

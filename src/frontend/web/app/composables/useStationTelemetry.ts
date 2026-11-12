@@ -31,6 +31,13 @@ export interface StationTelemetryKpi {
   targetCycleTimeSeconds: number | null
   totalPartsProduced: number | null
   scrapParts: number | null
+  // Last reported machine dynamics (REST snapshot only; live values arrive as oscillation samples).
+  vibrationMmS: number | null
+  spindleRpm: number | null
+  cycleTimeMs: number | null
+  powerKw: number | null
+  temperatureC: number | null
+  frequencyHz: number | null
   /** UNKNOWN: no telemetry-reported state. */
   operationalStatus: 'RUNNING' | 'IDLE' | 'WARNING' | 'FAULTED' | 'MAINTENANCE' | 'UNKNOWN'
   activeTicketCount: number
@@ -135,6 +142,12 @@ export function normalizeStationKpi(raw: unknown, previous?: StationTelemetryKpi
     targetCycleTimeSeconds: toNumber(r.targetCycleTimeSeconds, p?.targetCycleTimeSeconds ?? null),
     totalPartsProduced: toNumber(r.totalPartsProduced, p?.totalPartsProduced ?? null),
     scrapParts: toNumber(r.scrapParts, p?.scrapParts ?? null),
+    vibrationMmS: toNumber(r.vibrationMmS, p?.vibrationMmS ?? null),
+    spindleRpm: toNumber(r.spindleRpm, p?.spindleRpm ?? null),
+    cycleTimeMs: toNumber(r.cycleTimeMs, p?.cycleTimeMs ?? null),
+    powerKw: toNumber(r.powerKw, p?.powerKw ?? null),
+    temperatureC: toNumber(r.temperatureC, p?.temperatureC ?? null),
+    frequencyHz: toNumber(r.frequencyHz, p?.frequencyHz ?? null),
     operationalStatus,
     activeTicketCount: toNumber(r.activeTicketCount, p?.activeTicketCount ?? 0),
     criticalTicketCount: toNumber(r.criticalTicketCount, p?.criticalTicketCount ?? 0),

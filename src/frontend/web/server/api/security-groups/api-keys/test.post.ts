@@ -1,7 +1,9 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { validateAutomationApiKey } from '../../../utils/automationApiKeysStore'
+import { requirePolicy } from '../../../utils/authz'
 
 export default defineEventHandler(async (event) => {
+  await requirePolicy(event, 'ItAdministration')
   const body = await readBody(event)
   const rawKey = body?.rawKey || body?.apiKey
 

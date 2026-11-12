@@ -1,7 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, type Component } from 'vue'
 import { useRouter } from 'vue-router'
-import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
+import {
+  useGlobalContextMenu,
+  installContextMenuDelegation,
+  isInsideContextMenu
+} from '~/composables/useGlobalContextMenu'
+import {
+  buildContextMenuActions,
+  contextBadge,
+  contextCopyValue,
+  contextDisplayName
+} from '~/utils/contextMenuActions'
+import type { ContextMenuAction, ContextMenuActionKey } from '~/types/contextMenu'
 import {
   Factory,
   Monitor,
@@ -19,237 +30,335 @@ import {
   ArrowUpRight,
   Archive,
   Download,
-  Share2
+  MapPin,
+  Eye,
+  AlertCircle
 } from 'lucide-vue-next'
 
 const router = useRouter()
-const { isOpen, x, y, contextData, isNativeMenuBypassed, closeContextMenu, unlockNativeMenu } = useGlobalContextMenu()
+const {
+  isOpen,
+  x,
+  y,
+  contextData,
+  anchorEl,
+  openSequence,
+  closeContextMenu,
+  repositionContextMenu,
+  unlockNativeMenu
+} = useGlobalContextMenu()
 
-const isCopied = ref(false)
-const showNativeUnlockNotice = ref(false)
-const focusedIndex = ref(0)
+type UtilityKey = 'copy' | 'export' | 'native'
+type MenuRow =
+  | { kind: 'action'; id: string; action: ContextMenuAction }
+  | { kind: 'utility'; id: string; utility: UtilityKey }
+  | { kind: 'divider'; id: string }
+
+/** Icon and hover accent of each navigation entry (the rules live in utils/contextMenuActions). */
+const ACTION_VIEW: Record<ContextMenuActionKey, { icon: Component; accent: string }> = {
+  open: { icon: Eye, accent: 'group-hover:text-primary' },
+  machine: { icon: Factory, accent: 'group-hover:text-amber-400' },
+  controller: { icon: Monitor, accent: 'group-hover:text-sky-400' },
+  'new-tab': { icon: ExternalLink, accent: 'group-hover:text-primary' },
+  'owner-team': { icon: Users, accent: 'group-hover:text-emerald-400' },
+  'owner-person': { icon: UserCheck, accent: 'group-hover:text-teal-400' },
+  map: { icon: MapPin, accent: 'group-hover:text-cyan-400' },
+  tickets: { icon: Wrench, accent: 'group-hover:text-orange-400' },
+  'create-ticket': { icon: PlusCircle, accent: 'group-hover:text-emerald-400' },
+  telemetry: { icon: Activity, accent: 'group-hover:text-indigo-400' },
+  'component-tree': { icon: FolderTree, accent: 'group-hover:text-purple-400' },
+  decommission: { icon: Archive, accent: 'group-hover:text-rose-300' }
+}
+
+const ITEM_CLASS = 'w-full px-3 py-2 sm:py-1.5 flex items-center justify-between gap-2 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden data-[active=true]:bg-zinc-800/90 data-[active=true]:text-white'
+const DANGER_ITEM_CLASS = 'w-full px-3 py-2 sm:py-1.5 flex items-center justify-between gap-2 text-left text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors group cursor-pointer focus:bg-rose-500/15 focus:outline-hidden data-[active=true]:bg-rose-500/15 data-[active=true]:text-rose-300'
+
 const menuContainerRef = ref<HTMLElement | null>(null)
+const showNativeUnlockNotice = ref(false)
+/** Keyboard-highlighted entry (index into `focusableRows`); -1 until an arrow key is pressed. */
+const activeIndex = ref(-1)
+const feedback = ref<{ utility: UtilityKey; ok: boolean } | null>(null)
+let feedbackTimer: ReturnType<typeof setTimeout> | null = null
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+let focusBeforeMenu: HTMLElement | null = null
 
-watch(isOpen, (open) => {
-  if (open) {
-    focusedIndex.value = 0
-  }
+const currentPath = computed(() => router?.currentRoute?.value?.path || '')
+const displayName = computed(() => contextDisplayName(contextData.value))
+const entityBadge = computed(() => contextBadge(contextData.value))
+const actions = computed(() => buildContextMenuActions(contextData.value, { currentPath: currentPath.value }))
+
+/** Navigation entries, then station work + destructive entries, then the always-present utilities. */
+const rows = computed<MenuRow[]>(() => {
+  const list: MenuRow[] = []
+  const navigate = actions.value.filter(a => a.group === 'navigate')
+  const work = actions.value.filter(a => a.group !== 'navigate')
+  for (const action of navigate) list.push({ kind: 'action', id: `action:${action.key}`, action })
+  if (navigate.length > 0 && work.length > 0) list.push({ kind: 'divider', id: 'divider:work' })
+  for (const action of work) list.push({ kind: 'action', id: `action:${action.key}`, action })
+  if (actions.value.length > 0) list.push({ kind: 'divider', id: 'divider:utilities' })
+  list.push({ kind: 'utility', id: 'utility:copy', utility: 'copy' })
+  list.push({ kind: 'utility', id: 'utility:export', utility: 'export' })
+  list.push({ kind: 'utility', id: 'utility:native', utility: 'native' })
+  return list
 })
 
-const decommissionMachineFromMenu = () => {
-  const mId = contextData.value?.machineId || contextData.value?.entityId
+const focusableRows = computed(() => rows.value.filter(row => row.kind !== 'divider'))
+const activeRowId = computed(() => focusableRows.value[activeIndex.value]?.id ?? null)
+
+const clearFeedback = () => {
+  if (feedbackTimer) {
+    clearTimeout(feedbackTimer)
+    feedbackTimer = null
+  }
+  feedback.value = null
+}
+
+// ── Navigation entries ──────────────────────────────────────────────────────
+const runAction = (action: ContextMenuAction) => {
   closeContextMenu()
-  if (mId) {
-    router.push({ path: '/dashboard/machines', query: { decommission: mId } })
+  if (action.newTab) {
+    if (typeof window !== 'undefined') window.open(action.route, '_blank', 'noopener')
+    return
+  }
+  // A rejected navigation (guard, duplicate) must not surface as an unhandled rejection.
+  Promise.resolve(router?.push(action.route)).catch(() => {})
+}
+
+// ── Utilities ───────────────────────────────────────────────────────────────
+const writeClipboard = async (value: string): Promise<boolean> => {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+      return true
+    }
+  } catch {
+    // Permission denied or insecure origin: try the legacy path below.
+  }
+  try {
+    const area = document.createElement('textarea')
+    area.value = value
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.top = '0'
+    area.style.left = '0'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    const copied = document.execCommand('copy')
+    area.remove()
+    return copied
+  } catch {
+    return false
   }
 }
 
-const displayName = computed(() => {
-  if (!contextData.value) return 'Entity'
-  return contextData.value.entityName || contextData.value.machineName || contextData.value.controllerHostname || contextData.value.handle || 'Selected Asset'
-})
-
-const entityBadge = computed(() => {
-  if (!contextData.value?.entityType) return 'ASSET'
-  switch (contextData.value.entityType) {
-    case 'map-node': return 'CAD NODE'
-    case 'machine': return 'MACHINE'
-    case 'controller': return 'CONTROLLER'
-    case 'ticket': return 'TICKET'
-    default: return 'ASSET'
-  }
-})
-
-const navigateToMachine = () => {
-  const id = contextData.value?.machineId || (contextData.value?.entityType === 'machine' ? contextData.value?.entityId : null)
-  const name = contextData.value?.machineName || (contextData.value?.entityType === 'machine' ? contextData.value?.entityName : null)
-  closeContextMenu()
-  if (id) {
-    router.push({ path: '/dashboard/machines', query: { id } })
-  } else if (name) {
-    router.push({ path: '/dashboard/machines', query: { search: name } })
-  } else {
-    router.push('/dashboard/machines')
-  }
+/** Shows the result on the entry itself, then closes the menu (it stays open on failure). */
+const reportClipboard = (utility: UtilityKey, ok: boolean) => {
+  clearFeedback()
+  feedback.value = { utility, ok }
+  feedbackTimer = setTimeout(() => {
+    feedbackTimer = null
+    feedback.value = null
+    if (ok) closeContextMenu()
+  }, ok ? 1200 : 2000)
 }
 
-const navigateToNode = () => {
-  const ctrlId = contextData.value?.controllerId || (contextData.value?.entityType === 'controller' ? contextData.value?.entityId : null)
-  const hostname = contextData.value?.controllerHostname
-  closeContextMenu()
-  if (ctrlId) {
-    router.push({ path: '/dashboard/clients', query: { selected: ctrlId, hostname } })
-  } else {
-    router.push('/dashboard/clients')
-  }
-}
-
-const navigateToOwnerTeam = () => {
-  const teamName = contextData.value?.ownerTeam?.name
-  closeContextMenu()
-  if (teamName) {
-    router.push({ path: '/dashboard/tickets', query: { team: teamName } })
-  }
-}
-
-const navigateToOwnerPerson = () => {
-  const personName = contextData.value?.ownerPerson?.name
-  closeContextMenu()
-  if (personName) {
-    router.push({ path: '/dashboard/tickets', query: { technician: personName } })
-  }
-}
-
-const navigateToTickets = (create: boolean = false) => {
-  const stationId = contextData.value?.machineId || contextData.value?.entityId
-  closeContextMenu()
-  if (create) {
-    router.push({ path: '/dashboard/tickets', query: { create: 'true', stationId: stationId || undefined } })
-  } else if (stationId) {
-    router.push({ path: '/dashboard/tickets', query: { stationId } })
-  } else {
-    router.push('/dashboard/tickets')
-  }
-}
-
-const navigateToTelemetry = () => {
-  const ctrlId = contextData.value?.controllerId || (contextData.value?.entityType === 'controller' ? contextData.value?.entityId : null)
-  closeContextMenu()
-  if (ctrlId) {
-    router.push({ path: '/dashboard/telemetry', query: { controllerId: ctrlId } })
-  } else {
-    router.push('/dashboard/telemetry')
-  }
-}
-
-const navigateToComponentTree = () => {
-  const stationId = contextData.value?.machineId || contextData.value?.entityId
-  closeContextMenu()
-  if (stationId) {
-    router.push({ path: '/dashboard/machines', query: { tree: stationId } })
-  }
-}
-
-const openInNewTab = () => {
-  let url = '/dashboard'
-  if (contextData.value?.entityType === 'machine' || contextData.value?.machineId) {
-    url = `/dashboard/machines?id=${encodeURIComponent(contextData.value.machineId || contextData.value.entityId || '')}`
-  } else if (contextData.value?.entityType === 'controller' || contextData.value?.controllerId) {
-    url = `/dashboard/clients?selected=${encodeURIComponent(contextData.value.controllerId || contextData.value.entityId || '')}`
-  } else if (contextData.value?.entityType === 'ticket') {
-    url = `/dashboard/tickets?ticketId=${encodeURIComponent(contextData.value.entityId || '')}`
-  }
-  closeContextMenu()
-  if (typeof window !== 'undefined') {
-    window.open(url, '_blank')
-  }
+const handleCopyHandle = async () => {
+  const value = contextCopyValue(contextData.value) || displayName.value
+  if (!value) return
+  reportClipboard('copy', await writeClipboard(value))
 }
 
 const exportEntityData = async () => {
   const data = { ...contextData.value, exportedAt: new Date().toISOString() }
-  const jsonStr = JSON.stringify(data, null, 2)
+  let json: string
   try {
-    await navigator.clipboard.writeText(jsonStr)
-    isCopied.value = true
-    setTimeout(() => {
-      isCopied.value = false
-      closeContextMenu()
-    }, 1000)
+    json = JSON.stringify(data, null, 2)
   } catch {
-    closeContextMenu()
+    // `raw` may hold circular component state: export the identifying fields only.
+    const { raw: _raw, ...plain } = data
+    json = JSON.stringify(plain, null, 2)
   }
-}
-
-const handleCopyHandle = async () => {
-  const text = contextData.value?.handle || contextData.value?.entityId || displayName.value
-  if (!text) return
-  try {
-    await navigator.clipboard.writeText(text)
-    isCopied.value = true
-    setTimeout(() => {
-      isCopied.value = false
-      closeContextMenu()
-    }, 1200)
-  } catch {
-    // Ignore clipboard rejection
-  }
+  reportClipboard('export', await writeClipboard(json))
 }
 
 const handleUnlockNative = () => {
   unlockNativeMenu()
   showNativeUnlockNotice.value = true
-  setTimeout(() => {
+  if (noticeTimer) clearTimeout(noticeTimer)
+  noticeTimer = setTimeout(() => {
+    noticeTimer = null
     showNativeUnlockNotice.value = false
   }, 4000)
 }
 
-const getVisibleMenuItems = (): HTMLElement[] => {
-  if (!menuContainerRef.value) return []
-  return Array.from(menuContainerRef.value.querySelectorAll('[data-context-item]')) as HTMLElement[]
+const runUtility = (utility: UtilityKey) => {
+  if (utility === 'copy') return handleCopyHandle()
+  if (utility === 'export') return exportEntityData()
+  return handleUnlockNative()
 }
 
+const activateRow = (row: MenuRow | undefined) => {
+  if (!row) return
+  if (row.kind === 'action') runAction(row.action)
+  else if (row.kind === 'utility') runUtility(row.utility)
+}
+
+const utilityLabel = (utility: UtilityKey) => {
+  const state = feedback.value?.utility === utility ? feedback.value : null
+  if (state && !state.ok) return 'Clipboard unavailable'
+  if (utility === 'copy') return state ? 'Identifier Copied!' : 'Copy Handle / ID'
+  if (utility === 'export') return state ? 'JSON Copied!' : 'Export Entity Data (JSON)'
+  return 'Open Browser Context Menu'
+}
+
+// ── Keyboard ────────────────────────────────────────────────────────────────
+const setActive = (index: number) => {
+  const count = focusableRows.value.length
+  if (count === 0) return
+  activeIndex.value = ((index % count) + count) % count
+  const id = activeRowId.value
+  const el = id ? menuContainerRef.value?.querySelector<HTMLElement>(`[data-context-item="${id}"]`) : null
+  if (!el) return
+  const focused = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null
+  if (focused && !isInsideContextMenu(focused)) focusBeforeMenu = focused
+  el.focus({ preventScroll: true })
+  if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'nearest' })
+}
+
+/** Handled in the capture phase so page shortcuts and focused rows do not react as well. */
 const handleKeyDown = (e: KeyboardEvent) => {
   if (!isOpen.value) return
-
-  if (e.key === 'Escape') {
+  const swallow = () => {
     e.preventDefault()
+    e.stopPropagation()
+  }
+
+  switch (e.key) {
+    case 'Escape':
+      swallow()
+      closeContextMenu()
+      return
+    case 'ArrowDown':
+      swallow()
+      setActive(activeIndex.value + 1)
+      return
+    case 'ArrowUp':
+      swallow()
+      setActive(activeIndex.value < 0 ? -1 : activeIndex.value - 1)
+      return
+    case 'Home':
+      swallow()
+      setActive(0)
+      return
+    case 'End':
+      swallow()
+      setActive(-1)
+      return
+    case 'Enter':
+      swallow()
+      activateRow(focusableRows.value[activeIndex.value])
+      return
+    case ' ':
+      if (activeIndex.value < 0) return
+      swallow()
+      activateRow(focusableRows.value[activeIndex.value])
+      return
+    case 'Tab':
+      closeContextMenu()
+  }
+}
+
+// ── Dismissal ───────────────────────────────────────────────────────────────
+// Capture phase: rows that stop click propagation must still dismiss the menu.
+const handlePointerDown = (e: Event) => {
+  if (!isOpen.value || isInsideContextMenu(e.target)) return
+  closeContextMenu()
+}
+
+/**
+ * Page scrolls dismiss the menu, and so does scrolling any container that holds the element it
+ * was opened for (scroll events do not bubble, hence the capture listener). Scrolling inside the
+ * menu or in an unrelated panel leaves it alone.
+ */
+const handleScroll = (e: Event) => {
+  if (!isOpen.value) return
+  const target = e.target as Node | null
+  if (!target || isInsideContextMenu(target)) return
+  const isPageScroll = target === document || target === document.documentElement || target === document.body
+  const anchor = anchorEl.value
+  if (isPageScroll || (anchor && typeof target.contains === 'function' && target.contains(anchor))) {
     closeContextMenu()
+  }
+}
+
+const measureAndClamp = () => {
+  const el = menuContainerRef.value
+  if (!el || !isOpen.value) return
+  const rect = el.getBoundingClientRect()
+  if (rect.width > 0 && rect.height > 0) repositionContextMenu({ width: rect.width, height: rect.height })
+}
+
+// After the menu rendered for a new target: clamp with its real size (before the browser paints).
+watch(openSequence, measureAndClamp, { flush: 'post' })
+
+watch(isOpen, (open) => {
+  activeIndex.value = -1
+  clearFeedback()
+  if (open) {
+    focusBeforeMenu = null
     return
   }
-
-  const items = getVisibleMenuItems()
-  if (items.length === 0) return
-
-  if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    focusedIndex.value = (focusedIndex.value + 1) % items.length
-    items[focusedIndex.value]?.focus()
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    focusedIndex.value = (focusedIndex.value - 1 + items.length) % items.length
-    items[focusedIndex.value]?.focus()
-  } else if (e.key === 'Enter') {
-    e.preventDefault()
-    items[focusedIndex.value]?.click()
+  // Keyboard navigation moved focus into the menu: hand it back before the menu is removed.
+  if (focusBeforeMenu && typeof document !== 'undefined' && isInsideContextMenu(document.activeElement) && focusBeforeMenu.isConnected) {
+    focusBeforeMenu.focus({ preventScroll: true })
   }
-}
+  focusBeforeMenu = null
+})
 
-const handleWindowClick = (e: MouseEvent) => {
-  if (isOpen.value) {
-    closeContextMenu()
-  }
-}
+// Any navigation (menu entry, link, back button) leaves the entity the menu was opened for.
+watch(() => router?.currentRoute?.value?.fullPath, () => closeContextMenu())
+
+let uninstallDelegation: (() => void) | null = null
 
 onMounted(() => {
-  if (typeof window !== 'undefined') {
-    window.addEventListener('click', handleWindowClick)
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('scroll', closeContextMenu, { passive: true })
-    window.addEventListener('resize', closeContextMenu)
-  }
+  if (typeof window === 'undefined') return
+  uninstallDelegation = installContextMenuDelegation()
+  window.addEventListener('pointerdown', handlePointerDown, true)
+  window.addEventListener('keydown', handleKeyDown, true)
+  window.addEventListener('scroll', handleScroll, { capture: true, passive: true })
+  window.addEventListener('resize', closeContextMenu)
+  window.addEventListener('blur', closeContextMenu)
 })
 
 onBeforeUnmount(() => {
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('click', handleWindowClick)
-    window.removeEventListener('keydown', handleKeyDown)
-    window.removeEventListener('scroll', closeContextMenu)
-    window.removeEventListener('resize', closeContextMenu)
-  }
+  clearFeedback()
+  if (noticeTimer) clearTimeout(noticeTimer)
+  if (typeof window === 'undefined') return
+  uninstallDelegation?.()
+  uninstallDelegation = null
+  window.removeEventListener('pointerdown', handlePointerDown, true)
+  window.removeEventListener('keydown', handleKeyDown, true)
+  window.removeEventListener('scroll', handleScroll, { capture: true })
+  window.removeEventListener('resize', closeContextMenu)
+  window.removeEventListener('blur', closeContextMenu)
 })
 </script>
 
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 pointer-events-none">
+  <div v-if="isOpen" class="fixed inset-0 z-[1000] pointer-events-none">
     <!-- Context Menu Panel -->
     <div
       ref="menuContainerRef"
+      data-context-menu
       role="menu"
       aria-label="Entity Context Menu"
-      class="pointer-events-auto absolute w-64 bg-zinc-950/95 border border-zinc-800 rounded-xl shadow-2xl backdrop-blur text-xs text-zinc-200 py-1.5 overflow-hidden transition-all duration-100 ease-out select-none"
+      tabindex="-1"
+      class="pointer-events-auto absolute w-64 max-w-[calc(100vw-24px)] max-h-[calc(100vh-24px)] overflow-y-auto overscroll-contain bg-zinc-950/95 border border-zinc-800 rounded-xl shadow-2xl backdrop-blur text-xs text-zinc-200 py-1.5 select-none focus:outline-hidden"
       :style="{ left: `${x}px`, top: `${y}px` }"
+      @pointerdown.stop
       @click.stop
-      @contextmenu.prevent
+      @contextmenu.prevent.stop
     >
       <!-- Header Banner -->
       <div class="px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/50 flex items-center justify-between gap-2">
@@ -262,204 +371,67 @@ onBeforeUnmount(() => {
         </span>
       </div>
 
-      <!-- Domain Navigation Actions -->
       <div class="py-1 space-y-0.5">
-        <!-- 1. Go to Machine -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="navigateToMachine"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5">
-            <Factory class="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-400 transition-colors" />
-            <span>Go to Machine</span>
-          </div>
-          <ArrowUpRight class="w-3 h-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
+        <template v-for="row in rows" :key="row.id">
+          <div v-if="row.kind === 'divider'" role="separator" class="my-1 border-t border-zinc-800/70"></div>
 
-        <!-- 2. Go to Node / Controller -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="navigateToNode"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5">
-            <Monitor class="w-3.5 h-3.5 text-zinc-400 group-hover:text-sky-400 transition-colors" />
-            <span>Go to Node / Controller</span>
-          </div>
-          <ArrowUpRight class="w-3 h-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
-
-        <!-- 3. Open in New Tab -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="openInNewTab"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5">
-            <ExternalLink class="w-3.5 h-3.5 text-zinc-400 group-hover:text-primary transition-colors" />
-            <span>Open in New Tab</span>
-          </div>
-          <span class="text-[9px] font-mono text-zinc-500 group-hover:text-zinc-300">^V</span>
-        </button>
-
-        <!-- 4. Go to Owner (Team) -->
-        <button
-          v-if="contextData?.ownerTeam"
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="navigateToOwnerTeam"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5 truncate pr-2">
-            <Users class="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-400 transition-colors shrink-0" />
-            <span class="truncate">Owner Team: {{ contextData.ownerTeam.name }}</span>
-          </div>
-          <ArrowUpRight class="w-3 h-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-        </button>
-
-        <!-- 5. Go to Owner (Person / Assigned Technician) -->
-        <button
-          v-if="contextData?.ownerPerson"
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="navigateToOwnerPerson"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5 truncate pr-2">
-            <UserCheck class="w-3.5 h-3.5 text-zinc-400 group-hover:text-teal-400 transition-colors shrink-0" />
-            <span class="truncate">Owner Person: {{ contextData.ownerPerson.name }}</span>
-          </div>
-          <ArrowUpRight class="w-3 h-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-        </button>
-
-        <!-- Divider -->
-        <div class="my-1 border-t border-zinc-800/70"></div>
-
-        <!-- 6. Tickets & Incident Creation -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="navigateToTickets(false)"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5">
-            <Wrench class="w-3.5 h-3.5 text-zinc-400 group-hover:text-orange-400 transition-colors" />
-            <span>Go to Maintenance Tickets</span>
-          </div>
-          <span
-            v-if="contextData?.tickets && contextData.tickets.length > 0"
-            class="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-orange-500/20 text-orange-300"
+          <!-- Navigation entry (only present when the entity carries the data it needs) -->
+          <button
+            v-else-if="row.kind === 'action'"
+            type="button"
+            role="menuitem"
+            :data-context-item="row.id"
+            :data-context-action="row.action.key"
+            :data-active="activeRowId === row.id"
+            :class="row.action.group === 'danger' ? DANGER_ITEM_CLASS : ITEM_CLASS"
+            @click="runAction(row.action)"
           >
-            {{ contextData.tickets.length }}
-          </span>
-        </button>
+            <div class="flex items-center gap-2.5 min-w-0">
+              <component
+                :is="ACTION_VIEW[row.action.key].icon"
+                class="w-3.5 h-3.5 shrink-0 transition-colors"
+                :class="[row.action.group === 'danger' ? 'text-rose-400' : 'text-zinc-400', ACTION_VIEW[row.action.key].accent]"
+              />
+              <span class="truncate">{{ row.action.label }}</span>
+            </div>
+            <span
+              v-if="row.action.badge"
+              class="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-orange-500/20 text-orange-300 shrink-0"
+            >
+              {{ row.action.badge }}
+            </span>
+            <span v-else-if="row.action.newTab" class="text-[9px] font-mono text-zinc-500 group-hover:text-zinc-300 shrink-0">New tab</span>
+            <ArrowUpRight
+              v-else-if="row.action.group === 'navigate'"
+              class="w-3 h-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            />
+          </button>
 
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="navigateToTickets(true)"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <PlusCircle class="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-400 transition-colors" />
-          <span>Create Incident Ticket</span>
-        </button>
-
-        <!-- 7. Telemetry & Diagnostics -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="navigateToTelemetry"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <Activity class="w-3.5 h-3.5 text-zinc-400 group-hover:text-indigo-400 transition-colors" />
-          <span>Live Telemetry & Diagnostics</span>
-        </button>
-
-        <!-- 8. Component Tree -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="navigateToComponentTree"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center gap-2.5 text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <FolderTree class="w-3.5 h-3.5 text-zinc-400 group-hover:text-purple-400 transition-colors" />
-          <span>Inspect Component Tree</span>
-        </button>
-
-        <!-- 8b. Decommission Machine (for machine entities) -->
-        <button
-          v-if="contextData?.entityType === 'machine' || contextData?.machineId"
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="decommissionMachineFromMenu"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center gap-2.5 text-left text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors group cursor-pointer focus:bg-rose-500/15 focus:outline-hidden"
-        >
-          <Archive class="w-3.5 h-3.5 text-rose-400 group-hover:text-rose-300 transition-colors" />
-          <span>Decommission Machine</span>
-        </button>
-
-        <!-- Divider -->
-        <div class="my-1 border-t border-zinc-800/70"></div>
-
-        <!-- 9. Copy Identifier / Handle -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="handleCopyHandle"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5">
-            <Check v-if="isCopied" class="w-3.5 h-3.5 text-emerald-400" />
-            <Copy v-else class="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-200" />
-            <span>{{ isCopied ? 'Identifier Copied!' : 'Copy Handle / ID' }}</span>
-          </div>
-          <span class="text-[10px] text-zinc-500 font-mono">Clip</span>
-        </button>
-
-        <!-- 10. Export Data (JSON) -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="exportEntityData"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5">
-            <Download class="w-3.5 h-3.5 text-zinc-400 group-hover:text-sky-300" />
-            <span>Export Entity Data (JSON)</span>
-          </div>
-          <span class="text-[10px] text-zinc-500 font-mono">Export</span>
-        </button>
-
-        <!-- 11. Open Browser Context Menu (Native fallback) -->
-        <button
-          type="button"
-          role="menuitem"
-          data-context-item="true"
-          @click="handleUnlockNative"
-          class="w-full px-3 py-2 sm:py-1.5 flex items-center justify-between text-left hover:bg-zinc-800/80 hover:text-white transition-colors group text-zinc-400 cursor-pointer focus:bg-zinc-800/90 focus:outline-hidden"
-        >
-          <div class="flex items-center gap-2.5">
-            <Globe class="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-300" />
-            <span class="group-hover:text-zinc-200">Open Browser Context Menu</span>
-          </div>
-          <span class="text-[9px] font-mono text-zinc-600 group-hover:text-zinc-400">Shift+RClick</span>
-        </button>
+          <!-- Utilities: available for every entity -->
+          <button
+            v-else
+            type="button"
+            role="menuitem"
+            :data-context-item="row.id"
+            :data-active="activeRowId === row.id"
+            :class="[ITEM_CLASS, row.utility === 'native' ? 'text-zinc-400' : '']"
+            @click="runUtility(row.utility)"
+          >
+            <div class="flex items-center gap-2.5 min-w-0">
+              <template v-if="feedback?.utility === row.utility">
+                <Check v-if="feedback.ok" class="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <AlertCircle v-else class="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              </template>
+              <Copy v-else-if="row.utility === 'copy'" class="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-200 shrink-0" />
+              <Download v-else-if="row.utility === 'export'" class="w-3.5 h-3.5 text-zinc-400 group-hover:text-sky-300 shrink-0" />
+              <Globe v-else class="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-300 shrink-0" />
+              <span class="truncate" :class="row.utility === 'native' ? 'group-hover:text-zinc-200' : ''">{{ utilityLabel(row.utility) }}</span>
+            </div>
+            <span v-if="row.utility === 'copy'" class="text-[10px] text-zinc-500 font-mono shrink-0">Clip</span>
+            <span v-else-if="row.utility === 'export'" class="text-[10px] text-zinc-500 font-mono shrink-0">Export</span>
+            <span v-else class="text-[9px] font-mono text-zinc-600 group-hover:text-zinc-400 shrink-0">Shift+RClick</span>
+          </button>
+        </template>
       </div>
     </div>
   </div>
@@ -475,7 +447,7 @@ onBeforeUnmount(() => {
   >
     <div
       v-if="showNativeUnlockNotice"
-      class="fixed bottom-6 right-6 z-50 max-w-sm p-3.5 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl text-xs text-zinc-200 flex items-start gap-3 pointer-events-auto"
+      class="fixed bottom-6 right-6 z-[1000] max-w-sm p-3.5 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl text-xs text-zinc-200 flex items-start gap-3 pointer-events-auto"
     >
       <Globe class="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
       <div class="space-y-1">

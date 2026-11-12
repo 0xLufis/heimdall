@@ -1,40 +1,78 @@
-import { defineEventHandler } from 'h3'
+import { defineEventHandler, createError } from 'h3'
+import { count, eq, inArray } from 'drizzle-orm'
 import { useDb } from '../utils/db'
 import * as hbSchema from '../database/drizzle/schema'
-import { getAllKnownUserProfiles } from '../utils/authProfiles'
+import { requireUser } from '../utils/authz'
+import { isUserAdminRole, roleSatisfies } from '../../app/utils/roles'
 
+/**
+ * User directory for the administration pages and the user pickers.
+ *
+ * Reads Better-Auth's own `auth.user` table (the source of truth for identities) and requires a
+ * signed-in caller. It used to be anonymous, went through the backend first (whose projection
+ * lacks `banned`, `username` and `createdAt`, so suspensions never showed up) and answered with a
+ * hard-coded profile catalogue when both sources failed.
+ *
+ * System, IT and engineering administrators (and user administrators) see every user; everyone
+ * else only the users they share an organization with, and themselves - the same rule as the
+ * backend's `GET /api/v1/auth/users` and its search endpoint.
+ */
 export default defineEventHandler(async (event) => {
-  const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
-  try {
-    const data = await $fetch<{ success: boolean; users: any[] }>(`${backendBase}/api/v1/auth/users`, {
-      headers: event.headers as any
-    })
-    if (data && data.success && data.users && data.users.length > 0) {
-      return data
-    }
-  } catch (e: any) {}
+  const caller = await requireUser(event)
+  const seesEveryone =
+    isUserAdminRole(caller.role) ||
+    roleSatisfies(caller.role, 'SystemAdministration') ||
+    roleSatisfies(caller.role, 'ItAdministration') ||
+    roleSatisfies(caller.role, 'EngineeringAdministration')
 
-  // Fallback to local Better-Auth PostgreSQL database
   try {
     const db = useDb()
-    const dbUsers = await db
-      .select({
-        id: hbSchema.user.id,
-        name: hbSchema.user.name,
-        email: hbSchema.user.email,
-        role: hbSchema.user.role,
-        username: hbSchema.user.username,
-        banned: hbSchema.user.banned,
-        createdAt: hbSchema.user.createdAt
-      })
-      .from(hbSchema.user)
 
-    if (dbUsers && dbUsers.length > 0) {
-      return { success: true, users: dbUsers }
+    let visibleUserIds: Set<string> | null = null
+    if (!seesEveryone) {
+      visibleUserIds = new Set([caller.id])
+      const mine = await db
+        .select({ organizationId: hbSchema.member.organizationId })
+        .from(hbSchema.member)
+        .where(eq(hbSchema.member.userId, caller.id))
+      const organizationIds = [...new Set(mine.map(m => m.organizationId))]
+      if (organizationIds.length > 0) {
+        const colleagues = await db
+          .select({ userId: hbSchema.member.userId })
+          .from(hbSchema.member)
+          .where(inArray(hbSchema.member.organizationId, organizationIds))
+        for (const c of colleagues) visibleUserIds.add(c.userId)
+      }
     }
-  } catch (err: any) {}
+    const [dbUsers, memberships] = await Promise.all([
+      db
+        .select({
+          id: hbSchema.user.id,
+          name: hbSchema.user.name,
+          email: hbSchema.user.email,
+          role: hbSchema.user.role,
+          username: hbSchema.user.username,
+          banned: hbSchema.user.banned,
+          createdAt: hbSchema.user.createdAt
+        })
+        .from(hbSchema.user),
+      db
+        .select({ userId: hbSchema.member.userId, organizations: count() })
+        .from(hbSchema.member)
+        .groupBy(hbSchema.member.userId)
+    ])
 
-  // Fallback to master system catalog ensuring no unprofiled users
-  const fallbackProfiles = getAllKnownUserProfiles()
-  return { success: true, users: fallbackProfiles }
+    const organizationCounts = new Map(memberships.map(m => [m.userId, Number(m.organizations)]))
+    return {
+      success: true,
+      users: dbUsers.filter(u => !visibleUserIds || visibleUserIds.has(u.id)).map(u => ({
+        ...u,
+        banned: u.banned === true,
+        organizationCount: organizationCounts.get(u.id) ?? 0
+      }))
+    }
+  } catch (err: any) {
+    console.warn('[users] Failed to read the user directory:', err?.message || err)
+    throw createError({ statusCode: 503, statusMessage: 'The user directory is currently unavailable.' })
+  }
 })

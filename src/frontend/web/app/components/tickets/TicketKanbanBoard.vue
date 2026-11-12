@@ -308,6 +308,7 @@ function handleResolveEscalation(event: Event, ticket: MaintenanceTicket) {
           <div
             v-for="ticket in getTicketsByColumn(col.id)"
             :key="ticket.id"
+            v-ctx:ticket="ticket"
             draggable="true"
             @dragstart="onDragStart($event, ticket.id)"
             @dragend="draggedTicketId = null"

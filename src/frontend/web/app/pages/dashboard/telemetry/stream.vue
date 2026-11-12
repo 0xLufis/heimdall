@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   Activity,
   Cpu,
@@ -38,6 +38,7 @@ import ControllerCommandModal from '~/components/controllers/ControllerCommandMo
 import { useControllers } from '~/composables/useControllers'
 import { useRbacPermission } from '~/composables/useRbacPermission'
 import { useFeatureFlags } from '~/composables/useFeatureFlags'
+import { useStationTelemetry } from '~/composables/useStationTelemetry'
 import type { IndustrialController } from '~/types/domain'
 
 definePageMeta({
@@ -61,6 +62,8 @@ const { controllers, isLoading, fetchControllers } = useControllers()
 const { canManageEndpoints, canExecuteRemote } = useRbacPermission()
 const { enableDebugFeatures } = useFeatureFlags()
 const router = useRouter()
+const route = useRoute()
+const { getStationKpi, getStationOscillation, isLiveStreamSubscribed, fetchStationKpis } = useStationTelemetry()
 
 const searchQuery = ref('')
 const selectedControllerId = ref<string>('')
@@ -74,7 +77,6 @@ const isHistoryModalOpen = ref(false)
 const snapshotHistory = ref<DiagnosticSnapshotSummary[]>([])
 const isLoadingHistory = ref(false)
 const copiedHash = ref(false)
-let streamTimer: any = null
 
 const resetTelemetryView = () => {
   searchQuery.value = ''
@@ -85,16 +87,6 @@ const resetTelemetryView = () => {
   router.push('/dashboard/telemetry')
   fetchControllers(false)
 }
-
-// Live high-frequency simulated OT tags for selected node
-const liveTags = ref([
-  { name: 'Motion.Axis_X.ActualPos_mm', value: 142.58, unit: 'mm', quality: 'Good' },
-  { name: 'Motion.Spindle.Speed_RPM', value: 3450, unit: 'RPM', quality: 'Good' },
-  { name: 'Laser.Weld.Power_kW', value: 4.25, unit: 'kW', quality: 'Good' },
-  { name: 'Coolant.Loop_A.Temp_C', value: 24.8, unit: '°C', quality: 'Good' },
-  { name: 'Pneumatics.MainLine.Pressure_bar', value: 6.2, unit: 'bar', quality: 'Good' },
-  { name: 'PLC.CycleTime.Current_ms', value: 2.14, unit: 'ms', quality: 'Good' },
-])
 
 const filteredControllers = computed(() => {
   let list = controllers.value
@@ -116,6 +108,32 @@ const activeController = computed<IndustrialController | null>(() => {
     if (found) return found
   }
   return controllers.value[0] || null
+})
+
+/**
+ * Live process values of the stations this controller runs, as reported by their PLCs.
+ * Rows exist only for quantities that were actually reported.
+ */
+const stationSignals = computed(() => {
+  const rows: Array<{ key: string; station: string; stationId: string; name: string; value: string; unit: string; at: string | null }> = []
+  for (const m of activeController.value?.controlledMachines || []) {
+    const kpi = getStationKpi(m.id)
+    const osc = getStationOscillation(m.id)
+    const station = m.customIdentifier || m.name
+    const at = osc ? new Date(osc.timestamp).toISOString() : (kpi?.lastTelemetryAt ?? null)
+    const add = (name: string, value: number | null | undefined, unit: string, digits: number) => {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return
+      rows.push({ key: `${m.id}:${name}`, station, stationId: m.id, name, value: value.toFixed(digits), unit, at })
+    }
+    add('Vibration RMS', osc?.vibrationMmS ?? kpi?.vibrationMmS, 'mm/s', 2)
+    add('Spindle speed', osc?.spindleRpm ?? kpi?.spindleRpm, 'RPM', 0)
+    add('Cycle time', osc?.cycleTimeMs ?? kpi?.cycleTimeMs, 'ms', 0)
+    add('Active power', osc?.powerKw ?? kpi?.powerKw, 'kW', 2)
+    add('Temperature', osc?.temperatureC ?? kpi?.temperatureC, '°C', 1)
+    add('OEE', kpi?.oee, '%', 1)
+    add('Throughput', kpi?.partsPerHour, 'parts/h', 0)
+  }
+  return rows
 })
 
 const fleetStats = computed(() => {
@@ -193,28 +211,16 @@ async function copyHash(hash: string) {
 }
 
 onMounted(async () => {
+  fetchStationKpis()
   await fetchControllers()
-  if (controllers.value.length > 0 && !selectedControllerId.value) {
+  const requested = typeof route.query.controllerId === 'string' ? route.query.controllerId : ''
+  if (requested && controllers.value.some(c => c.id === requested)) {
+    selectedControllerId.value = requested
+  } else if (controllers.value.length > 0 && !selectedControllerId.value) {
     selectedControllerId.value = controllers.value[0].id
   }
-
-  // Ticker for live gauge flutter
-  streamTimer = setInterval(() => {
-    liveTags.value.forEach(t => {
-      if (t.name.includes('ActualPos')) {
-        t.value = Number((t.value + (Math.random() * 0.4 - 0.2)).toFixed(2))
-      } else if (t.name.includes('RPM')) {
-        t.value = Math.round(3450 + (Math.random() * 40 - 20))
-      } else if (t.name.includes('CycleTime')) {
-        t.value = Number((2.1 + (Math.random() * 0.15)).toFixed(2))
-      }
-    })
-  }, 1200)
 })
 
-onUnmounted(() => {
-  if (streamTimer) clearInterval(streamTimer)
-})
 </script>
 
 <template>
@@ -237,9 +243,13 @@ onUnmounted(() => {
             <h1 class="text-2xl font-bold tracking-tight text-foreground transition-colors">
               Live Industrial Telemetry Stream
             </h1>
-            <Badge variant="outline" class="border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 text-xs gap-1 py-0.5">
-              <span class="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse"></span>
-              SignalR Connected
+            <Badge
+              variant="outline"
+              class="text-xs gap-1 py-0.5"
+              :class="isLiveStreamSubscribed ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : 'border-border text-muted-foreground bg-muted/40'"
+            >
+              <span class="size-1.5 rounded-full" :class="isLiveStreamSubscribed ? 'bg-emerald-600 dark:bg-emerald-400 animate-pulse' : 'bg-muted-foreground/50'"></span>
+              {{ isLiveStreamSubscribed ? 'Live updates on' : 'Live updates off' }}
             </Badge>
           </div>
           <p class="text-sm text-muted-foreground mt-0.5 transition-colors">
@@ -367,6 +377,7 @@ onUnmounted(() => {
           <button
             v-for="c in filteredControllers"
             :key="c.id"
+            v-ctx:controller="c"
             type="button"
             @click="selectedControllerId = c.id"
             :class="[
@@ -592,11 +603,13 @@ onUnmounted(() => {
             <!-- Beckhoff ADS Cycle Time -->
             <div class="p-4 rounded-xl bg-muted/30 border border-border text-center space-y-2">
               <div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-1">
-                <Zap class="size-3.5 text-amber-600 dark:text-amber-400" /> Cycle Time
+                <Zap class="size-3.5 text-amber-600 dark:text-amber-400" /> Stations
               </div>
               <div class="pt-3">
-                <div class="text-xl font-bold font-mono text-amber-600 dark:text-amber-300">2.1 ms</div>
-                <div class="text-[10px] text-muted-foreground mt-1">TwinCAT RT 1000µs</div>
+                <div class="text-xl font-bold font-mono text-amber-600 dark:text-amber-300">
+                  {{ activeController.controlledMachines?.length ?? 0 }}
+                </div>
+                <div class="text-[10px] text-muted-foreground mt-1">controlled by this node</div>
               </div>
             </div>
 
@@ -607,39 +620,58 @@ onUnmounted(() => {
               </div>
               <div class="pt-3">
                 <div class="text-xl font-bold font-mono text-cyan-600 dark:text-cyan-300">
-                  {{ activeController.freeDiskSpace?.totalFreeGB ? Math.round(activeController.freeDiskSpace.totalFreeGB) + ' GB' : '64 GB' }}
+                  {{ activeController.freeDiskSpace?.totalFreeGB ? Math.round(activeController.freeDiskSpace.totalFreeGB) + ' GB' : '—' }}
                 </div>
-                <div class="text-[10px] text-muted-foreground mt-1">SSD NVMe Spool</div>
+                <div class="text-[10px] text-muted-foreground mt-1">
+                  {{ activeController.freeDiskSpace?.totalFreeGB ? 'free across drives' : 'not reported' }}
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Real-Time OT Signals Table -->
+          <!-- Process values of the stations this controller runs -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
               <h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Active Process Data Probes
+                Station Process Values
               </h4>
-              <span class="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <span class="size-1.5 rounded-full bg-emerald-400"></span> Live Ingestion
-              </span>
+              <NuxtLink
+                :to="{ path: '/dashboard/telemetry', query: { controllerId: activeController.id } }"
+                class="text-[11px] font-medium text-primary hover:underline"
+              >
+                Open station view
+              </NuxtLink>
             </div>
-            <div class="rounded-lg border border-border overflow-hidden">
+            <div v-if="stationSignals.length === 0" class="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">
+              {{ (activeController.controlledMachines?.length ?? 0) === 0
+                ? 'This controller is not bound to any station.'
+                : 'None of this controller\'s stations has reported process telemetry yet.' }}
+            </div>
+            <div v-else class="rounded-lg border border-border overflow-hidden">
               <table class="w-full text-xs text-left">
                 <thead class="bg-muted/50 text-muted-foreground uppercase text-[10px] border-b border-border">
                   <tr>
-                    <th class="px-4 py-2.5">Tag Identifier</th>
-                    <th class="px-4 py-2.5">Live Value</th>
-                    <th class="px-4 py-2.5">Engineering Unit</th>
-                    <th class="px-4 py-2.5 text-right">Data Quality</th>
+                    <th class="px-4 py-2.5">Station</th>
+                    <th class="px-4 py-2.5">Signal</th>
+                    <th class="px-4 py-2.5">Value</th>
+                    <th class="px-4 py-2.5 text-right">Unit</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border font-mono">
-                  <tr v-for="tag in liveTags" :key="tag.name" class="hover:bg-muted/40">
-                    <td class="px-4 py-2.5 text-foreground">{{ tag.name }}</td>
-                    <td class="px-4 py-2.5 font-bold text-indigo-600 dark:text-indigo-300">{{ tag.value }}</td>
-                    <td class="px-4 py-2.5 text-muted-foreground">{{ tag.unit }}</td>
-                    <td class="px-4 py-2.5 text-right text-emerald-600 dark:text-emerald-400">{{ tag.quality }}</td>
+                  <tr
+                    v-for="row in stationSignals"
+                    :key="row.key"
+                    class="hover:bg-muted/40 cursor-pointer"
+                    tabindex="0"
+                    role="link"
+                    :title="row.at ? `Last sample ${new Date(row.at).toLocaleTimeString()}` : undefined"
+                    @click="router.push({ path: '/dashboard/telemetry', query: { station: row.stationId } })"
+                    @keydown.enter="router.push({ path: '/dashboard/telemetry', query: { station: row.stationId } })"
+                  >
+                    <td class="px-4 py-2.5 text-foreground">{{ row.station }}</td>
+                    <td class="px-4 py-2.5 text-muted-foreground">{{ row.name }}</td>
+                    <td class="px-4 py-2.5 font-bold text-indigo-600 dark:text-indigo-300">{{ row.value }}</td>
+                    <td class="px-4 py-2.5 text-right text-muted-foreground">{{ row.unit }}</td>
                   </tr>
                 </tbody>
               </table>

@@ -14,6 +14,12 @@ export default defineNitroPlugin(async () => {
   const adminEmail = "admin@heimdall.dev"
   const adminPassword = "AdminPassword123!"
   const adminUsername = "admin"
+  // The bootstrap administrator is the platform's `system_admin`, as in the seed
+  // (seed_data/seed_pipeline.py) and the master profile catalogue. It used to be created as the
+  // legacy `admin` role, which is a platform administrator but fails the backend's
+  // ItAdministration, EngineeringAdministration and LineStopRequest policies - so this plugin and
+  // the seed kept overwriting each other and the result depended on which ran last.
+  const adminRole = "system_admin"
 
   try {
     const db = useDb()
@@ -29,7 +35,7 @@ export default defineNitroPlugin(async () => {
         }
       })
       await db.update(user)
-        .set({ username: adminUsername, role: "admin" })
+        .set({ username: adminUsername, role: adminRole })
         .where(eq(user.id, newUser.user.id))
       console.log("[ensureAdminUser] Admin user created successfully.")
     } else {
@@ -46,12 +52,17 @@ export default defineNitroPlugin(async () => {
           }
         })
         await db.update(user)
-          .set({ username: adminUsername, role: "admin" })
+          .set({ username: adminUsername, role: adminRole })
           .where(eq(user.id, newUser.user.id))
         console.log("[ensureAdminUser] Admin user & credential re-created successfully.")
-      } else if (!existingUser[0].username || existingUser[0].role !== "admin") {
+      } else if (!existingUser[0].username || !existingUser[0].role || existingUser[0].role === "admin") {
+        // Repair only what is missing or left over from the legacy bootstrap; a role an
+        // administrator assigned on purpose is not overwritten on every boot.
         await db.update(user)
-          .set({ username: adminUsername, role: "admin" })
+          .set({
+            username: existingUser[0].username || adminUsername,
+            role: !existingUser[0].role || existingUser[0].role === "admin" ? adminRole : existingUser[0].role
+          })
           .where(eq(user.id, adminId))
       }
     }

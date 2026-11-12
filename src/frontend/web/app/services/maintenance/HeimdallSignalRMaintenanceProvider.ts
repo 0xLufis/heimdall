@@ -163,6 +163,12 @@ export class HeimdallSignalRMaintenanceProvider implements IMaintenanceService {
         })
       })
 
+      // The backend still broadcasts the raw per-block `PlcMemoryReceived` event, but the UI consumes
+      // the station-level events derived from the same block (StationTelemetryReceived /
+      // StationOscillationReceived). Without a registered handler SignalR logs a warning for every
+      // message, which floods the console at PLC sample rate, so it is acknowledged and dropped here.
+      this.hubConnection.on('PlcMemoryReceived', () => {})
+
       await this.hubConnection.start()
     } catch (err) {
       console.warn('SignalR Hub connection failed, fallback mode active:', err)

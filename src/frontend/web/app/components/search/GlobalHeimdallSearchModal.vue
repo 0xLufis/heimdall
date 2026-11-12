@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, nextTick, watch } from 'vue'
-import { Dialog, DialogContent } from '~/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '~/components/ui/dialog'
+import { resolveSubmitRoute } from '~/utils/search/searchNavigation'
 import HeimdallSearchBar from './HeimdallSearchBar.vue'
 import type { SearchInstanceConfig, SearchResultItem } from '~/types/search'
 import { useRouter } from 'vue-router'
@@ -14,82 +15,23 @@ const omniBarRef = ref<any>(null)
 
 const globalConfig: SearchInstanceConfig = {
   instanceId: 'global',
-  placeholder: 'Search stations, controllers, inventory, or assets...',
+  placeholder: 'Search stations, controllers, inventory, or tickets...',
   defaultEndpoints: ['/api/proxy/inventory/search'],
   enableAutoTagging: true,
   showGlobalShortcut: true
 }
 
-// Navigate and close on explicit search submission with intelligent intent routing
+// Enter without a highlighted result: open the list page the query is scoped to,
+// passing the term in the query parameter that page reads.
 const handleSubmit = (q: string) => {
-  closeModal(true)
-  if (!q || !q.trim()) return
-
-  const cleanQ = q.trim()
-  const lowerQ = cleanQ.toLowerCase()
-
-  // 1. Station / Machine / Line / Tech intent
-  if (
-    lowerQ.includes('station:') ||
-    lowerQ.includes('line:') ||
-    lowerQ.includes('tech:') ||
-    lowerQ.includes('machine:') ||
-    lowerQ.startsWith('op') ||
-    lowerQ.startsWith('cell') ||
-    lowerQ.includes('line 1') ||
-    lowerQ.includes('line 2') ||
-    lowerQ.includes('assembly') ||
-    lowerQ.includes('welding') ||
-    lowerQ.includes('robot')
-  ) {
-    router.push(`/dashboard/machines?search=${encodeURIComponent(cleanQ)}`)
-    return
-  }
-
-  // 2. Client PC / IPC / Controller / Node intent
-  if (
-    lowerQ.includes('host:') ||
-    lowerQ.includes('ip:') ||
-    lowerQ.includes('mac:') ||
-    lowerQ.includes('client:') ||
-    lowerQ.includes('node:') ||
-    lowerQ.startsWith('ipc-')
-  ) {
-    router.push(`/dashboard/clients?search=${encodeURIComponent(cleanQ)}`)
-    return
-  }
-
-  // 3. Maintenance Ticket / Incident intent
-  if (
-    lowerQ.includes('ticket:') ||
-    lowerQ.includes('code:') ||
-    lowerQ.includes('#sfc') ||
-    lowerQ.startsWith('#') ||
-    lowerQ.startsWith('e-') ||
-    lowerQ.startsWith('p-') ||
-    lowerQ.startsWith('i-') ||
-    lowerQ.startsWith('etc-')
-  ) {
-    router.push(`/dashboard/tickets?stationId=${encodeURIComponent(cleanQ)}`)
-    return
-  }
-
-  // 4. Preserve existing page search context if on machines or clients
-  if (router.currentRoute.value.path === '/dashboard/machines') {
-    router.push(`/dashboard/machines?search=${encodeURIComponent(cleanQ)}`)
-    return
-  } else if (router.currentRoute.value.path === '/dashboard/clients') {
-    router.push(`/dashboard/clients?search=${encodeURIComponent(cleanQ)}`)
-    return
-  }
-
-  // 5. Default fallback to Inventory
-  router.push(`/dashboard/inventory?query=${encodeURIComponent(cleanQ)}`)
+  closeModal()
+  const target = resolveSubmitRoute(q, router.currentRoute.value.path)
+  if (target) router.push(target)
 }
 
 // On selecting a concrete item result, close the modal (navigation is handled by HeimdallSearchBar)
 const handleSelectResult = (_item: SearchResultItem) => {
-  closeModal(true)
+  closeModal()
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -108,7 +50,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   } else if (e.key === 'Escape' && isOpen.value) {
     e.preventDefault()
     e.stopPropagation()
-    closeModal(true)
+    closeModal()
     return
   } else if (e.key === '/' && !isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey && !isOpen.value) {
     e.preventDefault()
@@ -175,17 +117,18 @@ onUnmounted(() => {
         <!-- Header -->
         <div class="flex items-center justify-between pb-2 border-b border-border/80">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-black uppercase tracking-[0.2em] text-primary">Heimdall Search</span>
-            <span class="text-[11px] text-muted-foreground font-medium hidden sm:inline">— Find My Field Data</span>
+            <DialogTitle class="text-xs font-black uppercase tracking-[0.2em] text-primary">Heimdall Search</DialogTitle>
+            <DialogDescription class="text-[11px] text-muted-foreground font-medium hidden sm:inline">— Stations, controllers, inventory and tickets</DialogDescription>
           </div>
 
           <div class="flex items-center gap-3">
             <span class="text-[10px] font-mono text-muted-foreground select-none">Press ESC to exit</span>
             <button
               type="button"
-              @click="closeModal(true)"
+              @click="closeModal()"
               class="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
               title="Close search modal (ESC)"
+              aria-label="Close search"
             >
               <X class="w-4 h-4" />
             </button>

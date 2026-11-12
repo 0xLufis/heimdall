@@ -1,4 +1,5 @@
 import { randomBytes, createHash } from 'node:crypto'
+import { featureFlags } from './featureFlags'
 
 export interface AutomationApiKey {
   id: string
@@ -36,6 +37,10 @@ export function hashApiKey(rawKey: string): string {
  */
 function initializeDefaultApiKeys() {
   if (apiKeyStore.size > 0) return
+  // The demo keys below are published in the source and in the Security Groups page, so they
+  // are only valid credentials where development features are enabled. They used to be seeded
+  // (active, never expiring, write scope) in every environment, production included.
+  if (!featureFlags.enableDevFeatures) return
 
   // 1. ServiceNow ITSM Production Connector Key
   const snRawKey = 'hmd_auto_servicenow_demo_9a8b7c6d5e4f3a2b1c'

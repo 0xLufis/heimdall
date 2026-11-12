@@ -252,9 +252,12 @@ describe('Telemetry Metrics Registry & Cached Telemetry Store', () => {
       await new Promise(r => setTimeout(r, 50))
 
       expect(wrapper.text()).toContain('Metric Trends')
-      expect(wrapper.text()).toContain('Cycle Time Deviation (ms)')
-      expect(wrapper.text()).toContain('Nominal Target')
-      expect(wrapper.text()).toContain('Period Mean (μ)')
+      // Metric tabs now come from the station's own buffered history (`availableMetrics` of the
+      // trend response), not from the metric catalog; this response lists none.
+      expect(wrapper.text()).toContain('This station has no buffered telemetry samples.')
+      expect(wrapper.text()).toContain('Station target')
+      expect(wrapper.text()).toContain('Mean of shown samples (μ)')
+      expect(wrapper.text()).not.toContain('Nominal Target')
 
       // Verify SVG canvas exists
       const svg = wrapper.find('svg')

@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
             adminId = newUser.user.id;
          }
          await db.update(user)
-            .set({ username: adminUsername, role: "admin" })
+            .set({ username: adminUsername, role: "system_admin" })
             .where(eq(user.id, adminId));
       } else {
          let newUser = await auth.api.signUpEmail({
@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
          });
          adminId = newUser.user.id;
          await db.update(user)
-            .set({ username: adminUsername, role: "admin" })
+            .set({ username: adminUsername, role: "system_admin" })
             .where(eq(user.id, adminId));
       }
 

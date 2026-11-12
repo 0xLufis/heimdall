@@ -103,11 +103,13 @@ const departmentBreakdown = computed(() => {
   return Array.from(deptMap.values()).sort((a, b) => b.minutes - a.minutes)
 })
 
-// Current live clock
-const currentTime = ref(new Date().toLocaleTimeString())
+// Current live clock. Empty until mounted: a time rendered on the server never matches the
+// client's a moment later, which made every load of this page a hydration mismatch.
+const currentTime = ref('')
 let clockInterval: any = null
 
 onMounted(async () => {
+  currentTime.value = new Date().toLocaleTimeString()
   await fetchTickets()
   clockInterval = setInterval(() => {
     currentTime.value = new Date().toLocaleTimeString()
@@ -238,6 +240,7 @@ onUnmounted(() => {
           <div
             v-for="tkt in lineStopTickets"
             :key="tkt.id"
+            v-ctx:ticket="tkt"
             class="p-6 rounded-2xl bg-rose-950/30 border-2 border-rose-600 flex items-center justify-between gap-6"
           >
             <div class="space-y-2 flex-1">
@@ -282,6 +285,7 @@ onUnmounted(() => {
           <div
             v-for="tkt in openTickets.slice(0, 9)"
             :key="tkt.id"
+            v-ctx:ticket="tkt"
             class="p-4 rounded-xl border bg-slate-900/80 transition-all flex flex-col justify-between"
             :class="tkt.isLineStop ? 'border-rose-600 bg-rose-950/20' : tkt.priority === 'Critical' ? 'border-rose-500/60' : tkt.priority === 'High' ? 'border-amber-500/60' : 'border-slate-800'"
           >

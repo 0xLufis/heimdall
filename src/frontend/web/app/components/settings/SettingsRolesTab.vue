@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuthSession } from '~/composables/useAuthSession'
+import { roleDescription as describeRole } from '~/utils/roles'
 import RoleBadge from '~/components/dashboard/RoleBadge.vue'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -22,33 +23,9 @@ const {
   canAdministerSystem
 } = useAuthSession()
 
-const roleDescription = computed(() => {
-  switch (userRole.value.toLowerCase()) {
-    case 'system_admin':
-      return 'System Administrator: Full platform superuser authority across all modules, IT directory approvals, engineering telemetry, and user management.'
-    case 'heimdall_admin':
-    case 'admin':
-      return 'Platform Administrator: Master system governance, plant organizations, audit logs, and Identity Studio console access.'
-    case 'it_admin':
-      return 'IT Infrastructure Administrator: Active Directory & Entra ID integration, OU Read/Write approvals, security groups, and PKI.'
-    case 'engineering_admin':
-      return 'Engineering Administrator: Technical functional settings, OT telemetry templates, machine groups, and app user administration.'
-    case 'manager':
-      return 'Plant Line Management: Manages operational teams, technician shift rotas, and absence authorizations.'
-    case 'group_leader':
-      return 'Engineering Group Leader: Station, line, and technology dedications across production cells.'
-    case 'shift_leader':
-      return 'Technician Shift Leader: Shift maintenance scheduling and dedicated shift technicians.'
-    case 'engineer':
-    case 'controls_engineer':
-      return 'Controls Engineer: PLC automation, TwinCAT Copia code review, telemetry models, and machine diagnosis.'
-    case 'technician':
-      return 'Maintenance Technician: Incident triage, field repair dispatch, telemetry inspection, and parts management.'
-    case 'operator':
-    default:
-      return 'Operator: Machine line operator. Incident reporting and machine status overview.'
-  }
-})
+// One description per backend role (app/utils/roles.ts). The previous switch knew ten of the
+// nineteen roles and described everyone else - a plant director included - as an operator.
+const roleDescription = computed(() => describeRole(userRole.value))
 </script>
 
 <template>

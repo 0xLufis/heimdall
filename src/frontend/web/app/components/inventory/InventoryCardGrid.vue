@@ -91,6 +91,7 @@ const formatPrice = (priceEur: number) => {
       <Card
         v-for="item in items"
         :key="item.id"
+        v-ctx:inventory="item"
         @click="emit('selectItem', item)"
         class="border bg-card shadow-xs hover:border-primary/50 transition-all flex flex-col justify-between group overflow-hidden cursor-pointer"
         :class="item.id === selectedId ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : 'border-border'"

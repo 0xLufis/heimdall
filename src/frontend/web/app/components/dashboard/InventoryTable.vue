@@ -107,6 +107,7 @@ const getStockBadge = (quantity: number = 0, minQuantity: number = 1) => {
             <TableRow
               v-for="item in items"
               :key="item.id"
+              v-ctx:inventory="item"
               @click="emit('select', item)"
               class="border-b border-border/50 hover:bg-muted/40 transition-colors group text-xs cursor-pointer"
               :class="item.id === selectedId ? 'bg-primary/10 border-l-2 border-l-primary' : ''"

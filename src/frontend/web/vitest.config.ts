@@ -13,6 +13,7 @@ export default defineConfig({
     alias: {
       '@vue/test-utils': path.resolve(__dirname, './node_modules/@vue/test-utils'),
       vue: path.resolve(__dirname, './node_modules/vue'),
+      'vue-router': path.resolve(__dirname, './node_modules/vue-router'),
       '~': path.resolve(__dirname, './app'),
       '@': path.resolve(__dirname, './app'),
       '~~': path.resolve(__dirname, '.'),

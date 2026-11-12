@@ -1,7 +1,9 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { updateSecurityGroupMapping } from '../../../utils/securityGroupMappingsStore'
+import { requirePolicy } from '../../../utils/authz'
 
 export default defineEventHandler(async (event) => {
+  await requirePolicy(event, 'ItAdministration')
   const id = event.context.params?.id
   if (!id) {
     throw createError({

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCcwIcon, UserPlusIcon, SearchIcon, ShieldAlertIcon, FingerprintIcon, Users } from 'lucide-vue-next'
 import { useRbacPermission } from '~/composables/useRbacPermission'
+import { HEIMDALL_ROLES } from '~/utils/roles'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -22,23 +23,9 @@ const statusFilter = ref('all')
 
 const { canManageUsers, isSystemAdmin } = useRbacPermission()
 
-const availableRoles = [
-  "system_admin",
-  "heimdall_admin",
-  "it_admin",
-  "engineering_admin",
-  "admin",
-  "manager",
-  "group_leader",
-  "shift_leader",
-  "team_lead",
-  "engineer",
-  "controls_engineer",
-  "lead_engineer",
-  "technician",
-  "generic",
-  "user"
-]
+// The roles the backend knows (app/utils/roles.ts). The previous hand-written list offered
+// `team_lead` and `generic`, which no backend policy accepts, and lacked six real roles.
+const availableRoles = [...HEIMDALL_ROLES]
 
 const filteredUsers = computed(() => {
   let result = users.value
@@ -68,16 +55,7 @@ async function fetchUsers() {
   error.value = ''
   try {
     const res = await $fetch<{ success: boolean; users: any[] }>('/api/users')
-    if (res && res.success && res.users && res.users.length > 0) {
-      users.value = res.users
-    } else {
-      // Auto-seed in dev mode if empty
-      await $fetch('/api/dev/seed-admin')
-      const seededRes = await $fetch<{ success: boolean; users: any[] }>('/api/users')
-      if (seededRes && seededRes.users) {
-        users.value = seededRes.users
-      }
-    }
+    users.value = res?.users || []
   } catch (e: any) {
     error.value = 'Failed to load user directory.'
   } finally {

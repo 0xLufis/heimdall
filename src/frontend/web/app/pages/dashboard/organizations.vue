@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { toast } from 'vue-sonner'
 import { authClient } from '~/utils/auth-client'
 import { Plus, Users, Trash2, Building2, X } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
@@ -39,15 +40,9 @@ async function fetchOrgs() {
   loading.value = true
   try {
     const res = await $fetch<{ success: boolean; organizations: any[] }>('/api/organizations')
-    if (res && res.success && res.organizations && res.organizations.length > 0) {
-      orgs.value = res.organizations
-    } else {
-      await $fetch('/api/dev/seed-admin')
-      const seededRes = await $fetch<{ success: boolean; organizations: any[] }>('/api/organizations')
-      if (seededRes && seededRes.organizations) {
-        orgs.value = seededRes.organizations
-      }
-    }
+    // An empty list is a valid answer (a user without memberships). It used to trigger
+    // /api/dev/seed-admin, which creates 90 mock users and resets the admin account.
+    orgs.value = res?.organizations || []
   } catch (e) {
     console.error('Error fetching organizations:', e)
   } finally {
@@ -355,6 +350,7 @@ onMounted(() => {
           <div
             v-for="mem in members"
             :key="mem.id"
+            v-ctx:user="mem.user"
             class="flex items-center justify-between p-3 bg-card border border-border rounded-lg group hover:border-border/80 hover:bg-muted/30 transition-colors"
           >
             <div class="flex items-center gap-3">

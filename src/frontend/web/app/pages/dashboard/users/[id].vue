@@ -92,11 +92,11 @@ async function fetchUserSessions() {
   }
 }
 
-async function handleRevokeSession(id: string) {
+async function handleRevokeSession(sessionToken: string) {
   try {
+    // Better-Auth identifies the session by its token; `sessionId` was rejected with 400.
     const { error: revokeError } = await authClient.admin.revokeUserSession({
-      userId,
-      sessionId: id
+      sessionToken
     })
     if (revokeError) throw revokeError
     toast.success('User session revoked successfully')
@@ -351,7 +351,7 @@ onMounted(() => {
           <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center justify-between">
             <div>
               <p class="text-xs font-medium text-muted-foreground">Organizations</p>
-              <p class="text-xl font-bold text-foreground mt-0.5">0</p>
+              <p class="text-xl font-bold text-foreground mt-0.5">{{ user.organizationCount ?? '—' }}</p>
             </div>
             <div class="p-2 rounded-lg bg-muted text-foreground">
               <Building2 class="size-4" />
@@ -384,6 +384,7 @@ onMounted(() => {
               <div
                 v-for="mach in userDedications.directlyDedicatedMachines"
                 :key="`${mach.machineId}_${mach.technology || 'General'}`"
+                v-ctx="{ entityType: 'machine', entityId: mach.machineId, entityName: mach.machineName, entityCode: mach.customIdentifier }"
                 class="p-3 rounded-lg bg-muted/40 border border-border flex items-center justify-between"
               >
                 <div class="space-y-1">
@@ -525,6 +526,7 @@ onMounted(() => {
                 <div
                   v-for="cm in cov.coveredMachines"
                   :key="cm.machineId"
+                  v-ctx="{ entityType: 'machine', entityId: cm.machineId, entityName: cm.machineName }"
                   class="p-2 rounded-md bg-card border border-border flex items-center justify-between text-[11px]"
                 >
                   <span class="font-medium text-foreground truncate mr-2">{{ cm.machineName }}</span>
@@ -579,7 +581,7 @@ onMounted(() => {
               <Button
                 variant="outline"
                 size="sm"
-                @click="handleRevokeSession(sess.id)"
+                @click="handleRevokeSession(sess.token)"
                 class="border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg text-xs font-medium h-7 px-2.5 transition-colors"
               >
                 Revoke

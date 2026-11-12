@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { useDb } from './db'
 import * as hbSchema from '../database/drizzle/schema'
 import { getPlantUsers } from './datasetLoader'
+import { DEFAULT_ROLE } from '../../app/utils/roles'
 
 export interface AuthUserProfile {
   id: string
@@ -476,7 +477,10 @@ export function resolveUserProfile(userId: string, hints?: { name?: string; emai
   // Fallback synthesis ensuring compliant Better-Auth user profile
   const synthesizedName = hints?.name || (userId.startsWith('usr-') ? userId.replace('usr-', '').replace(/[-_]/g, ' ') : userId)
   const synthesizedEmail = hints?.email || (userId.includes('@') ? userId : `${userId.toLowerCase()}@factory.corp`)
-  const synthesizedRole = hints?.role || 'engineer'
+  // Identities provisioned on the fly (an unknown id referenced by a ticket, rule or mapping) get
+  // the least-privileged role unless the caller names one. The default used to be `engineer`,
+  // which may configure endpoints and run remote commands.
+  const synthesizedRole = hints?.role || DEFAULT_ROLE
 
   const newProfile: AuthUserProfile = {
     id: userId,
@@ -518,15 +522,7 @@ export async function ensureBetterAuthProfile(
         username: profile.username || profile.email.split('@')[0],
         createdAt: new Date(),
         updatedAt: new Date()
-      }).onConflictDoUpdate({
-        target: hbSchema.user.id,
-        set: {
-          name: profile.name,
-          email: profile.email,
-          role: profile.role,
-          updatedAt: new Date()
-        }
-      })
+      }).onConflictDoNothing()
     }
   } catch (err) {
     // Database offline or SQLite/mock mode — inMemory profile is guaranteed
@@ -536,7 +532,8 @@ export async function ensureBetterAuthProfile(
 }
 
 /**
- * Synchronizes all known master profiles into the Better-Auth database table.
+ * Makes sure every known master profile exists in the Better-Auth user table. Missing profiles are
+ * inserted; existing rows are never modified.
  */
 export async function ensureAllBetterAuthProfiles(): Promise<number> {
   const all = getAllKnownUserProfiles()
@@ -555,15 +552,10 @@ export async function ensureAllBetterAuthProfiles(): Promise<number> {
           username: p.username || p.email.split('@')[0],
           createdAt: new Date(),
           updatedAt: new Date()
-        }).onConflictDoUpdate({
-          target: hbSchema.user.id,
-          set: {
-            name: p.name,
-            email: p.email,
-            role: p.role,
-            updatedAt: new Date()
-          }
-        })
+        }).onConflictDoNothing()
+        // Existing accounts are left untouched. This used to overwrite name, e-mail and role of
+        // every catalogued user on each boot, silently reverting role changes made in the UI
+        // (and fighting the seed, which is the source of truth for these rows).
         count++
       } catch (insertErr) {
         // Individual insert error

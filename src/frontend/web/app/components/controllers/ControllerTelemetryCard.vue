@@ -22,10 +22,12 @@ const emit = defineEmits<{
   (e: 'quick-view', controller: IndustrialController): void
 }>()
 
+type PropertyCategory = 'Identity & Network' | 'Resources' | 'PLC & Runtime' | 'Reported System Info' | 'Installed Components' | 'Stations & Ownership'
+
 interface ControllerProperty {
   id: string
   name: string
-  category: 'TwinCAT & PLC' | 'Automation Software' | 'MES & Shopfloor' | 'Fieldbus & Network' | 'Hardware & OS' | 'Security & Integrity'
+  category: PropertyCategory
   value: string
   status?: 'success' | 'warning' | 'error' | 'info' | 'neutral'
   badge?: string
@@ -35,7 +37,7 @@ interface ControllerProperty {
 // Local storage key for persistent user pinning
 const PINNED_STORAGE_KEY = 'heimdall_pinned_controller_props'
 
-const defaultPinnedIds = ['tc_runtime_state', 'cpu_load', 'ethercat_state', 'mes_client']
+const defaultPinnedIds = ['status', 'cpu_load', 'ram_load', 'disk_free']
 const pinnedPropertyIds = ref<string[]>([])
 const selectedCategory = ref<string>('All')
 const propertySearchQuery = ref<string>('')
@@ -81,274 +83,170 @@ const copyValue = async (propId: string, val: string) => {
   }
 }
 
-// Deterministically compute rich industrial properties for this controller
+const humanize = (key: string) =>
+  key.replace(/[_-]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim()
+
+const stringify = (value: unknown): string => {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  try { return JSON.stringify(value) } catch { return String(value) }
+}
+
+const relativeTime = (iso: string | null | undefined) => {
+  if (!iso) return 'never'
+  const ms = Date.now() - Date.parse(iso)
+  if (!Number.isFinite(ms)) return 'unknown'
+  if (ms < 60_000) return 'just now'
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)} min ago`
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)} h ago`
+  return `${Math.floor(ms / 86_400_000)} d ago`
+}
+
+/** `system_metadata` keys that are rendered in a dedicated section (or are internal links). */
+const STRUCTURED_METADATA_KEYS = new Set(['AdsPlcMemory', 'RemoteAccess', 'BeckhoffRT', 'IPAddress', 'ipAddress'])
+
+/**
+ * Properties of THIS controller, taken only from what the backend holds for it: its record,
+ * the agent's last report (`systemMetadata`, resource averages, disk info), its registered
+ * components and its station bindings. Anything that was not reported is simply absent.
+ */
 const allProperties = computed<ControllerProperty[]>(() => {
   const c = props.controller
   const t = c.telemetry
-  const hostname = c.hostname || c.name || 'IPC-NODE'
-  const hash = (str: string) => str.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const seed = hash(c.id || hostname)
+  const meta = (c.systemMetadata && typeof c.systemMetadata === 'object' ? c.systemMetadata : {}) as Record<string, any>
+  const list: ControllerProperty[] = []
+  const add = (prop: ControllerProperty) => { if (prop.value !== '') list.push(prop) }
 
-  const cpuVal = t?.cpuUsagePercent ?? ((seed % 40) + 10)
-  const ramVal = t?.ramUsagePercent ?? ((seed % 50) + 30)
-  const diskFree = c.freeDiskSpace?.totalFreeGB ? Math.round(c.freeDiskSpace.totalFreeGB) : ((seed % 300) + 120)
-
-  return [
-    // 1. TwinCAT & PLC Runtimes
-    {
-      id: 'tc_runtime_state',
-      name: 'TwinCAT 3 Runtime State',
-      category: 'TwinCAT & PLC',
-      value: t?.isOnline ? 'RUN (Real-Time Kernel 64-bit Active)' : 'STOP / CONFIG',
-      status: t?.isOnline ? 'success' : 'warning',
-      badge: t?.isOnline ? 'RUN' : 'STOP',
-      description: 'TwinCAT 3.1 Build 4024.53 real-time execution state'
-    },
-    {
-      id: 'tc_cycle_time',
-      name: 'PLC Task Cycle Time',
-      category: 'TwinCAT & PLC',
-      value: '1.000 ms (Base Cycle) • Jitter: ±1.4 µs',
-      status: 'success',
-      badge: '1.0 ms',
-      description: 'Real-time task scheduler cycle time & jitter bounds'
-    },
-    {
-      id: 'tc_rt_cores',
-      name: 'Real-Time Core Allocation',
-      category: 'TwinCAT & PLC',
-      value: '2 Dedicated Cores (Core 2, Core 3 Isolated for TwinCAT)',
+  // 1. Identity & network
+  add({
+    id: 'status',
+    name: 'Connection Status',
+    category: 'Identity & Network',
+    value: t?.isOnline ? `Online · last report ${relativeTime(c.lastOnline)}` : `Offline · last report ${relativeTime(c.lastOnline)}`,
+    status: t?.isOnline ? 'success' : 'warning',
+    badge: t?.isOnline ? 'ONLINE' : 'OFFLINE',
+    description: 'A controller counts as online when its agent reported within the last 5 minutes'
+  })
+  add({ id: 'hostname', name: 'Hostname', category: 'Identity & Network', value: c.hostname || '', status: 'neutral' })
+  add({ id: 'ip_address', name: 'IP Address', category: 'Identity & Network', value: c.ipAddress || '', status: 'neutral' })
+  add({ id: 'mac_address', name: 'MAC Address', category: 'Identity & Network', value: c.macAddress || '', status: 'neutral' })
+  add({ id: 'machine_identifier', name: 'Machine Identifier', category: 'Identity & Network', value: c.machineIdentifier || '', status: 'neutral', description: 'Identity the edge agent reports under' })
+  add({ id: 'ad_ou', name: 'Directory OU', category: 'Identity & Network', value: c.adOuPath || '', status: 'neutral' })
+  add({ id: 'cad_pin', name: 'Floor-plan Tag', category: 'Identity & Network', value: c.pinnedObjectHandle || '', status: 'info' })
+  const vnc = meta.RemoteAccess?.Vnc || meta.RemoteAccess?.vnc
+  if (vnc && typeof vnc === 'object') {
+    add({
+      id: 'remote_vnc',
+      name: 'Remote Desktop Endpoint',
+      category: 'Identity & Network',
+      value: `${vnc.Host || vnc.host || '(web UI host)'}:${vnc.Port ?? vnc.port}/${vnc.Path || vnc.path || 'websockify'}`,
       status: 'info',
-      badge: '2 RT Cores',
-      description: 'CPU core isolation configuration for deterministic task execution'
-    },
-    {
-      id: 'tc_ams_net_id',
-      name: 'TwinCAT AMS Net ID',
-      category: 'TwinCAT & PLC',
-      value: `${c.ipAddress || '192.168.1.50'}.1.1 (Port: 851)`,
-      status: 'neutral',
-      badge: 'Port 851',
-      description: 'ADS routing endpoint address'
-    },
-    {
-      id: 'tc_ads_router',
-      name: 'Beckhoff ADS Router',
-      category: 'TwinCAT & PLC',
-      value: 'Active (32 Route Endpoints Connected)',
-      status: 'success',
-      badge: '32 Routes',
-      description: 'Inter-process and inter-IPC ADS communication router'
-    },
+      badge: 'VNC',
+      description: 'noVNC endpoint linked to this controller'
+    })
+  }
 
-    // 2. Automation Software & Stacks
-    {
-      id: 'siemens_tia_openness',
-      name: 'Siemens TIA Openness Runtime',
-      category: 'Automation Software',
-      value: 'TIA Portal V18 Openness Gateway (v18.0.1.2)',
-      status: 'info',
-      badge: 'TIA V18',
-      description: 'Automated engineering & diagnostics interface'
-    },
-    {
-      id: 'codesys_runtime',
-      name: 'CODESYS Control Win Runtime',
-      category: 'Automation Software',
-      value: 'CODESYS Control Win V3.5 SP19 Patch 2',
-      status: 'neutral',
-      badge: 'v3.5 SP19',
-      description: 'SoftPLC runtime for IEC 61131-3 applications'
-    },
-    {
-      id: 'robot_gateway',
-      name: 'Robot Cell Controller Hub',
-      category: 'Automation Software',
-      value: 'Fanuc Roboguide & KUKA.WorkVisual 6.0 RPC Bridge',
-      status: 'success',
-      badge: 'Robot Bridge',
-      description: 'Industrial robotic arm telemetry & safety interface'
-    },
-    {
-      id: 'vision_inspect_stack',
-      name: 'Machine Vision Inspector',
-      category: 'Automation Software',
-      value: 'Cognex In-Sight Explorer 6.5.0 & Keyence CV-X Bridge',
-      status: 'success',
-      badge: 'Vision Hub',
-      description: 'Optical inspection & barcode verification engine'
-    },
-
-    // 3. MES & Shopfloor Clients
-    {
-      id: 'mes_client',
-      name: 'Shopfloor MES Client',
-      category: 'MES & Shopfloor',
-      value: 'AVEVA / Wonderware InTouch MES Client 2023 R2',
-      status: 'success',
-      badge: 'MES Active',
-      description: 'Manufacturing Execution System work order & tracking connector'
-    },
-    {
-      id: 'sap_pco',
-      name: 'SAP Plant Connectivity (PCo)',
-      category: 'MES & Shopfloor',
-      value: 'SAP MII PCo Agent v15.4 (Enterprise ERP Sync)',
-      status: 'info',
-      badge: 'SAP Connected',
-      description: 'SAP ERP material flow & batch tracking synchronization'
-    },
-    {
-      id: 'ignition_edge',
-      name: 'Ignition Edge Gateway',
-      category: 'MES & Shopfloor',
-      value: 'Ignition Edge 8.1.33 (OPC-UA Server & Tag Historian)',
-      status: 'success',
-      badge: 'Ignition 8.1',
-      description: 'Industrial HMI/SCADA edge node and local tag buffer'
-    },
-    {
-      id: 'kepware_opcua',
-      name: 'Kepware KEPServerEX',
-      category: 'MES & Shopfloor',
-      value: 'KEPServerEX v6.15 (18 Active Device Channels)',
-      status: 'success',
-      badge: 'OPC-UA',
-      description: 'Standard OPC-UA industrial protocol server'
-    },
-    {
-      id: 'mqtt_sparkplug',
-      name: 'MQTT Sparkplug B Edge Publisher',
-      category: 'MES & Shopfloor',
-      value: 'MQTT Sparkplug B Edge Publisher (QoS 1, Birth/Death Active)',
-      status: 'info',
-      badge: 'MQTT QoS 1',
-      description: 'IIoT telemetry streaming to plant cloud'
-    },
-
-    // 4. Fieldbus & Network
-    {
-      id: 'ethercat_state',
-      name: 'EtherCAT Master State',
-      category: 'Fieldbus & Network',
-      value: t?.isOnline ? 'Operational (OP) • 16 Slaves Online • 0 Lost Frames' : 'Pre-Operational (PREOP)',
-      status: t?.isOnline ? 'success' : 'warning',
-      badge: t?.isOnline ? 'OP State' : 'PREOP',
-      description: 'Real-time EtherCAT fieldbus master status'
-    },
-    {
-      id: 'profinet_controller',
-      name: 'PROFINET IO-Controller',
-      category: 'Fieldbus & Network',
-      value: 'PROFINET IO-Controller (RT Class 1, 4.0 ms Update)',
-      status: 'success',
-      badge: 'PROFINET RT',
-      description: 'Industrial Ethernet IO network controller'
-    },
-    {
-      id: 'ethernet_ip',
-      name: 'EtherNet/IP Scanner',
-      category: 'Fieldbus & Network',
-      value: 'EtherNet/IP Scanner (CIP Class 1 Implicit I/O Connected)',
-      status: 'neutral',
-      badge: 'CIP I/O',
-      description: 'Common Industrial Protocol scanner interface'
-    },
-    {
-      id: 'modbus_tcp',
-      name: 'Modbus TCP Server',
-      category: 'Fieldbus & Network',
-      value: 'Port 502 Listening • 64 Holding Registers Mapped',
-      status: 'neutral',
-      badge: 'Port 502',
-      description: 'Legacy PLC interconnect Modbus TCP listener'
-    },
-    {
-      id: 'rt_nic_driver',
-      name: 'Beckhoff RT NIC Driver',
-      category: 'Fieldbus & Network',
-      value: t?.beckhoffRT?.isRealtimeDriverBound ? 'TcRTEthernet Bound (Intel I210-IT RT PCIe)' : 'Standard NDIS Mode',
-      status: t?.beckhoffRT?.isRealtimeDriverBound ? 'success' : 'neutral',
-      badge: t?.beckhoffRT?.isRealtimeDriverBound ? 'RT Bound' : 'NDIS',
-      description: 'Real-time network interface card kernel driver'
-    },
-
-    // 5. Hardware & OS Diagnostics
-    {
+  // 2. Resources (agent-reported averages)
+  if (typeof t?.cpuUsagePercent === 'number') {
+    add({
       id: 'cpu_load',
-      name: 'CPU Load & Core Architecture',
-      category: 'Hardware & OS',
-      value: `${cpuVal}% Load • Intel Core i7-1185GRE (4C/8T @ 2.80GHz Industrial)`,
-      status: cpuVal > 80 ? 'warning' : 'success',
-      badge: `${cpuVal}%`,
-      description: 'Edge IPC CPU utilization and processor topology'
-    },
-    {
-      id: 'ram_util',
-      name: 'RAM Utilization',
-      category: 'Hardware & OS',
-      value: `${ramVal}% Used • ${(16 * (ramVal / 100)).toFixed(1)} GB / 16.0 GB DDR4 ECC`,
-      status: ramVal > 85 ? 'warning' : 'success',
-      badge: `${ramVal}%`,
-      description: 'Physical industrial ECC memory consumption'
-    },
-    {
-      id: 'nvme_storage',
-      name: 'Storage & SSD Health',
-      category: 'Hardware & OS',
-      value: `${diskFree} GB Free / 512 GB Industrial NVMe SSD (SMART: Good 99%)`,
-      status: diskFree < 20 ? 'warning' : 'success',
-      badge: `${diskFree} GB Free`,
-      description: 'Solid state disk free capacity & SMART endurance telemetry'
-    },
-    {
-      id: 'gpu_npu',
-      name: 'Graphics & AI Accelerator',
-      category: 'Hardware & OS',
-      value: 'Intel Iris Xe Graphics (OpenVINO AI Vision Model Engine)',
-      status: 'neutral',
-      badge: 'Iris Xe',
-      description: 'Onboard GPU and AI vision inference engine'
-    },
-    {
-      id: 'system_uptime',
-      name: 'IPC System Uptime',
-      category: 'Hardware & OS',
-      value: `${((seed % 60) + 12)} days, 8 hours (99.98% High Availability)`,
-      status: 'success',
-      badge: '99.98% SLA',
-      description: 'Continuous operating time since last power cycle'
-    },
-
-    // 6. Security & Integrity
-    {
-      id: 'os_version',
-      name: 'Operating System Build',
-      category: 'Security & Integrity',
-      value: c.telemetry?.osVersion || 'Windows 10 IoT Enterprise LTSC 21H2 (Build 19044)',
-      status: 'info',
-      badge: 'Win10 IoT LTSC',
-      description: 'Industrial Long-Term Servicing Channel OS'
-    },
-    {
-      id: 'bitlocker_tpm',
-      name: 'BitLocker & Hardware Root of Trust',
-      category: 'Security & Integrity',
-      value: 'BitLocker XTS-AES 256-bit Active (TPM 2.0 Sealed)',
-      status: 'success',
-      badge: 'TPM 2.0',
-      description: 'Hardware encryption and secure boot attestation'
-    },
-    {
-      id: 'ot_firewall',
-      name: 'OT Industrial Firewall',
-      category: 'Security & Integrity',
-      value: 'Strict Plant Enclave Profile Active (ADS, OPC-UA, HTTPS allowed)',
-      status: 'success',
-      badge: 'Enclave Strict',
-      description: 'Inbound port isolation and IEC 62443 compliance filter'
+      name: 'CPU Load',
+      category: 'Resources',
+      value: `${t.cpuUsagePercent.toFixed(1)} %`,
+      status: t.cpuUsagePercent > 85 ? 'error' : t.cpuUsagePercent > 65 ? 'warning' : 'success',
+      badge: `${Math.round(t.cpuUsagePercent)}%`,
+      description: 'Average CPU utilisation from the last agent report'
+    })
+  }
+  if (typeof t?.ramUsagePercent === 'number') {
+    add({
+      id: 'ram_load',
+      name: 'Memory Usage',
+      category: 'Resources',
+      value: `${t.ramUsagePercent.toFixed(1)} %`,
+      status: t.ramUsagePercent > 90 ? 'error' : t.ramUsagePercent > 75 ? 'warning' : 'success',
+      badge: `${Math.round(t.ramUsagePercent)}%`,
+      description: 'Average memory utilisation from the last agent report'
+    })
+  }
+  const disk = c.freeDiskSpace as any
+  const totalFree = disk?.totalFreeGB ?? disk?.TotalFreeGB
+  if (typeof totalFree === 'number') {
+    const osFree = disk?.osDriveFreeGB ?? disk?.OsDriveFreeGB
+    add({
+      id: 'disk_free',
+      name: 'Free Disk Space',
+      category: 'Resources',
+      value: `${totalFree.toFixed(1)} GB free${typeof osFree === 'number' ? ` · OS drive ${osFree.toFixed(1)} GB` : ''}`,
+      status: typeof osFree === 'number' && osFree < 10 ? 'warning' : 'success',
+      badge: `${Math.round(totalFree)} GB`
+    })
+    const drives = disk?.drives ?? disk?.Drives
+    if (drives && typeof drives === 'object') {
+      for (const [drive, free] of Object.entries(drives)) {
+        if (typeof free !== 'number') continue
+        add({ id: `disk_${drive}`, name: `Drive ${drive}`, category: 'Resources', value: `${free.toFixed(1)} GB free`, status: free < 10 ? 'warning' : 'neutral' })
+      }
     }
-  ]
+  }
+
+  // 3. PLC & runtime (only what an agent or PLC block reported)
+  const rt = (t?.beckhoffRT || meta.BeckhoffRT) as Record<string, any> | undefined
+  if (rt && typeof rt === 'object') {
+    for (const [key, value] of Object.entries(rt)) {
+      add({ id: `rt_${key}`, name: humanize(key), category: 'PLC & Runtime', value: stringify(value), status: 'info' })
+    }
+  }
+  const plc = meta.AdsPlcMemory as Record<string, any> | undefined
+  if (plc && typeof plc === 'object') {
+    add({ id: 'plc_ams', name: 'AMS Net ID', category: 'PLC & Runtime', value: plc.AmsNetId ? `${plc.AmsNetId}${plc.AmsPort ? ` (port ${plc.AmsPort})` : ''}` : '', status: 'neutral' })
+    add({ id: 'plc_symbol', name: 'Last PLC Symbol', category: 'PLC & Runtime', value: stringify(plc.SymbolName), status: 'info', description: stringify(plc.PlcTypeName) || undefined })
+    add({ id: 'plc_quality', name: 'PLC Data Quality', category: 'PLC & Runtime', value: stringify(plc.Quality), status: /good/i.test(stringify(plc.Quality)) ? 'success' : 'warning' })
+    add({ id: 'plc_updated', name: 'Last PLC Block', category: 'PLC & Runtime', value: plc.LastUpdated ? relativeTime(plc.LastUpdated) : '', status: 'neutral' })
+  }
+
+  // 4. Everything else the agent reported about the system
+  for (const [key, value] of Object.entries(meta)) {
+    if (STRUCTURED_METADATA_KEYS.has(key)) continue
+    add({ id: `meta_${key}`, name: humanize(key), category: 'Reported System Info', value: stringify(value), status: 'neutral' })
+  }
+  if (!meta.OsVersion && !meta.OperatingSystem && t?.osVersion) {
+    add({ id: 'os_version', name: 'Operating System', category: 'Reported System Info', value: t.osVersion, status: 'neutral' })
+  }
+
+  // 5. Registered hardware / software components
+  for (const item of c.inventoryItems || []) {
+    const details = item.metadata && typeof item.metadata === 'object'
+      ? Object.entries(item.metadata).filter(([, v]) => v !== null && typeof v !== 'object').slice(0, 4).map(([k, v]) => `${humanize(k)}: ${v}`).join(' · ')
+      : ''
+    add({
+      id: `item_${item.id}`,
+      name: item.displayName || item.name,
+      category: 'Installed Components',
+      value: details || item.itemType || 'Registered component',
+      status: 'neutral',
+      badge: item.itemType
+    })
+  }
+
+  // 6. Stations and ownership
+  for (const st of c.controlledMachines || []) {
+    add({
+      id: `station_${st.id}`,
+      name: 'Controlled Station',
+      category: 'Stations & Ownership',
+      value: st.customIdentifier ? `${st.customIdentifier} · ${st.name}` : st.name,
+      status: 'info',
+      badge: st.pinnedObjectHandle || undefined
+    })
+  }
+  for (const team of c.responsibleTeams || []) {
+    add({ id: `team_${team.id}`, name: 'Responsible Team', category: 'Stations & Ownership', value: team.name, status: 'neutral' })
+  }
+  add({ id: 'organization', name: 'Organization', category: 'Stations & Ownership', value: c.organizationId || '', status: 'neutral' })
+
+  return list
 })
 
 // Pinned properties filtered for quick top view
@@ -375,15 +273,20 @@ const filteredProperties = computed(() => {
   return list
 })
 
-const categories: string[] = [
-  'All',
-  'TwinCAT & PLC',
-  'Automation Software',
-  'MES & Shopfloor',
-  'Fieldbus & Network',
-  'Hardware & OS',
-  'Security & Integrity'
+const CATEGORY_ORDER: PropertyCategory[] = [
+  'Identity & Network',
+  'Resources',
+  'PLC & Runtime',
+  'Reported System Info',
+  'Installed Components',
+  'Stations & Ownership'
 ]
+
+/** Only categories this controller actually has data for. */
+const categories = computed<string[]>(() => [
+  'All',
+  ...CATEGORY_ORDER.filter(cat => allProperties.value.some(p => p.category === cat))
+])
 
 const getStatusColor = (status?: string) => {
   switch (status) {
@@ -412,7 +315,7 @@ const getStatusColor = (status?: string) => {
           <p class="text-xs font-mono text-muted-foreground flex items-center gap-2 mt-0.5">
             <span>MAC: {{ controller.macAddress }}</span>
             <span class="text-muted-foreground/40">•</span>
-            <span>IP: {{ controller.ipAddress || '192.168.1.100' }}</span>
+            <span>IP: {{ controller.ipAddress || 'not reported' }}</span>
             <span class="text-muted-foreground/40">•</span>
             <span class="text-primary font-medium">UUID: {{ controller.id.substring(0, 8) }}</span>
           </p>
@@ -479,6 +382,17 @@ const getStatusColor = (status?: string) => {
         >
           <Link class="size-3" />
           <span>{{ controller.pinnedObjectHandle ? 'Edit DXF Link' : '+ Link DXF Tag' }}</span>
+        </Button>
+        <Button
+          v-if="controller.pinnedObjectHandle"
+          variant="outline"
+          size="sm"
+          @click="emit('unpin-dxf', controller)"
+          class="h-8 rounded-lg bg-card hover:bg-rose-500/10 border-border text-muted-foreground hover:text-rose-600 text-xs font-medium flex items-center gap-1.5 cursor-pointer"
+          title="Remove the floor-plan tag (station bindings are kept)"
+        >
+          <PinOff class="size-3" />
+          <span>Unpin</span>
         </Button>
       </div>
     </div>

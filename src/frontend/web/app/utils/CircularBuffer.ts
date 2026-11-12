@@ -6,6 +6,7 @@ export class CircularBuffer {
   private buffer: Float32Array
   private head: number = 0
   private count: number = 0
+  private writes: number = 0
   readonly capacity: number
 
   constructor(capacity: number = 120) {
@@ -22,9 +23,17 @@ export class CircularBuffer {
   push(value: number): void {
     this.buffer[this.head] = value
     this.head = (this.head + 1) % this.capacity
+    this.writes++
     if (this.count < this.capacity) {
       this.count++
     }
+  }
+
+  /**
+   * Monotonic change counter (pushes and clears). Lets renderers skip frames when nothing changed.
+   */
+  get version(): number {
+    return this.writes
   }
 
   /**
@@ -99,6 +108,7 @@ export class CircularBuffer {
   clear(): void {
     this.head = 0
     this.count = 0
+    this.writes++
     this.buffer.fill(0)
   }
 }

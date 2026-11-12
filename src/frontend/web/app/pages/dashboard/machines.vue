@@ -11,6 +11,7 @@ import StationDetailWorkbench from '~/components/machines/StationDetailWorkbench
 import { useGlobalContextMenu } from '~/composables/useGlobalContextMenu'
 import { resolvePreferredTechnician } from '~/utils/technicianInheritance'
 import { useOrganizationMachineTypes } from '~/composables/useOrganizationMachineTypes'
+import { parseMachinesQuery, findMachineByRef, filterMachineDirectory } from '~/utils/deepLinkQueries'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -33,7 +34,7 @@ const lineKpis = ref<Record<string, any>>({})
 // Slide-out Workbench Inspector State (Eliminates blocking modal pop-ups)
 const isWorkbenchOpen = ref(false)
 const workbenchStation = ref<any>(null)
-const workbenchTab = ref<'tree' | 'diagnostics' | 'lifecycle'>('tree')
+const workbenchTab = ref<'tree' | '3d-twin' | 'diagnostics' | 'lifecycle'>('tree')
 const selectedSchematicStationId = ref<string>('')
 
 const currentSchematicStation = computed(() => {
@@ -44,36 +45,40 @@ const currentSchematicStation = computed(() => {
   return filteredMachines.value[0] || null
 })
 
+const findMachine = (idOrIdentifier: string) => findMachineByRef(machines.value, idOrIdentifier)
+
+const openStation = (machine: any, tab: typeof workbenchTab.value = 'tree') => {
+  workbenchStation.value = machine
+  workbenchTab.value = tab
+  isWorkbenchOpen.value = true
+}
+
+// Station requested by id before the machine list was loaded (deep link); resolved after the fetch.
+const pendingStationId = ref<string | null>(null)
+
 const openTreeForStation = (stationId: string) => {
-  const target = machines.value.find(m => m.id === stationId || m.name === stationId || m.customIdentifier === stationId) || { id: stationId, name: stationId }
-  workbenchStation.value = target
-  workbenchTab.value = 'tree'
-  isWorkbenchOpen.value = true
+  const target = findMachine(stationId)
+  pendingStationId.value = target ? null : stationId
+  // Until the list is loaded only the id is known; the workbench loads the tree by id.
+  openStation(target || { id: stationId, name: stationId }, 'tree')
 }
 
-const openQuickView = (ctrl: any) => {
-  const parentMachine = machines.value.find(m => m.controllers?.some((c: any) => c.id === ctrl.id || c.hostname === ctrl.hostname)) || {
-    id: ctrl.id || ctrl.hostname,
-    name: ctrl.name || ctrl.hostname,
-    controllers: [ctrl]
-  }
-  workbenchStation.value = parentMachine
-  workbenchTab.value = 'diagnostics'
-  isWorkbenchOpen.value = true
+const open3dForStation = (m: any) => openStation(m, '3d-twin')
+
+/** Opens the diagnostics of the station the clicked controller belongs to. */
+const openQuickView = (ctrl: any, machine?: any) => {
+  const parentMachine = machine
+    || machines.value.find(m => m.controllers?.some((c: any) => (ctrl.id && c.id === ctrl.id) || (ctrl.hostname && c.hostname === ctrl.hostname)))
+  if (!parentMachine) return
+  openStation(parentMachine, 'diagnostics')
 }
 
-const openDecommissionModal = (m: any) => {
-  workbenchStation.value = m
-  workbenchTab.value = 'lifecycle'
-  isWorkbenchOpen.value = true
-}
+const openDecommissionModal = (m: any) => openStation(m, 'lifecycle')
 
+// A controller node opens that station's diagnostics, a part node its hardware tree.
 const handleSchematicComponentSelect = (node: any) => {
-  if (currentSchematicStation.value) {
-    workbenchStation.value = currentSchematicStation.value
-    workbenchTab.value = 'tree'
-    isWorkbenchOpen.value = true
-  }
+  if (!currentSchematicStation.value) return
+  openStation(currentSchematicStation.value, node?.controllerId ? 'diagnostics' : 'tree')
 }
 
 const handleMachineContextMenu = (m: any, e: MouseEvent) => {
@@ -97,7 +102,8 @@ const fetchData = async () => {
   loading.value = true
   try {
     const [machRes, kpiRes] = await Promise.allSettled([
-      $fetch<any[]>('/api/machines').catch(() => $fetch<any[]>('/api/proxy/v1/Machine')),
+      // Decommissioned stations are part of this page (status filter), so ask for them explicitly.
+      $fetch<any[]>('/api/machines', { query: { includeDecommissioned: true } }).catch(() => $fetch<any[]>('/api/proxy/v1/Machine')),
       $fetch<any[]>('/api/proxy/v1/Analytics/kpis').catch(() => [])
     ])
 
@@ -105,6 +111,16 @@ const fetchData = async () => {
       machines.value = machRes.value
     } else {
       machines.value = []
+    }
+    machinesLoaded.value = true
+    resolveLoadedDeepLinks()
+
+    // Keep an open workbench pointing at the fresh record (and resolve a deep-linked station).
+    const openId = pendingStationId.value || workbenchStation.value?.id
+    const fresh = openId ? findMachine(openId) : null
+    if (fresh && isWorkbenchOpen.value) {
+      workbenchStation.value = fresh
+      pendingStationId.value = null
     }
 
     if (kpiRes.status === 'fulfilled' && Array.isArray(kpiRes.value)) {
@@ -122,57 +138,102 @@ const fetchData = async () => {
 
 const { isMachineTypeVisible } = useOrganizationMachineTypes()
 
-// Filtered machines
-const filteredMachines = computed(() => {
-  let list = machines.value
+// ── Deep links (?search= ?id= ?tree= ?decommission=) ───────────────────────────
+const deepLink = computed(() => parseMachinesQuery(route.query))
+const machinesLoaded = ref(false)
 
-  // Status Filter
-  if (statusFilter.value === 'active_floor') {
-    list = list.filter(m => m.status === 'active' || m.status === 'maintenance')
-  } else if (statusFilter.value === 'maintenance') {
-    list = list.filter(m => m.status === 'maintenance')
-  } else if (statusFilter.value === 'decommissioned') {
-    list = list.filter(m => m.status === 'decommissioned' || m.status === 'dismantled')
+/** Station the directory is narrowed to by `?id=` (known once the list is loaded). */
+const focusedMachine = computed(() => (deepLink.value.id ? findMachine(deepLink.value.id) : null))
+
+// Filtered machines: status tab, organization machine types and text search; a focused station
+// (deep link by id) is shown whatever those filters say.
+const filteredMachines = computed(() => filterMachineDirectory(machines.value, {
+  statusFilter: statusFilter.value,
+  search: searchQuery.value,
+  focusId: focusedMachine.value?.id,
+  isTypeVisible: isMachineTypeVisible
+}))
+
+/** Removes consumed deep-link parameters so the same link can be followed again later. */
+const dropQuery = (...keys: string[]) => {
+  if (!keys.some(key => route.query[key] != null)) return
+  const query = { ...route.query }
+  for (const key of keys) delete query[key]
+  router.replace({ query })
+}
+
+const clearFocus = () => dropQuery('id')
+
+// Editing the search box or the status tab is the user taking over from an id deep link.
+const onSearchInput = (value: string) => {
+  searchQuery.value = value
+  clearFocus()
+}
+const onStatusFilterChange = (value: string) => {
+  statusFilter.value = value
+  clearFocus()
+}
+
+const onWorkbenchOpenChange = (open: boolean) => {
+  isWorkbenchOpen.value = open
+  if (!open) dropQuery('tree', 'decommission')
+}
+
+// Text a deep link put into the search box (taken out again when the link no longer carries it).
+let linkedSearch = ''
+const pendingDecommission = ref('')
+
+/** Deep-link parts that need the machine list; runs on every link change and after each load. */
+const resolveLoadedDeepLinks = () => {
+  if (!machinesLoaded.value) return
+  // An id that names no station becomes a text search: "no match" instead of the full directory.
+  if (deepLink.value.id && !focusedMachine.value && !deepLink.value.search) {
+    searchQuery.value = deepLink.value.id
+    linkedSearch = deepLink.value.id
   }
-
-  // Filter out machine types/categories disabled by the organization
-  list = list.filter(m => isMachineTypeVisible(m.machineType))
-
-  // Search Query
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.trim().toLowerCase()
-    list = list.filter(m =>
-      (m.name && m.name.toLowerCase().includes(q)) ||
-      (m.displayName && m.displayName.toLowerCase().includes(q)) ||
-      (m.customIdentifier && m.customIdentifier.toLowerCase().includes(q)) ||
-      (m.groupId && m.groupId.toLowerCase().includes(q)) ||
-      (m.controllers && m.controllers.some((c: any) => c.hostname && c.hostname.toLowerCase().includes(q)))
-    )
+  if (pendingDecommission.value) {
+    const target = findMachine(pendingDecommission.value)
+    pendingDecommission.value = ''
+    if (target) openDecommissionModal(target)
   }
-
-  return list
-})
+}
 
 const resetFilters = () => {
   searchQuery.value = ''
+  linkedSearch = ''
   statusFilter.value = 'active_floor'
   activeView.value = 'machines'
+  dropQuery('id', 'search', 'query')
   fetchData()
 }
 
-// Watch query params
-watch(() => route.query, (q) => {
-  if (q.id || q.search || q.query) {
-    searchQuery.value = (q.id || q.search || q.query) as string
+// Each parameter is applied when its own value changes, so an unrelated query update (closing
+// the workbench drops ?tree=) never overwrites what the user typed meanwhile.
+watch(() => deepLink.value.search, (search) => {
+  if (search) {
+    searchQuery.value = search
+    linkedSearch = search
     activeView.value = 'machines'
+  } else if (linkedSearch && searchQuery.value === linkedSearch) {
+    searchQuery.value = ''
+    linkedSearch = ''
   }
-  if (q.tree) {
-    openTreeForStation(q.tree as string)
-  }
-  if (q.decommission) {
-    const target = machines.value.find(m => m.id === q.decommission || m.customIdentifier === q.decommission)
-    if (target) openDecommissionModal(target)
-  }
+}, { immediate: true })
+
+watch(() => deepLink.value.id, (id) => {
+  if (!id) return
+  activeView.value = 'machines'
+  resolveLoadedDeepLinks()
+}, { immediate: true })
+
+watch(() => deepLink.value.tree, (tree) => {
+  if (tree) openTreeForStation(tree)
+}, { immediate: true })
+
+// The decommission dialog needs the machine record: resolved now, or as soon as the list is loaded.
+watch(() => deepLink.value.decommission, (ref) => {
+  pendingDecommission.value = ref
+  resolveLoadedDeepLinks()
 }, { immediate: true })
 
 onMounted(() => {
@@ -210,18 +271,40 @@ onMounted(() => {
 
     <!-- Toolbar: Search, View Switch, Filters -->
     <MachineToolbar
-      v-model:search-query="searchQuery"
+      :search-query="searchQuery"
       v-model:active-view="activeView"
-      v-model:status-filter="statusFilter"
+      :status-filter="statusFilter"
       :total-count="filteredMachines.length"
+      @update:search-query="onSearchInput"
+      @update:status-filter="onStatusFilterChange"
       @reset="resetFilters"
     />
+
+    <!-- Station focused by a deep link (?id=): the directory shows it alone until released -->
+    <div
+      v-if="focusedMachine"
+      data-testid="machine-focus-chip"
+      class="flex items-center justify-between gap-3 px-3.5 py-2 bg-primary/10 border border-primary/20 rounded-xl text-xs text-foreground"
+    >
+      <span>
+        Showing station <strong>{{ focusedMachine.displayName || focusedMachine.name || focusedMachine.customIdentifier }}</strong> only
+      </span>
+      <button
+        type="button"
+        class="text-xs font-medium text-primary hover:underline cursor-pointer shrink-0"
+        @click="clearFocus"
+      >
+        Show all stations
+      </button>
+    </div>
 
     <!-- View: Stations Card Grid -->
     <MachineCardGrid
       v-if="activeView === 'machines'"
       :machines="filteredMachines"
       :loading="loading"
+      @open="openStation($event)"
+      @open3d="open3dForStation"
       @open-tree="openTreeForStation"
       @open-quick-view="openQuickView"
       @open-decommission="openDecommissionModal"
@@ -234,6 +317,8 @@ onMounted(() => {
       :machines="filteredMachines"
       :mode="activeView === 'lines' ? 'lines' : 'technologies'"
       :line-kpis="lineKpis"
+      @open="openStation($event)"
+      @open3d="open3dForStation"
       @open-tree="openTreeForStation"
       @open-quick-view="openQuickView"
       @open-decommission="openDecommissionModal"
@@ -250,7 +335,7 @@ onMounted(() => {
             class="h-8 px-2.5 text-xs bg-background border border-border rounded-lg text-foreground font-mono font-semibold focus:outline-none focus:border-primary"
           >
             <option v-for="m in filteredMachines" :key="m.id" :value="m.id">
-              {{ m.displayName || m.name }} ({{ m.groupId || 'Line 1' }})
+              {{ m.displayName || m.name }} ({{ m.lineGroupName || m.groupId || 'Unassigned' }})
             </option>
           </select>
         </div>
@@ -261,9 +346,13 @@ onMounted(() => {
         </div>
       </div>
 
+      <div v-if="!currentSchematicStation" class="text-center py-12 border border-dashed border-border rounded-xl">
+        <p class="text-xs text-muted-foreground font-mono">No station matches the current filter criteria.</p>
+      </div>
       <StationPhysicalView
-        :station-id="currentSchematicStation?.id || 'cell-01'"
-        :station-name="currentSchematicStation?.displayName || currentSchematicStation?.name || 'Assembly Cell'"
+        v-else
+        :station-id="currentSchematicStation.id"
+        :station-name="currentSchematicStation.displayName || currentSchematicStation.name"
         @select-component="handleSchematicComponentSelect"
       />
     </div>
@@ -275,7 +364,7 @@ onMounted(() => {
       :open="isWorkbenchOpen"
       :machine="workbenchStation"
       :initial-tab="workbenchTab"
-      @update:open="isWorkbenchOpen = $event"
+      @update:open="onWorkbenchOpenChange"
       @refresh="fetchData"
     />
   </div>

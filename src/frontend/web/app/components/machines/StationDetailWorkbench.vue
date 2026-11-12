@@ -36,6 +36,12 @@ import { useDedications } from '~/composables/useDedications'
 import type { MachineDedications } from '~/types/maintenance'
 import DynamicUiExtensions from '~/components/lua/DynamicUiExtensions.vue'
 import Machine3dDigitalTwin from '~/components/cad/Machine3dDigitalTwin.vue'
+import RemoteQuickViewModal from '~/components/controllers/RemoteQuickViewModal.vue'
+import RbacTooltip from '~/components/common/RbacTooltip.vue'
+import { useControllers } from '~/composables/useControllers'
+import { useStationTelemetry } from '~/composables/useStationTelemetry'
+import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
+import type { IndustrialController } from '~/types/domain'
 
 const props = withDefaults(
   defineProps<{
@@ -60,7 +66,12 @@ const treeLoading = ref(false)
 const treeData = ref<any | null>(null)
 const searchQuery = ref('')
 const expandedNodes = ref<Record<string, boolean>>({})
-const isCopied = ref(false)
+const copiedControllerId = ref<string | null>(null)
+
+// Fleet controller store (CPU / RAM / last seen). Read once here; the workbench does not poll.
+const { controllers: fleetControllers, isOnline: isControllerOnline } = useControllers({ poll: false })
+const { getStationKpi, getStationOscillation } = useStationTelemetry()
+const { canExecuteRemote } = useRbacPermission()
 
 // 3D Digital Twin state
 const selected3dSlot = ref<string | null>(null)
@@ -196,17 +207,28 @@ const collapseAll = () => {
   expandedNodes.value = {}
 }
 
+// Bumped per request so a slow response for a previously opened station cannot overwrite the current one.
+let topologyRequest = 0
+
 const fetchStationTopology = async (stationId: string) => {
   if (!stationId) return
+  const request = ++topologyRequest
+  // Never keep showing the previous station's tree / 3D model while the next one loads.
+  if (treeData.value && String(treeData.value.stationId) !== String(stationId)) {
+    treeData.value = null
+    selected3dSlot.value = null
+  }
   treeLoading.value = true
   try {
     const res = await $fetch<any>(`/api/proxy/v1/inventory/station-tree/${encodeURIComponent(stationId)}`)
+    if (request !== topologyRequest) return
     if (res) {
       treeData.value = res
       expandAll()
       return
     }
   } catch (err) {
+    if (request !== topologyRequest) return
     // Backend topology unavailable: show what we know from the machine record only,
     // never fabricated controllers/IPs/parts.
     console.warn('Failed to load station topology', err)
@@ -220,7 +242,7 @@ const fetchStationTopology = async (stationId: string) => {
     }
     expandAll()
   } finally {
-    treeLoading.value = false
+    if (request === topologyRequest) treeLoading.value = false
   }
 }
 
@@ -287,25 +309,68 @@ const filteredParts = computed(() => {
   )
 })
 
-const primaryController = computed(() => {
-  if (props.machine?.controllers?.[0]) return props.machine.controllers[0]
-  if (treeData.value?.controllers?.[0]) return treeData.value.controllers[0]
-  return {
-    hostname: props.machine?.name ? `${props.machine.name}-IPC` : 'STATION-IPC',
-    ipAddress: '192.168.10.15',
-    macAddress: '00:1B:21:9A:43:02',
-    vlanId: 100,
-    isOnline: true
-  }
+/**
+ * Controllers bound to this station (station tree, else the machine record), enriched with the
+ * fleet store's live resource figures when the controller is known there. Nothing is invented:
+ * a station without controllers yields an empty list and values that were never reported stay null.
+ */
+const stationControllers = computed<IndustrialController[]>(() => {
+  const source: any[] = treeData.value?.controllers?.length ? treeData.value.controllers : (props.machine?.controllers || [])
+  return source.filter(Boolean).map((c: any) => {
+    const fleet = fleetControllers.value.find(f => f.id === c.id)
+    const lastOnline = c.lastOnline || c.lastSeen || fleet?.lastOnline || null
+    return {
+      ...(fleet || {}),
+      id: c.id,
+      name: c.name || c.hostname || fleet?.name || 'Controller',
+      hostname: c.hostname || fleet?.hostname || c.name || '',
+      macAddress: c.macAddress || fleet?.macAddress || '',
+      ipAddress: c.ipAddress || fleet?.ipAddress,
+      lastOnline,
+      isOnline: isControllerOnline(lastOnline),
+      vlanId: c.vlanId ?? null,
+      telemetry: fleet?.telemetry
+    } as IndustrialController & { isOnline: boolean; vlanId: number | null }
+  })
 })
 
-const copyConnectionString = () => {
-  const conn = `ssh -o StrictHostKeyChecking=no admin@${primaryController.value.ipAddress}`
-  navigator.clipboard.writeText(conn)
-  isCopied.value = true
-  setTimeout(() => {
-    isCopied.value = false
-  }, 2000)
+const stationTelemetryKey = computed(() => String(props.machine?.id || props.machine?.customIdentifier || ''))
+const stationKpi = computed(() => (stationTelemetryKey.value ? getStationKpi(stationTelemetryKey.value) : null))
+const stationOscillation = computed(() => (stationTelemetryKey.value ? getStationOscillation(stationTelemetryKey.value) : null))
+
+const formatMetric = (value: number | null | undefined, digits = 1) =>
+  typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '—'
+
+const formatLastSeen = (iso: string | null | undefined) => {
+  if (!iso) return 'never reported'
+  const ms = Date.now() - new Date(iso).getTime()
+  if (!Number.isFinite(ms)) return 'unknown'
+  if (ms < 60_000) return 'just now'
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)} min ago`
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)} h ago`
+  return `${Math.floor(ms / 86_400_000)} d ago`
+}
+
+// Remote view of one specific controller; the modal resolves that controller's own endpoint.
+const remoteViewController = ref<IndustrialController | null>(null)
+const isRemoteViewOpen = ref(false)
+const openRemoteView = (controller: IndustrialController) => {
+  remoteViewController.value = controller
+  isRemoteViewOpen.value = true
+}
+
+const copyConnectionString = async (controller: IndustrialController) => {
+  const target = controller.ipAddress || controller.hostname
+  if (!target) return
+  try {
+    await navigator.clipboard.writeText(`ssh ${target}`)
+    copiedControllerId.value = controller.id
+    setTimeout(() => {
+      if (copiedControllerId.value === controller.id) copiedControllerId.value = null
+    }, 2000)
+  } catch {
+    // Clipboard unavailable (insecure context): nothing to confirm.
+  }
 }
 
 const handleLifecycleSubmit = async () => {
@@ -557,6 +622,7 @@ const handleLifecycleSubmit = async () => {
                 <div
                   v-for="part in filteredParts"
                   :key="part.id"
+                  v-ctx:inventory="part"
                   class="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 border border-border"
                 >
                   <div class="flex items-center gap-2">
@@ -590,7 +656,8 @@ const handleLifecycleSubmit = async () => {
           <div class="lg:col-span-8">
             <ClientOnly>
               <Machine3dDigitalTwin
-                :model-url="treeData?.model3dUrl || '/sample/station_digital_twin.glb'"
+                :key="`${treeData?.stationId || machine?.id || 'station'}|${treeData?.model3dUrl || ''}`"
+                :model-url="treeData?.model3dUrl || null"
                 :selected-slot="selected3dSlot"
                 :station-id="machine?.id || machine?.customIdentifier || null"
                 :components="installed3dParts"
@@ -661,79 +728,143 @@ const handleLifecycleSubmit = async () => {
 
       <!-- TAB 2: CONTROLLER DIAGNOSTICS -->
       <div v-else-if="activeTab === 'diagnostics'" class="space-y-4">
-        <!-- Live Connection Status Card -->
+        <!-- Live station telemetry (as reported by the station's PLC; empty until it reports) -->
         <div class="p-4 rounded-xl bg-card border border-border space-y-3">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
-              <span class="size-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span class="text-xs font-bold text-foreground font-mono">{{ primaryController.hostname }}</span>
-              <Badge variant="outline" class="text-[9px] text-emerald-600 border-emerald-500/30 bg-emerald-500/10">
-                Online
+              <Activity class="w-4 h-4 text-cyan-500" />
+              <span class="text-xs font-bold text-foreground">Station Telemetry</span>
+              <Badge v-if="stationKpi" variant="outline" class="text-[9px] font-mono">
+                {{ stationKpi.operationalStatus }}
               </Badge>
             </div>
-            <span class="text-[10px] font-mono text-muted-foreground">Round-Trip: 14ms</span>
+            <NuxtLink
+              v-if="stationTelemetryKey"
+              :to="{ path: '/dashboard/telemetry', query: { station: stationTelemetryKey } }"
+              class="text-[11px] font-medium text-primary hover:underline inline-flex items-center gap-1"
+            >
+              <span>Open live view</span>
+              <ExternalLink class="w-3 h-3" />
+            </NuxtLink>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-border">
+          <div v-if="stationKpi?.lastTelemetryAt || stationOscillation" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
+              <span class="text-[9px] uppercase font-semibold text-muted-foreground">OEE</span>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5">{{ formatMetric(stationKpi?.oee) }} %</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
+              <span class="text-[9px] uppercase font-semibold text-muted-foreground">Parts / h</span>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5">
+                {{ formatMetric(stationKpi?.partsPerHour, 0) }}
+                <span v-if="stationKpi?.targetPartsPerHour != null" class="text-muted-foreground font-normal">/ {{ formatMetric(stationKpi.targetPartsPerHour, 0) }}</span>
+              </div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
+              <span class="text-[9px] uppercase font-semibold text-muted-foreground">Vibration</span>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5">{{ formatMetric(stationOscillation?.vibrationMmS, 2) }} mm/s</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
+              <span class="text-[9px] uppercase font-semibold text-muted-foreground">Temperature</span>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5">{{ formatMetric(stationOscillation?.temperatureC) }} °C</div>
+            </div>
+          </div>
+          <p v-else class="text-[11px] text-muted-foreground">
+            No telemetry has been received for this station yet.
+          </p>
+          <p v-if="stationKpi?.lastTelemetryAt" class="text-[10px] font-mono text-muted-foreground">
+            Last sample {{ formatLastSeen(stationKpi.lastTelemetryAt) }}
+          </p>
+        </div>
+
+        <!-- Controllers bound to this station -->
+        <div v-if="stationControllers.length === 0" class="p-6 rounded-xl border border-dashed border-border text-center">
+          <Monitor class="w-6 h-6 mx-auto mb-2 text-muted-foreground/50" />
+          <p class="text-xs text-muted-foreground">No controller is bound to this station.</p>
+        </div>
+
+        <div
+          v-for="ctrl in stationControllers"
+          :key="ctrl.id || ctrl.hostname"
+          v-ctx:controller="ctrl"
+          class="p-4 rounded-xl bg-card border border-border space-y-3"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span
+                class="size-2.5 rounded-full shrink-0"
+                :class="(ctrl as any).isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'"
+              />
+              <span class="text-xs font-bold text-foreground font-mono truncate">{{ ctrl.hostname || ctrl.name }}</span>
+              <Badge
+                variant="outline"
+                class="text-[9px]"
+                :class="(ctrl as any).isOnline ? 'text-emerald-600 border-emerald-500/30 bg-emerald-500/10' : 'text-muted-foreground border-border bg-muted/40'"
+              >
+                {{ (ctrl as any).isOnline ? 'Online' : 'Offline' }}
+              </Badge>
+            </div>
+            <span class="text-[10px] font-mono text-muted-foreground shrink-0">Last seen {{ formatLastSeen(ctrl.lastOnline) }}</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-2 border-t border-border">
             <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
               <span class="text-[9px] uppercase font-semibold text-muted-foreground">IPv4 Address</span>
-              <div class="text-xs font-mono font-bold text-foreground mt-0.5">{{ primaryController.ipAddress }}</div>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5">{{ ctrl.ipAddress || '—' }}</div>
             </div>
             <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
               <span class="text-[9px] uppercase font-semibold text-muted-foreground">Hardware MAC</span>
-              <div class="text-xs font-mono font-bold text-foreground mt-0.5">{{ primaryController.macAddress }}</div>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5 truncate">{{ ctrl.macAddress || '—' }}</div>
             </div>
             <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
-              <span class="text-[9px] uppercase font-semibold text-muted-foreground">VLAN Domain</span>
-              <div class="text-xs font-mono font-bold text-foreground mt-0.5">VLAN-{{ primaryController.vlanId || 100 }}</div>
+              <span class="text-[9px] uppercase font-semibold text-muted-foreground">VLAN</span>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5">{{ (ctrl as any).vlanId != null ? `VLAN-${(ctrl as any).vlanId}` : '—' }}</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
+              <span class="text-[9px] uppercase font-semibold text-muted-foreground">CPU Load</span>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5">
+                {{ ctrl.telemetry?.cpuUsagePercent != null ? `${Math.round(ctrl.telemetry.cpuUsagePercent)} %` : '—' }}
+              </div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-muted/40 border border-border">
+              <span class="text-[9px] uppercase font-semibold text-muted-foreground">Memory</span>
+              <div class="text-xs font-mono font-bold text-foreground mt-0.5">
+                {{ ctrl.telemetry?.ramUsagePercent != null ? `${Math.round(ctrl.telemetry.ramUsagePercent)} %` : '—' }}
+              </div>
             </div>
           </div>
 
-          <!-- Quick Connect Buttons -->
-          <div class="flex flex-wrap items-center gap-2 pt-2">
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <RbacTooltip :disabled="!canExecuteRemote" :tooltip="RBAC_TOOLTIPS.REMOTE_EXECUTION">
+              <Button
+                size="sm"
+                :disabled="!canExecuteRemote || !ctrl.id"
+                @click="openRemoteView(ctrl)"
+                class="h-8 text-xs gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              >
+                <Monitor class="w-3.5 h-3.5" />
+                <span>Remote View</span>
+              </Button>
+            </RbacTooltip>
             <Button
               size="sm"
               variant="outline"
-              @click="copyConnectionString"
-              class="h-8 text-xs gap-1.5"
+              :disabled="!ctrl.ipAddress && !ctrl.hostname"
+              @click="copyConnectionString(ctrl)"
+              class="h-8 text-xs gap-1.5 cursor-pointer"
             >
-              <Check v-if="isCopied" class="w-3.5 h-3.5 text-emerald-500" />
+              <Check v-if="copiedControllerId === ctrl.id" class="w-3.5 h-3.5 text-emerald-500" />
               <Copy v-else class="w-3.5 h-3.5" />
-              <span>{{ isCopied ? 'Copied SSH' : 'Copy SSH Command' }}</span>
+              <span>{{ copiedControllerId === ctrl.id ? 'Copied' : 'Copy SSH Command' }}</span>
             </Button>
-            <Button
-              size="sm"
-              class="h-8 text-xs gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
-              as-child
+            <NuxtLink
+              v-if="ctrl.id"
+              :to="{ path: '/dashboard/clients', query: { selected: ctrl.id, hostname: ctrl.hostname } }"
+              class="inline-flex items-center h-8 px-3 rounded-md border border-border text-xs font-medium text-foreground hover:bg-muted gap-1.5"
             >
-              <a :href="`http://${primaryController.ipAddress}:8006`" target="_blank" rel="noopener noreferrer">
-                <ExternalLink class="w-3.5 h-3.5" />
-                <span>Open Web HMI Console</span>
-              </a>
-            </Button>
-          </div>
-        </div>
-
-        <!-- Telemetry Gauges -->
-        <div class="grid grid-cols-2 gap-3">
-          <div class="p-3 rounded-xl bg-card border border-border space-y-1.5">
-            <div class="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-              <span>CPU Core Load</span>
-              <span class="font-mono text-emerald-500 font-bold">24%</span>
-            </div>
-            <div class="h-2 rounded-full bg-muted overflow-hidden">
-              <div class="h-full bg-emerald-500 rounded-full" style="width: 24%" />
-            </div>
-          </div>
-
-          <div class="p-3 rounded-xl bg-card border border-border space-y-1.5">
-            <div class="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-              <span>Memory Footprint</span>
-              <span class="font-mono text-blue-500 font-bold">42%</span>
-            </div>
-            <div class="h-2 rounded-full bg-muted overflow-hidden">
-              <div class="h-full bg-blue-500 rounded-full" style="width: 42%" />
-            </div>
+              <ExternalLink class="w-3.5 h-3.5" />
+              <span>Controller Details</span>
+            </NuxtLink>
           </div>
         </div>
       </div>
@@ -1166,5 +1297,11 @@ const handleLifecycleSubmit = async () => {
         </div>
       </div>
     </div>
+
+    <!-- Remote view of the selected controller (resolves that controller's own endpoint) -->
+    <RemoteQuickViewModal
+      v-model:open="isRemoteViewOpen"
+      :controller="remoteViewController"
+    />
   </div>
 </template>

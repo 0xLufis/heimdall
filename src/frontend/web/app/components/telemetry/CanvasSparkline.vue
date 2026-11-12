@@ -9,29 +9,50 @@ const props = withDefaults(
     color?: string
     height?: number
     fill?: boolean
-    showMinMax?: boolean
-    unit?: string
+    /** Draws a dashed reference line (e.g. a target or alarm limit) when it is inside the value range. */
+    reference?: number | null
   }>(),
   {
-    color: '#06b6d4', // Cyan
+    color: '#06b6d4',
     height: 48,
     fill: true,
-    showMinMax: false,
-    unit: ''
+    reference: null
   }
 )
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let animId: number | null = null
+// Last drawn state: frames are skipped while the data, size and styling are unchanged.
+let drawnVersion = -1
+let drawnBuffer: CircularBuffer | undefined
+let drawnWidth = 0
+let drawnHeight = 0
+let dirty = true
 
 const render = () => {
   const canvas = canvasRef.value
   if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
 
   const width = canvas.clientWidth
   const height = canvas.clientHeight
+  const version = props.buffer ? props.buffer.version : -1
+  if (
+    !dirty &&
+    props.buffer === drawnBuffer &&
+    version === drawnVersion &&
+    width === drawnWidth &&
+    height === drawnHeight
+  ) {
+    return
+  }
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  dirty = false
+  drawnBuffer = props.buffer
+  drawnVersion = version
+  drawnWidth = width
+  drawnHeight = height
 
   // Support retina/HiDPI displays
   const dpr = window.devicePixelRatio || 1
@@ -48,8 +69,8 @@ const render = () => {
   const count = rawValues.length
 
   if (count < 2) {
-    // Draw subtle standby baseline
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
+    // Not enough samples for a trend: neutral baseline (visible in light and dark themes)
+    ctx.strokeStyle = 'rgba(127, 127, 127, 0.35)'
     ctx.lineWidth = 1
     ctx.setLineDash([4, 4])
     ctx.beginPath()
@@ -68,21 +89,22 @@ const render = () => {
     if (val > max) max = val
   }
 
-  // Prevent divide by zero if flatline
+  // Flat line: open the range so it is drawn mid-height instead of dividing by zero
   if (min === max) {
-    min -= 1
-    max += 1
+    const pad = Math.abs(min) > 1 ? Math.abs(min) * 0.01 : 1
+    min -= pad
+    max += pad
   }
 
   const paddingY = 4
   const usableHeight = height - paddingY * 2
   const stepX = width / (count - 1)
+  const toY = (value: number) => height - paddingY - ((value - min) / (max - min)) * usableHeight
 
   ctx.beginPath()
   for (let i = 0; i < count; i++) {
     const x = i * stepX
-    const normalized = (rawValues[i] - min) / (max - min)
-    const y = height - paddingY - normalized * usableHeight
+    const y = toY(rawValues[i])
     if (i === 0) {
       ctx.moveTo(x, y)
     } else {
@@ -108,15 +130,28 @@ const render = () => {
     ctx.fill()
   }
 
+  if (typeof props.reference === 'number' && props.reference >= min && props.reference <= max) {
+    const y = toY(props.reference)
+    ctx.strokeStyle = 'rgba(127, 127, 127, 0.7)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([3, 3])
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(width, y)
+    ctx.stroke()
+  }
+
   ctx.restore()
 }
 
+watch(() => [props.color, props.fill, props.reference, props.data], () => { dirty = true })
+
 onMounted(() => {
-  render()
   const loop = () => {
     render()
     animId = requestAnimationFrame(loop)
   }
+  render()
   animId = requestAnimationFrame(loop)
 })
 
@@ -127,6 +162,6 @@ onUnmounted(() => {
 
 <template>
   <div class="relative w-full" :style="{ height: `${height}px` }">
-    <canvas ref canvasRef class="w-full h-full block" />
+    <canvas ref="canvasRef" class="w-full h-full block" />
   </div>
 </template>

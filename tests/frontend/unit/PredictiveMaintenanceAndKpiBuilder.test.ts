@@ -4,15 +4,23 @@ import FleetAnalyticsSummary from '../../../src/frontend/web/app/components/anal
 import KpiGraphBuilder from '../../../src/frontend/web/app/components/analytics/KpiGraphBuilder.vue'
 import { navMenu } from '../../../src/frontend/web/app/constants/menus'
 
+// Shape of the backend FleetSummaryDto: every figure comes with its sample size, missing ones are null.
 const mockSummary = {
-  totalMachineHours: 2316,
-  availabilityPercentage: 97.4,
-  averageMtbfHours: 342.5,
+  windowDays: 30,
+  totalMachines: 12,
+  controllerCount: 10,
+  controllersOnline: 9,
+  controllerOnlinePercentage: 90,
+  controllerOnlineWindowSeconds: 300,
+  incidentCount: 25,
+  resolvedIncidentCount: 14,
   averageMttrMinutes: 34.2,
-  slaCompliancePercentage: 96.8,
+  averageMtbfHours: 342.5,
+  mtbfMachineCount: 3,
+  criticalSlaHours: 12,
   topFaultingMachines: [
-    { machineId: 'm-op20', name: 'OP20-Weld Laser Cell', line: 'Line 1 - Pre-Assembly', incidentCount: 14, totalDowntimeMinutes: 185, primaryAlarmCode: 'F-WELD-OPTIC-DIRT', healthIndex: 68.4 },
-    { machineId: 'm-op50', name: 'OP50-Fasten Screwing Station', line: 'Line 2 - Fastening', incidentCount: 11, totalDowntimeMinutes: 142, primaryAlarmCode: 'E-TORQUE-OUT-OF-BOUNDS', healthIndex: 74.2 }
+    { machineId: 'm-op20', name: 'OP20-Weld Laser Cell', identifier: 'L01-OP020', line: 'Line 1 - Pre-Assembly', incidentCount: 14, openTicketCount: 2, totalDowntimeMinutes: 185, primaryAlarmCode: 'F-WELD-OPTIC-DIRT' },
+    { machineId: 'm-op50', name: 'OP50-Fasten Screwing Station', identifier: 'L02-OP050', line: '', incidentCount: 11, openTicketCount: 0, totalDowntimeMinutes: null, primaryAlarmCode: '' }
   ],
   maintenanceBacklog: {
     under24Hours: 8,
@@ -21,9 +29,19 @@ const mockSummary = {
     criticalBreached: 1
   },
   stockDepletion: [
-    { partNumber: 'SEW-DRV-MDX61B', description: 'SEW Movidrive Inverter Module', currentStock: 1, minStockThreshold: 3, criticality: 'Critical' }
-  ]
+    { partNumber: 'SEW-DRV-MDX61B', description: 'SEW Movidrive Inverter Module', currentStock: 1, minStockThreshold: 3, criticality: 'Warning' }
+  ],
+  stockDepletionTotal: 1
 }
+
+const summaryMount = (summary: Record<string, unknown> = mockSummary) => mount(FleetAnalyticsSummary, {
+  props: { summary: summary as any },
+  global: {
+    stubs: { NuxtLink: { template: '<a><slot /></a>' } },
+    directives: { ctx: {} },
+    mocks: { $router: { push: vi.fn() } }
+  }
+})
 
 describe('Predictive Maintenance, Analytics & KPI Builder Test Suite', () => {
   beforeEach(() => {
@@ -36,57 +54,61 @@ describe('Predictive Maintenance, Analytics & KPI Builder Test Suite', () => {
   })
 
   describe('FleetAnalyticsSummary Component', () => {
-    it('renders fleet availability, MTBF, MTTR, and SLA compliance accurately', () => {
-      const wrapper = mount(FleetAnalyticsSummary, {
-        props: {
-          summary: mockSummary
-        },
-        global: {
-          stubs: {
-            NuxtLink: { template: '<a><slot /></a>' }
-          }
-        }
-      })
+    it('renders ticket figures, resolution time and controller connectivity with their sample sizes', () => {
+      const text = summaryMount().text()
 
-      expect(wrapper.text()).toContain('97.4%')
-      expect(wrapper.text()).toContain('342.5')
-      expect(wrapper.text()).toContain('34.2')
-      expect(wrapper.text()).toContain('96.8%')
+      expect(text).toContain('Tickets raised, last 30 d')
+      expect(text).toContain('25')
+      expect(text).toContain('34 min')                          // mean time to resolve
+      expect(text).toContain('14 resolved tickets')
+      expect(text).toContain('14.3 d')                          // 342.5 h repeat-incident interval
+      expect(text).toContain('3 machines with 2+ tickets')
+      expect(text).toContain('9/10')
+      expect(text).toContain('connectivity, not production availability')
+      // Nothing the backend does not send: no trend deltas, targets or SLA percentages.
+      expect(text).not.toContain('this week')
+      expect(text).not.toContain('on-time')
+      expect(text).not.toContain('Health')
     })
 
-    it('renders top-faulting machines table with health index and downtime', () => {
-      const wrapper = mount(FleetAnalyticsSummary, {
-        props: {
-          summary: mockSummary
-        },
-        global: {
-          stubs: {
-            NuxtLink: { template: '<a><slot /></a>' }
-          }
-        }
-      })
+    it('renders the machines with the most tickets and "—" for what no ticket recorded', () => {
+      const wrapper = summaryMount()
+      const rows = wrapper.findAll('tbody tr')
 
-      expect(wrapper.text()).toContain('OP20-Weld Laser Cell')
-      expect(wrapper.text()).toContain('F-WELD-OPTIC-DIRT')
-      expect(wrapper.text()).toContain('68.4%')
-      expect(wrapper.text()).toContain('185 min')
+      expect(rows).toHaveLength(2)
+      expect(rows[0]!.text()).toContain('OP20-Weld Laser Cell')
+      expect(rows[0]!.text()).toContain('F-WELD-OPTIC-DIRT')
+      expect(rows[0]!.text()).toContain('3.1 h')                // 185 min
+      expect(rows[1]!.findAll('td').map(td => td.text())).toEqual(['OP50-Fasten Screwing Station', '—', '11', '0', '—', '—'])
     })
 
-    it('displays backlog distribution counts and stock depletion alerts', () => {
-      const wrapper = mount(FleetAnalyticsSummary, {
-        props: {
-          summary: mockSummary
-        },
-        global: {
-          stubs: {
-            NuxtLink: { template: '<a><slot /></a>' }
-          }
-        }
+    it('displays the backlog by age and the depleted stock', () => {
+      const text = summaryMount().text()
+
+      expect(text).toContain('SEW-DRV-MDX61B')
+      expect(text).toContain('1 / 3')
+      expect(text).toContain('Under 24 hours')
+      expect(text).toContain('14 open')
+      expect(text).toContain('Critical, open longer than 12 h')
+    })
+
+    it('says "No data" with the reason instead of showing a default', () => {
+      const wrapper = summaryMount({
+        ...mockSummary,
+        controllerCount: 0, controllersOnline: 0, controllerOnlinePercentage: null,
+        incidentCount: 0, resolvedIncidentCount: 0, averageMttrMinutes: null, averageMtbfHours: null, mtbfMachineCount: 0,
+        topFaultingMachines: [], stockDepletion: [], stockDepletionTotal: 0,
+        maintenanceBacklog: { under24Hours: 0, oneToThreeDays: 0, overThreeDays: 0, criticalBreached: 0 }
       })
 
-      expect(wrapper.text()).toContain('SEW-DRV-MDX61B')
-      expect(wrapper.text()).toContain('Under 24 Hours')
-      expect(wrapper.text()).toContain('Critical SLA Breaches')
+      expect(wrapper.find('[data-testid="summary-tile-mttr"]').text()).toContain('No data')
+      expect(wrapper.find('[data-testid="summary-tile-mttr"]').text()).toContain('No ticket of the last 30 d is resolved')
+      expect(wrapper.find('[data-testid="summary-tile-repeat"]').text()).toContain('No data')
+      expect(wrapper.find('[data-testid="summary-tile-controllers"]').text()).toContain('No client PC is registered')
+      expect(wrapper.find('[data-testid="summary-tile-incidents"]').text()).toContain('0')
+      expect(wrapper.find('[data-testid="summary-no-faulting"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="summary-no-stock"]').exists()).toBe(true)
+      expect(wrapper.text()).toContain('No open tickets.')
     })
   })
 

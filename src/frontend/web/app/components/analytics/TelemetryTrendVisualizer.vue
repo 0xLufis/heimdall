@@ -2,8 +2,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Badge } from '~/components/ui/badge'
 import { Card } from '~/components/ui/card'
-import { useTelemetryMetrics } from '~/composables/useTelemetryMetrics'
-import type { RollingTrends, RecipeForecast, RecipeItem } from '~/types/telemetryMetrics'
 import {
   TrendingUp,
   AlertTriangle,
@@ -35,52 +33,81 @@ export interface AnomalyDetail {
   description: string
 }
 
+/** Mirrors the backend `RollingTrendsDto` (flat regression fields). */
+export interface TrendStatistics {
+  linearRegressionSlope: number
+  linearRegressionIntercept: number
+  r2Score: number
+  movingAverageWindow: number
+  movingAverages: number[]
+  upperStdDevCorridor: number[]
+  lowerStdDevCorridor: number[]
+  trendDirection: 'Stable' | 'DriftingUp' | 'DriftingDown' | 'Volatile'
+}
+
+export interface TrendMetricOption {
+  key: string
+  name: string
+  unit: string
+  sampleCount: number
+}
+
+/** Mirrors the backend `MachineTrendSeriesDto` (GET /api/analytics/trends). */
 export interface TrendSeriesData {
   machineId: string
   metricName: string
   metricKey?: string
   unit: string
-  nominalValue: number
-  upperTolerance: number
-  lowerTolerance: number
+  /** Target the station itself reports for the metric; null when it reports none. */
+  nominalValue: number | null
+  upperTolerance: number | null
+  lowerTolerance: number | null
   points: TelemetryPoint[]
   detectedAnomalies: AnomalyDetail[]
-  statisticalTrends?: RollingTrends
-  recipeForecast?: RecipeForecast
-  availableRecipes?: RecipeItem[]
-  source?: string
-  isUserDefined?: boolean
+  statisticalTrends?: TrendStatistics | null
+  /** Samples the backend keeps per station metric, and how many of them exist right now. */
+  bufferCapacity?: number
+  bufferedSampleCount?: number
+  bufferedFrom?: string | null
+  bufferedTo?: string | null
+  /** Station metrics that currently have buffered samples. */
+  availableMetrics?: TrendMetricOption[]
 }
 
 const props = defineProps<{
   initialMachineId?: string
 }>()
 
-const {
-  metrics: telemetryMetrics,
-  fetchMetrics: fetchTelemetryMetrics
-} = useTelemetryMetrics()
-
 const activeMachineId = ref<string>(props.initialMachineId || '')
-const activeMetric = ref<string>('cycle_time')
-const activeRange = ref<'1h' | '8h' | '24h' | '7d'>('8h')
-const activeRecipeId = ref<string>('')
+const activeMetric = ref<string>('cycle_time_ms')
+// The history is an in-memory buffer of the last samples per metric, so only short windows exist.
+const RANGES = [
+  { key: '5m', label: '5 min' },
+  { key: '15m', label: '15 min' },
+  { key: 'all', label: 'All buffered' }
+] as const
+type TrendRange = typeof RANGES[number]['key']
+const activeRange = ref<TrendRange>('all')
 const showLinearTrend = ref(true)
 const showCorridor = ref(true)
 const showMovingAverage = ref(true)
 const isLoading = ref(false)
 
-const trendData = ref<TrendSeriesData>({
+const emptySeries = (): TrendSeriesData => ({
   machineId: '',
-  metricName: 'Cycle Time Deviation',
-  unit: 'ms',
-  nominalValue: 1200.0,
-  upperTolerance: 1280.0,
-  lowerTolerance: 1120.0,
+  metricName: '',
+  unit: '',
+  nominalValue: null,
+  upperTolerance: null,
+  lowerTolerance: null,
   points: [],
   detectedAnomalies: [],
-  availableRecipes: []
+  statisticalTrends: null,
+  availableMetrics: []
 })
+const trendData = ref<TrendSeriesData>(emptySeries())
+const hasLoaded = ref(false)
+const loadError = ref<string | null>(null)
 
 const hoveredPoint = ref<TelemetryPoint | null>(null)
 
@@ -107,27 +134,51 @@ const fetchTrends = async () => {
       params: {
         machineId: activeMachineId.value,
         metric: activeMetric.value,
-        range: activeRange.value,
-        recipeId: activeRecipeId.value || undefined
+        range: activeRange.value
       }
     })
-    if (data && data.points) {
-      trendData.value = data
+    if (!data || !Array.isArray(data.points)) throw new Error('Unexpected trend response')
+    trendData.value = { ...emptySeries(), ...data }
+    loadError.value = null
+    // The station may not report the selected metric: move to one it does report.
+    const available = data.availableMetrics ?? []
+    if (available.length > 0 && !available.some(m => m.key === activeMetric.value)) {
+      activeMetric.value = available[0]!.key
     }
-  } catch {
-    trendData.value = { ...trendData.value, machineId: activeMachineId.value, points: [], detectedAnomalies: [] }
+  } catch (err: any) {
+    trendData.value = { ...emptySeries(), machineId: activeMachineId.value }
+    loadError.value = err?.data?.message || err?.statusMessage || err?.message || 'Trend data is unavailable'
   } finally {
+    hasLoaded.value = true
     isLoading.value = false
   }
 }
 
-watch([activeMachineId, activeMetric, activeRange, activeRecipeId], () => {
+watch([activeMachineId, activeMetric, activeRange], () => {
   fetchTrends()
 })
 
 onMounted(async () => {
-  await Promise.all([fetchTelemetryMetrics(), loadMachines()])
+  await loadMachines()
   fetchTrends()
+})
+
+const metricTabs = computed<TrendMetricOption[]>(() => trendData.value.availableMetrics ?? [])
+const hasPoints = computed(() => trendData.value.points.length > 0)
+const limits = computed(() =>
+  [trendData.value.nominalValue, trendData.value.upperTolerance, trendData.value.lowerTolerance]
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+)
+const timeText = (iso?: string | null) => {
+  const at = iso ? new Date(iso) : null
+  return at && !Number.isNaN(at.getTime()) ? at.toLocaleTimeString() : null
+}
+const coverageText = computed(() => {
+  const d = trendData.value
+  if (!d.bufferedSampleCount) return null
+  const from = timeText(d.bufferedFrom)
+  const to = timeText(d.bufferedTo)
+  return `${d.points.length} of ${d.bufferedSampleCount} buffered samples shown${from && to ? ` · buffer covers ${from} – ${to}` : ''}`
 })
 
 // SVG Coordinates calculation
@@ -140,11 +191,11 @@ const chartHeight = computed(() => svgHeight - padding.top - padding.bottom)
 
 const yBounds = computed(() => {
   if (!trendData.value.points.length) {
-    return { min: trendData.value.lowerTolerance, max: trendData.value.upperTolerance }
+    return { min: 0, max: 1 }
   }
   const vals = trendData.value.points.map(p => p.value)
-  const dataMin = Math.min(...vals, trendData.value.lowerTolerance)
-  const dataMax = Math.max(...vals, trendData.value.upperTolerance)
+  const dataMin = Math.min(...vals, ...limits.value)
+  const dataMax = Math.max(...vals, ...limits.value)
   const margin = (dataMax - dataMin) * 0.15 || 5
   return {
     min: Math.floor(dataMin - margin),
@@ -203,11 +254,11 @@ const corridorAreaPath = computed(() => {
 
 // Linear Regression Trend Line
 const regressionCoords = computed(() => {
-  const reg = trendData.value.statisticalTrends?.linearRegression
+  const reg = trendData.value.statisticalTrends
   const pts = trendData.value.points
   if (!reg || !pts.length) return null
-  const yStart = reg.intercept
-  const yEnd = reg.intercept + reg.slope * (pts.length - 1)
+  const yStart = reg.linearRegressionIntercept
+  const yEnd = reg.linearRegressionIntercept + reg.linearRegressionSlope * (pts.length - 1)
   return {
     x1: getX(0, pts.length),
     y1: getY(yStart),
@@ -217,14 +268,15 @@ const regressionCoords = computed(() => {
 })
 
 // Summary statistics
-const currentVal = computed(() => {
+// Null without samples: the summary then says "No data" instead of repeating a target.
+const currentVal = computed<number | null>(() => {
   const pts = trendData.value.points
-  return pts.length ? pts[pts.length - 1].value : trendData.value.nominalValue
+  return pts.length ? pts[pts.length - 1]!.value : null
 })
 
-const meanVal = computed(() => {
+const meanVal = computed<number | null>(() => {
   const pts = trendData.value.points
-  if (!pts.length) return trendData.value.nominalValue
+  if (!pts.length) return null
   const sum = pts.reduce((acc, p) => acc + p.value, 0)
   return Math.round((sum / pts.length) * 100) / 100
 })
@@ -237,7 +289,7 @@ const meanVal = computed(() => {
       <div class="space-y-1">
         <div class="flex items-center gap-2">
           <TrendingUp class="w-4 h-4 text-primary" />
-          <h3 class="text-base font-semibold text-foreground">Metric Trends & Statistical Forecast</h3>
+          <h3 class="text-base font-semibold text-foreground">Metric Trends</h3>
           <Badge
             v-if="trendData.statisticalTrends"
             variant="outline"
@@ -252,7 +304,8 @@ const meanVal = computed(() => {
           </Badge>
         </div>
         <p class="text-xs text-muted-foreground">
-          Linear regression drift analysis, standard deviation corridors (±1.5σ), and recipe tool wear forecasting.
+          Recent samples of one station metric with linear regression, moving average and a ±1.5σ corridor.
+          The backend keeps the last {{ trendData.bufferCapacity || 200 }} samples per metric in memory, so only a short, recent window exists.
         </p>
       </div>
 
@@ -265,52 +318,16 @@ const meanVal = computed(() => {
           <option v-for="m in machinesList" :key="m.id" :value="m.id">{{ m.name }}</option>
         </select>
 
-        <select
-          v-model="activeRecipeId"
-          class="px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          title="Product Recipe Baseline Envelope"
-        >
-          <option
-            v-for="r in trendData.availableRecipes || []"
-            :key="r.recipeId"
-            :value="r.recipeId"
-          >
-            {{ r.recipeName }}
-          </option>
-        </select>
-
         <div class="flex items-center bg-muted/40 p-1 rounded-lg border border-border text-xs font-medium">
           <button
+            v-for="range in RANGES"
+            :key="range.key"
             type="button"
-            @click="activeRange = '1h'"
-            :class="activeRange === '1h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+            @click="activeRange = range.key"
+            :class="activeRange === range.key ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
             class="px-2.5 py-1 rounded transition-all cursor-pointer"
           >
-            1h
-          </button>
-          <button
-            type="button"
-            @click="activeRange = '8h'"
-            :class="activeRange === '8h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded transition-all cursor-pointer"
-          >
-            8h
-          </button>
-          <button
-            type="button"
-            @click="activeRange = '24h'"
-            :class="activeRange === '24h' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded transition-all cursor-pointer"
-          >
-            24h
-          </button>
-          <button
-            type="button"
-            @click="activeRange = '7d'"
-            :class="activeRange === '7d' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'"
-            class="px-2.5 py-1 rounded transition-all cursor-pointer"
-          >
-            7d
+            {{ range.label }}
           </button>
         </div>
 
@@ -325,70 +342,21 @@ const meanVal = computed(() => {
       </div>
     </div>
 
-    <!-- Recipe-Based Forecast Banner -->
-    <div
-      v-if="trendData.recipeForecast"
-      class="p-4 rounded-xl border transition-all"
-      :class="{
-        'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200': trendData.recipeForecast.toolWearStatus === 'Nominal',
-        'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200': trendData.recipeForecast.toolWearStatus === 'Warning',
-        'bg-rose-500/10 border-rose-500/30 text-rose-900 dark:text-rose-200': trendData.recipeForecast.toolWearStatus === 'CriticalImpendingFailure'
-      }"
-    >
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div class="flex items-start gap-3">
-          <div class="p-2 rounded-lg bg-background/60 border border-current/20 shrink-0">
-            <Wrench class="w-4 h-4" />
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-xs uppercase tracking-wide">Recipe Forecast: {{ trendData.recipeForecast.recipeName }}</span>
-              <Badge
-                variant="outline"
-                class="text-[10px] px-1.5 py-0 uppercase"
-                :class="{
-                  'border-emerald-500 text-emerald-700 dark:text-emerald-300': trendData.recipeForecast.toolWearStatus === 'Nominal',
-                  'border-amber-500 text-amber-700 dark:text-amber-300': trendData.recipeForecast.toolWearStatus === 'Warning',
-                  'border-rose-500 text-rose-700 dark:text-rose-300': trendData.recipeForecast.toolWearStatus === 'CriticalImpendingFailure'
-                }"
-              >
-                {{ trendData.recipeForecast.toolWearStatus }}
-              </Badge>
-            </div>
-            <p class="text-xs opacity-90 mt-0.5 font-mono">
-              {{ trendData.recipeForecast.recommendedAction }}
-            </p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-4 shrink-0 text-xs font-mono">
-          <div>
-            <span class="block opacity-75 text-[10px]">Drift Rate</span>
-            <span class="font-bold">{{ trendData.recipeForecast.driftPercentage > 0 ? '+' : '' }}{{ trendData.recipeForecast.driftPercentage }}%</span>
-          </div>
-          <div class="border-l border-current/20 pl-4">
-            <span class="block opacity-75 text-[10px]">Cycles Until Failure</span>
-            <span class="font-bold">{{ trendData.recipeForecast.forecastCyclesUntilFailure }} cycles</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Metric Tabs (Built-in + User Defined) -->
+    <!-- Metric tabs: the metrics this station has buffered samples for -->
     <div class="flex items-center gap-2 border-b border-border pb-3 overflow-x-auto text-xs font-medium">
       <button
-        v-for="m in telemetryMetrics"
+        v-for="m in metricTabs"
         :key="m.key"
         type="button"
         @click="activeMetric = m.key"
         :class="activeMetric === m.key ? 'bg-muted text-foreground border-border shadow-xs font-semibold' : 'bg-background text-muted-foreground border-border hover:text-foreground hover:bg-muted/40'"
         class="px-3.5 py-1.5 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
       >
-        <span>{{ m.name }} ({{ m.unit }})</span>
-        <Badge v-if="m.isUserDefined" variant="outline" class="text-[9px] px-1 py-0 border-primary/30 text-primary">
-          Custom
-        </Badge>
+        <span>{{ m.name }}<template v-if="m.unit"> ({{ m.unit }})</template></span>
       </button>
+      <span v-if="hasLoaded && metricTabs.length === 0" class="text-muted-foreground font-normal" data-testid="trend-no-metrics">
+        {{ loadError ? `Trend data could not be loaded: ${loadError}.` : 'This station has no buffered telemetry samples.' }}
+      </span>
     </div>
 
     <!-- Statistical Overlays Toggle Bar -->
@@ -408,9 +376,12 @@ const meanVal = computed(() => {
         </label>
       </div>
 
-      <div v-if="trendData.statisticalTrends?.linearRegression" class="text-[11px] font-mono text-muted-foreground flex items-center gap-2">
-        <span>Slope: {{ trendData.statisticalTrends.linearRegression.slope > 0 ? '+' : '' }}{{ trendData.statisticalTrends.linearRegression.slope }}/pt</span>
-        <span>R²: {{ trendData.statisticalTrends.linearRegression.r2 }}</span>
+      <div class="text-[11px] font-mono text-muted-foreground flex items-center gap-3 flex-wrap">
+        <span v-if="coverageText" data-testid="trend-coverage">{{ coverageText }}</span>
+        <template v-if="trendData.statisticalTrends">
+          <span>Slope: {{ trendData.statisticalTrends.linearRegressionSlope > 0 ? '+' : '' }}{{ trendData.statisticalTrends.linearRegressionSlope }}/sample</span>
+          <span>R²: {{ trendData.statisticalTrends.r2Score }}</span>
+        </template>
       </div>
     </div>
 
@@ -451,22 +422,16 @@ const meanVal = computed(() => {
           opacity="0.8"
         />
 
-        <!-- Nominal Tolerance Bands (Upper & Lower Limits) -->
-        <g stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,4" opacity="0.6">
-          <line :x1="padding.left" :y1="getY(trendData.upperTolerance)" :x2="svgWidth - padding.right" :y2="getY(trendData.upperTolerance)" />
-          <line :x1="padding.left" :y1="getY(trendData.lowerTolerance)" :x2="svgWidth - padding.right" :y2="getY(trendData.lowerTolerance)" />
+        <!-- Target reported by the station itself (drawn only when it reports one) -->
+        <g v-if="hasPoints && trendData.nominalValue != null">
+          <line :x1="padding.left" :y1="getY(trendData.nominalValue)" :x2="svgWidth - padding.right" :y2="getY(trendData.nominalValue)" stroke="#f59e0b" stroke-width="1" opacity="0.7" />
+          <text :x="svgWidth - padding.right - 4" :y="getY(trendData.nominalValue) - 4" fill="#f59e0b" font-size="9" font-family="monospace" text-anchor="end">
+            STATION TARGET {{ trendData.nominalValue }}
+          </text>
         </g>
 
-        <!-- Tolerance Labels -->
-        <text :x="svgWidth - padding.right + 4" :y="getY(trendData.upperTolerance) + 3" fill="#f59e0b" font-size="9" font-family="monospace">
-          MAX {{ trendData.upperTolerance }}
-        </text>
-        <text :x="svgWidth - padding.right + 4" :y="getY(trendData.lowerTolerance) + 3" fill="#f59e0b" font-size="9" font-family="monospace">
-          MIN {{ trendData.lowerTolerance }}
-        </text>
-
         <!-- Y-Axis Ticks -->
-        <g fill="currentColor" class="text-muted-foreground" font-size="9" font-family="monospace" text-anchor="end">
+        <g v-if="hasPoints" fill="currentColor" class="text-muted-foreground" font-size="9" font-family="monospace" text-anchor="end">
           <text :x="padding.left - 8" :y="padding.top + 4">{{ yBounds.max }}</text>
           <text :x="padding.left - 8" :y="padding.top + chartHeight / 2 + 3">{{ Math.round((yBounds.max + yBounds.min) / 2) }}</text>
           <text :x="padding.left - 8" :y="padding.top + chartHeight">{{ yBounds.min }}</text>
@@ -539,6 +504,16 @@ const meanVal = computed(() => {
         </g>
       </svg>
 
+      <div
+        v-if="hasLoaded && !hasPoints"
+        class="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground text-center px-6"
+        data-testid="trend-no-data"
+      >
+        {{ trendData.bufferedSampleCount
+          ? 'No sample of this metric falls inside the selected window.'
+          : 'No samples are buffered for this station and metric.' }}
+      </div>
+
       <!-- Hover Tooltip -->
       <div
         v-if="hoveredPoint"
@@ -563,25 +538,24 @@ const meanVal = computed(() => {
     <!-- Summary Metrics Bar & Detected Anomalies -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 text-xs font-mono">
       <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
-        <span class="text-muted-foreground block text-[11px]">Current Value</span>
-        <span class="text-foreground font-bold text-sm">{{ currentVal }} {{ trendData.unit }}</span>
+        <span class="text-muted-foreground block text-[11px]">Latest sample</span>
+        <span v-if="currentVal !== null" class="text-foreground font-bold text-sm">{{ currentVal }} {{ trendData.unit }}</span>
+        <span v-else class="text-muted-foreground text-sm">No data</span>
       </div>
       <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
-        <span class="text-muted-foreground block text-[11px]">Period Mean (μ)</span>
-        <span class="text-foreground font-bold text-sm">{{ meanVal }} {{ trendData.unit }}</span>
+        <span class="text-muted-foreground block text-[11px]">Mean of shown samples (μ)</span>
+        <span v-if="meanVal !== null" class="text-foreground font-bold text-sm">{{ meanVal }} {{ trendData.unit }}</span>
+        <span v-else class="text-muted-foreground text-sm">No data</span>
       </div>
       <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
-        <span class="text-muted-foreground block text-[11px]">Nominal Target</span>
-        <span class="text-foreground font-bold text-sm">{{ trendData.nominalValue }} {{ trendData.unit }}</span>
+        <span class="text-muted-foreground block text-[11px]">Station target</span>
+        <span v-if="trendData.nominalValue != null" class="text-foreground font-bold text-sm">{{ trendData.nominalValue }} {{ trendData.unit }}</span>
+        <span v-else class="text-muted-foreground text-sm">Not reported</span>
       </div>
       <div class="p-3 rounded-lg bg-muted/30 border border-border space-y-0.5">
-        <span class="text-muted-foreground block text-[11px]">Statistical Outliers</span>
-        <span
-          :class="trendData.detectedAnomalies.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'"
-          class="font-bold text-sm"
-        >
-          {{ trendData.detectedAnomalies.length }} Anomalies
-        </span>
+        <span class="text-muted-foreground block text-[11px]">Outliers (|z| &gt; 2.5)</span>
+        <span v-if="hasPoints" class="text-foreground font-bold text-sm">{{ trendData.detectedAnomalies.length }} in {{ trendData.points.length }} samples</span>
+        <span v-else class="text-muted-foreground text-sm">No data</span>
       </div>
     </div>
 
@@ -592,7 +566,7 @@ const meanVal = computed(() => {
     >
       <div class="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold">
         <ShieldAlert class="w-4 h-4 text-amber-600 dark:text-amber-400" />
-        <span>Statistical Degradation Alert Triggered</span>
+        <span>Samples far from the mean of the shown window</span>
       </div>
       <p
         v-for="(a, idx) in trendData.detectedAnomalies.slice(0, 2)"

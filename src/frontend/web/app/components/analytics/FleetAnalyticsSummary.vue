@@ -1,35 +1,26 @@
 <script setup lang="ts">
-/** Renders nullable backend metrics: "—" when the backend has no data source for the value. */
-const fmt = (value: number | null | undefined, suffix = ''): string =>
-  value === null || value === undefined || Number.isNaN(value) ? '—' : `${Math.round(value * 10) / 10}${suffix}`
-
+/**
+ * Maintenance summary of the fleet (backend `FleetSummaryDto`, GET /api/analytics/fleet-summary).
+ * Every figure comes from stored tickets, stock items and client PCs for the selected look-back
+ * window. A figure without data is rendered as "No data" together with the reason; nothing on
+ * this panel is a constant.
+ */
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Card, CardHeader, CardTitle, CardContent } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
-import {
-  Activity,
-  AlertTriangle,
-  Clock,
-  PackageCheck,
-  ShieldAlert,
-  CheckCircle2,
-  TrendingDown,
-  ChevronRight,
-  Flame,
-  ArrowUpRight,
-  Bell
-} from 'lucide-vue-next'
-import { useAlertRules } from '~/composables/useAlertRules'
+import { AlertTriangle, ArrowUpRight, ChevronRight, Clock, Flame, ShieldAlert } from 'lucide-vue-next'
+import { formatDurationMinutes } from '~/utils/fleetAnalytics'
 
 export interface TopFaultingMachine {
   machineId: string
   name: string
+  /** Custom identifier, else machine name. */
+  identifier?: string
   line: string
   incidentCount: number
-  totalDowntimeMinutes: number
+  openTicketCount: number
+  totalDowntimeMinutes: number | null
   primaryAlarmCode: string
-  healthIndex: number
 }
 
 export interface BacklogAge {
@@ -48,14 +39,23 @@ export interface StockDepletionItem {
 }
 
 export interface FleetSummaryData {
-  totalMachineHours: number
-  availabilityPercentage: number
-  averageMtbfHours: number
-  averageMttrMinutes: number
-  slaCompliancePercentage: number
+  generatedAt?: string
+  windowDays: number
+  totalMachines: number
+  controllerCount: number
+  controllersOnline: number
+  controllerOnlinePercentage: number | null
+  controllerOnlineWindowSeconds: number
+  incidentCount: number
+  resolvedIncidentCount: number
+  averageMttrMinutes: number | null
+  averageMtbfHours: number | null
+  mtbfMachineCount: number
+  criticalSlaHours: number
   topFaultingMachines: TopFaultingMachine[]
   maintenanceBacklog: BacklogAge
   stockDepletion: StockDepletionItem[]
+  stockDepletionTotal: number
 }
 
 const props = defineProps<{
@@ -63,315 +63,217 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
-const { activeAlertsCount, criticalAlertsCount } = useAlertRules()
 
 const totalBacklog = computed(() => {
   const b = props.summary.maintenanceBacklog
   return b.under24Hours + b.oneToThreeDays + b.overThreeDays
 })
+const backlogShare = (count: number) => (totalBacklog.value > 0 ? `${(count / totalBacklog.value) * 100}%` : '0%')
+
+const windowText = computed(() => `last ${props.summary.windowDays} d`)
+
+interface Tile {
+  key: string
+  label: string
+  value: string | null
+  detail: string
+}
+
+const tiles = computed<Tile[]>(() => {
+  const s = props.summary
+  return [
+    {
+      key: 'incidents',
+      label: `Tickets raised, ${windowText.value}`,
+      value: String(s.incidentCount),
+      detail: `${s.resolvedIncidentCount} of them resolved`
+    },
+    {
+      key: 'mttr',
+      label: 'Mean time to resolve',
+      value: s.averageMttrMinutes !== null && s.averageMttrMinutes !== undefined ? formatDurationMinutes(s.averageMttrMinutes) : null,
+      detail: s.resolvedIncidentCount > 0
+        ? `Ticket creation to resolution · ${s.resolvedIncidentCount} resolved tickets of the ${windowText.value}`
+        : `No ticket of the ${windowText.value} is resolved`
+    },
+    {
+      key: 'repeat',
+      label: 'Repeat-incident interval',
+      value: s.averageMtbfHours !== null && s.averageMtbfHours !== undefined ? formatDurationMinutes(s.averageMtbfHours * 60) : null,
+      detail: s.mtbfMachineCount > 0
+        ? `Mean gap between tickets on the same machine · ${s.mtbfMachineCount} machine${s.mtbfMachineCount === 1 ? '' : 's'} with 2+ tickets`
+        : `No machine had two tickets in the ${windowText.value}`
+    },
+    {
+      key: 'controllers',
+      label: 'Controllers online',
+      value: s.controllerCount > 0 ? `${s.controllersOnline}/${s.controllerCount}` : null,
+      detail: s.controllerCount > 0
+        ? `Agents seen in the last ${Math.round(s.controllerOnlineWindowSeconds / 60)} min · connectivity, not production availability`
+        : 'No client PC is registered'
+    }
+  ]
+})
+
+const openMachine = (m: TopFaultingMachine) => {
+  router.push({ path: '/dashboard/machines', query: { search: m.identifier || m.name, tree: m.machineId } })
+}
 </script>
 
 <template>
   <div class="space-y-6">
-    <!-- Top Row: High-level Plant Health & Availability Metric Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <!-- 1. Plant Availability Gauge -->
-      <Card class="bg-card border-border text-foreground p-5 rounded-2xl flex flex-col justify-between shadow-sm">
-        <div class="flex items-center justify-between text-xs text-muted-foreground">
-          <span class="font-medium">Fleet Availability</span>
-          <Activity class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <div class="flex items-baseline gap-3 my-3">
-          <span class="text-3xl font-bold font-mono text-foreground">{{ fmt(summary.availabilityPercentage, '%') }}</span>
-          <Badge variant="outline" class="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-            +0.4% this week
-          </Badge>
-        </div>
-        <div class="space-y-1.5 text-xs text-muted-foreground">
-          <div class="w-full bg-muted/60 h-2 rounded-full overflow-hidden border border-border">
-            <div
-              class="bg-emerald-500 h-full rounded-full transition-all duration-500"
-              :style="{ width: `${summary.availabilityPercentage}%` }"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[11px] text-muted-foreground font-mono">
-            <span>Operating: {{ fmt(summary.totalMachineHours) }} hrs</span>
-            <span>Target: 95.0%</span>
-          </div>
-        </div>
-      </Card>
-
-      <!-- 2. MTBF Metric -->
-      <Card class="bg-card border-border text-foreground p-5 rounded-2xl flex flex-col justify-between shadow-sm">
-        <div class="flex items-center justify-between text-xs text-muted-foreground">
-          <span class="font-medium">Mean Time Between Failures</span>
-          <Clock class="w-4 h-4 text-teal-600 dark:text-teal-400" />
-        </div>
-        <div class="flex items-baseline gap-2 my-3">
-          <span class="text-3xl font-bold font-mono text-foreground">{{ fmt(summary.averageMtbfHours) }}</span>
-          <span class="text-sm font-medium text-muted-foreground">Hours</span>
-        </div>
-        <div class="text-xs text-muted-foreground flex items-center gap-1.5 font-mono">
-          <span class="text-emerald-600 dark:text-emerald-400 font-semibold">↑ +14.2 hrs</span>
-          <span class="text-muted-foreground/80">vs 30-day trailing avg</span>
-        </div>
-      </Card>
-
-      <!-- 3. MTTR Metric -->
-      <Card class="bg-card border-border text-foreground p-5 rounded-2xl flex flex-col justify-between shadow-sm">
-        <div class="flex items-center justify-between text-xs text-muted-foreground">
-          <span class="font-medium">Mean Time to Repair</span>
-          <TrendingDown class="w-4 h-4 text-muted-foreground" />
-        </div>
-        <div class="flex items-baseline gap-2 my-3">
-          <span class="text-3xl font-bold font-mono text-foreground">{{ fmt(summary.averageMttrMinutes) }}</span>
-          <span class="text-sm font-medium text-muted-foreground">Minutes</span>
-        </div>
-        <div class="text-xs text-muted-foreground flex items-center gap-1.5 font-mono">
-          <span class="text-emerald-600 dark:text-emerald-400 font-semibold">↓ -3.8 min</span>
-          <span class="text-muted-foreground/80">rapid dispatch response</span>
-        </div>
-      </Card>
-
-      <!-- 4. Critical SLA Compliance -->
-      <Card class="bg-card border-border text-foreground p-5 rounded-2xl flex flex-col justify-between shadow-sm">
-        <div class="flex items-center justify-between text-xs text-muted-foreground">
-          <span class="font-medium">Ticket SLA Compliance</span>
-          <CheckCircle2 class="w-4 h-4 text-amber-600 dark:text-amber-400" />
-        </div>
-        <div class="flex items-baseline gap-3 my-3">
-          <span class="text-3xl font-bold font-mono text-foreground">{{ fmt(summary.slaCompliancePercentage, '%') }}</span>
-          <Badge
-            :class="summary.slaCompliancePercentage >= 95 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'"
-            class="text-[10px] border"
-          >
-            Tier 1 Target
-          </Badge>
-        </div>
-        <div class="text-xs text-muted-foreground font-mono">
-          <span>P1/P2 resolution compliance: </span>
-          <span class="text-foreground font-semibold">98.1% on-time</span>
-        </div>
-      </Card>
-    </div>
-
-    <!-- Active Telemetry Breaches / Rule Alerts Alert Banner -->
-    <div
-      v-if="activeAlertsCount > 0"
-      class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between flex-wrap gap-3"
-    >
-      <div class="flex items-center gap-3">
-        <div class="p-2 rounded-lg bg-amber-500/15 border border-amber-500/25 text-amber-600 dark:text-amber-400">
-          <Bell class="w-4 h-4" />
-        </div>
-        <div>
-          <div class="text-xs font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-            <span>{{ activeAlertsCount }} Active Threshold Breaches in Factory Fleet</span>
-            <Badge v-if="criticalAlertsCount > 0" class="text-[10px] bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/40 border">
-              {{ criticalAlertsCount }} Critical
-            </Badge>
-          </div>
-          <p class="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5">
-            Real-time rules engine actively monitoring thermal, vibration, and Soft-PLC cycle jitter with automated maintenance ticket dispatch.
-          </p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        @click="router.push('/dashboard/tickets')"
-        class="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-200 border border-amber-500/30 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+    <!-- Ticket and connectivity figures for the look-back window -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        v-for="tile in tiles"
+        :key="tile.key"
+        class="rounded-xl border border-border bg-card px-4 py-3 min-w-0"
+        :data-testid="`summary-tile-${tile.key}`"
       >
-        <span>View Incident Tickets</span>
-        <ChevronRight class="w-3.5 h-3.5" />
-      </button>
+        <div class="text-xs font-medium text-muted-foreground">{{ tile.label }}</div>
+        <div class="mt-1">
+          <span v-if="tile.value !== null" class="text-2xl font-semibold text-foreground">{{ tile.value }}</span>
+          <span v-else class="text-base font-medium text-muted-foreground leading-8">No data</span>
+        </div>
+        <div class="mt-1 text-[11px] text-muted-foreground">{{ tile.detail }}</div>
+      </div>
     </div>
 
-    <!-- Second Row: Top-Faulting Machines Ranking & Backlog Distribution -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Top-Faulting Machines Ranking (2 cols) -->
-      <div class="lg:col-span-2 bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
-        <div class="flex items-center justify-between">
+      <!-- Machines with the most tickets in the window -->
+      <div class="lg:col-span-2 bg-card border border-border rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
           <div class="flex items-center gap-2">
-            <Flame class="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <h4 class="text-sm font-semibold text-foreground">Top-Faulting Machines & Degradation Ranking</h4>
+            <Flame class="w-4 h-4 text-muted-foreground" />
+            <h4 class="text-sm font-semibold text-foreground">Machines with the most tickets</h4>
           </div>
-          <span class="text-xs text-muted-foreground font-mono">Ranked by Incident Frequency (Past 30 Days)</span>
+          <span class="text-xs text-muted-foreground">Tickets created in the {{ windowText }}</span>
         </div>
 
-        <div class="overflow-x-auto">
+        <p v-if="summary.topFaultingMachines.length === 0" class="py-8 text-center text-xs text-muted-foreground" data-testid="summary-no-faulting">
+          No ticket was raised for a machine in the {{ windowText }}.
+        </p>
+        <div v-else class="overflow-x-auto">
           <table class="w-full text-xs text-left">
-            <thead class="text-muted-foreground border-b border-border uppercase text-[10px] font-mono">
+            <thead class="text-muted-foreground border-b border-border text-[11px] font-medium">
               <tr>
-                <th class="py-2.5 px-3">Machine / Cell</th>
-                <th class="py-2.5 px-3">Line</th>
-                <th class="py-2.5 px-3 text-center">Incidents</th>
-                <th class="py-2.5 px-3 text-center">Downtime</th>
-                <th class="py-2.5 px-3">Frequent Alarm</th>
-                <th class="py-2.5 px-3 text-right">Health Index</th>
+                <th class="py-2 px-3 font-medium">Machine</th>
+                <th class="py-2 px-3 font-medium">Line</th>
+                <th class="py-2 px-3 font-medium text-right">Tickets</th>
+                <th class="py-2 px-3 font-medium text-right">Still open</th>
+                <th class="py-2 px-3 font-medium text-right">Reported downtime</th>
+                <th class="py-2 px-3 font-medium">Most frequent alarm</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-border font-medium">
+            <tbody class="divide-y divide-border">
               <tr
                 v-for="m in summary.topFaultingMachines"
                 :key="m.machineId"
-                @click="router.push(`/dashboard/machines?id=${encodeURIComponent(m.machineId)}`)"
-                class="hover:bg-muted/40 transition-colors cursor-pointer group"
-                title="Click to view machine in machinery catalog"
+                v-ctx="{ entityType: 'machine', entityId: m.machineId, entityName: m.name, machineId: m.machineId, machineName: m.identifier || m.name }"
+                @click="openMachine(m)"
+                class="hover:bg-muted transition-colors cursor-pointer group"
+                title="Open this machine in the machine directory"
               >
-                <td class="py-3 px-3">
-                  <div class="font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                <td class="py-2.5 px-3">
+                  <div class="font-medium text-foreground flex items-center gap-1.5">
                     <span>{{ m.name }}</span>
                     <ChevronRight class="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div class="text-[11px] font-mono text-muted-foreground">{{ m.machineId }}</div>
                 </td>
-                <td class="py-3 px-3 text-foreground">{{ m.line }}</td>
-                <td class="py-3 px-3 text-center font-mono text-amber-600 dark:text-amber-300 font-semibold">{{ m.incidentCount }}</td>
-                <td class="py-3 px-3 text-center font-mono text-muted-foreground">{{ m.totalDowntimeMinutes }} min</td>
-                <td class="py-3 px-3">
-                  <span class="px-1.5 py-0.5 rounded bg-muted/60 border border-border text-[10px] font-mono text-rose-700 dark:text-rose-300">
-                    {{ m.primaryAlarmCode }}
-                  </span>
+                <td class="py-2.5 px-3" :class="m.line ? 'text-foreground' : 'text-muted-foreground'">{{ m.line || '—' }}</td>
+                <td class="py-2.5 px-3 text-right font-mono tabular-nums text-foreground">{{ m.incidentCount }}</td>
+                <td class="py-2.5 px-3 text-right font-mono tabular-nums text-foreground">{{ m.openTicketCount }}</td>
+                <td class="py-2.5 px-3 text-right font-mono tabular-nums" :class="m.totalDowntimeMinutes == null ? 'text-muted-foreground' : 'text-foreground'">
+                  {{ formatDurationMinutes(m.totalDowntimeMinutes) }}
                 </td>
-                <td class="py-3 px-3 text-right">
-                  <div class="inline-flex items-center gap-1.5 font-mono font-bold">
-                    <span
-                      :class="m.healthIndex < 75 ? 'text-rose-600 dark:text-rose-400' : (m.healthIndex < 85 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400')"
-                    >
-                      {{ m.healthIndex }}%
-                    </span>
-                    <span
-                      class="size-2 rounded-full"
-                      :class="m.healthIndex < 75 ? 'bg-rose-500 animate-pulse' : (m.healthIndex < 85 ? 'bg-amber-400' : 'bg-emerald-400')"
-                    ></span>
-                  </div>
+                <td class="py-2.5 px-3">
+                  <span v-if="m.primaryAlarmCode" class="px-1.5 py-0.5 rounded bg-muted border border-border text-[11px] font-mono text-foreground">{{ m.primaryAlarmCode }}</span>
+                  <span v-else class="text-muted-foreground">—</span>
                 </td>
               </tr>
             </tbody>
           </table>
+          <p class="mt-2 text-[11px] text-muted-foreground">
+            Downtime is the line-stop time recorded on the tickets; "—" means no ticket recorded one.
+          </p>
         </div>
       </div>
 
-      <!-- Maintenance Backlog Age Distribution (1 col) -->
-      <div class="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <Clock class="w-4 h-4 text-muted-foreground" />
-              <h4 class="text-sm font-semibold text-foreground">Maintenance Backlog Age</h4>
-            </div>
-            <span class="text-xs font-mono text-muted-foreground">{{ totalBacklog }} Open</span>
+      <!-- Age of the open tickets -->
+      <div class="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <Clock class="w-4 h-4 text-muted-foreground" />
+            <h4 class="text-sm font-semibold text-foreground">Open tickets by age</h4>
           </div>
-
-          <!-- Stacked Bar of Age Distribution -->
-          <div class="w-full bg-muted/60 h-3 rounded-full overflow-hidden border border-border flex my-4">
-            <div
-              class="bg-emerald-500 h-full transition-all"
-              :style="{ width: `${(summary.maintenanceBacklog.under24Hours / (totalBacklog || 1)) * 100}%` }"
-              title="Under 24h"
-            ></div>
-            <div
-              class="bg-teal-600 h-full transition-all"
-              :style="{ width: `${(summary.maintenanceBacklog.oneToThreeDays / (totalBacklog || 1)) * 100}%` }"
-              title="1 - 3 Days"
-            ></div>
-            <div
-              class="bg-amber-500 h-full transition-all"
-              :style="{ width: `${(summary.maintenanceBacklog.overThreeDays / (totalBacklog || 1)) * 100}%` }"
-              title="Over 3 Days"
-            ></div>
-          </div>
-
-          <div class="space-y-3 text-xs">
-            <NuxtLink
-              to="/dashboard/tickets"
-              class="flex items-center justify-between p-2 rounded-lg bg-muted/30 border border-border hover:border-primary/40 hover:bg-muted/60 transition-all cursor-pointer group"
-              title="View all incidents under 24 hours"
-            >
-              <div class="flex items-center gap-2">
-                <span class="size-2.5 rounded-full bg-emerald-500"></span>
-                <span class="text-foreground transition-colors">Under 24 Hours</span>
-              </div>
-              <span class="font-mono font-bold text-foreground">{{ summary.maintenanceBacklog.under24Hours }}</span>
-            </NuxtLink>
-            <NuxtLink
-              to="/dashboard/tickets"
-              class="flex items-center justify-between p-2 rounded-lg bg-muted/30 border border-border hover:border-primary/40 hover:bg-muted/60 transition-all cursor-pointer group"
-              title="View backlog incidents 1 to 3 days old"
-            >
-              <div class="flex items-center gap-2">
-                <span class="size-2.5 rounded-full bg-teal-500"></span>
-                <span class="text-foreground transition-colors">1 – 3 Days Old</span>
-              </div>
-              <span class="font-mono font-bold text-foreground">{{ summary.maintenanceBacklog.oneToThreeDays }}</span>
-            </NuxtLink>
-            <NuxtLink
-              to="/dashboard/tickets"
-              class="flex items-center justify-between p-2 rounded-lg bg-muted/30 border border-border hover:border-primary/40 hover:bg-muted/60 transition-all cursor-pointer group"
-              title="View aged backlog incidents over 3 days"
-            >
-              <div class="flex items-center gap-2">
-                <span class="size-2.5 rounded-full bg-amber-500"></span>
-                <span class="text-foreground transition-colors">Over 3 Days Old</span>
-              </div>
-              <span class="font-mono font-bold text-foreground">{{ summary.maintenanceBacklog.overThreeDays }}</span>
-            </NuxtLink>
-            <NuxtLink
-              to="/dashboard/tickets?critical=true"
-              class="flex items-center justify-between p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20 hover:border-rose-500/50 transition-all cursor-pointer group"
-              title="Filter to critical SLA breached incidents"
-            >
-              <div class="flex items-center gap-2">
-                <ShieldAlert class="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform" />
-                <span class="group-hover:text-rose-800 dark:group-hover:text-rose-200 transition-colors">Critical SLA Breaches</span>
-              </div>
-              <span class="font-mono font-bold text-rose-700 dark:text-rose-300">{{ summary.maintenanceBacklog.criticalBreached }}</span>
-            </NuxtLink>
-          </div>
+          <span class="text-xs font-mono text-muted-foreground">{{ totalBacklog }} open</span>
         </div>
 
-        <div class="pt-3 border-t border-border text-[11px] text-muted-foreground">
-          Average turnaround time is currently performing within target operational envelopes.
+        <div
+          v-if="totalBacklog > 0"
+          class="flex h-2 w-full gap-0.5"
+          role="img"
+          :aria-label="`Open tickets: ${summary.maintenanceBacklog.under24Hours} under 24 hours, ${summary.maintenanceBacklog.oneToThreeDays} one to three days, ${summary.maintenanceBacklog.overThreeDays} over three days`"
+        >
+          <span v-if="summary.maintenanceBacklog.under24Hours > 0" class="h-full rounded-full bg-sky-400 dark:bg-sky-300" :style="{ width: backlogShare(summary.maintenanceBacklog.under24Hours) }" />
+          <span v-if="summary.maintenanceBacklog.oneToThreeDays > 0" class="h-full rounded-full bg-sky-600 dark:bg-sky-500" :style="{ width: backlogShare(summary.maintenanceBacklog.oneToThreeDays) }" />
+          <span v-if="summary.maintenanceBacklog.overThreeDays > 0" class="h-full rounded-full bg-sky-800 dark:bg-sky-700" :style="{ width: backlogShare(summary.maintenanceBacklog.overThreeDays) }" />
+        </div>
+        <p v-else class="text-xs text-muted-foreground">No open tickets.</p>
+
+        <div class="space-y-2 text-xs">
+          <NuxtLink to="/dashboard/tickets" class="flex items-center justify-between p-2 rounded-lg border border-border hover:bg-muted transition-colors">
+            <span class="flex items-center gap-2 text-foreground"><span class="size-2.5 rounded-full bg-sky-400 dark:bg-sky-300" />Under 24 hours</span>
+            <span class="font-mono font-semibold text-foreground">{{ summary.maintenanceBacklog.under24Hours }}</span>
+          </NuxtLink>
+          <NuxtLink to="/dashboard/tickets" class="flex items-center justify-between p-2 rounded-lg border border-border hover:bg-muted transition-colors">
+            <span class="flex items-center gap-2 text-foreground"><span class="size-2.5 rounded-full bg-sky-600 dark:bg-sky-500" />1 – 3 days</span>
+            <span class="font-mono font-semibold text-foreground">{{ summary.maintenanceBacklog.oneToThreeDays }}</span>
+          </NuxtLink>
+          <NuxtLink to="/dashboard/tickets" class="flex items-center justify-between p-2 rounded-lg border border-border hover:bg-muted transition-colors">
+            <span class="flex items-center gap-2 text-foreground"><span class="size-2.5 rounded-full bg-sky-800 dark:bg-sky-700" />Over 3 days</span>
+            <span class="font-mono font-semibold text-foreground">{{ summary.maintenanceBacklog.overThreeDays }}</span>
+          </NuxtLink>
+          <NuxtLink to="/dashboard/tickets" class="flex items-center justify-between p-2 rounded-lg border border-border hover:bg-muted transition-colors">
+            <span class="flex items-center gap-2 text-foreground">
+              <ShieldAlert class="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              Critical, open longer than {{ summary.criticalSlaHours }} h
+            </span>
+            <span class="font-mono font-semibold text-foreground">{{ summary.maintenanceBacklog.criticalBreached }}</span>
+          </NuxtLink>
         </div>
       </div>
     </div>
 
-    <!-- Third Row: Critical Stock Depletion Warnings -->
-    <div class="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
-      <div class="flex items-center justify-between">
+    <!-- Stock at or below its minimum -->
+    <div class="bg-card border border-border rounded-xl p-5 space-y-4">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
         <div class="flex items-center gap-2">
-          <AlertTriangle class="w-4 h-4 text-rose-600 dark:text-rose-400" />
-          <h4 class="text-sm font-semibold text-foreground">Critical Spare Parts Depletion Alerts</h4>
+          <AlertTriangle class="w-4 h-4 text-muted-foreground" />
+          <h4 class="text-sm font-semibold text-foreground">Stock at or below its minimum</h4>
+          <span v-if="summary.stockDepletionTotal > summary.stockDepletion.length" class="text-xs text-muted-foreground">
+            showing {{ summary.stockDepletion.length }} of {{ summary.stockDepletionTotal }}
+          </span>
         </div>
-        <NuxtLink
-          to="/dashboard/inventory"
-          class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 font-medium transition-colors"
-        >
-          <span>Manage Stock</span>
+        <NuxtLink to="/dashboard/inventory" class="text-xs text-foreground hover:underline flex items-center gap-1">
+          <span>Manage stock</span>
           <ArrowUpRight class="w-3 h-3" />
         </NuxtLink>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div
-          v-for="stock in summary.stockDepletion"
-          :key="stock.partNumber"
-          class="p-4 rounded-xl bg-muted/30 border border-border space-y-2 relative overflow-hidden"
-        >
-          <div class="flex items-start justify-between">
-            <span class="font-mono font-semibold text-xs text-foreground">{{ stock.partNumber }}</span>
-            <Badge
-              :class="stock.criticality === 'Critical' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'"
-              class="text-[10px] border"
-            >
-              {{ stock.criticality }}
-            </Badge>
+      <p v-if="summary.stockDepletion.length === 0" class="py-4 text-center text-xs text-muted-foreground" data-testid="summary-no-stock">
+        No stock item with a minimum threshold is at or below it.
+      </p>
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div v-for="stock in summary.stockDepletion" :key="stock.partNumber" class="p-3 rounded-lg border border-border space-y-1.5">
+          <div class="flex items-start justify-between gap-2">
+            <span class="font-mono font-semibold text-xs text-foreground truncate" :title="stock.partNumber">{{ stock.partNumber }}</span>
+            <Badge variant="outline" class="text-[10px] shrink-0">{{ stock.criticality === 'Critical' ? 'Out of stock' : 'Low' }}</Badge>
           </div>
           <p class="text-xs text-muted-foreground line-clamp-1">{{ stock.description }}</p>
           <div class="flex items-baseline justify-between pt-1 border-t border-border font-mono text-xs">
-            <span class="text-muted-foreground">Current Qty:</span>
-            <span class="text-rose-600 dark:text-rose-400 font-bold">{{ stock.currentStock }} / {{ stock.minStockThreshold }} min</span>
+            <span class="text-muted-foreground">In stock / minimum</span>
+            <span class="text-foreground font-semibold">{{ stock.currentStock }} / {{ stock.minStockThreshold }}</span>
           </div>
         </div>
       </div>

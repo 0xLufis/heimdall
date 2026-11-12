@@ -18,6 +18,7 @@ import MapPinningDialog from '~/components/dashboard/MapPinningDialog.vue'
 import HeimdallSearchBar from '~/components/search/HeimdallSearchBar.vue'
 import type { IndustrialController } from '~/types/domain'
 import type { SearchInstanceConfig } from '~/types/search'
+import { queryText, resolveControllerSelection } from '~/utils/deepLinkQueries'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -209,7 +210,7 @@ const handlePinUpdate = async (type: 'machine' | 'client' | 'lateral', targetId:
 // Unpin DXF handle from controller
 const handleUnpinPc = async (controller: IndustrialController) => {
   try {
-    await updateControllerPin(controller.id, '', [])
+    await updateControllerPin(controller.id, '')
     await fetchControllers(true)
   } catch (e) {
     console.error('Failed to unpin controller:', e)
@@ -219,7 +220,7 @@ const handleUnpinPc = async (controller: IndustrialController) => {
 const handleUnpinFromDialog = async (type: 'machine' | 'client', targetId: string) => {
   try {
     if (type === 'client') {
-      await updateControllerPin(targetId, '', [])
+      await updateControllerPin(targetId, '')
     } else {
       await updateStationPin(targetId, '', [])
     }
@@ -238,18 +239,25 @@ const handleManualSync = async () => {
   await Promise.all([fetchControllers(false), fetchStations()])
 }
 
+/**
+ * `?selected=<id>&hostname=<h>` (search results, context menu, station views): selects that
+ * controller, or filters the fleet by the hostname when it names none.
+ */
+const applyControllerDeepLink = () => {
+  const selected = queryText(route.query.selected)
+  const hostname = queryText(route.query.hostname)
+  if (!selected && !hostname) return
+  const { controller, filterText } = resolveControllerSelection(controllers.value, selected, hostname)
+  if (controller) {
+    if (selectedController.value?.id !== controller.id) selectedController.value = controller
+  } else if (filterText) {
+    searchQuery.value = filterText
+  }
+}
+
 onMounted(async () => {
   await Promise.all([fetchControllers(false), fetchStations()])
-  if (route.query.selected || route.query.hostname) {
-    const targetId = route.query.selected as string
-    const targetHost = route.query.hostname as string
-    const match = controllers.value.find(c => c.id === targetId || c.hostname === targetHost)
-    if (match) {
-      selectedController.value = match
-    } else if (targetHost) {
-      searchQuery.value = targetHost
-    }
-  }
+  applyControllerDeepLink()
 })
 
 // Keep selected controller telemetry updated without auto-reopening if dismissed
@@ -262,6 +270,9 @@ watch(() => controllers.value, (list) => {
     if (match) selectedController.value = match
   }
 })
+
+// Deep links that arrive while this page is already open (global search, context menu, station views).
+watch(() => [queryText(route.query.selected), queryText(route.query.hostname)].join('\n'), applyControllerDeepLink)
 
 const onSearch = (q: string) => {
   searchQuery.value = q

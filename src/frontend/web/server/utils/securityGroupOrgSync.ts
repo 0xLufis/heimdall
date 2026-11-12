@@ -163,8 +163,11 @@ export async function syncUserSecurityGroupsToOrganizations(
         isNew = true
       }
 
-      // 2. Ensure user has a valid Better-Auth user profile in auth.user
-      await ensureBetterAuthProfile(userId, { role: targetOrg.role })
+      // 2. Ensure user has a valid Better-Auth user profile in auth.user.
+      // `targetOrg.role` is the organization membership role (owner/admin/member), not an
+      // application role: passing it as a role hint used to create accounts whose application
+      // role was "admin" (a platform administrator) or the non-existent "owner"/"member".
+      await ensureBetterAuthProfile(userId)
 
       // 3. Ensure user membership exists with correct role
       const existingMembers = await db

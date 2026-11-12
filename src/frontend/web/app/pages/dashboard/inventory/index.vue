@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   Boxes,
   Cpu,
@@ -91,7 +92,12 @@ const activeRollup = ref<RollupFilter>('all')
 
 // Search & Classification Filters
 const classification = ref<'all' | 'hardware' | 'software'>('all')
-const searchQuery = ref('')
+// Seeded from ?query= so a search submitted from the global search lands pre-filtered
+const route = useRoute()
+const searchQuery = ref(typeof route.query.query === 'string' ? route.query.query : '')
+watch(() => route.query.query, (q) => {
+  if (typeof q === 'string') searchQuery.value = q
+})
 const loading = ref(false)
 
 // Row/Card selection handler
@@ -103,29 +109,10 @@ const handleSelectPart = (part: any) => {
 // Schematic node click handler
 const handleSchematicComponentSelect = (node: any) => {
   const found = parts.value.find(p => p.customIdentifier === node.code || p.id === node.installedPartId)
-  if (found) {
-    selectedPart.value = found
-  } else {
-    // Focused virtual node object
-    selectedPart.value = {
-      id: node.installedPartId || node.id,
-      customIdentifier: node.code,
-      name: node.name,
-      displayName: node.name,
-      category: node.subsystem,
-      trackingType: 'serialized',
-      condition: node.status === 'normal' ? 'new' : node.status === 'warning' ? 'used' : 'donor',
-      operationalState: node.status === 'normal' ? 'working' : 'degraded',
-      location: 'Station OP-10 Cell',
-      priceEur: 850,
-      estimatedResellPriceEur: 850,
-      quantity: node.spareCount,
-      minQuantity: 1,
-      manufacturer: { name: 'Cell OEM' },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    } as any
-  }
+  // Only real inventory records open the inspector; the schematic shows its own summary for
+  // hardware that is not in the loaded parts list (e.g. controllers).
+  if (!found) return
+  selectedPart.value = found
   inspectorActiveTab.value = 'overview'
 }
 
@@ -509,7 +496,7 @@ onInventoryUpdate(() => {
           <!-- 1. Physical Cell Schematic Mode -->
           <StationPhysicalView
             v-if="layoutMode === 'schematic'"
-            :active-component-id="selectedPart?.customIdentifier"
+            :active-component-id="selectedPart?.id"
             @select-component="handleSchematicComponentSelect"
           />
 
