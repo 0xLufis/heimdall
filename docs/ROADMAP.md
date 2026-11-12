@@ -7,7 +7,7 @@
 ## Milestone 1: Monorepo Organization, Direct V1 API & Contracts
 - [x] Standardize repository structure (`frontend/web`, `simulators/fleet/`, `shared/App.Contracts/`, `tools/cad/`, `tools/dev_manager.py`).
 - [x] Version REST API controllers directly under `api/v1/` (`[Route("api/v1/[controller]")]`) without legacy fallbacks.
-- [x] Version Protobuf gRPC contracts (`package heimdall.telemetry.v1;`).
+- [x] Version Protobuf contracts (`package heimdall.telemetry.v1;`). *(Originally gRPC; superseded by MQTT 5 transport, the protos now only define messages.)*
 - [x] Add database schema version manifest tracking (`schema_version_manifest`).
 
 ---
@@ -25,7 +25,7 @@
 - [x] Create Master System Governance Admin UI (`/dashboard/admin/system-settings`) covering:
   - Auth & Session Governance (Session TTL, MFA enforcement, failed login lockout).
   - OT Integrations (OPC UA Gateway endpoints, security policies, Copia Automation Git webhooks).
-  - mTLS & X.509 Certificate Authority (`ClientCertificateRecord`, issuance & revocation).
+  - X.509 Certificate Authority (`ClientCertificateRecord`, issuance & revocation); mTLS is used for kiosk terminals at the reverse proxy only.
   - Agent Master Policy & Encryption Templates (Hardware-bound sealing, AES-256-GCM / DPAPI spool encryption, remote execution kill-switch, token-bucket egress throttles, fleet push).
 - [x] Update Daemon Agent `AgentConfig` and `Worker.cs` to enforce signed master policies and execution kill-switches.
 
@@ -41,7 +41,7 @@
 ## Milestone 5: Specialized Subagent Roster for Future Development
 The following subagents are defined for specialized execution of upcoming roadmap features:
 
-1. **`agent_system_governance`**: Oversees RBAC policies, mTLS certificate lifecycles, and configuration synchronization between the master backend and edge daemons.
+1. **`agent_system_governance`**: Oversees RBAC policies, certificate lifecycles, and configuration synchronization between the master backend and edge daemons.
 2. **`agent_ad_entra_identity`**: Implements Microsoft Graph API / SCIM group auto-sync, OIDC authentication hooks, and multi-tenant domain partitioning.
 3. **`agent_ot_integrations`**: Implements the full OPC UA Information Model (OPC 10000-100 Devices) and Copia Automation Git webhook change analyzer.
 4. **`agent_telemetry_ui`**: Builds high-frequency real-time telemetry dashboards (`/dashboard/telemetry`), live EtherCAT topology visualizers, and Structured Text DUT inspectors.
@@ -64,7 +64,7 @@ The following subagents are defined for specialized execution of upcoming roadma
 - [x] **SEC-002**: Disallow hardcoded AES-256-GCM dev encryption key fallback across non-development environments and strictly enforce `HEIMDALL_ENCRYPTION_KEY` (`AppDbContext.cs`).
 - [x] **SEC-003**: Enforce `[Authorize]` attributes on all unauthenticated GET API endpoints across `ClientPcController`, `MachineController`, `InventoryController`, `MaintenanceTicketController`, and `DashboardController`.
 - [x] **SEC-004**: Restrict open CORS policy (`AllowAllLocalDev` with wildcard origins and credentials) to strictly verified development environments or explicit origin whitelists (`Program.cs`).
-- [x] **SEC-005**: Secure gRPC `SystemInfoCollectorService` endpoint with authentication/mTLS and authorization to prevent unauthenticated telemetry injection and command interception.
+- [x] **SEC-005**: Secure the telemetry ingestion endpoint to prevent unauthenticated telemetry injection and command interception. *(Originally the gRPC `SystemInfoCollectorService` with mTLS; superseded: gRPC was removed, ingestion is MQTT 5 authenticated by the agent key.)*
 
 ### High Priority
 - [x] **SEC-006**: Deprecate or gate the HTTP dev seed endpoint (`seed-admin.get.ts`) behind authenticated administrative CLI tooling to prevent unauthorized mass account generation.
@@ -72,7 +72,7 @@ The following subagents are defined for specialized execution of upcoming roadma
 - [x] **SEC-008**: Implement ASP.NET Core rate limiting middleware (`Microsoft.AspNetCore.RateLimiting`) on sensitive API routes and authentication endpoints.
 - [x] **SEC-009**: Enforce least-privilege non-root execution (`USER` directive) across all Dockerfiles (`backend/Dockerfile.dev`, `frontend/web/Dockerfile.dev`, `agent/Dockerfile.dev`).
 - [x] **SEC-010**: Enforce `[Authorize]` policy on SignalR `MaintenanceHub` to prevent unauthenticated group subscription and event broadcasting.
-- [x] **SEC-011**: Sanitize gRPC exception responses in `SystemInfoCollectorService` to prevent leaking internal database schema and exception details.
+- [x] **SEC-011**: Sanitize exception responses of the telemetry ingestion service (originally gRPC `SystemInfoCollectorService`, superseded by MQTT) to prevent leaking internal database schema and exception details.
 - [x] **SEC-012**: Parameterize PostgreSQL role initialization scripts (`01-init-roles.sql`) using secrets or environment variables instead of plaintext DDL passwords.
 
 ### Medium Priority
@@ -100,7 +100,7 @@ The following subagents are defined for specialized execution of upcoming roadma
 
 ## Decouple from Current AD Specific Feature
 - [x] **Make user mgmt an interfaced function for use with non AD deployments**: Specified `IIdentityDirectoryService` interface with `DatabaseIdentityService` (Better-Auth default), `LdapOpenDirectoryService` (RFC 4511/FreeIPA), and `EntraIdGraphIdentityService` in `docs/architecture/IDENTITY_AND_COMPUTER_MANAGEMENT_DECOUPLING.md`.
-- [x] **Look into alternative computer mgmt systems**: Evaluated autonomous gRPC edge self-registration (outbound port 5001), subnet mDNS/ARP discovery, EtherCAT/PROFINET bus scanning, and Ansible/SaltStack inventory sync.
+- [x] **Look into alternative computer mgmt systems**: Evaluated autonomous edge self-registration (originally outbound gRPC port 5001, now outbound MQTT port 1883), subnet mDNS/ARP discovery, EtherCAT/PROFINET bus scanning, and Ansible/SaltStack inventory sync.
 - [x] **Look into how much the day to day operation relies on AD in case of downtimes or migration away from AD**: Verified zero operational impact — local Better-Auth credentials, edge telemetry streaming, real-time SignalR notifications, and maintenance ticketing function independently of AD connectivity.
 
 ---

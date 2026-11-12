@@ -26,8 +26,8 @@ Running Windows in a Linux Docker environment requires hardware-assisted full vi
 |                 |                                            |  - Heimdall Agent Daemon Process              | |
 |                 v                                            |  - WMI, Registry, EventLog, DPAPI Store       | |
 |  +-----------------------------+                             +-----------------------------------------------+ |
-|  | heimdall_backend (:5001)    | <===========================================+                                 |
-|  | (REST :5099 & gRPC :5001)   |        gRPC Telemetry & Remote Command Dispatch                               |
+|  | heimdall_backend (:5099)    | <===========================================+                                 |
+|  | (REST :5099 & MQTT :1883)   |        MQTT Telemetry & Remote Command Dispatch                               |
 |  +-----------------------------+        over 'heimdall_dev_net'                                                |
 +----------------------------------------------------------------------------------------------------------------+
 ```
@@ -100,7 +100,7 @@ python3 tools/test_windows_agent.py --status
 ## 5. Running the Tests
 
 ### A. Backend Windows Invariant Integration Tests (xUnit)
-Validates that the backend gRPC telemetry pipeline accurately ingests and persists Windows-specific WMI UUIDs, `C:\` disk metrics, EventLog items, Beckhoff RT drivers, and command queues:
+Validates that the backend MQTT telemetry pipeline accurately ingests and persists Windows-specific WMI UUIDs, `C:\` disk metrics, EventLog items, Beckhoff RT drivers, and command queues:
 ```bash
 dotnet test tests/backend/App.Backend.Tests/App.Backend.Tests.csproj --filter "FullyQualifiedName~WindowsEndpointTelemetryTests"
 ```

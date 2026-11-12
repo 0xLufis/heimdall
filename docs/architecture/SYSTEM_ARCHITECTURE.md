@@ -217,12 +217,12 @@ Every query issued by EF Core automatically appends `AND (organization_id = @cur
 The backend adopts clean separation between controllers, business services, and repository layers:
 
 ```
-[ HTTP REST / JSON ]   [ HTTP/2 gRPC ]   [ MQTT 1883 ]   [ WebSockets / SignalR ]
-        │                     │                 │                   │
-        ▼                     ▼                 ▼                   ▼
+[ HTTP REST / JSON ]   [ MQTT 5 (port 1883, embedded broker) ]   [ WebSockets / SignalR ]
+        │                              │                                  │
+        ▼                              ▼                                  ▼
 ┌──────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────┐
-│ API Controllers  │  │   Telemetry Ingestion Service    │  │  MaintenanceHub  │
-│ (v1 Endpoints)   │  │   (ITelemetryIngestionService)   │  │ (Real-Time Hub)  │
+│ API Controllers  │  │ MqttIngestionHostedService  →    │  │  MaintenanceHub  │
+│ (v1 Endpoints)   │  │ TelemetryIngestionService        │  │ (Real-Time Hub)  │
 └────────┬─────────┘  └───────────────┬──────────────────┘  └────────┬─────────┘
          │                            │                              │
          └──────────────────────┬─────┴──────────────────────────────┘
@@ -255,27 +255,27 @@ To handle frequent telemetry queries without saturating the database, a two-leve
 Modifications to maintenance tickets or incoming critical alarms trigger real-time notifications:
 1. Controller or service updates entity in the database.
 2. Relevant cache keys are evicted.
-3. `IHubContext<MaintenanceHub, IMaintenanceClient>` broadcasts the event (`TicketStatusUpdated`, `TicketCreated`, `CriticalAlertRaised`) to subscribers in the target organization's SignalR group.
+3. `IHubContext<MaintenanceHub, IMaintenanceClient>` broadcasts the event to the owning organization's group (`org:{id}`) and to `platform-admins`, never to all clients. Events (`IMaintenanceClient`): `TicketCreated`, `TicketUpdated`, `TicketDeleted`, `StatusChanged`, `ReceiveNotification`, `InventoryUpdated`, `TelemetryReceived`, `PlcMemoryReceived` (only when a PLC block's descriptor changes), `StationTelemetryReceived`, `StationOscillationReceived`. The hub exposes no client-callable methods.
 
 
-### 4.3 Central Telemetry & Maintenance Interaction Sequence
+### 4.3 Telemetry Ingestion Pipeline
+
+Agents and the fleet simulator publish protobuf messages over MQTT 5 to the MQTTnet broker embedded in the backend (`heimdall/devices/{machine_identifier}/system_info | plc_memory | telemetry | events`), authenticated by an agent key. `MqttIngestionHostedService` subscribes with wildcards and hands each message to `TelemetryIngestionService`. See `EDGE_AGENT_AND_PROTOCOLS.md` for the protocol and `SEQUENCE_DIAGRAMS.md` for the full flow.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor EdgeNode as Edge Agent Daemon (C# / TwinCAT)
-    participant TelemetryIngestion as TelemetryIngestionService (gRPC / MQTT)
-    participant Repo as Asset / Controller Repositories (PostgreSQL)
-    participant Cache as CacheService (L1 Memory / L2 Redis)
-    participant Hub as MaintenanceHub (SignalR WebSocket)
-    actor Browser as Nuxt Web Dashboard (Vue 3 / Pinia)
-
-    EdgeNode->>+TelemetryIngestion: IngestTelemetryAsync(snapshot)
-    TelemetryIngestion->>Repo: UpsertClientPcTelemetryAsync(snapshot)
-    Repo-->>TelemetryIngestion: Entity committed
-    TelemetryIngestion->>Cache: SetAsync("telemetry:snapshot:{hostname}", snapshot, 5 min)
-    TelemetryIngestion->>+Hub: Clients.All.TelemetryReceived(hostname, mac, summary)
-    Hub-->>-Browser: WebSocket Broadcast
-    Browser->>Browser: Update reactive canvas & spatial view
-    TelemetryIngestion-->>-EdgeNode: TelemetryIngestionResult(success=true)
+flowchart LR
+    Agent["Edge agent / fleet simulator"] -- "MQTT 5, protobuf, agent key" --> Broker["Embedded MQTT broker :1883"]
+    Broker --> Ingest["MqttIngestionHostedService"]
+    Ingest --> Service["TelemetryIngestionService"]
+    Service --> Gate["PlcMemoryChangeGate<br/>(drop unchanged, keep-alive 10 s)"]
+    Gate --> Extract["StationTelemetryExtractor"]
+    Extract --> Cache[("Station snapshot<br/>L1 memory + L2 Redis")]
+    Extract --> Hub["SignalR /hubs/maintenance<br/>org:{id} + platform-admins"]
+    Extract --> Lua["Lua TelemetryChange scripts"]
+    Service --> DB[("PostgreSQL<br/>agent_events, client_pcs")]
+    Hub --> Browser["Nuxt dashboard"]
 ```
+
+* **Freshness**: arrival of every PLC memory block is recorded, even when the block is dropped as unchanged. A station is stale after 3 missed samples of its learned interval (clamped 3 s to 5 min) and OFFLINE when its controllers' agents sent their MQTT last will.
+* **Lifecycle**: `AgentEventMessage` with source `AgentLifecycle` (started, stopping, connection_lost as last will) is stored by `AgentLifecycleIngestor` in `agent_events` and `client_pcs.system_metadata.AgentLifecycle`.
+* **Events**: `StationTelemetryReceived` and `StationOscillationReceived`.

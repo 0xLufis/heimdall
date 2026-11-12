@@ -185,7 +185,7 @@ Every environment requires specific variables defined in `.env` (or `/etc/heimda
 | `HEIMDALL_ENCRYPTION_KEY` | 32 characters | AES-256-GCM database field encryption (e.g. SVG floor plans, license keys). Generate with: `openssl rand -hex 16` |
 | `BETTER_AUTH_SECRET` | 32 characters | Better-Auth user session signature and cookie encryption. Generate with: `openssl rand -hex 32` |
 | `JWT_SIGNING_KEY` | 64 characters | HMAC-SHA256 signature key for backend API access tokens. Generate with: `openssl rand -base64 48` |
-| `HEIMDALL_AGENT_KEY` | 32 characters | Pre-shared key for edge IPC agents connecting to the central MQTT/gRPC telemetry broker. |
+| `HEIMDALL_AGENT_KEY` | 32 characters | Pre-shared key for edge IPC agents connecting to the embedded MQTT broker (MQTT credentials `heimdall_agent` / key, user property `x-agent-key`). |
 
 ---
 
@@ -210,11 +210,13 @@ Every environment requires specific variables defined in `.env` (or `/etc/heimda
 | :--- | :--- | :--- |
 | `WEB_PORT` / `PORT` | `3000` | Nuxt 4 web application port. Reverse proxy terminates SSL and forwards here. |
 | `BACKEND_HTTP_PORT` | `5099` | ASP.NET Core REST API & SignalR hub port. |
-| `BACKEND_ALT_PORT` | `5001` | Secondary gRPC / cleartext telemetry ingestion port. |
-| `MQTT_PORT` | `1883` | Embedded or external MQTT telemetry transport port. |
+| `BACKEND_ALT_PORT` | `5001` | Secondary cleartext HTTP port (same REST API; there is no gRPC). |
+| `MQTT_PORT` | `1883` | MQTT 5 broker embedded in the backend; agents publish telemetry here. Not proxied by the HTTP reverse proxy: expose it directly (or via a TCP/stream proxy with TLS) to the agent VLAN only. |
 | `ALLOWED_ORIGINS` | Comma-separated list | Strict CORS policy domain allowlist (e.g. `https://heimdall.plant.corp`). |
 | `BACKEND_API_URL` | `http://backend:5099` | Internal network URL used by the Nitro BFF to reach the .NET backend API. |
 | `SIGNALR_HUB_URL` | `https://heimdall.plant.corp/hubs/maintenance` | Public or proxy URL for live maintenance web socket subscriptions. |
+
+**Kiosk terminal authentication**: the proxy verifies the computer certificate (`ssl_verify_client`) and forwards it in `X-Client-Cert`. The Nuxt BFF only trusts that header when `HEIMDALL_TRUST_CLIENT_CERT_HEADER=true` and the peer address is listed in `HEIMDALL_TRUSTED_PROXIES`. Telemetry agents do not use client certificates.
 
 #### Recommended Nginx Reverse Proxy Snippet:
 ```nginx
@@ -225,6 +227,10 @@ server {
     ssl_certificate /etc/heimdall/certs/server.crt;
     ssl_certificate_key /etc/heimdall/certs/server.key;
 
+    # Kiosk terminals: verify the computer certificate here (mTLS terminates at this proxy)
+    # ssl_client_certificate /etc/heimdall/certs/heimdall-trust-bundle.pem;
+    # ssl_verify_client optional;
+
     # Frontend Web Dashboard & Nitro BFF
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -232,6 +238,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Forward the verified kiosk certificate (see SECURITY_AND_COMPLIANCE.md, kiosk terminal)
+        # proxy_set_header X-Client-Cert $ssl_client_escaped_cert;
     }
 
     # SignalR Real-Time Maintenance WebSockets
@@ -244,7 +252,7 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # REST API & gRPC Collectors
+    # REST API (telemetry arrives over MQTT on port 1883, not through this proxy)
     location /api/ {
         proxy_pass http://127.0.0.1:5099/api/;
         proxy_set_header Host $host;

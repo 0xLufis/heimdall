@@ -39,9 +39,9 @@ The Heimdall Agent runs as a continuous background daemon on edge compute hardwa
 │  │ Local Store-and-Forward Spooler (SQLite Write-Ahead Logging)           │  │
 │  └──────────────────────────────────────┬─────────────────────────────────┘  │
 └─────────────────────────────────────────┼────────────────────────────────────┘
-                                          │ TLS 1.3 / Cleartext gRPC (HTTP/2)
+                                          │ MQTT 5, protobuf payloads
                                           ▼
-                             Heimdall Backend (Port 5001)
+                     Heimdall Backend embedded MQTT broker (Port 1883)
 ```
 
 ### 1.1 Initialization & Anti-Thundering-Herd Jitter
@@ -301,26 +301,49 @@ During network partitions or central server maintenance, the agent buffers high-
   Measures process CPU usage by recording user/kernel time deltas divided by system wall-clock elapsed time across sampling intervals, rather than relying on instantaneous, uncalibrated counters.
 
 
-### 1.4 Agent-Backend Communication Sequence
+### 1.4 Agent-Backend Transport: MQTT 5
+
+There is no gRPC in Heimdall. Agents and the fleet simulator publish protobuf messages (`src/shared/App.Contracts/Protos`, messages only) to the MQTTnet broker embedded in the backend (port 1883). The backend's `MqttIngestionHostedService` subscribes with wildcards at QoS 1 and passes each message to `TelemetryIngestionService`.
+
+**Authentication**: MQTT credentials `heimdall_agent` / agent key, plus the MQTT 5 user property `x-agent-key` on every publish. There is no mTLS on this path; client certificates are used for kiosk terminals only (see `SECURITY_AND_COMPLIANCE.md`).
+
+**Topics** (`src/shared/App.Contracts/Mqtt/MqttTopics.cs`):
+
+| Topic | Direction | Payload |
+| :--- | :--- | :--- |
+| `heimdall/devices/{machine_identifier}/system_info` | agent to backend | `SystemInfoRequest` (hardware, OS, metrics) |
+| `heimdall/devices/{id}/plc_memory` | agent to backend | `AdsPlcMemoryBlock` (or `AdsPlcMemoryBatch`) |
+| `heimdall/devices/{id}/telemetry` | agent to backend | `TelemetryBatchRequest` |
+| `heimdall/devices/{id}/events` | agent to backend | `AgentEventMessage` |
+| `heimdall/devices/{id}/commands` | backend to agent | `SystemInfoResponse` with queued commands (QoS 1) |
+| `heimdall/devices/{id}/recipes/request` | agent to backend | recipe sync request (a `recipes/response` topic exists as well) |
+
+**Commands**: when a `system_info` report arrives and commands are queued for the device, the backend publishes them to the device's `commands` topic. The agent verifies the signature, applies the command and reports the outcome as an `AgentEventMessage` on the `events` topic.
+
+**Lifecycle and last will**: the agent sends `AgentEventMessage` with source `AgentLifecycle` on the `events` topic: `started` (with a classification of the previous run: clean stop, service stop, crash, killed, power loss / OS crash), `stopping`, and `connection_lost`, which is registered as the MQTT last will and published by the broker when the agent disappears. `AgentLifecycleIngestor` stores them in `agent_events` and `client_pcs.system_metadata.AgentLifecycle`; the field contract is the comment above `AgentEventMessage` in `system_info.proto`. Stations whose controllers' agents sent their last will are shown OFFLINE.
+
+**Backend processing** of PLC memory blocks: `PlcMemoryChangeGate` drops unchanged blocks (keep-alive every 10 s; arrival is still recorded for freshness), `StationTelemetryExtractor` builds the station snapshot, which is cached and pushed over SignalR (`StationTelemetryReceived`, `StationOscillationReceived`).
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Agent as Edge Agent Daemon
-    participant Grpc as SystemInfoCollector (Port 5001 gRPC)
+    participant Broker as Embedded MQTT Broker (port 1883)
+    participant Ingest as TelemetryIngestionService
     participant DB as PostgreSQL
-    actor Web as Operator Web UI
 
-    loop Baseline Cycle (60s ± 10% Jitter)
-        Agent->>+Grpc: ReportSystemInfo(SystemInfoRequest)
-        Grpc->>DB: Upsert Telemetry & Check Queued Commands
-        DB-->>Grpc: Command List (e.g. UPDATE_CONFIG)
-        Grpc-->>-Agent: SystemInfoResponse(success=true, commands=[...])
-        
+    Agent->>Broker: CONNECT (heimdall_agent / agent key), last will on events topic
+    loop Baseline Cycle (60s +/- 10% Jitter)
+        Agent->>Broker: PUBLISH heimdall/devices/{id}/system_info
+        Broker->>+Ingest: Deliver message
+        Ingest->>DB: Upsert telemetry and check queued commands
+        Ingest-->>-Broker: PUBLISH heimdall/devices/{id}/commands (if any)
+        Broker->>Agent: Deliver commands
+
         opt Commands Received
             Agent->>Agent: Verify Cryptographic Signature (RSA/Ed25519)
             Agent->>Agent: Apply Recipe Parameters & Restart Drivers
-            Agent->>Grpc: StreamAgentEvents(AgentEventMessage: "Applied")
+            Agent->>Broker: PUBLISH heimdall/devices/{id}/events (AgentEventMessage: "Applied")
         end
     end
 ```
@@ -355,7 +378,7 @@ For local applications (e.g., Python vision algorithms, barcode scanners, propri
 
 ### 8.5 Component Tree Integration & Inventory Attachment
 Custom components registered via the Extension API are merged into the machine hierarchy:
-- `ExtensionComponentContributor` packages active sensors into the agent's gRPC payload.
+- `ExtensionComponentContributor` packages active sensors into the agent's telemetry payload.
 - `TelemetryIngestionService` links the sensor to its parent equipment using `BaseInventoryItem.ParentId`.
 - The Station Component Tree modal (`StationComponentTreeModal.vue`) displays custom sensors with `[Signed]` and `[Dev Sandbox]` trust badges, allowing operators to inspect dynamic JSON state directly from the CAD map or machinery views.
 
@@ -391,7 +414,7 @@ To connect with third-party controllers without external heavy SDK dependencies,
   * `ns=2;s=Line01.MotorCurrent`: Load current (Amperes)
   * `ns=2;s=Line01.QualityOk`: Automated yield qualification (Boolean)
   * `ns=2;s=Line01.PartCount`: Batch cycle accumulation
-* **Telemetry Pipeline Integration**: Polled OPC metrics are attached to `IndustrialOtData` and dispatched directly into the central gRPC collector.
+* **Telemetry Pipeline Integration**: Polled OPC metrics are attached to `IndustrialOtData` and published over MQTT to the central ingestion service.
 
 ---
 
@@ -406,7 +429,7 @@ To eliminate redundant bandwidth usage across industrial OT networks, telemetry 
 * **`StateChangeTrigger`**: Detects state transitions:
   * TwinCAT ADS state change (e.g. `RUN (5)` &rarr; `STOP (6)` or `ERROR (11)`).
   * Network interface state change or machine identity reconfiguration.
-* **`OnDemandTrigger`**: Immediately fires upon manual request via the Agent Web Dashboard, Taskbar Tray Icon, or gRPC backend command.
+* **`OnDemandTrigger`**: Immediately fires upon manual request via the Agent Web Dashboard, Taskbar Tray Icon, or backend command (MQTT commands topic).
 * **Selective Data Slice Filtering**:
   * When only a metric or PLC variable changes, unchanged static hardware (`HardwareInfo`) and installed software (`SoftwareInfo`) slices are omitted, achieving up to 90% bandwidth reduction.
 

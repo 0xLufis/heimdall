@@ -7,43 +7,57 @@ It documents all core communication protocols, end-to-end data flows, real-time 
 
 ## 1. Edge Telemetry Ingestion & Real-Time Broadcast Flow
 
-Industrial controllers execute continuous data collection from TwinCAT ADS, EtherCAT, and CMI hardware interfaces. Data points pass through deadband filters, are compressed via Zstandard, and stream to the backend via HTTP/2 gRPC. Verified telemetry updates the database and cache, triggering real-time SignalR WebSocket notifications to connected web clients.
+Agents (and the fleet simulator) publish protobuf messages over MQTT 5 to the MQTTnet broker embedded in the backend, authenticated by an agent key. The ingestion hosted service hands them to the telemetry ingestion service: unchanged PLC memory blocks are dropped by the change gate (arrival is still recorded for station freshness), changed blocks become station snapshots in the cache and SignalR events to organisation-scoped groups. Agent lifecycle events, including the MQTT last will, are stored as agent events.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor EdgeNode as Edge Agent Daemon (C# / TwinCAT)
-    participant GrpcEndpoint as TelemetryIngestionService (HTTP/2 gRPC & MQTT)
-    participant SecurityAuth as Auth & mTLS Cert Validator
-    participant Repo as ClientPcRepository (PostgreSQL)
-    participant Cache as CacheService (L1 Memory / L2 Redis)
-    participant Hub as MaintenanceHub (SignalR WebSocket)
-    actor Browser as Nuxt Web Dashboard (Vue 3 / Pinia)
+    actor EdgeNode as Edge Agent / Fleet Simulator
+    participant Broker as Embedded MQTT Broker (MQTTnet, port 1883)
+    participant Ingest as MqttIngestionHostedService
+    participant Service as TelemetryIngestionService
+    participant Gate as PlcMemoryChangeGate + StationFreshness
+    participant Cache as Station snapshot cache (L1 Memory / L2 Redis)
+    participant Hub as MaintenanceHub (/hubs/maintenance)
+    actor Browser as Nuxt Web Dashboard (org group)
 
     Note over EdgeNode,Browser: Flow 1: Edge Telemetry Ingestion & Real-Time Broadcast Flow
-    
-    EdgeNode->>EdgeNode: Collect OS, CMI, TwinCAT ADS & Process Metrics
-    EdgeNode->>EdgeNode: Evaluate Deadband Delta & Compress (Zstd / gzip)
-    EdgeNode->>+GrpcEndpoint: ReportSystemInfo(SystemInfoRequest) / ReportTelemetryBatch
-    GrpcEndpoint->>SecurityAuth: Validate caller mTLS cert & API token
-    SecurityAuth-->>GrpcEndpoint: Authorized (Tenant & PC Context)
-    
-    GrpcEndpoint->>Repo: UpsertClientPcTelemetryAsync(snapshot)
-    Repo-->>GrpcEndpoint: Entity updated in PostgreSQL (100 IPC nodes)
-    
-    GrpcEndpoint->>Cache: SetAsync("telemetry:snapshot:{hostname}", snapshot, 5 min)
-    GrpcEndpoint->>Cache: RemoveAsync("telemetry:fleet:live")
-    
-    GrpcEndpoint->>+Hub: Clients.All.TelemetryReceived(hostname, mac, summary)
-    Hub-->>-Browser: Broadcast WebSocket message: TelemetryReceived
-    Browser->>Browser: Update Pinia telemetryStore & refresh Canvas / 3D spatial node
-    
-    opt Pending Commands in Queue
-        GrpcEndpoint->>Repo: FetchUnacknowledgedCommands(clientPcId)
-        Repo-->>GrpcEndpoint: List<QueuedAgentCommand> (e.g. UPDATE_CONFIG)
+
+    EdgeNode->>+Broker: CONNECT (heimdall_agent / agent key, MQTT 5, last will on events topic)
+    EdgeNode->>Broker: PUBLISH heimdall/devices/{id}/plc_memory (protobuf AdsPlcMemoryBlock, user property x-agent-key)
+    Broker->>+Ingest: Deliver message (wildcard subscription heimdall/devices/+/plc_memory, QoS 1)
+    Ingest->>+Service: ProcessPlcMemoryAsync(machineId, block, agentKey)
+    Service->>Service: ValidateCallerAuthentication(agentKey)
+    Service->>Gate: Record arrival (freshness) and compare block with last one
+    alt Block unchanged and keep-alive (10 s) not due
+        Gate-->>Service: Drop block
+    else Changed or keep-alive due
+        Gate-->>Service: Pass block
+        Service->>Service: StationTelemetryExtractor builds station snapshot
+        Service->>Cache: Store station snapshot
+        Service->>+Hub: StationTelemetryReceived / StationOscillationReceived to org:{id} and platform-admins
+        Hub-->>-Browser: WebSocket event
+        Service->>Service: Run Lua TelemetryChange scripts
     end
-    
-    GrpcEndpoint-->>-EdgeNode: SystemInfoResponse(success=true, commands=[...])
+    Service-->>-Ingest: Done
+    deactivate Ingest
+
+    opt system_info message with queued commands
+        EdgeNode->>Broker: PUBLISH heimdall/devices/{id}/system_info
+        Broker->>Ingest: Deliver message
+        Ingest->>Service: ProcessSystemInfoAsync(request, agentKey)
+        Service-->>Ingest: SystemInfoResponse(commands)
+        Ingest->>Broker: PUBLISH heimdall/devices/{id}/commands (QoS 1)
+        Broker->>EdgeNode: Deliver commands
+    end
+
+    opt Agent connection lost
+        Broker->>Ingest: Last will AgentEventMessage (source AgentLifecycle, connection_lost)
+        Ingest->>Service: ProcessAgentEventAsync
+        Service->>Service: AgentLifecycleIngestor stores agent_events row and client_pcs.system_metadata.AgentLifecycle
+        Service->>Hub: Station freshness turns OFFLINE for its controllers
+    end
+    deactivate Broker
 ```
 
 ---
@@ -76,8 +90,8 @@ sequenceDiagram
     Controller->>Cache: RemoveAsync("dashboard:metrics")
     Controller->>Cache: SetAsync("tickets:item:{id}", updated, 5 min)
     
-    Controller->>+Hub: Clients.All.StatusChanged(id, "In_Progress")
-    Controller->>Hub: Clients.All.TicketUpdated(updated)
+    Controller->>+Hub: org group + platform-admins: StatusChanged(id, "In_Progress")
+    Controller->>Hub: org group + platform-admins: TicketUpdated(updated)
     Hub-->>-Operators: WebSocket Broadcast: StatusChanged & TicketUpdated
     Operators->>Operators: Kanban column reactive transition (Open -> In_Progress)
     
@@ -133,7 +147,7 @@ sequenceDiagram
 
 ## 4. PKI Root CA Import & Client Certificate Auto-Enrollment Flow
 
-Heimdall secures all edge-to-cloud communications via mutual TLS (mTLS). This flow illustrates root certificate authority import, declarative OU enrollment rule assignment, X.509 RSA-2048 certificate generation, and device certificate binding.
+The Heimdall PKI issues X.509 computer certificates. This flow illustrates root CA import, declarative OU enrollment rules, certificate generation, and a kiosk terminal authenticating with its computer certificate, which a TLS-terminating reverse proxy verifies and forwards in the X-Client-Cert header. Agent telemetry itself is authenticated by an agent key over MQTT, not by client certificates.
 
 ```mermaid
 sequenceDiagram
@@ -143,9 +157,10 @@ sequenceDiagram
     participant CertController as CertificateManagementController
     participant CryptoEngine as System.Security.Cryptography (X.509 / RSA-2048)
     participant DB as PostgreSQL (ClientCertificates & OuCertRules)
-    actor EdgeNode as Edge Client PC (mTLS Consumer)
+    actor Kiosk as Kiosk Terminal (computer certificate)
+    participant Proxy as TLS-terminating Reverse Proxy
 
-    Note over SecAdmin,EdgeNode: Flow 4: PKI Root CA Import & Client Certificate Auto-Enrollment Flow
+    Note over SecAdmin,Kiosk: Flow 4: PKI Root CA Import & Client Certificate Auto-Enrollment Flow
 
     SecAdmin->>+Modal: Open PKI Manager & Click "Generate / Import Root CA"
     Modal->>+CertController: POST /api/v1/CertificateManagement/root-ca/import (Pem Certificate & Key)
@@ -173,10 +188,13 @@ sequenceDiagram
     DB-->>CertController: Batch committed
     CertController-->>-Modal: Sync Complete (Generated: N, Active: Total)
 
-    EdgeNode->>+CertController: mTLS gRPC Handshake using issued Client Certificate
-    CertController->>CryptoEngine: Validate client cert against Root CA trust chain
-    CryptoEngine-->>CertController: Certificate Valid & In-Policy
-    CertController-->>-EdgeNode: TLS Handshake Completed (mTLS Established)
+    Kiosk->>+Proxy: TLS handshake presenting the issued computer certificate
+    Proxy->>Proxy: Verify certificate against the Heimdall trust bundle
+    Proxy->>CertController: Forward request with X-Client-Cert header
+    CertController->>CryptoEngine: Validate forwarded certificate against trust store
+    CryptoEngine-->>CertController: Certificate valid
+    CertController-->>Proxy: Kiosk terminal authenticated
+    Proxy-->>-Kiosk: Terminal page served
 ```
 
 ---
@@ -221,15 +239,16 @@ sequenceDiagram
 
 ## 6. Edge Agent Command Dispatch & Execution Loop
 
-Engineers issue remote configuration updates and diagnostic recipes through authenticated REST APIs. Commands are queued in PostgreSQL, retrieved by edge agents during regular gRPC polling intervals, verified cryptographically, and executed locally.
+Engineers issue remote configuration updates and diagnostic recipes through authenticated REST APIs. Commands are queued in PostgreSQL, delivered to edge agents over MQTT on the commands topic after their next system_info report, verified cryptographically, and executed locally.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Admin as Site Automation Engineer
     participant WebUI as Nuxt Web Admin Panel
-    participant CmdCtrl as AgentCommandController (REST API)
+    participant CmdCtrl as AgentCommandController (REST) / TelemetryIngestionService
     participant DB as PostgreSQL (QueuedAgentCommands Table)
+    participant Broker as Embedded MQTT Broker
     actor Agent as Edge Agent Daemon (Background Worker)
     participant LocalExecutor as Edge Command Dispatcher & Recipe Engine
 
@@ -243,11 +262,13 @@ sequenceDiagram
     CmdCtrl-->>-WebUI: 200 OK { Message: "Command queued successfully" }
     WebUI-->>-Admin: Display success notification
 
-    loop Every 60s Cycle (with ±10% Anti-Thundering Jitter)
-        Agent->>+CmdCtrl: Periodic gRPC Poll: ReportSystemInfo(SystemInfoRequest)
+    loop Every system_info report (60s with +/-10% jitter)
+        Agent->>+Broker: PUBLISH heimdall/devices/{id}/system_info (SystemInfoRequest)
+        Broker->>CmdCtrl: MqttIngestionHostedService -> ProcessSystemInfoAsync
         CmdCtrl->>DB: SELECT FROM queued_agent_commands WHERE ClientPcId = @id AND ExecutedAt IS NULL
-        DB-->>CmdCtrl: Return pending ServerCommand ("UPDATE_CONFIG")
-        CmdCtrl-->>-Agent: SystemInfoResponse(success=true, commands=[ServerCommand])
+        DB-->>CmdCtrl: Pending ServerCommand ("UPDATE_CONFIG")
+        CmdCtrl->>Broker: PUBLISH heimdall/devices/{id}/commands (SystemInfoResponse, QoS 1)
+        Broker-->>-Agent: Deliver commands
     end
 
     Agent->>LocalExecutor: Dispatch command to Recipe Engine
@@ -255,10 +276,10 @@ sequenceDiagram
     
     alt Signature Valid
         LocalExecutor->>LocalExecutor: Atomically apply new polling parameters & restart driver handles
-        Agent->>CmdCtrl: gRPC StreamAgentEvents: AgentEventMessage(Level="Info", Message="Config applied successfully")
+        Agent->>Broker: PUBLISH heimdall/devices/{id}/events AgentEventMessage(Level="Info", Message="Config applied successfully")
     else Signature Invalid
         LocalExecutor->>LocalExecutor: Reject payload & quarantine command
-        Agent->>CmdCtrl: gRPC StreamAgentEvents: AgentEventMessage(Level="Critical", Message="Signature verification failed")
+        Agent->>Broker: PUBLISH heimdall/devices/{id}/events AgentEventMessage(Level="Critical", Message="Signature verification failed")
     end
 ```
 

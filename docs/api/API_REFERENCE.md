@@ -2,7 +2,7 @@
 
 This document provides the reference manual for all interfaces exposed by Heimdall:
 1. **REST Web API** (`HTTP/JSON`)
-2. **gRPC Telemetry Ingestion Service** (`HTTP/2 Protobuf`)
+2. **MQTT Telemetry Ingestion** (`MQTT 5 + Protobuf`, embedded broker)
 3. **SignalR WebSocket Maintenance Hub** (`/hubs/maintenance`)
 4. **Data Transfer Objects (DTOs)**
 5. **OPC UA Server & Gateway Interface** (`opc.tcp://`)
@@ -11,7 +11,7 @@ This document provides the reference manual for all interfaces exposed by Heimda
 
 ## 1. REST Web API (`/api/v1/`)
 
-The REST Web API is hosted on port `5099` (HTTP) and `5001` (HTTPS) behind the Nuxt Nitro BFF reverse proxy (`/api/proxy/*`).
+The REST Web API is hosted on port `5099` (HTTP; dev also `5001`) behind the Nuxt Nitro BFF reverse proxy (`/api/proxy/*`).
 
 ### 1.1 Authentication & Tenant Context
 All non-public endpoints require session authentication and tenant identification headers:
@@ -592,19 +592,27 @@ averages and standard-deviation corridors. `points` is empty when nothing was in
   * `machineId` (`string`): Machine id, custom identifier or name.
   * `metric` (`string`, default: `cycle_time`): `temperature`, `vibration`, `cycle_time`, or a station metric key
     (`vibration_mms`, `spindle_rpm`, `power_kw`, `temperature_c`, `cycle_time_ms`, `parts_per_hour`, `oee_pct`, ...).
-  * `range` (`string`, default: `8h`): `1h`, `8h`, `24h`, `7d`.
+  * `range` (`string`, default: `8h`): `5m`, `15m`, `30m`, `1h`, `8h`, `24h`, `7d`, `all`.
   * `recipeId` (`string`, optional): Accepted for compatibility. Recipe forecasting has no data source, so
     `recipeForecast` is `null` and `availableRecipes` is `[]`.
 * `nominalValue` / `upperTolerance` / `lowerTolerance` are the catalog limits of the metric (configuration, not measurements).
 
 #### `GET /api/v1/analytics/fleet-summary`
-* `totalMachines`: visible machines.
-* `availabilityPercentage`: share of controllers that reported within the last 5 minutes (`null` without controllers).
-* `averageMtbfHours`, `averageMttrMinutes`: as for line KPIs, over all tickets in the 30-day window.
-* `totalMachineHours`, `slaCompliancePercentage`: always `null` (no runtime counters / ticket due dates are stored yet).
-* `topFaultingMachines`: up to 5 machines by incident count (30 days) with reported line-stop downtime (`null` if none
-  reported), most frequent alarm code, and a health index (100 − 12 × open tickets, clamped 0–100).
-* `maintenanceBacklog`, `stockDepletion`: from open tickets and stock items at or below their minimum threshold.
+Fleet maintenance figures (`FleetSummaryDto`, `Dtos/AnalyticsDtos.cs`) for a look-back window (`windowDays`, query, optional). Figures without data are `null` and their sample size is reported next to them.
+* `generatedAt`, `windowDays`, `totalMachines`.
+* Controller connectivity: `controllerCount`, `controllersOnline`, `controllerOnlinePercentage` (agent connectivity, not production availability; `null` without controllers), `controllerOnlineWindowSeconds`.
+* Incidents: `incidentCount`, `resolvedIncidentCount`, `averageMttrMinutes` (creation to resolution of resolved tickets).
+* `averageMtbfHours` with `mtbfMachineCount`: mean gap between consecutive tickets per machine (repeat-incident interval, not runtime MTBF).
+* `criticalSlaHours`: an open Critical ticket older than this counts as SLA breached.
+* `topFaultingMachines`: machine id, name, identifier, line, `incidentCount`, `openTicketCount`, `totalDowntimeMinutes`, `primaryAlarmCode`.
+* `maintenanceBacklog`: `under24Hours`, `oneToThreeDays`, `overThreeDays`, `criticalBreached`.
+* `stockDepletion` (worst first, capped) with `stockDepletionTotal`: part number, description, current stock, minimum threshold, criticality.
+
+#### `GET /api/v1/analytics/fleet-stations`
+Fleet analytics station list (`FleetStationsDto`): one row per tenant-visible machine. Query: `windowDays`, `includeDecommissioned` (default `false`).
+* Envelope: `generatedAt`, `windowDays`, `windowStart`, stale-threshold settings (`telemetryStaleAfterSeconds`, `staleAfterMissedSamples`, `staleFloorSeconds`, `staleCeilingSeconds`), `controllerOnlineWindowSeconds`, `criticalSlaHours`, `stations`.
+* Each station extends the station KPI overlay with grouping dimensions (organization, line, sub-line, project, business unit, machine type, cell type, lifecycle status), ticket figures for the window (`incidentCount`, `mttrMinutes`, `downtimeMinutes`, `lastIncidentAt`, `oldestOpenTicketAt`) and controller connectivity (`controllerCount`, `controllersOnline`, `controllerLastSeenAt`).
+* `liveState`: `RUNNING | IDLE | WARNING | FAULTED | MAINTENANCE` (PLC state, telemetry fresh), `UNKNOWN` (fresh, no state), `STALE` (older than the station's own threshold: 3 missed samples of its learned interval, clamped 3 s to 5 min; see `staleAfterSeconds`, `sampleIntervalSeconds`, `telemetryAgeSeconds`), `OFFLINE` (every bound controller's agent sent its MQTT last will or stopped gracefully and no data arrived since), `NO_DATA` (never reported).
 
 #### Real-time events (`/hubs/maintenance`)
 Connections are placed in groups by the server from the caller's claims: organization members join `org:{OrgId}`,
@@ -655,117 +663,36 @@ Receives automated Git commit notifications when PLC control logic or TwinCAT pr
 
 ---
 
-## 2. gRPC Telemetry Ingestion Service
+### 1.11 Search, PKI, Plugins and Logging
 
-High-throughput HTTP/2 service defined in `Protos/system_info.proto`:
-* **Package**: `heimdall.telemetry.v1`
-* **Service**: `SystemInfoCollector`
+* `GET /api/v1/search?q=&kinds=&limit=`: global search (PostgreSQL `ILIKE` with `pg_trgm`) over `stations`, `controllers`, `tickets`, `users`, `inventory`. `q` needs at least 2 characters, `limit` is per kind (1-50, default 6). The user directory is visible to every signed-in user.
+* `/api/v1/certificatemanagement/*`: PKI. Trust store (`GET trust-store`, `POST trust-store/import`, `trust-store/{id}/disable|enable`, `GET trust-bundle`), Heimdall CA (`root-ca/import`, `root-ca/self-signed`, `root-ca/subordinate/csr` and `/complete`), issuance (`POST issue`, `POST generate`), `POST validate`, revocation, OU rules and `sync-ou-certificates`.
+* `POST /api/v1/pki/workstation-identity`: validates a computer certificate (PEM) and returns the mapped client PC and its bound stations (used by the kiosk terminal).
+* `POST /api/v1/plugin/signed`: installs a plugin package carrying the calling user's signature; the backend verifies the signature, certificate chain and certificate-to-user mapping, then countersigns it. `403` when any check fails.
+* `GET/PUT/DELETE /api/v1/admin/logging[/levels]`: effective log levels, runtime overrides per category and output (`All`, `Console`, `File`), and the state of the bounded file logger.
 
-```protobuf
-syntax = "proto3";
+---
 
-option csharp_namespace = "App.Shared.Protos";
-package heimdall.telemetry.v1;
+## 2. MQTT Telemetry Ingestion
 
-import "google/protobuf/timestamp.proto";
+There is no gRPC service. Agents and the fleet simulator publish protobuf messages (`src/shared/App.Contracts/Protos`, messages only) to the MQTTnet broker embedded in the backend (port `1883`), using MQTT 5, credentials `heimdall_agent` / agent key and the user property `x-agent-key`. `MqttIngestionHostedService` subscribes at QoS 1 and passes messages to `TelemetryIngestionService`. Protocol details: `architecture/EDGE_AGENT_AND_PROTOCOLS.md` section 1.4.
 
-service SystemInfoCollector {
-  rpc ReportSystemInfo (SystemInfoRequest) returns (SystemInfoResponse);
-  rpc ReportTelemetryBatch (TelemetryBatchRequest) returns (TelemetryBatchResponse);
-  rpc StreamAgentEvents (stream AgentEventMessage) returns (AgentEventStreamAck);
-  rpc SyncRecipes (RecipeSyncRequest) returns (RecipeSyncResponse);
-}
+| Topic | Direction | Message |
+| :--- | :--- | :--- |
+| `heimdall/devices/{machine_identifier}/system_info` | agent to backend | `SystemInfoRequest` |
+| `heimdall/devices/{id}/plc_memory` | agent to backend | `AdsPlcMemoryBlock` / `AdsPlcMemoryBatch` |
+| `heimdall/devices/{id}/telemetry` | agent to backend | `TelemetryBatchRequest` |
+| `heimdall/devices/{id}/events` | agent to backend | `AgentEventMessage` (source `AgentLifecycle` for lifecycle and last will) |
+| `heimdall/devices/{id}/commands` | backend to agent | `SystemInfoResponse` (queued `ServerCommand`s) |
+| `heimdall/devices/{id}/recipes/request` / `recipes/response` | both | recipe sync |
 
-message SystemInfoRequest {
-  string hostname = 1;
-  string machine_identifier = 2;
-  string mac_address = 3;
-  google.protobuf.Timestamp last_online = 4;
-  DiskInfo disk_info = 5;
-  repeated InventoryComponent components = 6;
-}
-
-message DiskInfo {
-  double total_free_gb = 1;
-  double os_drive_free_gb = 2;
-  map<string, double> drives = 3;
-}
-
-message InventoryComponent {
-  string name = 1;
-  string technology = 2;
-  string type = 3;
-  string data_json = 4;
-}
-
-message SystemInfoResponse {
-  bool success = 1;
-  string message = 2;
-  repeated ServerCommand commands = 3;
-}
-
-message ServerCommand {
-  string type = 1;
-  string payload = 2;
-  string signature = 3;
-}
-
-message TelemetryBatchRequest {
-  string machine_identifier = 1;
-  string hostname = 2;
-  google.protobuf.Timestamp batch_timestamp = 3;
-  bool is_compressed = 4;
-  string compression_algorithm = 5; // "zstd", "gzip", "none"
-  bytes payload_bytes = 6;
-}
-
-message TelemetryBatchResponse {
-  bool success = 1;
-  int32 processed_count = 2;
-  string message = 3;
-}
-
-message AgentEventMessage {
-  string machine_identifier = 1;
-  string hostname = 2;
-  string event_id = 3;
-  string source = 4; // "EtherCAT", "TwinCAT", "OPCUA", "System"
-  string level = 5;  // "Critical", "High", "Warning", "Info"
-  string message = 6;
-  google.protobuf.Timestamp timestamp = 7;
-  string payload_json = 8;
-}
-
-message AgentEventStreamAck {
-  bool success = 1;
-  string message = 2;
-}
-
-message RecipeSyncRequest {
-  string machine_identifier = 1;
-  string current_recipe_hashes = 2;
-}
-
-message RecipeSyncResponse {
-  bool has_updates = 1;
-  repeated string signed_recipe_json_bundles = 2;
-  repeated string revoked_recipe_ids = 3;
-}
-```
+PLC memory blocks pass `PlcMemoryChangeGate` (unchanged blocks dropped, keep-alive every 10 s; arrival is still recorded for freshness), then `StationTelemetryExtractor`; the station snapshot is cached and pushed over SignalR (see 1.9 and section 3).
 
 ---
 
 ## 3. SignalR Maintenance Hub (`/hubs/maintenance`)
 
-### 3.1 Hub Methods (Client to Server)
-* `JoinOrganizationGroup(string organizationId)`: Subscribes connection to target tenant event stream.
-* `LeaveOrganizationGroup(string organizationId)`: Unsubscribes connection.
-
-### 3.2 Client Callback Events (Server to Client)
-* `TicketCreated(MaintenanceTicketDto ticket)`: Broadcast when any technician or operator creates a ticket.
-* `TicketStatusUpdated(Guid ticketId, string newStatus, string updatedBy)`: Broadcast when a ticket moves across Kanban columns.
-* `NewTicketComment(Guid ticketId, TicketCommentDto comment)`: Injected into ticket observation drawer.
-* `CriticalAlertRaised(string stationName, string message)`: Triggers immediate floor-wide alert banner.
+The hub has no client-invokable methods; group membership (`org:{id}`, `platform-admins`) is assigned by the server from the caller's claims. Browsers connect to the hub directly. The server-to-client events and their sources are listed under *Real-time events* in section 1.9 (ticket events, `TelemetryReceived`, `PlcMemoryReceived`, `StationTelemetryReceived`, `StationOscillationReceived`).
 
 ---
 
@@ -873,7 +800,7 @@ sequenceDiagram
     Client->>+API: PATCH /api/v1/MaintenanceTicket/<built-in function id>/status ("Resolved")
     API->>DB: UpdateStatusAsync(id, "Resolved")
     DB-->>API: Updated
-    API->>+Hub: Clients.All.StatusChanged(id, "Resolved")
+    API->>+Hub: org group + platform-admins: StatusChanged(id, "Resolved")
     Hub-->>-Subscribers: Real-Time Event: StatusChanged
     API-->>-Client: 204 NoContent
 ```
@@ -951,7 +878,7 @@ Streams operational alarms, interlock triggers, or hardware fault events.
 * **Response `200 OK`**: `{"success": true}`
 
 #### `POST /api/v1/agent/sync`
-Triggers immediate gRPC push of buffered telemetry, registered components, and events to the central backend.
+Triggers an immediate MQTT publish of buffered telemetry, registered components, and events to the central backend.
 * **Response `200 OK`**: `{"success": true, "flushedRecords": 42}`
 
 ### 6.2 Plugin Management Endpoints (`/api/v1/plugins`)
