@@ -122,9 +122,10 @@ tui:
     @python3 tools/tui.py
 
 # Refresh the README gallery in docs/media from the running dev stack: shots, videos or all (videos need ffmpeg;
-# the kiosk clip dispatches one real ticket). See tools/capture-gallery.cjs.
-gallery MODE="all":
-    NODE_PATH=src/frontend/web/node_modules node tools/capture-gallery.cjs {{MODE}}
+# the kiosk clip dispatches one real ticket). NAMES limits it, e.g. `just gallery shots 17_digital_twin`.
+# See tools/capture-gallery.cjs.
+gallery MODE="all" NAMES="":
+    NODE_PATH=src/frontend/web/node_modules node tools/capture-gallery.cjs {{MODE}} {{NAMES}}
 
 # Display service topology status and latency matrix
 status *ARGS:

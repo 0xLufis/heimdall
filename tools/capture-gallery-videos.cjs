@@ -204,7 +204,7 @@ async function captureVideos(browser, only) {
   const storageState = await auth.storageState()
   await auth.close()
 
-  for (const video of VIDEOS.filter(v => !only || only.includes(v.name))) {
+  for (const video of VIDEOS.filter(v => !only || only(v.name))) {
     const ctx = await g.newContext(browser, { viewport: video.viewport, deviceScaleFactor: 1, storageState })
     const p = await ctx.newPage()
     let cast = null

@@ -111,47 +111,53 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 <br/><sub><b>🗺️ Plant Map — CAD floor plan with colour-coded station pins</b></sub>
 </td>
 <td align="center" width="50%">
-<a href="docs/media/11_live_telemetry.png"><img src="docs/media/11_live_telemetry.png" alt="Telemetry Hub" width="100%"/></a>
-<br/><sub><b>📈 Telemetry Hub — live station dynamics and OEE KPIs</b></sub>
+<a href="docs/media/17_digital_twin.png"><img src="docs/media/17_digital_twin.png" alt="3D Digital Twin" width="100%"/></a>
+<br/><sub><b>🧊 3D Digital Twin — station CAD model with live telemetry labels on its nodes</b></sub>
 </td>
 </tr>
 <tr>
+<td align="center" width="50%">
+<a href="docs/media/11_live_telemetry.png"><img src="docs/media/11_live_telemetry.png" alt="Telemetry Hub" width="100%"/></a>
+<br/><sub><b>📈 Telemetry Hub — live station dynamics and OEE KPIs</b></sub>
+</td>
 <td align="center" width="50%">
 <a href="docs/media/12_fleet_analytics.png"><img src="docs/media/12_fleet_analytics.png" alt="Fleet Analytics" width="100%"/></a>
 <br/><sub><b>📋 Fleet Analytics — stations grouped by line with OEE roll-ups</b></sub>
 </td>
+</tr>
+<tr>
 <td align="center" width="50%">
 <a href="docs/media/13_lua_automation.png"><img src="docs/media/13_lua_automation.png" alt="Lua Automation" width="100%"/></a>
 <br/><sub><b>🧩 Lua Automation — sandboxed scripts, starter templates, API reference</b></sub>
 </td>
-</tr>
-<tr>
 <td align="center" width="50%">
 <a href="docs/media/14_tickets_monitor.png"><img src="docs/media/14_tickets_monitor.png" alt="Incident Monitor" width="100%"/></a>
 <br/><sub><b>📺 Incident Monitor — shop-floor TV display of the incident queue</b></sub>
 </td>
+</tr>
+<tr>
 <td align="center" width="50%">
 <a href="docs/media/07_clients.png"><img src="docs/media/07_clients.png" alt="Industrial Controllers" width="100%"/></a>
 <br/><sub><b>🖥️ Industrial Controllers — 56 edge IPCs, live CPU / RAM, CAD tags, remote access</b></sub>
 </td>
-</tr>
-<tr>
 <td align="center" width="50%">
 <a href="docs/media/08_inventory.png"><img src="docs/media/08_inventory.png" alt="Inventory" width="100%"/></a>
 <br/><sub><b>📦 Inventory — serialized parts, stock levels, provisioning</b></sub>
 </td>
+</tr>
+<tr>
 <td align="center" width="50%">
 <a href="docs/media/05_security_groups.png"><img src="docs/media/05_security_groups.png" alt="Security Groups" width="100%"/></a>
 <br/><sub><b>🛡️ Security Groups — Entra ID group → RBAC role → organization mapping</b></sub>
 </td>
-</tr>
-<tr>
 <td align="center" width="50%">
 <a href="docs/media/06_organizations.png"><img src="docs/media/06_organizations.png" alt="Organizations" width="100%"/></a>
 <br/><sub><b>🏢 Organizations — multi-tenant plant organizations and members</b></sub>
 </td>
-<td align="center" width="50%">
-<a href="docs/media/09_settings.png"><img src="docs/media/09_settings.png" alt="Settings" width="100%"/></a>
+</tr>
+<tr>
+<td align="center" colspan="2">
+<a href="docs/media/09_settings.png"><img src="docs/media/09_settings.png" alt="Settings" width="50%"/></a>
 <br/><sub><b>⚙️ Settings — SSO, two-factor authentication, Copia credentials</b></sub>
 </td>
 </tr>
