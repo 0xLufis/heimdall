@@ -20,6 +20,15 @@ set shell := ["bash", "-c"]
 LOG_DIR := justfile_directory() + "/.logs"
 LOGPIPE := "python3 tools/logpipe.py"
 PID_DIR := "/tmp/heimdall_dev_pids"
+# Stops services by the session that `setsid` gives each one (PID file) plus the owner of its ports; never by
+# command-line text (pkill -f also killed tool shells and running builds). See tools/devproc.py.
+DEVPROC := "python3 tools/devproc.py"
+# dotnet watch for the .NET services: rebuild + restart on every save. No hot reload: on SDK 10.0.113 C# edits
+# crashed the watcher in Roslyn's edit-and-continue (ArgumentException), after which nothing restarted. The
+# cleanup timeout makes the watcher wait for the old instance to exit before relaunching (default: SIGKILL right
+# after SIGTERM, which orphaned the app behind `dotnet run` with its ports); no MSBuild node reuse, so no idle
+# nodes outlive a build or get shared with other builds.
+DOTNET_WATCH_ENV := "DOTNET_WATCH_PROCESS_CLEANUP_TIMEOUT_MS=15000 MSBUILDDISABLENODEREUSE=1 DOTNET_WATCH_SUPPRESS_EMOJIS=1"
 SHARED_WIN_AGENT_DIR := "infra/windows/shared/agent"
 # Python for the simulators: the project venv (paho-mqtt + protobuf from simulators/fleet/requirements.txt) when present
 SIM_PYTHON := if path_exists("venv/bin/python") == "true" { "venv/bin/python" } else { "python3" }
@@ -125,30 +134,13 @@ clean:
     #!/usr/bin/env bash
     set -euo pipefail
     echo ">> Cleaning Heimdall development processes and ports..."
-    for pid_file in {{PID_DIR}}/*.pid; do
-        if [ -f "$pid_file" ]; then
-            pid=$(cat "$pid_file" 2>/dev/null || true)
-            if [ -n "$pid" ]; then
-                kill -9 "$pid" 2>/dev/null || true
-            fi
-            rm -f "$pid_file"
-        fi
-    done
-    pkill -9 -f "App.Backend.Api" 2>/dev/null || true
-    pkill -9 -f "App.Agent.Daemon" 2>/dev/null || true
-    pkill -9 -f "dotnet watch.*App.Backend.Api" 2>/dev/null || true
-    pkill -9 -f "dotnet watch.*App.Agent.Daemon" 2>/dev/null || true
-    pkill -9 -f "bun.*run.*dev" 2>/dev/null || true
-    pkill -9 -f "nuxt dev" 2>/dev/null || true
-    pkill -9 -f "fleet_simulator.py" 2>/dev/null || true
-    if command -v fuser >/dev/null 2>&1; then
-        fuser -k 5099/tcp 2>/dev/null || true
-        fuser -k 5001/tcp 2>/dev/null || true
-        fuser -k 3000/tcp 2>/dev/null || true
-        fuser -k 5055/tcp 2>/dev/null || true
-        fuser -k 5998/tcp 2>/dev/null || true
-    fi
-    echo "✓ Environment cleanly cleared. Ports 5099, 5001, 3000, 5055, 5998 released."
+    # Same targeting as `just stop` (session from the PID file + port owners), with a 2 s grace before SIGKILL.
+    {{DEVPROC}} stop "Backend API" --pidfile {{PID_DIR}}/backend.pid --ports 5099,5001,1883 --grace 2
+    {{DEVPROC}} stop "Agent Daemon" --pidfile {{PID_DIR}}/agent.pid --ports 5998 --grace 2
+    {{DEVPROC}} stop "Nuxt Frontend" --pidfile {{PID_DIR}}/frontend.pid --ports 3000 --grace 2
+    {{DEVPROC}} stop "Fleet Simulator" --pidfile {{PID_DIR}}/simulator.pid --ports 5055 --grace 2
+    rm -f {{PID_DIR}}/*.pid
+    echo "✓ Environment cleared. Ports 5099, 5001, 1883, 3000, 5055, 5998 released (except ones held by containers)."
 
 # Stream service logs (backend, backend-file, frontend, agent, simulator, windows, db)
 logs SERVICE="all":
@@ -217,16 +209,20 @@ start-service TARGET:
             ;;
         backend|grpc)
             just db-up
-            if ! [ -f {{PID_DIR}}/backend.pid ] || ! kill -0 $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null; then
-                echo ">> Starting Backend REST API & gRPC Ingestion..."
+            if {{DEVPROC}} running --pidfile {{PID_DIR}}/backend.pid; then
+                echo "Backend already running (session $(cat {{PID_DIR}}/backend.pid)); 'just restart backend' restarts it."
+            else
+                {{DEVPROC}} ports-free 5099,5001,1883 --service backend
+                echo ">> Starting Backend REST API & embedded MQTT broker (dotnet watch: rebuild + restart on save)..."
                 # Console output -> .logs/backend.log through the rotating log pipe (a detached sibling: it
                 # ends at EOF and survives Ctrl-C); the backend's own rotating file log -> .logs/backend/.
-                Logging__File__Path="{{LOG_DIR}}/backend" setsid dotnet watch --project src/backend/App.Backend.Api run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/backend.log" --pidfile {{PID_DIR}}/backend.pid >/dev/null 2>&1) 2>&1 &
+                {{DOTNET_WATCH_ENV}} Logging__File__Path="{{LOG_DIR}}/backend" setsid dotnet watch --no-hot-reload --project src/backend/App.Backend.Api run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/backend.log" --pidfile {{PID_DIR}}/backend.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/backend.pid
             fi
             ;;
         frontend)
-            if ! [ -f {{PID_DIR}}/frontend.pid ] || ! kill -0 $(cat {{PID_DIR}}/frontend.pid 2>/dev/null) 2>/dev/null; then
+            if ! {{DEVPROC}} running --pidfile {{PID_DIR}}/frontend.pid; then
+                {{DEVPROC}} ports-free 3000 --service frontend
                 # Dev feature flags from the committed .env.dev (HEIMDALL_ENABLE_DEV & co.: anonymous dev admin in
                 # the BFF, kiosk demo tokens and dev auth bypass, debug features). Only these keys: the rest of the
                 # file is meant for the backend/docker (its DATABASE_URL is the backend's DB role, its
@@ -245,14 +241,15 @@ start-service TARGET:
             fi
             ;;
         agent)
-            if ! [ -f {{PID_DIR}}/agent.pid ] || ! kill -0 $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null; then
+            if ! {{DEVPROC}} running --pidfile {{PID_DIR}}/agent.pid; then
                 echo ">> Starting Host Linux Edge Agent Daemon..."
-                setsid dotnet watch --project src/agent/App.Agent.Daemon run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/agent.log" --pidfile {{PID_DIR}}/agent.pid >/dev/null 2>&1) 2>&1 &
+                {{DOTNET_WATCH_ENV}} setsid dotnet watch --no-hot-reload --project src/agent/App.Agent.Daemon run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/agent.log" --pidfile {{PID_DIR}}/agent.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/agent.pid
             fi
             ;;
         simulator)
-            if ! [ -f {{PID_DIR}}/simulator.pid ] || ! kill -0 $(cat {{PID_DIR}}/simulator.pid 2>/dev/null) 2>/dev/null; then
+            if ! {{DEVPROC}} running --pidfile {{PID_DIR}}/simulator.pid; then
+                {{DEVPROC}} ports-free 5055 --service simulator
                 # SIM_DATASET=enterprise (just db-seed) | demo (just demo-seed) | all. Only pick a dataset that is seeded:
                 # the backend auto-registers unknown controllers that report in.
                 echo ">> Starting Edge Fleet Simulator (MQTT -> :1883, control API 127.0.0.1:5055, dataset ${SIM_DATASET:-enterprise})..."
@@ -265,9 +262,10 @@ start-service TARGET:
             ;;
         all)
             just db-up
-            just start-service backend
-            just start-service frontend
-            just start-service simulator
+            # A service whose port is taken (e.g. a backend run by hand) is reported and skipped, not fatal.
+            just start-service backend || true
+            just start-service frontend || true
+            just start-service simulator || true
             just windows-start
             echo "✓ All core development services successfully launched."
             ;;
@@ -293,55 +291,18 @@ stop-service TARGET:
         db|database)
             just db-down
             ;;
+        # Each service: every process of its setsid session (PID file), then whoever still holds its ports.
         backend|grpc)
-            if [ -f {{PID_DIR}}/backend.pid ]; then
-                kill $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null || true
-                rm -f {{PID_DIR}}/backend.pid
-            fi
-            pkill -f "dotnet watch.*src/backend/App.Backend.Api" 2>/dev/null || true
-            pkill -f "dotnet watch.*backend/App.Backend.Api" 2>/dev/null || true
-            pkill -f "App.Backend.Api" 2>/dev/null || true
-            if command -v fuser >/dev/null 2>&1; then
-                fuser -k 5099/tcp 2>/dev/null || true
-                fuser -k 5001/tcp 2>/dev/null || true
-            fi
-            echo "Backend API stopped."
+            {{DEVPROC}} stop "Backend API" --pidfile {{PID_DIR}}/backend.pid --ports 5099,5001,1883
             ;;
         frontend)
-            if [ -f {{PID_DIR}}/frontend.pid ]; then
-                kill $(cat {{PID_DIR}}/frontend.pid 2>/dev/null) 2>/dev/null || true
-                rm -f {{PID_DIR}}/frontend.pid
-            fi
-            pkill -f "bun.*run.*dev" 2>/dev/null || true
-            pkill -f "nuxt dev" 2>/dev/null || true
-            if command -v fuser >/dev/null 2>&1; then
-                fuser -k 3000/tcp 2>/dev/null || true
-            fi
-            echo "Nuxt Frontend stopped."
+            {{DEVPROC}} stop "Nuxt Frontend" --pidfile {{PID_DIR}}/frontend.pid --ports 3000
             ;;
         agent)
-            if [ -f {{PID_DIR}}/agent.pid ]; then
-                kill $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null || true
-                rm -f {{PID_DIR}}/agent.pid
-            fi
-            pkill -f "dotnet watch.*src/agent/App.Agent.Daemon" 2>/dev/null || true
-            pkill -f "dotnet watch.*agent/App.Agent.Daemon" 2>/dev/null || true
-            pkill -f "App.Agent.Daemon" 2>/dev/null || true
-            if command -v fuser >/dev/null 2>&1; then
-                fuser -k 5998/tcp 2>/dev/null || true
-            fi
-            echo "Agent Daemon stopped."
+            {{DEVPROC}} stop "Agent Daemon" --pidfile {{PID_DIR}}/agent.pid --ports 5998
             ;;
         simulator)
-            if [ -f {{PID_DIR}}/simulator.pid ]; then
-                kill $(cat {{PID_DIR}}/simulator.pid 2>/dev/null) 2>/dev/null || true
-                rm -f {{PID_DIR}}/simulator.pid
-            fi
-            pkill -f "fleet_simulator.py" 2>/dev/null || true
-            if command -v fuser >/dev/null 2>&1; then
-                fuser -k 5055/tcp 2>/dev/null || true
-            fi
-            echo "Fleet Simulator stopped."
+            {{DEVPROC}} stop "Fleet Simulator" --pidfile {{PID_DIR}}/simulator.pid --ports 5055
             ;;
         windows|windows_agent|windows_vnc|windows_ads|windows_opc|winagent)
             just windows-stop

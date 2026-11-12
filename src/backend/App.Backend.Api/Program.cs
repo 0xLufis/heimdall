@@ -66,6 +66,13 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     }
 });
 
+if (builder.Environment.IsDevelopment())
+{
+    // dotnet watch restarts the backend on every save and waits for the old instance to exit (justfile):
+    // lingering connections must not hold that for the default 30 s.
+    builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.FromSeconds(5));
+}
+
 // Ensure Environment Variables are included in configuration
 builder.Configuration.AddEnvironmentVariables();
 
@@ -373,6 +380,12 @@ app.MapHub<MaintenanceHub>("/hubs/maintenance").RequireCors("HeimdallCorsPolicy"
 if (!featureFlags.EnableDevFeatures)
 {
     app.MapGet("/error", () => Results.Problem(statusCode: StatusCodes.Status500InternalServerError, title: "An unexpected error occurred."));
+}
+
+if (app.Environment.IsDevelopment())
+{
+    // A restart can find the previous instance still releasing 5099/5001/1883 (DevelopmentPortWait).
+    DevelopmentPortWait.WaitForFreePorts(DevelopmentPortWait.BackendPorts(app.Configuration), TimeSpan.FromSeconds(10), app.Logger);
 }
 
 app.Run();

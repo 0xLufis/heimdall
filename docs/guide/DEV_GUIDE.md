@@ -10,9 +10,9 @@ This guide provides practical instructions for setting up, developing, testing, 
 heimdall/
 ├── src/
 │   ├── agent/                   # Industrial Edge Agent daemon
-│   │   └── App.Agent.Daemon/    # Worker service (gRPC telemetry, spooler, protocol drivers)
+│   │   └── App.Agent.Daemon/    # Worker service (MQTT telemetry, spooler, protocol drivers)
 │   ├── backend/                 # Backend API and services
-│   │   ├── App.Backend.Api/     # ASP.NET Core API controllers, gRPC collector, SignalR hubs
+│   │   ├── App.Backend.Api/     # ASP.NET Core API controllers, MQTT ingestion, SignalR hubs
 │   │   └── App.Infrastructure/  # Repositories, Redis/Memory caching, external integrations
 │   ├── frontend/
 │   │   └── web/                 # Nuxt 4 web dashboard & Nitro BFF proxy
@@ -40,7 +40,7 @@ heimdall/
 Ensure the following tools are installed on your workstation:
 * **.NET SDK** (version `10.0+`)
 * **Bun** (version `1.2+`)
-* **Python 3** (version `3.12+`) with `grpcio` and `protobuf`
+* **Python 3** (version `3.12+`) with `protobuf`
 * **just** command runner and **OpenSSL**
 * **Docker** and **Docker Compose** (v2 plugin)
 
@@ -73,9 +73,27 @@ dotnet ef migrations add <MigrationName> \
 
 ### 3.3 Running the Backend API
 ```bash
-cd src/backend/App.Backend.Api
-dotnet run
+just start backend      # background: dotnet watch, rebuilds and restarts the backend on every saved C# file
+just restart backend    # stop + start
+just stop backend       # stops the watcher, the app and their build processes
+just logs backend       # console output incl. build errors (.logs/backend.log)
+
+# or in the foreground, without file watching
+cd src/backend/App.Backend.Api && dotnet run
 ```
+`just start backend` runs `dotnet watch --no-hot-reload`: every save rebuilds and restarts the app (about
+13-18 s until Swagger and the MQTT broker answer again). Hot reload is off on purpose: with SDK 10.0.113 C# edits
+crashed the watcher in Roslyn's edit-and-continue, after which nothing restarted. The watcher waits for the old
+instance to exit before it starts the new one (`DOTNET_WATCH_PROCESS_CLEANUP_TIMEOUT_MS` in the justfile), and in
+Development the backend shuts down within 5 s and waits up to 10 s at startup for 5099/5001/1883 to be released.
+A failed build leaves the watcher waiting for the next save.
+
+`just stop <service>` stops exactly what `just start <service>` launched: every process of the session that
+`setsid` created for it (PID file in `/tmp/heimdall_dev_pids/`), then whatever still listens on the service's
+ports (for the backend 5099, 5001, 1883), one process at a time (`tools/devproc.py`). It no longer matches
+command lines, so shells, builds and tests that mention the project are left alone. `just start backend` refuses
+to start while another process holds one of the ports and names it.
+
 * **REST API & Swagger UI**: `http://localhost:5099/swagger` (also redirects from `/api-docs` and `/`). Served only when dev features are on (`ASPNETCORE_ENVIRONMENT=Development` or `HEIMDALL_ENABLE_DEV=true`). In Development an unauthenticated request runs as the dev administrator, so "Try it out" works without a token; otherwise paste a Better-Auth session token under **Authorize** (no `Bearer ` prefix).
 * **Secondary cleartext HTTP port**: `http://localhost:5001` (same API; there is no gRPC service, agents and simulators report over MQTT)
 * **Embedded MQTT Broker**: `localhost:1883` (device topics `heimdall/devices/{machineIdentifier}/system_info|plc_memory|telemetry|events`)
@@ -339,4 +357,4 @@ Executes end-to-end browser automation validating MFA policy enforcement, Active
 ```bash
 python3 tools/generate_sequence_diagrams.py --check
 ```
-Validates that generated sequence diagrams match the C# controllers, gRPC telemetry services, and SignalR hub code contracts. Run with `--update-docs` to synchronize diagrams across system documentation.
+Validates that generated sequence diagrams match the C# controllers, the MQTT ingestion code, and SignalR hub code contracts. Run with `--update-docs` to synchronize diagrams across system documentation.
