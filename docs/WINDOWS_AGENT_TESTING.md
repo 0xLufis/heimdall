@@ -10,25 +10,29 @@ Running Windows in a Linux Docker environment requires hardware-assisted full vi
 
 ```
 +----------------------------------------------------------------------------------------------------------------+
-| Linux Host (KVM Accelerated)                                                                                  |
+| Linux Host (KVM Accelerated)                                                                                   |
 |                                                                                                                |
-|  +-----------------------------+      dotnet publish         +-----------------------------------------------+ |
-|  | agent/App.Agent.Daemon      | --------------------------> | ./infra/windows/shared/agent                  | |
-|  | (.NET 10 Daemon Source)     |      (win-x64 build)        | (Bi-directional Host Mount)                   | |
-|  +-----------------------------+                             +-----------------------------------------------+ |
-|                 |                                                                    |                         |
-|                 |                                                                    v                         |
-|  +-----------------------------+      WinRM (:5985)          +-----------------------------------------------+ |
-|  | tools/test_windows_agent.py | --------------------------> | heimdall_windows_agent (Docker QEMU Container)| |
-|  | (Automated Test Suite)      |                             |  - Windows 10 Enterprise LTSC (10l)           | |
-|  +-----------------------------+      HTTP (:5998)           |  - WinRM Service & OpenSSH                    | |
-|                 |                --------------------------> |  - Configurator HTTP API (:5998)              | |
-|                 |                                            |  - Heimdall Agent Daemon Process              | |
-|                 v                                            |  - WMI, Registry, EventLog, DPAPI Store       | |
-|  +-----------------------------+                             +-----------------------------------------------+ |
-|  | heimdall_backend (:5099)    | <===========================================+                                 |
-|  | (REST :5099 & MQTT :1883)   |        MQTT Telemetry & Remote Command Dispatch                               |
-|  +-----------------------------+        over 'heimdall_dev_net'                                                |
+|  +-------------------------------+     dotnet publish      +-----------------------------------------------+   |
+|  | src/agent/App.Agent.Daemon    | ----------------------> | ./infra/windows/shared/agent                  |   |
+|  | (.NET 10 Daemon Source)       | win-x64, self-contained | (host mount, heimdall-agent.exe)              |   |
+|  +-------------------------------+                         +-----------------------+-----------------------+   |
+|                 |                                                                  |                           |
+|                 |                                                                  v                           |
+|  +-------------------------------+     WinRM (:5985)       +-----------------------------------------------+   |
+|  | tools/test_windows_agent.py,  | ----------------------> | heimdall_windows_agent (Docker QEMU container)|   |
+|  | tools/launch_agent_win.py     |                         |  - Windows 10 Enterprise LTSC (10l)           |   |
+|  +--------------+----------------+     HTTP (:5998)        |  - WinRM Service & OpenSSH                    |   |
+|                 |                  ----------------------> |  - Configurator HTTP API (:5998)              |   |
+|                 | REST :5099 checks                        |  - Heimdall Agent Daemon Process              |   |
+|                 |                                          |  - Tray runner, station terminal overlay      |   |
+|                 v                                          |  - WMI, Registry, EventLog, DPAPI Store       |   |
+|  +-------------------------------+                         +-----------------------+-----------------------+   |
+|  | Heimdall backend              | <===============================================+                           |
+|  | (host process or the          |   MQTT 5 telemetry & commands via backend:1883                              |
+|  | heimdall_backend container)   |   (the VM resolves "backend" to the Docker host gateway)                    |
+|  | REST :5099 / :5001            |                                                                             |
+|  | MQTT 5 broker :1883           |                                                                             |
+|  +-------------------------------+                                                                             |
 +----------------------------------------------------------------------------------------------------------------+
 ```
 
@@ -46,9 +50,10 @@ infra/windows/
 ├── Dockerfile           # Extends dockurr/windows:latest with Windows 10 LTSC defaults
 ├── oem/
 │   ├── install.bat      # Windows SetupComplete hook executing setup.ps1
-│   └── setup.ps1        # WinRM, Firewall, Beckhoff mock registry, and daemon watcher setup
-├── shared/              # Bi-directional host-guest shared mount (drive Z:\ in Windows)
-│   └── agent/           # Compiled self-contained win-x64 agent binaries
+│   ├── setup.ps1        # WinRM, Firewall, Beckhoff mock registry, daemon watcher, tray runner registration
+│   └── HeimdallTrayRunner.ps1     # Copy installed to C:\Heimdall by setup.ps1 (Run key)
+├── shared/              # Bi-directional host-guest shared mount (C:\Users\Docker\Desktop\Shared in Windows)
+│   └── agent/           # Compiled self-contained win-x64 agent binaries (heimdall-agent.exe)
 ├── tray/
 │   ├── HeimdallTrayRunner.ps1     # Taskbar tray icon (agent dashboard, triggers, terminal overlay)
 │   └── Start-HeimdallTerminal.ps1 # Station terminal overlay launcher (see section 7)
@@ -81,7 +86,7 @@ infra/windows/
 python3 tools/test_windows_agent.py --check-prereqs
 python3 tools/test_windows_agent.py --build-agent
 ```
-This builds a self-contained `win-x64` executable `App.Agent.Daemon.exe` directly into `infra/windows/shared/agent/`.
+This builds a self-contained `win-x64` executable `heimdall-agent.exe` (the project's `AssemblyName`) directly into `infra/windows/shared/agent/`.
 
 ### Step 2: Start the Windows Container
 The Windows container is gated under the `windows` profile in `docker-compose.yml`:

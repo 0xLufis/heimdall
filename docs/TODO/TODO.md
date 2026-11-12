@@ -37,8 +37,14 @@ Consolidated after the plant-simulation / hardening work on branch `feature/simu
 - [ ] Deployment: exclude the agent state directory from UWF write filters.
 - [ ] `infra/windows/oem/setup.ps1` never copies `infra/windows/tray/` into the VM; the kiosk launcher (`Start-HeimdallTerminal.ps1`) is untested on Windows.
 - [ ] Trust bundle is not distributed to agents automatically (`AgentConfig.TrustedCaCertificatesPem`); the agent config UI cannot set it.
+- [ ] No real PLC driver yet: the ADS endpoint is an in-process simulation server (dev features only), the OPC UA client stops after HEL/ACK and falls back to simulated values, Modbus is decoding helpers. In production mode an agent publishes no PLC memory; plant-scale data comes from the fleet simulator.
+- [ ] The deadband evaluator (xxHash64), recipe merger and priority bandwidth throttler are unit-tested but not registered in `src/agent/App.Agent.Daemon/Program.cs`; wire them in or remove them (unchanged blocks are filtered by the backend change gate today).
+- [ ] The backend subscribes to `recipes/request` but nothing handles it.
 
 ### Security and identity
+- [ ] **High: agent local API is open.** `src/agent/App.Agent.Daemon/Program.cs` binds `http://0.0.0.0:5998` unless `AGENT_URLS` is set; `GET /api/config` returns the whole configuration including `ExtensionApiKey`, and `POST /api/config` changes `BackendUrl`, both without authentication. Bind to loopback by default, redact secrets, require a key for writes (check the tray app, the local configurator and the Windows VM test setup, which publish 5998).
+- [ ] **High: MFA verification.** `server/api/user/mfa/challenge.post.ts` / `verify.post.ts` take `userId` from the request body before the session, and `verifyMfaChallenge` (`server/utils/userMfaStore.ts`) accepts any 6-character code for users without an enrollment in every environment (`123456` for enrolled users outside production). Enrollments live in Nitro memory. Use the session user only, refuse unenrolled users, persist enrollments.
+- [ ] `FILE_CHECK` commands are queued unsigned, so agents with a `ServerPublicKey` reject them; with `HEIMDALL_AGENT_KEY` unset the embedded broker accepts any client (ingestion still rejects outside dev); the Copia webhook is accepted unverified when `COPIA_WEBHOOK_SECRET` is unset; the ADS toggle and other dev endpoints depend only on feature flags.
 - [ ] Ticket and dashboard caches use global keys (`MaintenanceTicketController.cs`, `DashboardController.cs`); `CacheService.RemoveByPatternAsync` clears only process memory.
 - [ ] SSO-simulation sessions are not real Better-Auth sessions: `/api/auth/admin/*` (role change, suspend, sessions) answers 401 under the simulated login; issue signed sessions instead.
 - [ ] `useAuthSession.ts` decides admin flags with regexes that differ from the backend policies.
@@ -49,6 +55,12 @@ Consolidated after the plant-simulation / hardening work on branch `feature/simu
 - [ ] Smaller: `technicianRulesStore.ts` trusts a client `callerRole`; `DelegationController` falls back to a client organisation; `activeDirectoryStore.ts` provisions approvers as `it_admin`; `SignIn.vue` logs the sign-in response.
 - [ ] Security-group mappings and automation keys live in Nitro memory although the backend has tables.
 - [ ] PKI: no admin UI for the trust store or the subordinate CA; no CRL / OCSP published by Heimdall; plugins are stored in backend memory.
+- [ ] Command signing (`PluginService.cs`) uses `HEIMDALL_MASTER_PRIVATE_KEY`, otherwise a temporary 2048-bit key generated at start, so signatures stop verifying after a restart; refuse to sign in production without a configured key. `UPDATE_CONFIG` signatures are supplied by the caller, not made by the server.
+- [ ] Ticket auto-close / retract comments and change history are written only by the BFF route; calls straight to the backend endpoint skip them.
+- [ ] **BFF ticket routes (`server/api/tickets/**`) do not check the caller**: outside development anyone who reaches the frontend can list and change tickets in the BFF store. Require a signed-in user (the kiosk has its own `/api/terminal/*` routes). Their backend calls now carry the caller's session (`backendAuthHeaders`).
+- [ ] **Tickets created through the BFF never reach the backend**: `index.post.ts` sends a `tkt-<timestamp>` id (the backend expects a GUID), a string `pendingReason` and a `null` / string `escalationHandoverState` (numeric enum), so the create fails (now logged) and the ticket lives only in Nitro memory until a restart. It also stores a fabricated `telemetrySnapshot` when none is sent, and `ensureTicketInStore` invents placeholder tickets (`STATION-01`) for unknown ids. Create in the backend first and cache its response.
+- [ ] `server/api/terminal/machine/[id].get.ts` forwards the raw client headers (including `X-Organization-Id`) to the backend.
+- [ ] OU approval in the UI writes to the BFF dataset store, while the AD import checks the backend's `ad_ou_governances`.
 
 ### Analytics, inventory, machine groups
 - [ ] Alert rules are evaluated nowhere (rules in browser memory); MTBF needs machine runtime counters.
@@ -64,11 +76,9 @@ Consolidated after the plant-simulation / hardening work on branch `feature/simu
 - [ ] About ten secondary lists have no right-click menu (machine groups, security groups, alert rules, templates, spare-part policies, delegations).
 - [ ] The Vite main process still grows with many HMR rebuilds (toolchain); consider making Nuxt DevTools opt-in.
 - [ ] e2e (Playwright) suites were not run in this round.
-- [ ] `simulators/fleet/wmic_simulator.py` still talks gRPC, which the backend no longer serves, and is copied into the simulator image; remove it together with `proto/system_info_pb2_grpc.py`, or port it to MQTT.
-- [ ] `docs/academic/BACHELOR_THESIS_NOTES.md` still describes gRPC + mTLS ingestion (text and diagram); update it if the thesis covers the current system.
+- [ ] `docker-compose.prod.yml` runs `postgres:16-alpine` while dev and staging run PostgreSQL 18; pick one (changing an existing production data directory needs a dump/restore or `pg_upgrade`).
 
 ### UI
-- [ ] The plant map keeps headless Chrome's main thread ~40 % busy (script < 1 %): 128 station pins pulse (`animate-pulse` on SVG `<circle>`s), and an animated element inside the ~2,400-node floor-plan SVG repaints the whole SVG every frame. Pulse only stations that need attention, or draw the pulse in a composited HTML overlay. Machines, telemetry and stream pages measured 3-15 %.
 - [ ] The station slide-out panel (`StationDetailWorkbench.vue`) is not exposed as a dialog (`role="dialog"`, `aria-modal`, focus trap), and opening it for a new station loads topology, dedications and users twice (separate `open` and `machine` watchers).
 
 ## Dashboard landing

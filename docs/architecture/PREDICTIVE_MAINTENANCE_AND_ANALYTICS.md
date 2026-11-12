@@ -75,7 +75,12 @@ renders an explicit "No telemetry" / `—` state.
 ### 5.1 Data Path
 
 ```
-PLC (TwinCAT ADS struct)  ──MQTT──▶  TelemetryIngestionService.ProcessPlcMemoryAsync
+ADS struct block (agent: simulated ADS server with dev features; fleet simulator)
+        │ MQTT 5 plc_memory (protobuf AdsPlcMemoryBlock, agent key)
+        ▼
+MqttIngestionHostedService  ──▶  TelemetryIngestionService.ProcessPlcMemoryAsync
+                                       │ PlcMemoryChangeGate: SHA-256 of the block; unchanged blocks are dropped
+                                       │   (keep-alive 10 s), their arrival is still recorded for freshness
                                        │ StationTelemetryExtractor (field-name matching)
                                        │ station = machine bound to the sending IPC (StationControllers)
                                        ├─▶ Redis / ICacheService  telemetry:station:{machineId}  (merged snapshot, 24 h)
@@ -87,7 +92,7 @@ GET /api/v1/analytics/station-kpis  ◀── machines (tenant-filtered) + snaps
         ▲
 Nitro BFF /api/telemetry/station-kpis (proxyToBackend: session token + session org only)
         ▲
-useStationTelemetry (REST load + hub events) ──▶ StationTelemetryBubble / map.vue / Machine3dDigitalTwin
+useStationTelemetry (REST load + hub events) ──▶ plant map pins + station card (StationTelemetryBubble) / map.vue / Machine3dDigitalTwin
 ```
 
 Recognised PLC fields (case-insensitive, separators and a one-letter IEC prefix ignored, any struct depth):

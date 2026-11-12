@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dotnet watch` restarts collided with the previous backend still holding its ports (the watcher killed `dotnet run` without a grace period and orphaned the app). Dev services now stop by their recorded process session (`tools/devproc.py`) instead of `pkill` patterns that could also hit unrelated processes; the backend waits briefly for its ports in Development.
 - The machines page froze with the station panel open: every live hub message replaced the whole station-KPI map, so all station cards re-rendered about 60 times a second with 100 simulated stations. The telemetry store now updates per station and commits hub bursts at most every 250 ms; "last sample" times on the cards and in the station panel follow a 15 s clock instead of other stations' traffic.
 - Flaky agent lifecycle test (asserted on the retry journal before it had drained) and remote-viewer tests (fixed 50 ms sleeps).
+- BFF ticket routes called the backend without the user's session (status, escalate, reserve, QR pickup, retract, auto-close, update, create, lookups) and dropped every error, so outside development ticket changes made in the web UI never reached the backend; the list and stats routes forwarded raw client headers instead. They now use the caller's session (`backendAuthHeaders`), send `EscalationHandoverState` as the backend's enum number (string values failed every update and escalation with 400) and log sync failures.
+- Packaged Linux agent: `HEIMDALL_SPOOL_DIR` was ignored and the spool, crash dumps and default state directory pointed at paths the systemd unit makes read-only (crash dumps even stopped the agent from starting). The spool now follows `HEIMDALL_SPOOL_DIR` with writable fallbacks; `agent.env.example` sets `HEIMDALL_STATE_DIR`.
 - Leftover gRPC / telemetry-mTLS wording in the PKI settings page, the Windows tray notification, compose files and code comments; the agent no longer enables HTTP/2 cleartext, which only the gRPC client needed.
 - Swagger "Authorize" token was never sent with requests. pgAdmin: reserved `.local` default e-mail, unwritable bind-mounted data directory, and `just pgadmin` joining a different compose network than the dev database.
 
@@ -62,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global search lists stations, controllers, tickets and people before inventory.
 - The KPI Builder was removed (Lua is the KPI tool); `/dashboard/inventory` reads and writes backend inventory data instead of a fixture.
 - EF Core SQL logging defaults to Warning, also in Development; `just start frontend` exports the dev flags from `.env.dev`.
+- **Documentation**: every diagram under `docs/` was checked against the code and redrawn where it was wrong (agent pipeline, ingestion, data model, PKI and signed commands, kiosk path, deployment, plant map pins, sequence-diagram generator); the surrounding prose now agrees, designed-but-unbuilt parts (deadband / throttling pipeline, real PLC drivers, OPC UA server, Power BI push) are labelled as such, and the TISAX table separates what the code enforces from what the deployment must provide. The thesis notes describe the current system.
+- **Plant map pins**: stations are colour-coded pins instead of pills (critical: faulted or SLA breached; warning: warning state, SLA due within 2 h or critical ticket, OEE below 70 %; maintenance; idle; running; no data), with a legend; clicking a pin opens the station card. Pin states are sampled once every 500 ms in five staggered slots and refreshed at once on hub ticket, critical-alert and status events; the floor plan no longer animates (all 128 pins: ~7 % main-thread load, was ~40 %). The telemetry store commits operational-status changes immediately.
 - **Canonical 5-State Industrial Ticketing & Orthogonal Escalation**:
   - Overhauled maintenance ticketing across frontend and backend to strictly 5 canonical statuses: `Open`, `InProgress`, `Pending`, `Resolved`, and `Closed`.
   - Decoupled escalation from status: tickets now feature orthogonal escalation flags (`isEscalated`, `escalationReason`, `escalatedAt`, `escalatedBy`, `escalationClosedAt`, `escalationClosedBy`), enabling escalation and de-escalation in any status.
@@ -82,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduced main `settings.vue` controller to 88 lines.
 
 ### Removed
+- `simulators/fleet/wmic_simulator.py` (reported over gRPC, which the backend no longer serves) and its generated gRPC stubs.
 - **Legacy Code & Repository Hygiene**:
   - Removed deprecated root shell scripts (`run_dev.sh`, `run_simulators.sh`), migrating workflows to `justfile`.
   - Moved misplaced root architectural specs and roadmaps into `docs/architecture/` and `docs/guide/`.

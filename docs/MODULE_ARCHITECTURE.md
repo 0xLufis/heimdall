@@ -12,14 +12,14 @@ graph TD
     classDef core fill:#2563eb,stroke:#1d4ed8,color:#fff;
     classDef addon fill:#4f46e5,stroke:#4338ca,color:#fff;
 
-    Core["Core Platform<br/>(Assets, PLCs, Orgs, Auth, Maps)"]:::core
-    Ticketing["Maintenance Ticketing<br/>(/dashboard/tickets)"]:::addon
+    Core["Core Platform (always enabled)<br/>(Machines, Controllers, Orgs, Users, Auth, Maps)"]:::core
+    Ticketing["Maintenance Ticketing<br/>(/dashboard/tickets, /dashboard/delegations)"]:::addon
     Inventory["Spare Parts & Inventory<br/>(/dashboard/inventory)"]:::addon
-    Telemetry["Industrial Telemetry<br/>(/dashboard/telemetry)"]:::addon
+    Telemetry["Industrial Telemetry<br/>(/dashboard/telemetry, /dashboard/analytics)"]:::addon
 
-    Core --> Ticketing
-    Core --> Inventory
-    Core --> Telemetry
+    Ticketing -->|depends on| Core
+    Inventory -->|depends on| Core
+    Telemetry -->|depends on| Core
 ```
 
 ---

@@ -158,11 +158,9 @@ Retrieves historical diagnostic snapshots for an IPC node, ordered newest first.
 ### 1.4 Maintenance Tickets (`/api/v1/tickets`)
 
 #### `GET /api/v1/tickets`
-Returns incident tickets filtered by status, priority, or station.
+Returns incident tickets, optionally filtered by status.
 * **Query Parameters**:
-  * `status` (`string`, optional): `Open`, `In_Progress`, `Pending_Parts`, `Resolved`, `Closed`.
-  * `priority` (`string`, optional): `Low`, `Medium`, `High`, `Critical`.
-  * `stationId` (`uuid`, optional): Filter by associated station.
+  * `status` (`string`, optional): `Open`, `InProgress`, `Pending`, `Resolved`, `Closed`.
 
 #### `POST /api/v1/tickets`
 Creates a new maintenance incident. Triggers real-time SignalR broadcasts.
@@ -172,18 +170,20 @@ Creates a new maintenance incident. Triggers real-time SignalR broadcasts.
   "title": "Axis X Servo Motor Thermal Warning",
   "description": "Temperature probe reads 87C during high-speed cycle. Bearing inspection required.",
   "priority": "High",
-  "stationId": "c39a82e4-180b-48c4-912f-2d6e3bf8e801",
+  "machineId": "c39a82e4-180b-48c4-912f-2d6e3bf8e801",
   "clientPcId": "e14b99f2-2b63-4c91-923a-59b43d2c1102"
 }
 ```
 * **Response `201 Created`**: Returns the complete `MaintenanceTicketDto`.
 
-#### `PATCH /api/v1/tickets/{id}`
-Updates status, priority, or technician assignment.
-* **Request Body**:
+#### `PATCH /api/v1/tickets/{id}/status` and `PUT /api/v1/tickets/{id}`
+`PATCH .../status` changes the status; the body is the new status as a JSON string (e.g. `"InProgress"`). `PUT` replaces the editable fields of the ticket (body: the full ticket, whose `id` must match the route), e.g. priority or technician assignment:
 ```json
 {
+  "id": "<ticket id>",
+  "title": "Axis X Servo Motor Thermal Warning",
   "status": "InProgress",
+  "priority": "High",
   "assignedTo": "Gábor Varga"
 }
 ```
@@ -725,22 +725,29 @@ interface DashboardDto {
 ```
 
 ### `MaintenanceTicketDto`
+The backend returns its `MaintenanceTicket` entity (camelCase JSON, enums as numbers); the main fields:
 ```typescript
 interface MaintenanceTicketDto {
   id: string;
-  ticketNumber: string;
   title: string;
-  description: string;
-  status: 'Open' | 'In_Progress' | 'Pending_Parts' | 'Resolved' | 'Closed';
+  description?: string;
+  status: 'Open' | 'InProgress' | 'Pending' | 'Resolved' | 'Closed';
+  pendingReason: number;            // 0 None, 1 Parts, 2 ExternalOk, 3 Action, 4 SignOff, 5 Custom
+  pendingDetails?: string;
+  isEscalated: boolean;             // escalation is orthogonal to status
+  escalationReason?: string;
+  escalationHandoverState: number;  // 0 None, 1 Notification, 2 HandOff, 3 ParallelWork, 4 HandedOffToField
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  stationId?: string;
-  stationName?: string;
+  isLineStop: boolean;
+  machineId?: string;               // station
   clientPcId?: string;
-  clientPcHostname?: string;
-  reportedBy: string;
+  equipmentId?: string;
+  reservedBy?: string;
   assignedTo?: string;
+  createdBy?: string;
   createdAt: string;
-  updatedAt: string;
+  startedAt?: string;
+  resolvedAt?: string;
   comments: Array<{
     id: string;
     author: string;
@@ -754,35 +761,31 @@ interface MaintenanceTicketDto {
 
 ## 5. OPC UA Server & Gateway Interface
 
-Heimdall exposes an integrated OPC UA Server allowing industrial SCADA packages (Ignition, Kepware, Wonderware) to consume edge telemetry without custom REST wrappers.
+Design, not implemented: an integrated OPC UA Server allowing industrial SCADA packages (Ignition, Kepware, Wonderware) to consume edge telemetry without custom REST wrappers.
 
-* **Endpoint URL**: `opc.tcp://0.0.0.0:4840/Heimdall`
-* **Security Policies**: `Basic256Sha256` (Sign & Encrypt), `Aes128_Sha256_RsaOaep`
-* **Authentication**: X.509 Certificate or User Credentials
+* **Endpoint URL** (planned): `opc.tcp://0.0.0.0:4840/Heimdall`
+* **Security Policies** (planned): `Basic256Sha256` (Sign & Encrypt), `Aes128_Sha256_RsaOaep`
+* **Authentication** (planned): X.509 Certificate or User Credentials
+
+What exists today: the backend's `OpcUaGatewayService` keeps an in-memory address space behind a C# interface (browse, read, write, subscribe). It is registered for dependency injection but has no network listener and no controller. The agent's `MinimalOpcServer` (dev features only, port 4840) answers the binary HEL/ACK handshake without security policies or user authentication. Both address spaces are shown below.
 
 ### Address Space Node Layout:
 ```
-Root (i=84)
-└── Objects (i=85)
-    └── Heimdall (ns=2;s=Heimdall)
-        ├── Stations (ns=2;s=Stations)
-        │   └── LINE_01_OP10 (ns=2;s=Stations.LINE_01_OP10)
-        │       ├── CustomIdentifier (String)
-        │       ├── IsOnline (Boolean)
-        │       └── Controllers (FolderType)
-        │           └── ROBOT_CELL_01 (DeviceType)
-        │               ├── Hostname (String)
-        │               ├── IPAddress (String)
-        │               ├── Telemetry (FolderType)
-        │               │   ├── CpuLoad (Double, Range: 0..100)
-        │               │   ├── RamUsage (Double, Range: 0..100)
-        │               │   └── OsDriveFreeGB (Double)
-        │               └── BeckhoffRT (FolderType)
-        │                   ├── DriverBound (Boolean)
-        │                   └── DriverVersion (String)
-        └── System (ns=2;s=System)
-            ├── ActiveNodesCount (Int32)
-            └── SystemHealth (String)
+Backend OpcUaGatewayService: in-memory address space (browse / read / write / subscribe API,
+no network listener of its own; written unknown nodes are added under HeimdallFleet)
+Root (ns=2;s=Root, Folder)
+└── Objects (ns=2;s=Root.Objects, Folder)
+    └── HeimdallFleet (ns=2;s=Root.Objects.HeimdallFleet, Folder)
+        ├── CycleTime (ns=2;s=Heimdall.Line01.CycleTime, Double, ms)
+        ├── SpindleSpeed (ns=2;s=Heimdall.Line01.SpindleRPM, Int32, RPM)
+        ├── LaserPower (ns=2;s=Heimdall.Line01.LaserPower, Double, kW)
+        ├── EmergencyStopActive (ns=2;s=Heimdall.Line01.EStopState, Boolean)
+        └── CoolantTemperature (ns=2;s=Heimdall.Line01.CoolantTemp, Double, °C)
+
+Agent MinimalOpcServer (dev features, opc.tcp://0.0.0.0:4840, HEL/ACK handshake, simulated values)
+├── ns=0;i=2256  Server_ServerArray = "Heimdall OPC UA Embedded Server"
+├── ns=0;i=2259  Server_ServerStatus_State = "Running"
+└── ns=2;s=Line01.DriveSpeed / .MotorCurrent / .QualityOk / .PartCount
 ```
 
 
@@ -791,17 +794,18 @@ Root (i=84)
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as Web Client
+    actor Client as Web Client (via the Nitro BFF)
     participant API as MaintenanceTicketController
     participant DB as Database
     participant Hub as MaintenanceHub (SignalR)
-    actor Subscribers as All Connected Operators
+    actor Subscribers as Org group + platform-admins
 
-    Client->>+API: PATCH /api/v1/MaintenanceTicket/<built-in function id>/status ("Resolved")
+    Client->>+API: PATCH /api/v1/tickets/{id}/status ("Resolved")
     API->>DB: UpdateStatusAsync(id, "Resolved")
-    DB-->>API: Updated
-    API->>+Hub: org group + platform-admins: StatusChanged(id, "Resolved")
-    Hub-->>-Subscribers: Real-Time Event: StatusChanged
+    DB-->>API: Updated (ResolvedAt stamped)
+    API->>API: Evict ticket and dashboard cache keys
+    API->>+Hub: org group + platform-admins: StatusChanged(id, "Resolved"), TicketUpdated(ticket)
+    Hub-->>-Subscribers: Real-Time Events: StatusChanged, TicketUpdated
     API-->>-Client: 204 NoContent
 ```
 

@@ -10,25 +10,33 @@ This guide provides practical instructions for setting up, developing, testing, 
 heimdall/
 ├── src/
 │   ├── agent/                   # Industrial Edge Agent daemon
-│   │   └── App.Agent.Daemon/    # Worker service (MQTT telemetry, spooler, protocol drivers)
+│   │   └── App.Agent.Daemon/    # Worker service (MQTT 5 client, lifecycle reports, spool, signed commands, plugins)
 │   ├── backend/                 # Backend API and services
-│   │   ├── App.Backend.Api/     # ASP.NET Core API controllers, MQTT ingestion, SignalR hubs
-│   │   └── App.Infrastructure/  # Repositories, Redis/Memory caching, external integrations
+│   │   ├── App.Backend.Api/     # REST controllers, embedded MQTT broker & ingestion, SignalR hub,
+│   │   │                        # PKI (Services/Pki/), bounded file logging (Logging/)
+│   │   └── App.Infrastructure/  # Repositories and domain services (delegation, templates, machine tickets)
 │   ├── frontend/
-│   │   └── web/                 # Nuxt 4 web dashboard & Nitro BFF proxy
+│   │   └── web/                 # Nuxt 4 web dashboard & Nitro BFF (server/api/**), Better-Auth
 │   └── shared/                  # Shared libraries
-│       ├── App.Contracts/       # Protobuf definitions, DTOs, PLC type sanitizer (No DB dependency)
-│       └── App.Shared/          # Domain entities, AppDbContext, EF Core migrations
+│       ├── App.Contracts/       # Protobuf messages, MQTT topics, DTOs, PLC type sanitizer (No DB dependency)
+│       ├── App.Shared/          # Domain entities, AppDbContext, EF Core migrations
+│       └── lua/                 # Lua scripting engine, sandbox guard & UI extension models
 ├── fixtures/                # Canonical enterprise plant dataset (JSON)
+├── seed_data/               # Enterprise seed pipeline and the "Nordvik NV1" demo dataset (demo/)
 ├── simulators/
 │   ├── active_directory/    # Standalone mock Active Directory / Graph server (port 5088)
-│   └── fleet/               # Edge fleet simulator, mock CMI runner & simulated PC Docker containers
+│   └── fleet/               # Edge fleet simulator (MQTT 5), mock CMI runner & simulated PC Docker containers
 ├── infra/
-│   └── database/            # PostgreSQL 18, Redis 7.4, SSL certs, and seed data
+│   ├── database/            # PostgreSQL 18, Redis 7.4, pgAdmin, TLS entrypoint and init scripts
+│   └── windows/             # Windows 10 LTSC VM container for agent tests, tray & terminal overlay scripts
+├── tools/                   # dev_manager.py, devproc.py (service process sessions), logpipe.py (rotating
+│                            # .logs/), tui.py, generate_sequence_diagrams.py, test_staging.py, ...
 ├── tests/
-│   ├── backend/             # xUnit backend integration tests (229 tests)
-│   ├── frontend/unit/       # Vitest unit test suites (58 suites, 565 tests)
-│   └── e2e/                 # Playwright browser end-to-end tests
+│   ├── backend/             # xUnit backend and agent tests (~665 tests)
+│   ├── frontend/unit/       # Vitest unit test suites (~1100 tests)
+│   ├── integration/         # Live Windows endpoint integration test
+│   ├── e2e/                 # Playwright browser end-to-end tests
+│   └── test_*.py            # Dev tooling tests (devproc, logpipe, TUI actions)
 ├── docker-compose.yml       # Full stack local development compose file
 └── justfile                 # Modern command runner for dev, staging, testing, and production
 ```
@@ -357,4 +365,4 @@ Executes end-to-end browser automation validating MFA policy enforcement, Active
 ```bash
 python3 tools/generate_sequence_diagrams.py --check
 ```
-Validates that generated sequence diagrams match the C# controllers, the MQTT ingestion code, and SignalR hub code contracts. Run with `--update-docs` to synchronize diagrams across system documentation.
+Validates that `docs/architecture/SEQUENCE_DIAGRAMS.md` matches what the script generates. The diagrams are written by hand in the script (they are not derived from the C# code), so update them there when the controllers, the MQTT ingestion or the SignalR hub change, then regenerate with `python3 tools/generate_sequence_diagrams.py`. `--update-docs` additionally inserts the embedded diagrams into `SYSTEM_ARCHITECTURE.md` (4.3), `EDGE_AGENT_AND_PROTOCOLS.md` (1.4) and `API_REFERENCE.md` (2.5), but only where the section heading is missing; existing sections are left unchanged.

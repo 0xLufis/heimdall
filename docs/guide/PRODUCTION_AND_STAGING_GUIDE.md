@@ -86,6 +86,7 @@ For bare-metal, systemd, or containerized Linux server installations, Heimdall f
 │       ├── justfile                          # Master command orchestrator
 │       ├── docker-compose.prod.yml           # Production Docker Compose stack
 │       ├── docker-compose.staging.yml        # Staging Docker Compose stack
+│       ├── backend/                          # Published backend (heimdall-backend), see heimdall-backend.service
 │       ├── src/                              # Application source tree (backend, frontend, agent, shared)
 │       │   ├── backend/                      # Backend ASP.NET Core source
 │       │   ├── frontend/                     # Nuxt 4 web dashboard
@@ -96,15 +97,20 @@ For bare-metal, systemd, or containerized Linux server installations, Heimdall f
 │       │   ├── incremental_seed.sql          # Transactional PostgreSQL database seed script
 │       │   └── seed_pipeline.py              # Data pipeline and referential integrity validator
 │       ├── scripts/                          # Packaging and release automation scripts
-│       └── tools/                            # TUI dashboard, dev manager, and test suites
+│       └── tools/                            # TUI dashboard, dev manager, process and log helpers, test suites
 │           ├── tui.py                        # Terminal dashboard (interfacing with just)
 │           ├── dev_manager.py                # Healthcheck and service topology checker
+│           ├── devproc.py                    # Starts / stops services by their process session
+│           ├── logpipe.py                    # Bounded, rotating log files for the just recipes
 │           └── test_staging.py               # Staging verification suite
 │
 ├── etc/
 │   └── heimdall/                             # Platform configuration & secrets (0700, root:heimdall)
 │       ├── heimdall.env                      # Production / Staging environment file (chmod 0600)
-│       ├── agent.env                         # Industrial edge agent daemon configuration
+│       ├── backend.env                       # Read by heimdall-backend.service (EnvironmentFile)
+│       ├── agent.env                         # Industrial edge agent daemon environment
+│       ├── agent.json                        # Agent configuration (local API or signed UPDATE_CONFIG)
+│       ├── master.seed                       # Agent HKDF machine-binding seed (0600, backup master.seed.bak)
 │       ├── certs/                            # Cryptographic keys and TLS certificates (0700)
 │       │   ├── ca.crt                        # Internal Certificate Authority certificate
 │       │   ├── server.crt                    # Server public TLS certificate
@@ -113,23 +119,27 @@ For bare-metal, systemd, or containerized Linux server installations, Heimdall f
 │
 ├── var/
 │   ├── lib/
-│   │   └── heimdall/                         # Persistent state & database volumes (0750, heimdall:heimdall)
-│   │       ├── postgres_data/                # PostgreSQL database files
-│   │       ├── redis_data/                   # Redis AOF (Append-Only File) storage
-│   │       ├── agent_spool/                  # Offline edge telemetry spool queue (SQLite / RocksDB)
-│   │       └── uploads/                      # Maintenance ticket attachments & CAD blueprints
+│   │   ├── heimdall/                         # Persistent state & database volumes (0750, heimdall:heimdall)
+│   │   │   ├── postgres_data/                # PostgreSQL database files
+│   │   │   ├── redis_data/                   # Redis AOF (Append-Only File) storage
+│   │   │   └── uploads/                      # Reserved for ticket attachments & CAD blueprints (not written yet)
+│   │   └── heimdall-agent/                   # Packaged edge agent (agent.env sets HEIMDALL_STATE_DIR / _SPOOL_DIR)
+│   │       ├── state/                        # identity.json, session.json, crash.json, outbox/ (lifecycle reports)
+│   │       └── spool/                        # Telemetry spool, one checksummed file per record; crash_dumps/
+│   │                                         # Unset: state /var/lib/heimdall, spool <install dir>/telemetry_spool,
+│   │                                         # each falling back to the next writable directory (AgentPaths)
 │   │
 │   └── log/
 │       └── heimdall/                         # Centralized application logs (0755, heimdall:heimdall)
-│           ├── backend.log                   # ASP.NET Core API access and error logs
-│           ├── frontend.log                  # Nitro BFF SSR logs
-│           ├── agent.log                     # Edge agent collection and dispatch logs
+│           ├── backend.log                   # Bounded backend file log (Logging__File__Enabled=true and
+│           │                                 # Logging__File__Path=/var/log/heimdall; rotated, 200 MB cap)
+│           ├── frontend.log                  # Nitro BFF SSR output, when redirected here
 │           └── postgresql.log                # Database transaction and query audit logs
 │
 └── etc/systemd/system/                       # Systemd daemon units (for non-containerized hosts)
     ├── heimdall-backend.service              # ASP.NET Core 10 API daemon
-    ├── heimdall-agent.service                # Edge Telemetry Collector daemon
-    └── heimdall-frontend.service             # Nuxt / Node.js web server daemon
+    ├── heimdall-agent.service                # Edge Telemetry Collector daemon (logs to journald)
+    └── heimdall-frontend.service             # Nuxt / Node.js web server daemon (no unit file in the repo yet)
 ```
 
 ### 3.1 Permissions & Security Hardening
@@ -178,13 +188,13 @@ Every environment requires specific variables defined in `.env` (or `/etc/heimda
 ### 4.2 Cryptographic & Security Keys
 
 > [!CAUTION]
-> In Staging and Production, default development keys are rejected on startup. You MUST supply cryptographically secure random keys.
+> In Staging and Production the BFF (`NODE_ENV=production`) refuses to start without a non-default `BETTER_AUTH_SECRET`, and the backend (`ASPNETCORE_ENVIRONMENT` other than Development / Test) refuses to encrypt or decrypt without `HEIMDALL_ENCRYPTION_KEY`. The other keys are not checked against the defaults that the compose files ship. You MUST supply cryptographically secure random keys.
 
 | Variable | Minimum Length | Purpose & Generation |
 | :--- | :--- | :--- |
 | `HEIMDALL_ENCRYPTION_KEY` | 32 characters | AES-256-GCM database field encryption (e.g. SVG floor plans, license keys). Generate with: `openssl rand -hex 16` |
 | `BETTER_AUTH_SECRET` | 32 characters | Better-Auth user session signature and cookie encryption. Generate with: `openssl rand -hex 32` |
-| `JWT_SIGNING_KEY` | 64 characters | HMAC-SHA256 signature key for backend API access tokens. Generate with: `openssl rand -base64 48` |
+| `JWT_SIGNING_KEY` | 64 characters | Reserved: not read by the current code (the backend validates Better-Auth session tokens). Generate with: `openssl rand -base64 48` |
 | `HEIMDALL_AGENT_KEY` | 32 characters | Pre-shared key for edge IPC agents connecting to the embedded MQTT broker (MQTT credentials `heimdall_agent` / key, user property `x-agent-key`). |
 
 ---
@@ -198,9 +208,8 @@ Every environment requires specific variables defined in `.env` (or `/etc/heimda
 | `POSTGRES_PASSWORD` | Strong password | Cryptographically random password | PostgreSQL master user password. |
 | `DATABASE_URL` | `postgresql://...:5432/heimdall_staging_db` | `postgresql://...:5432/heimdall_db?sslmode=require` | Connection URI used by Drizzle ORM and Nitro BFF. |
 | `ConnectionStrings__DefaultConnection` | `Host=...;Database=heimdall_staging_db;...` | `Host=...;Database=heimdall_db;SslMode=Require;...` | Connection string used by ASP.NET Core EF Core. |
-| `REDIS_PASSWORD` | Strong password | Cryptographically random password | In-memory spool cache auth secret. |
-| `REDIS_URL` | `redis://:...@redis:6379` | `rediss://:...@redis:6379` | Cache connection URI for Nitro BFF. |
-| `REDIS_CONNECTION_STRING` | `redis:6379,password=...` | `redis:6379,password=...,ssl=true` | StackExchange.Redis connection string for backend. |
+| `REDIS_PASSWORD` | Strong password | Cryptographically random password | Redis authentication secret (`requirepass`; Redis holds the backend's L2 cache). |
+| `REDIS_CONNECTION_STRING` | `redis:6379,password=...` | `redis:6379,password=...,ssl=true` | StackExchange.Redis connection string for backend. The Nitro BFF does not use Redis (the compose files still set an unused `REDIS_URL`). |
 
 ---
 
@@ -209,16 +218,17 @@ Every environment requires specific variables defined in `.env` (or `/etc/heimda
 | Variable | Default Port | Description |
 | :--- | :--- | :--- |
 | `WEB_PORT` / `PORT` | `3000` | Nuxt 4 web application port. Reverse proxy terminates SSL and forwards here. |
-| `BACKEND_HTTP_PORT` | `5099` | ASP.NET Core REST API & SignalR hub port. |
-| `BACKEND_ALT_PORT` | `5001` | Secondary cleartext HTTP port (same REST API; there is no gRPC). |
+| `BACKEND_HTTP_PORT` | `5099` (staging), `5001` (`docker-compose.prod.yml`) | ASP.NET Core REST API & SignalR hub port. |
+| `BACKEND_ALT_PORT` | `5001` (staging only) | Secondary cleartext HTTP port (same REST API; there is no gRPC). |
 | `MQTT_PORT` | `1883` | MQTT 5 broker embedded in the backend; agents publish telemetry here. Not proxied by the HTTP reverse proxy: expose it directly (or via a TCP/stream proxy with TLS) to the agent VLAN only. |
 | `ALLOWED_ORIGINS` | Comma-separated list | Strict CORS policy domain allowlist (e.g. `https://heimdall.plant.corp`). |
-| `BACKEND_API_URL` | `http://backend:5099` | Internal network URL used by the Nitro BFF to reach the .NET backend API. |
+| `BACKEND_API_URL` | `http://backend:5099` (staging), `http://backend:5001` (production compose) | Internal network URL used by the Nitro BFF to reach the .NET backend API. |
 | `SIGNALR_HUB_URL` | `https://heimdall.plant.corp/hubs/maintenance` | Public or proxy URL for live maintenance web socket subscriptions. |
 
 **Kiosk terminal authentication**: the proxy verifies the computer certificate (`ssl_verify_client`) and forwards it in `X-Client-Cert`. The Nuxt BFF only trusts that header when `HEIMDALL_TRUST_CLIENT_CERT_HEADER=true` and the peer address is listed in `HEIMDALL_TRUSTED_PROXIES`. Telemetry agents do not use client certificates.
 
 #### Recommended Nginx Reverse Proxy Snippet:
+Only the backend's own prefixes (`/api/v1/` and `/hubs/`) go to the backend; everything else, including the BFF's `/api/*` routes (`/api/auth`, `/api/proxy`, `/api/tickets`, ...), goes to Nuxt. The upstream port is `5001` for `docker-compose.prod.yml` (`5099` in staging).
 ```nginx
 server {
     listen 443 ssl http2;
@@ -231,7 +241,7 @@ server {
     # ssl_client_certificate /etc/heimdall/certs/heimdall-trust-bundle.pem;
     # ssl_verify_client optional;
 
-    # Frontend Web Dashboard & Nitro BFF
+    # Frontend Web Dashboard & Nitro BFF (pages and the BFF's own /api/* routes)
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
@@ -244,7 +254,7 @@ server {
 
     # SignalR Real-Time Maintenance WebSockets
     location /hubs/ {
-        proxy_pass http://127.0.0.1:5099/hubs/;
+        proxy_pass http://127.0.0.1:5001/hubs/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -252,9 +262,9 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # REST API (telemetry arrives over MQTT on port 1883, not through this proxy)
-    location /api/ {
-        proxy_pass http://127.0.0.1:5099/api/;
+    # Backend REST API, /api/v1/ only (telemetry arrives over MQTT on port 1883, not through this proxy)
+    location /api/v1/ {
+        proxy_pass http://127.0.0.1:5001/api/v1/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
@@ -279,6 +289,6 @@ just logs backend
 
 In production, health endpoints can be probed by external orchestrators (Kubernetes / Prometheus / Consul):
 - **Web Frontend Probe**: `http://localhost:3000/` (HTTP 200)
-- **Backend API Probe**: `http://localhost:5099/health` or `http://localhost:5099/api/v1/assets`
+- **Backend API Probe**: there is no health endpoint yet; probe the anonymous `GET http://localhost:5001/api/v1/certificatemanagement/trust-bundle` (port `5099` in staging) or the TCP ports 5001 / 1883
 - **Database Probe**: `pg_isready -h localhost -p 5432 -U postgres`
 - **Redis Probe**: `redis-cli -a <password> ping` (PONG)

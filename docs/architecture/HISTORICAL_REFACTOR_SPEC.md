@@ -547,6 +547,8 @@ export const useAssetReferenceCache = () => {
 
 ### 7.1 Execution Roadmap
 
+> This roadmap records the plan as it stood at the time and names components that have since been replaced or removed (for example gRPC, since replaced by MQTT 5).
+
 ```mermaid
 flowchart TD
     subgraph Phase1["Phase 1: Edge Agent & CMI Security Hardening"]
