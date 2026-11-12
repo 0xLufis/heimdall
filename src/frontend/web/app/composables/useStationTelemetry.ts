@@ -439,9 +439,11 @@ export const useStationTelemetry = () => {
     return globalStationOscillations.value[stationKey(handleOrId)] ?? null
   }
 
-  /** Applies a (partial) oscillation sample, e.g. from the SignalR hub. */
+  /** Applies a (partial) oscillation sample now (with any updates still waiting for their commit). */
   const updateStationOscillation = (stationId: string, partial: Partial<StationOscillationData>) => {
-    applyLiveOscillation({ ...partial, stationId: partial.stationId || stationId }, stationId)
+    if (!stageLiveOscillation({ ...partial, stationId: partial.stationId || stationId }, stationId)) return
+    hasStagedUpdates = true
+    commitStagedUpdates()
   }
 
   /**

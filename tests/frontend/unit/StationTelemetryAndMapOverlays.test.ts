@@ -262,6 +262,12 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       expect(getStationKpi('L05-OP090')?.operationalStatus).toBe('WARNING')
     })
 
+    it('applies a sample passed to updateStationOscillation at once', () => {
+      const { updateStationOscillation, getStationOscillation } = useStationTelemetry()
+      updateStationOscillation('L08-OP010', { vibrationMmS: 2.2, timestamp: 5 })
+      expect(getStationOscillation('L08-OP010')).toMatchObject({ vibrationMmS: 2.2, timestamp: 5, history: [2.2] })
+    })
+
     it('re-renders only the views of the station a live update is for', async () => {
       fetchMock.mockResolvedValueOnce([backendKpiDto('L06-OP010'), backendKpiDto('L06-OP020')])
       const { fetchStationKpis, getStationKpi } = useStationTelemetry()
