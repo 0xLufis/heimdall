@@ -13,6 +13,8 @@ import {
   User,
   Ticket
 } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { useIntervalFn } from '@vueuse/core'
 import { useStationTelemetry, type StationTelemetryKpi } from '~/composables/useStationTelemetry'
 
 const props = defineProps<{
@@ -65,9 +67,15 @@ const kpiFor = (m: any): StationTelemetryKpi | null =>
 
 const liveState = (kpi: StationTelemetryKpi | null) => (kpi ? LIVE_STATE[kpi.operationalStatus] ?? null : null)
 
+// A card re-renders when its own station reports; this 15 s clock keeps "x min ago" moving for a
+// station that went silent (which would otherwise keep saying "just now"). Not useNow(): its
+// default scheduler is requestAnimationFrame, which re-rendered every card on every frame.
+const now = ref(Date.now())
+useIntervalFn(() => { now.value = Date.now() }, 15_000)
+
 const lastSample = (kpi: StationTelemetryKpi | null) => {
   if (!kpi?.lastTelemetryAt) return null
-  const ms = Date.now() - Date.parse(kpi.lastTelemetryAt)
+  const ms = now.value - Date.parse(kpi.lastTelemetryAt)
   if (!Number.isFinite(ms)) return null
   if (ms < 60_000) return 'just now'
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)} min ago`

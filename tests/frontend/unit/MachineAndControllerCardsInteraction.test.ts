@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import MachineCardGrid from '../../../src/frontend/web/app/components/machines/MachineCardGrid.vue'
 import MachineLineHierarchy from '../../../src/frontend/web/app/components/machines/MachineLineHierarchy.vue'
 import StationPhysicalView from '../../../src/frontend/web/app/components/inventory/StationPhysicalView.vue'
 import ControllerTelemetryCard from '../../../src/frontend/web/app/components/controllers/ControllerTelemetryCard.vue'
+import { handleStationTelemetryEvent } from '../../../src/frontend/web/app/composables/useStationTelemetry'
 
 const stubs = {
   NuxtLink: { props: ['to'], template: '<a :data-to="JSON.stringify(to)" @click="$emit(\'click\', $event)"><slot /></a>' },
@@ -69,6 +70,38 @@ describe('Machine cards', () => {
     expect(text).toContain('No controller bound to this station')
     expect(text).toContain('Line 2')
     expect(text).toContain('No telemetry')
+  })
+
+  it('keeps ageing "Last sample" for a station that stopped reporting, on a 15 s clock', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-12T08:00:50Z') })
+    try {
+      // Known before mount, so the grid does not fetch (and replace) the store.
+      handleStationTelemetryEvent({
+        type: 'StationTelemetryReceived',
+        stationName: 'st-laser',
+        summary: { stationId: 'st-laser', handle: 'NV-L2-OP060', operationalStatus: 'RUNNING', lastTelemetryAt: '2026-11-12T08:00:00Z' },
+        timestamp: ''
+      } as any)
+      const wrapper = mount(MachineCardGrid, { props: { machines }, global: { stubs } })
+      const laserCard = () => wrapper.findAll('[role="button"]')[0]!.text()
+      expect(laserCard()).toContain('just now')
+
+      // The clock ticks every 15 s, not every animation frame: at 08:01:04 the text is unchanged.
+      vi.advanceTimersByTime(14_000)
+      await nextTick()
+      expect(laserCard()).toContain('just now')
+      vi.advanceTimersByTime(2_000)
+      await nextTick()
+      expect(laserCard()).toContain('1 min ago')
+
+      // No further telemetry: only the clock moves the text on.
+      vi.advanceTimersByTime(3 * 60_000)
+      await nextTick()
+      expect(laserCard()).toContain('4 min ago')
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('forwards card events (including the context menu target) through the line hierarchy', async () => {

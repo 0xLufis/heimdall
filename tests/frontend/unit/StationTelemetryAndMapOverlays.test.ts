@@ -25,6 +25,7 @@ import {
   normalizeStationKpi,
   normalizeStationOscillation,
   handleStationTelemetryEvent,
+  LIVE_COMMIT_INTERVAL_MS,
   OSCILLATION_HISTORY_LIMIT,
   type StationTelemetryKpi
 } from '../../../src/frontend/web/app/composables/useStationTelemetry'
@@ -259,6 +260,63 @@ describe('Station Telemetry & Plant Map Overlay Suite', () => {
       } as any)
       expect(getStationKpi('L05-OP090')?.oee).toBe(81.3)
       expect(getStationKpi('L05-OP090')?.operationalStatus).toBe('WARNING')
+    })
+
+    it('re-renders only the views of the station a live update is for', async () => {
+      fetchMock.mockResolvedValueOnce([backendKpiDto('L06-OP010'), backendKpiDto('L06-OP020')])
+      const { fetchStationKpis, getStationKpi } = useStationTelemetry()
+      await fetchStationKpis()
+      const renders = { a: 0, b: 0 }
+      const view = (key: 'a' | 'b', handle: string) => defineComponent({
+        setup: () => () => {
+          renders[key]++
+          return h('span', String(getStationKpi(handle)?.oee))
+        }
+      })
+      const a = mount(view('a', 'L06-OP010'))
+      const b = mount(view('b', 'L06-OP020'))
+
+      handleStationTelemetryEvent({ type: 'StationTelemetryReceived', stationName: 'L06-OP010', summary: { handle: 'L06-OP010', oee: 50.5 }, timestamp: '' } as any)
+      await nextTick()
+
+      expect(a.text()).toBe('50.5')
+      expect(renders).toEqual({ a: 2, b: 1 })
+      a.unmount()
+      b.unmount()
+    })
+
+    it('commits a burst of hub messages once per interval without dropping samples', async () => {
+      vi.useFakeTimers()
+      fetchMock.mockResolvedValue([])
+      const Consumer = defineComponent({ setup() { useStationTelemetry(); return () => h('div') } })
+      const wrapper = mount(Consumer)
+      await vi.dynamicImportSettled()
+      await nextTick()
+      const { getStationOscillation, getStationKpi } = useStationTelemetry()
+      expect(hubListeners.size).toBe(1)
+      const [listener] = [...hubListeners]
+      const sample = (i: number) => ({ type: 'StationOscillationReceived', stationName: 'L07-OP010', summary: { stationId: 'L07-OP010', vibrationMmS: i, timestamp: 1_700_000_000_000 + i } })
+
+      // The first message after a quiet period is shown at once.
+      listener!(sample(1))
+      expect(getStationOscillation('L07-OP010')?.vibrationMmS).toBe(1)
+
+      // Messages within the interval wait for the next commit.
+      listener!(sample(2))
+      listener!(sample(3))
+      listener!({ type: 'StationTelemetryReceived', stationName: 'L07-OP010', summary: { handle: 'L07-OP010', oee: 77.7 } })
+      expect(getStationOscillation('L07-OP010')?.vibrationMmS).toBe(1)
+      expect(getStationKpi('L07-OP010')).toBeNull()
+
+      vi.advanceTimersByTime(LIVE_COMMIT_INTERVAL_MS)
+      expect(getStationOscillation('L07-OP010')?.history).toEqual([1, 2, 3])
+      expect(getStationKpi('L07-OP010')?.oee).toBe(77.7)
+
+      // Traffic is still flowing, so the next message is staged too; stopping keeps it.
+      listener!(sample(4))
+      expect(getStationOscillation('L07-OP010')?.vibrationMmS).toBe(3)
+      wrapper.unmount()
+      expect(getStationOscillation('L07-OP010')?.history).toEqual([1, 2, 3, 4])
     })
 
     it('computes SLA status correctly when zero tickets exist', () => {

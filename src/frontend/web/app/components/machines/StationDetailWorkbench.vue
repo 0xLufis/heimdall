@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { useIntervalFn } from '@vueuse/core'
 import {
   X,
   FolderTree,
@@ -341,9 +342,14 @@ const stationOscillation = computed(() => (stationTelemetryKey.value ? getStatio
 const formatMetric = (value: number | null | undefined, digits = 1) =>
   typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '—'
 
+// Re-renders follow this station's own updates; the 15 s clock keeps "x min ago" moving when it
+// goes silent (not useNow(): it ticks every animation frame by default).
+const now = ref(Date.now())
+useIntervalFn(() => { now.value = Date.now() }, 15_000)
+
 const formatLastSeen = (iso: string | null | undefined) => {
   if (!iso) return 'never reported'
-  const ms = Date.now() - new Date(iso).getTime()
+  const ms = now.value - new Date(iso).getTime()
   if (!Number.isFinite(ms)) return 'unknown'
   if (ms < 60_000) return 'just now'
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)} min ago`
