@@ -74,6 +74,25 @@ $itemStatus.add_Click({
 
 $contextMenu.Items.Add("-") | Out-Null
 
+# Item: Station terminal overlay (chromeless Edge/Chrome app window kept on top of the HMI).
+# Needs HEIMDALL_STATION_ID (machine id) and, where used, HEIMDALL_TERMINAL_TOKEN / HEIMDALL_WEB_URL
+# in the environment; see Start-HeimdallTerminal.ps1 next to this script.
+$terminalLauncher = Join-Path $PSScriptRoot "Start-HeimdallTerminal.ps1"
+$itemTerminal = $contextMenu.Items.Add("Open Station Terminal (overlay)")
+$itemTerminal.add_Click({
+    if (-not (Test-Path -LiteralPath $terminalLauncher)) {
+        $notifyIcon.ShowBalloonTip(3000, "Heimdall Terminal", "Launcher not found: $terminalLauncher", [System.Windows.Forms.ToolTipIcon]::Warning)
+        return
+    }
+    if (-not $env:HEIMDALL_STATION_ID) {
+        $notifyIcon.ShowBalloonTip(3000, "Heimdall Terminal", "Set HEIMDALL_STATION_ID to this station's machine id first.", [System.Windows.Forms.ToolTipIcon]::Warning)
+        return
+    }
+    Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$terminalLauncher`"", "-KeepOnTop")
+})
+
+$contextMenu.Items.Add("-") | Out-Null
+
 # Item: Exit Tray Icon
 $itemExit = $contextMenu.Items.Add("❌ Exit Tray Icon")
 $itemExit.add_Click({

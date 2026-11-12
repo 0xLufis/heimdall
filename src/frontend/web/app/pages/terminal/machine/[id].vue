@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ShieldAlert,
   AlertTriangle,
   Flame,
-  CheckCircle2,
   Cpu,
   Activity,
   Radio,
@@ -16,21 +15,23 @@ import {
   Layers,
   Lock,
   KeyRound,
-  RotateCw,
   Send,
   Zap,
   Check,
-  Server
+  Server,
+  Maximize2,
+  Minimize2
 } from 'lucide-vue-next'
-import VirtualNumpad from '~/components/terminal/VirtualNumpad.vue'
 import TerminalAckModal from '~/components/terminal/TerminalAckModal.vue'
 import { toast } from 'vue-sonner'
+import { resolveTerminalLayout } from '~/utils/terminalLayout'
 
 definePageMeta({
   layout: false
 })
 
 const route = useRoute()
+const router = useRouter()
 const machineId = computed(() => (route.params.id as string) || '')
 const queryToken = computed(() => (route.query.token as string) || '')
 
@@ -38,7 +39,6 @@ const queryToken = computed(() => (route.query.token as string) || '')
 const authToken = ref('')
 const isAuthenticated = ref(false)
 const authError = ref('')
-const authMethod = ref<'Token' | 'ClientCert'>('Token')
 const pairingInput = ref('')
 
 // Machine & Telemetry Data
@@ -85,6 +85,75 @@ let pollTimer: any = null
 function updateClock() {
   const now = new Date()
   currentTime.value = now.toLocaleTimeString('en-US', { hour12: false })
+}
+
+// ---------------------------------------------------------------------------------------------
+// Layout: full view, or the compact overlay for a small always-on-top window over the machine HMI
+// (?overlay=1, or a window narrower than 640 px; see utils/terminalLayout.ts and the IPC launcher
+// infra/windows/tray/Start-HeimdallTerminal.ps1).
+// ---------------------------------------------------------------------------------------------
+const viewportWidth = ref<number | null>(null)
+const isOverlay = computed(() => resolveTerminalLayout(route.query.overlay, viewportWidth.value) === 'overlay')
+/** Window bounds of the overlay before it was expanded, so "Overlay" can shrink the window back. */
+const OVERLAY_BOUNDS_KEY = 'heimdall_terminal_overlay_bounds'
+const canCollapse = ref(false)
+
+const stationTitle = computed(() => machineData.value?.displayName || machineData.value?.name || 'Production Station')
+const stationStatus = computed(() => machineData.value?.status || 'active')
+const stationDotClass = computed(() =>
+  stationStatus.value === 'active' ? 'bg-emerald-400' : stationStatus.value === 'maintenance' ? 'bg-amber-400' : 'bg-slate-500'
+)
+const dispatchLabel = computed(() =>
+  submitting.value ? 'Dispatching ticket...' : selectedPreset.value ? `Dispatch ${selectedPreset.value.code}` : 'Select a fault first'
+)
+
+useHead({
+  // The IPC launcher finds the app window by this title prefix.
+  title: computed(() => `Heimdall Terminal - ${machineData.value?.customIdentifier || machineId.value}`)
+})
+
+function updateViewport() {
+  viewportWidth.value = window.innerWidth
+}
+
+function setLayoutQuery(overlay: boolean) {
+  return router.replace({ query: { ...route.query, overlay: overlay ? '1' : '0' } })
+}
+
+/**
+ * Overlay -> full view. The launcher's app window (Chromium --app) may resize itself, so the window
+ * also grows to the whole work area and stays on top of the HMI; in a normal browser tab the resize
+ * is ignored and only the layout changes.
+ */
+async function expandToFullView() {
+  try {
+    sessionStorage.setItem(OVERLAY_BOUNDS_KEY, JSON.stringify({
+      x: window.screenX, y: window.screenY, w: window.outerWidth, h: window.outerHeight
+    }))
+    canCollapse.value = true
+  } catch { /* storage unavailable: no way back to the old size, the layout still switches */ }
+  await setLayoutQuery(false)
+  try {
+    const screen = window.screen as Screen & { availLeft?: number, availTop?: number }
+    window.moveTo(screen.availLeft ?? 0, screen.availTop ?? 0)
+    window.resizeTo(screen.availWidth, screen.availHeight)
+  } catch { /* not resizable here */ }
+}
+
+/** Full view -> overlay, restoring the overlay window bounds saved by expandToFullView(). */
+async function collapseToOverlay() {
+  await setLayoutQuery(true)
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(OVERLAY_BOUNDS_KEY) || 'null')
+    if (saved && saved.w > 0 && saved.h > 0) {
+      window.resizeTo(saved.w, saved.h)
+      window.moveTo(saved.x, saved.y)
+    }
+  } catch { /* not resizable here */ }
+}
+
+function toggleLineStop() {
+  isLineStopOverride.value = !isLineStopOverride.value
 }
 
 // 2-Click Issue Reporting State
@@ -282,6 +351,12 @@ onMounted(() => {
   updateClock()
   clockTimer = setInterval(updateClock, 1000)
 
+  updateViewport()
+  window.addEventListener('resize', updateViewport)
+  try {
+    canCollapse.value = sessionStorage.getItem(OVERLAY_BOUNDS_KEY) !== null
+  } catch { /* storage unavailable */ }
+
   // Retrieve token from query or local storage
   if (queryToken.value) {
     authToken.value = queryToken.value
@@ -298,11 +373,185 @@ onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
   if (pollTimer) clearInterval(pollTimer)
   if (ackInterval) clearInterval(ackInterval)
+  window.removeEventListener('resize', updateViewport)
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col select-none font-sans antialiased overflow-x-hidden">
+  <!-- COMPACT OVERLAY: small always-on-top window next to / over the machine HMI -->
+  <div
+    v-if="isOverlay"
+    data-testid="terminal-overlay"
+    class="h-screen bg-slate-950 text-slate-100 flex flex-col select-none font-sans antialiased overflow-hidden"
+  >
+    <header class="shrink-0 flex items-center gap-3 px-3 py-2 bg-slate-900 border-b border-slate-800">
+      <span class="w-3 h-3 rounded-full shrink-0" :class="stationDotClass" />
+      <div class="min-w-0 flex-1">
+        <div class="text-base font-black text-white truncate leading-tight">{{ stationTitle }}</div>
+        <div class="text-[11px] font-mono text-slate-400 truncate">
+          {{ machineData?.customIdentifier || machineId }} &bull; {{ stationStatus }}
+        </div>
+      </div>
+      <div class="shrink-0 text-lg font-black font-mono tabular-nums text-cyan-400">{{ currentTime || '00:00:00' }}</div>
+      <button
+        type="button"
+        data-testid="terminal-expand"
+        class="shrink-0 w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 flex items-center justify-center active:scale-95 cursor-pointer"
+        aria-label="Expand to the full terminal view"
+        title="Expand to the full terminal view"
+        @click="expandToFullView"
+      >
+        <Maximize2 class="w-6 h-6" />
+      </button>
+    </header>
+
+    <!-- Pairing (not authenticated) -->
+    <div v-if="!isAuthenticated && !loading" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+          <Lock class="w-6 h-6" />
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-white leading-tight">Pair this terminal</h2>
+          <p class="text-xs text-slate-400">Enter the workstation token of this station.</p>
+        </div>
+      </div>
+      <label for="terminal-token-overlay" class="text-xs font-bold uppercase tracking-wider text-slate-400">Workstation Token</label>
+      <input
+        id="terminal-token-overlay"
+        v-model="pairingInput"
+        type="text"
+        inputmode="text"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        enterkeyhint="go"
+        placeholder="Workstation token"
+        class="w-full h-14 bg-slate-900 border border-slate-700 rounded-xl px-4 text-lg text-white font-mono focus:outline-none focus:border-cyan-500"
+        @keyup.enter="handlePairTerminal"
+      />
+      <div v-if="authError" class="text-sm text-red-400 font-mono">{{ authError }}</div>
+      <button
+        type="button"
+        class="w-full h-14 bg-cyan-600 hover:bg-cyan-500 text-white text-base font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+        @click="handlePairTerminal"
+      >
+        <Check class="w-5 h-5" />
+        <span>Authenticate & Bind Station</span>
+      </button>
+    </div>
+
+    <template v-else>
+      <main class="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
+        <TerminalAckModal
+          :open="showAckModal"
+          :ack-data="ackData"
+          :countdown="ackCountdown"
+          @close="closeAckModal"
+        />
+
+        <div v-if="dispatchError" class="p-3 bg-rose-950/80 border border-rose-500/50 rounded-xl flex items-center justify-between gap-3 text-rose-300 text-sm">
+          <span class="min-w-0">{{ dispatchError }}</span>
+          <button type="button" class="shrink-0 h-10 px-3 rounded-lg border border-rose-500/50 text-rose-200 text-xs font-bold cursor-pointer" @click="dispatchError = ''">Dismiss</button>
+        </div>
+
+        <!-- Key live values -->
+        <div class="grid grid-cols-4 gap-2">
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 min-w-0">
+            <div class="text-[10px] font-bold uppercase text-slate-400">PLC</div>
+            <div class="text-sm font-black font-mono truncate" :class="liveTelemetry.plcState === 'RUN' ? 'text-emerald-400' : 'text-amber-400'">{{ liveTelemetry.plcState || 'RUN' }}</div>
+          </div>
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 min-w-0">
+            <div class="text-[10px] font-bold uppercase text-slate-400">Cycle ms</div>
+            <div class="text-sm font-black font-mono text-cyan-400 truncate">{{ liveTelemetry.cycleTimeMs || '1240.5' }}</div>
+          </div>
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 min-w-0">
+            <div class="text-[10px] font-bold uppercase text-slate-400">Temp °C</div>
+            <div class="text-sm font-black font-mono text-orange-400 truncate">{{ liveTelemetry.spindleTemperatureC || '44.8' }}</div>
+          </div>
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 min-w-0">
+            <div class="text-[10px] font-bold uppercase text-slate-400">Vib mm/s</div>
+            <div class="text-sm font-black font-mono text-yellow-400 truncate">{{ liveTelemetry.vibrationEnvelopeMmS || '1.24' }}</div>
+          </div>
+        </div>
+
+        <!-- Click 1: fault preset -->
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-400">1 &bull; Select fault</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="preset in faultPresets"
+            :key="preset.code"
+            type="button"
+            class="min-h-[84px] p-3 rounded-2xl border text-left flex flex-col justify-between gap-1 transition-all duration-150 active:scale-95 cursor-pointer relative"
+            :class="[
+              preset.colorClass,
+              selectedPreset?.code === preset.code ? 'ring-4 ring-cyan-500 border-cyan-400 shadow-xl' : ''
+            ]"
+            @click="selectPreset(preset)"
+          >
+            <div class="flex items-center justify-between w-full">
+              <component :is="preset.icon" class="w-5 h-5" />
+              <span class="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-black/40">{{ preset.code }}</span>
+            </div>
+            <div class="text-sm font-black leading-tight text-white">{{ preset.label }}</div>
+            <div v-if="selectedPreset?.code === preset.code" class="absolute -top-1.5 -right-1.5 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-slate-950">
+              <Check class="w-4 h-4 stroke-[3]" />
+            </div>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="w-full h-12 rounded-xl border text-sm font-bold font-mono transition-colors cursor-pointer"
+          :class="isLineStopOverride ? 'bg-red-950 border-red-500 text-red-400' : 'bg-slate-900 border-slate-700 text-slate-300'"
+          @click="toggleLineStop"
+        >
+          Line Stop: {{ isLineStopOverride ? 'HALTED (YES)' : 'NO' }}
+        </button>
+        <input
+          v-model="customNote"
+          type="text"
+          inputmode="text"
+          enterkeyhint="done"
+          placeholder="Optional operator note..."
+          class="w-full h-12 bg-slate-900 border border-slate-700 rounded-xl px-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+        />
+
+        <!-- Open tickets of this station -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Active Dispatches ({{ recentTickets.length }})</div>
+          <div v-if="recentTickets.length === 0" class="text-xs text-slate-500 font-mono">No active tickets for this station.</div>
+          <div v-for="t in recentTickets.slice(0, 3)" :key="t.id" class="flex items-center justify-between gap-2 py-1.5 border-t border-slate-800 first:border-t-0">
+            <div class="min-w-0">
+              <div class="text-xs font-mono font-bold text-cyan-400">{{ t.ticketNumber }}</div>
+              <div class="text-xs text-slate-300 truncate">{{ t.title }}</div>
+            </div>
+            <span class="shrink-0 text-[11px] font-mono font-semibold px-2 py-1 rounded bg-slate-800 text-slate-300">{{ t.status }}</span>
+          </div>
+        </div>
+      </main>
+
+      <!-- Click 2: dispatch, always visible -->
+      <footer class="shrink-0 p-3 border-t border-slate-800 bg-slate-950">
+        <button
+          type="button"
+          data-testid="terminal-dispatch"
+          :disabled="!selectedPreset || submitting"
+          class="w-full min-h-[64px] rounded-2xl font-black text-base tracking-wider uppercase flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer"
+          :class="selectedPreset
+            ? 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white active:scale-[0.98]'
+            : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'"
+          @click="submitIssue"
+        >
+          <Send class="w-6 h-6" :class="{ 'animate-spin': submitting }" />
+          <span>{{ dispatchLabel }}</span>
+        </button>
+      </footer>
+    </template>
+  </div>
+
+  <!-- FULL VIEW -->
+  <div v-else class="min-h-screen bg-slate-950 text-slate-100 flex flex-col select-none font-sans antialiased overflow-x-hidden">
     <!-- TOP STATUS BAR -->
     <header class="bg-slate-900/90 border-b border-slate-800 px-6 py-4 flex items-center justify-between shadow-lg sticky top-0 z-30">
       <div class="flex items-center gap-4">
@@ -319,14 +568,14 @@ onUnmounted(() => {
             </span>
           </div>
           <h1 class="text-2xl font-black tracking-tight text-white mt-0.5">
-            {{ machineData?.displayName || machineData?.name || 'Production Station' }}
+            {{ stationTitle }}
           </h1>
         </div>
       </div>
 
       <!-- Center Machine Operational Badge -->
       <div class="flex items-center gap-3">
-        <div 
+        <div
           class="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-black tracking-wide uppercase transition-colors"
           :class="[
             machineData?.status === 'active' ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-400' :
@@ -354,6 +603,18 @@ onUnmounted(() => {
           <div class="text-xs font-mono text-slate-400 uppercase tracking-wider">Station Clock</div>
           <div class="text-2xl font-black font-mono tracking-wider text-cyan-400">{{ currentTime || '00:00:00' }}</div>
         </div>
+        <button
+          v-if="canCollapse"
+          type="button"
+          data-testid="terminal-collapse"
+          class="h-12 px-4 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-sm font-bold flex items-center gap-2 active:scale-95 cursor-pointer"
+          aria-label="Back to the compact overlay"
+          title="Back to the compact overlay"
+          @click="collapseToOverlay"
+        >
+          <Minimize2 class="w-5 h-5" />
+          <span>Overlay</span>
+        </button>
       </div>
     </header>
 
@@ -369,32 +630,31 @@ onUnmounted(() => {
         </p>
 
         <div class="text-left mb-6">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">Workstation Token</label>
-          <div class="relative mb-4">
-            <KeyRound class="w-5 h-5 text-slate-500 absolute left-3 top-3.5" />
-            <input 
+          <label for="terminal-token-full" class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">Workstation Token</label>
+          <div class="relative">
+            <KeyRound class="w-5 h-5 text-slate-500 absolute left-3 top-4" />
+            <input
+              id="terminal-token-full"
               v-model="pairingInput"
-              type="text" 
-              placeholder="e.g. kiosk-token-op10" 
-              class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-cyan-500"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              enterkeyhint="go"
+              placeholder="e.g. kiosk-token-op10"
+              class="w-full h-14 bg-slate-950 border border-slate-700 rounded-xl pl-11 pr-4 text-white font-mono text-base focus:outline-none focus:border-cyan-500"
               @keyup.enter="handlePairTerminal"
             />
           </div>
-
-          <!-- Virtual Numpad for Touchscreen / Glove Ergonomics -->
-          <VirtualNumpad
-            v-model="pairingInput"
-            :max-length="24"
-            @submit="handlePairTerminal"
-            class="mb-3"
-          />
 
           <div v-if="authError" class="text-xs text-red-400 mt-2 font-mono text-center">
             {{ authError }}
           </div>
         </div>
 
-        <button 
+        <button
+          type="button"
           @click="handlePairTerminal"
           class="w-full py-3.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
@@ -403,7 +663,6 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
-
     <!-- MAIN TERMINAL CONTENT (READ-ONLY TELEMETRY + 2-CLICK REPORTING) -->
     <main v-else class="flex-1 flex flex-col p-6 overflow-y-auto">
       <!-- HIGH-CONTRAST VISUAL ACKNOWLEDGMENT BANNER (IN-PAGE WORKBENCH, ZERO POPUPS) -->

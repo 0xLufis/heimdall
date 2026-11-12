@@ -60,7 +60,8 @@ test.describe('Shopfloor Kiosk Touch Workflow E2E', () => {
 
     // Should prompt for Workstation Terminal Pairing
     await expect(page.getByRole('heading', { name: /workstation terminal pairing/i })).toBeVisible({ timeout: 10000 })
-    await expect(page.getByRole('button', { name: '1', exact: true })).toBeVisible()
+    // No on-screen keypad: the IPC's hardware or OS touch keyboard types into a normal input
+    await expect(page.getByRole('button', { name: '1', exact: true })).toHaveCount(0)
 
     // Fill in pairing token
     const tokenInput = page.locator('input[placeholder*="token"], input[placeholder*="Token"]').first()
