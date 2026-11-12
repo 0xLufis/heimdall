@@ -4,5 +4,5 @@ numpy==2.4.3
 paho-mqtt==2.1.0
 protobuf==6.33.5
 pyparsing==3.3.2
-setuptools==82.0.1
+setuptools==84.2.1
 typing_extensions==4.15.0
