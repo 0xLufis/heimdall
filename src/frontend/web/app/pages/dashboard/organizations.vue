@@ -1,19 +1,26 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
-import { authClient } from '~/utils/auth-client'
 import { Plus, Users, Trash2, Building2, X } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import RbacButton from '~/components/common/RbacButton.vue'
 import { Input } from '~/components/ui/input'
 import DashboardOrgCard from '~/components/dashboard/OrgCard.vue'
-import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
 })
 
-const { canAdministerSystem } = useRbacPermission()
+// Organization management goes through the BFF (/api/organizations/*), which enforces the
+// OrganizationManagement policy: Heimdall admins manage every organization, managers and granted
+// users create organizations and manage the ones they are a member of (delete: owners only).
+// Better-Auth's organization plugin only lets an organization's own owners / admins act.
+const canCreate = ref(false)
+
+/** Message of an h3 error answered by a BFF route. */
+function errorMessage(e: any, fallback: string): string {
+  return e?.data?.statusMessage || e?.statusMessage || e?.data?.message || e?.message || fallback
+}
 
 const loading = ref(true)
 const creating = ref(false)
@@ -39,10 +46,11 @@ const removingMemberId = ref<string | null>(null)
 async function fetchOrgs() {
   loading.value = true
   try {
-    const res = await $fetch<{ success: boolean; organizations: any[] }>('/api/organizations')
+    const res = await $fetch<{ success: boolean; canCreate?: boolean; organizations: any[] }>('/api/organizations')
     // An empty list is a valid answer (a user without memberships). It used to trigger
     // /api/dev/seed-admin, which creates 90 mock users and resets the admin account.
     orgs.value = res?.organizations || []
+    canCreate.value = res?.canCreate === true
   } catch (e) {
     console.error('Error fetching organizations:', e)
   } finally {
@@ -54,20 +62,10 @@ async function handleSubmitOrg() {
   creating.value = true
   try {
     if (editingOrg.value) {
-      const { error } = await authClient.organization.update({
-        organizationId: editingOrg.value.id,
-        data: {
-          name: newOrgName.value
-        }
-      })
-      if (error) { toast.error(error.message); return }
+      await $fetch(`/api/organizations/${editingOrg.value.id}`, { method: 'PATCH', body: { name: newOrgName.value } })
       toast.success('Organization updated successfully')
     } else {
-      const { error } = await authClient.organization.create({
-        name: newOrgName.value,
-        slug: newOrgSlug.value
-      })
-      if (error) { toast.error(error.message); return }
+      await $fetch('/api/organizations', { method: 'POST', body: { name: newOrgName.value, slug: newOrgSlug.value } })
       toast.success('Organization created successfully')
     }
 
@@ -77,7 +75,7 @@ async function handleSubmitOrg() {
     editingOrg.value = null
     await fetchOrgs()
   } catch (e: any) {
-    toast.error(e?.message || 'Operation failed')
+    toast.error(errorMessage(e, 'Operation failed'))
   } finally {
     creating.value = false
   }
@@ -85,12 +83,11 @@ async function handleSubmitOrg() {
 
 async function handleDeleteOrg(org: any) {
   try {
-    const { error } = await authClient.organization.delete({ organizationId: org.id })
-    if (error) { toast.error(error.message); return }
+    await $fetch(`/api/organizations/${org.id}`, { method: 'DELETE' })
     toast.success(`Organization "${org.name}" deleted`)
     await fetchOrgs()
   } catch (e: any) {
-    toast.error(e?.message || 'Delete failed')
+    toast.error(errorMessage(e, 'Delete failed'))
   }
 }
 
@@ -116,13 +113,21 @@ async function handleInviteMember() {
   if (!selectedOrg.value || !inviteEmail.value) return
   inviting.value = true
   try {
-    const { error } = await authClient.organization.inviteMember({
-      organizationId: selectedOrg.value.id,
-      email: inviteEmail.value,
-      role: inviteRole.value
-    })
-    if (error) { toast.error(error.message); return }
-    toast.success(`Invitation dispatched to ${inviteEmail.value}`)
+    // A Heimdall user is added directly; an unknown address gets an invitation.
+    try {
+      await $fetch(`/api/organizations/${selectedOrg.value.id}/members`, {
+        method: 'POST',
+        body: { email: inviteEmail.value, role: inviteRole.value }
+      })
+      toast.success(`${inviteEmail.value} added to ${selectedOrg.value.name}`)
+    } catch (e: any) {
+      if (e?.statusCode !== 404 && e?.response?.status !== 404) throw e
+      await $fetch(`/api/organizations/${selectedOrg.value.id}/invitations`, {
+        method: 'POST',
+        body: { email: inviteEmail.value, role: inviteRole.value }
+      })
+      toast.success(`Invitation dispatched to ${inviteEmail.value}`)
+    }
     inviteEmail.value = ''
     // Refresh member list
     const res = await $fetch<{ success: boolean; members: any[] }>(`/api/organizations/${selectedOrg.value.id}/members`)
@@ -130,7 +135,7 @@ async function handleInviteMember() {
     // Refresh org list for updated member count
     await fetchOrgs()
   } catch (e: any) {
-    toast.error(e?.message || 'Invite failed')
+    toast.error(errorMessage(e, 'Invite failed'))
   } finally {
     inviting.value = false
   }
@@ -140,19 +145,29 @@ async function handleRemoveMember(mem: any) {
   if (!selectedOrg.value) return
   removingMemberId.value = mem.id
   try {
-    const { error } = await (authClient.organization as any).removeMember({
-      organizationId: selectedOrg.value.id,
-      memberIdOrEmail: mem.user.email
-    })
-    if (error) { toast.error(error.message); return }
+    await $fetch(`/api/organizations/${selectedOrg.value.id}/members/${mem.id}`, { method: 'DELETE' })
     toast.success(`Removed member ${mem.user.name}`)
     members.value = members.value.filter(m => m.id !== mem.id)
     // Refresh org list for updated member count
     await fetchOrgs()
   } catch (e: any) {
-    toast.error(e?.message || 'Remove failed')
+    toast.error(errorMessage(e, 'Remove failed'))
   } finally {
     removingMemberId.value = null
+  }
+}
+
+async function handleChangeMemberRole(mem: any, role: string) {
+  if (!selectedOrg.value || role === mem.role) return
+  try {
+    await $fetch(`/api/organizations/${selectedOrg.value.id}/members/${mem.id}`, { method: 'PATCH', body: { role } })
+    toast.success(`${mem.user.name} is now ${role}`)
+    mem.role = role
+  } catch (e: any) {
+    toast.error(errorMessage(e, 'Role change failed'))
+    // Re-read so the select shows the role that is really stored.
+    const res = await $fetch<{ success: boolean; members: any[] }>(`/api/organizations/${selectedOrg.value.id}/members`).catch(() => null)
+    if (res?.members) members.value = res.members
   }
 }
 
@@ -202,7 +217,8 @@ onMounted(() => {
 
       <div class="flex items-center gap-3">
         <RbacButton
-          capability="canAdministerSystem"
+          :has-permission="canCreate"
+          tooltip="Requires the OrganizationManagement right: Heimdall administrators, middle managers and up, or an explicit grant."
           @click="showCreateModal = true"
           class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3.5 h-8 text-xs font-medium shadow-sm transition-colors border border-indigo-500/30"
         >
@@ -225,6 +241,7 @@ onMounted(() => {
       <h4 class="text-base font-bold text-foreground">No Organizations Configured</h4>
       <p class="text-muted-foreground mt-1 max-w-sm mx-auto text-xs">Configure your first organization to establish secure operational boundaries.</p>
       <Button
+        v-if="canCreate"
         @click="showCreateModal = true"
         class="mt-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 h-8 font-medium text-xs shadow-sm transition-colors"
       >
@@ -359,10 +376,22 @@ onMounted(() => {
               </div>
               <div>
                 <p class="text-xs font-semibold text-foreground">{{ mem.user.name }}</p>
-                <p class="text-[11px] text-muted-foreground font-medium capitalize">{{ mem.role }}</p>
+                <select
+                  v-if="selectedOrg?.canManage"
+                  :value="mem.role"
+                  class="mt-0.5 bg-background border border-input rounded px-1.5 h-6 text-[11px] text-muted-foreground font-medium focus:outline-none focus:ring-1 focus:ring-ring"
+                  title="Member role in this organization"
+                  @change="handleChangeMemberRole(mem, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="member">member</option>
+                  <option value="admin">admin</option>
+                  <option value="owner">owner</option>
+                </select>
+                <p v-else class="text-[11px] text-muted-foreground font-medium capitalize">{{ mem.role }}</p>
               </div>
             </div>
             <Button
+              v-if="selectedOrg?.canManage"
               variant="ghost"
               size="icon"
               class="size-7 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors"
@@ -377,8 +406,8 @@ onMounted(() => {
         </div>
 
         <!-- Invite Member Form -->
-        <div class="pt-4 border-t border-border space-y-2.5">
-          <p class="text-xs font-medium text-muted-foreground">Invite Member by Email</p>
+        <div v-if="selectedOrg?.canManage" class="pt-4 border-t border-border space-y-2.5">
+          <p class="text-xs font-medium text-muted-foreground">Add or Invite Member by Email</p>
           <div class="flex gap-2">
             <Input
               v-model="inviteEmail"

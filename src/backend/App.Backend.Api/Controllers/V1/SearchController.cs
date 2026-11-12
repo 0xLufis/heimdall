@@ -1,6 +1,5 @@
 using App.Backend.Api.Dtos;
 using App.Backend.Api.Services;
-using App.Contracts.Security;
 using App.Shared.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,28 +8,22 @@ namespace App.Backend.Api.Controllers.V1;
 
 /// <summary>
 /// Global search over stations, controllers, tickets, users and inventory.
-/// Results are limited to the caller's organization by the tenant-scoped <see cref="AppDbContext"/>.
+/// Stations, controllers, tickets and inventory are limited to the caller's organization by the
+/// tenant-scoped <see cref="AppDbContext"/>. The user directory is global: every signed-in caller
+/// finds every user (name, e-mail, role), across organizations.
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize]
 public class SearchController : ControllerBase
 {
-    /// <summary>Policies whose members may see the user directory (the audience of the user administration page).</summary>
-    private static readonly string[] UserDirectoryPolicies =
-    {
-        AuthorizationPolicies.SystemAdministration,
-        AuthorizationPolicies.ItAdministration,
-        AuthorizationPolicies.EngineeringAdministration
-    };
-
     private readonly IGlobalSearchService _search;
-    private readonly IAuthorizationService? _authorization;
 
+    /// <remarks><paramref name="authorization"/> is no longer consulted (the user directory used to be
+    /// limited to administration policies); it stays in the signature for existing callers.</remarks>
     public SearchController(AppDbContext db, IAuthorizationService? authorization = null, IGlobalSearchService? search = null)
     {
         _search = search ?? new GlobalSearchService(db);
-        _authorization = authorization;
     }
 
     /// <summary>
@@ -66,19 +59,10 @@ public class SearchController : ControllerBase
             Text = q,
             Kinds = requestedKinds,
             Limit = limit ?? GlobalSearchService.DefaultLimit,
-            CanSearchUsers = await CanSearchUsersAsync()
+            // The user directory is open to every signed-in user ([Authorize] keeps anonymous callers out).
+            CanSearchUsers = User?.Identity?.IsAuthenticated == true
         }, cancellationToken);
 
         return Ok(response);
-    }
-
-    private async Task<bool> CanSearchUsersAsync()
-    {
-        if (_authorization == null || User == null) return false;
-        foreach (var policy in UserDirectoryPolicies)
-        {
-            if ((await _authorization.AuthorizeAsync(User, policy)).Succeeded) return true;
-        }
-        return false;
     }
 }

@@ -4,6 +4,11 @@ import path from 'node:path'
 import {
   HEIMDALL_ROLES,
   POLICY_ROLES,
+  ORGANIZATION_ADMIN_ROLES,
+  ORGANIZATIONS_MANAGE_PERMISSION,
+  canManageOrganizations,
+  isOrganizationAdminRole,
+  splitPermissions,
   USER_ADMIN_ROLES,
   IT_ADMIN_DELEGABLE_ROLES,
   ROLE_LABELS,
@@ -31,18 +36,34 @@ function parseBackendRoles(): Record<string, string> {
   return roles
 }
 
-/** `options.AddPolicy(<name>, policy => policy.RequireRole(HeimdallRoles.A, ...))` -> { name: ['a', ...] } */
+/** `public static readonly string[] <name> = { HeimdallRoles.A, ... };` inside `class <owner>` -> ['a', ...] */
+function parseBackendRoleArray(roles: Record<string, string>, owner: string, name: string): string[] {
+  const source = read('src/shared/App.Contracts/Security/SecurityConstants.cs')
+  const body = source.slice(source.indexOf(`class ${owner}`))
+  const m = body.match(new RegExp(`string\\[\\]\\s+${name}\\s*=\\s*\\{([^}]*)\\}`))
+  if (!m) throw new Error(`SecurityConstants.cs has no ${owner}.${name}`)
+  return [...m[1]!.matchAll(/HeimdallRoles\.(\w+)/g)].map(r => roles[r[1]!] ?? `unknown:${r[1]}`)
+}
+
+/**
+ * `options.AddPolicy(<name>, policy => policy.RequireRole(HeimdallRoles.A, ...))` -> { name: ['a', ...] }.
+ * A `policy.RequireAssertion(...)` policy contributes the roles it references, directly or through
+ * `OrganizationManagementRules.<Array>` (SecurityConstants.cs).
+ */
 function parseBackendPolicies(roles: Record<string, string>): Record<string, string[]> {
   const source = read('src/backend/App.Backend.Api/Program.cs')
   const policies: Record<string, string[]> = {}
-  const pattern = /options\.AddPolicy\(\s*(?:AuthorizationPolicies\.(\w+)|"(\w+)")\s*,\s*policy\s*=>\s*policy\.RequireRole\(([^;]*?)\)\s*\)\s*;/g
+  const pattern = /options\.AddPolicy\(\s*(?:AuthorizationPolicies\.(\w+)|"(\w+)")\s*,\s*policy\s*=>\s*policy\.(?:RequireRole|RequireAssertion)\(([^;]*?)\)\s*\)\s*;/g
   for (const m of source.matchAll(pattern)) {
     const name = (m[1] || m[2])!
-    policies[name] = [...m[3]!.matchAll(/HeimdallRoles\.(\w+)/g)].map(r => {
+    const direct = [...m[3]!.matchAll(/HeimdallRoles\.(\w+)/g)].map(r => {
       const value = roles[r[1]!]
       if (!value) throw new Error(`Program.cs references unknown HeimdallRoles.${r[1]}`)
       return value
     })
+    const viaRules = [...m[3]!.matchAll(/OrganizationManagementRules\.(\w+)/g)]
+      .flatMap(r => parseBackendRoleArray(roles, 'OrganizationManagementRules', r[1]!))
+    policies[name] = [...direct, ...viaRules]
   }
   return policies
 }
@@ -73,6 +94,22 @@ describe('role catalog (app/utils/roles.ts) matches the backend', () => {
     }
     expect(Object.keys(ROLE_LABELS).sort()).toEqual([...HEIMDALL_ROLES].sort())
     expect(Object.keys(ROLE_DESCRIPTIONS).sort()).toEqual([...HEIMDALL_ROLES].sort())
+  })
+
+  it('mirrors the OrganizationManagement policy: roles, Heimdall administrators and the explicit grant', () => {
+    const program = read('src/backend/App.Backend.Api/Program.cs')
+    const constants = read('src/shared/App.Contracts/Security/SecurityConstants.cs')
+    expect(backendPolicies.OrganizationManagement).toBeDefined()
+    expect([...POLICY_ROLES.OrganizationManagement].sort()).toEqual([...backendPolicies.OrganizationManagement!].sort())
+    expect([...ORGANIZATION_ADMIN_ROLES]).toEqual(parseBackendRoleArray(backendRoles, 'OrganizationManagementRules', 'HeimdallAdminRoles'))
+    // The backend policy also accepts the per-user grant, under the same key the BFF stores.
+    expect(program).toMatch(/AuthorizationPolicies\.OrganizationManagement[\s\S]*?HeimdallPermissions\.OrganizationsManage/)
+    expect(constants).toContain(`OrganizationsManage = "${ORGANIZATIONS_MANAGE_PERMISSION}"`)
+    expect(constants).toContain('OrganizationManagement = "OrganizationManagement"')
+    // Coordinator mapping: Heimdall admins + middle managers and up; not shift_leader, lead_engineer or IT.
+    expect([...POLICY_ROLES.OrganizationManagement].sort()).toEqual(
+      ['system_admin', 'heimdall_admin', 'admin', 'plant_director', 'engineering_admin', 'plant_engineering_manager', 'senior_engineering_manager', 'group_leader', 'manager'].sort())
+    for (const role of ORGANIZATION_ADMIN_ROLES) expect(POLICY_ROLES.OrganizationManagement).toContain(role)
   })
 
   it('rejects role names the backend does not know', () => {
@@ -113,6 +150,19 @@ describe('role helpers', () => {
       expect(roleRank(role), String(role)).toBe(0)
     }
     expect(HEIMDALL_ROLES.filter(r => roleRank(r) === 3)).toEqual(['system_admin'])
+  })
+
+  it('grants organization management by role or by the explicit per-user permission', () => {
+    for (const role of ['group_leader', 'manager', 'plant_director', 'engineering_admin', 'system_admin']) expect(canManageOrganizations(role), role).toBe(true)
+    for (const role of ['shift_leader', 'lead_engineer', 'it_admin', 'it_site_admin', 'technician', 'user', undefined]) {
+      expect(canManageOrganizations(role), String(role)).toBe(false)
+      expect(canManageOrganizations(role, 'organizations.manage'), String(role)).toBe(true)
+      expect(canManageOrganizations(role, ['other.permission']), String(role)).toBe(false)
+    }
+    expect(HEIMDALL_ROLES.filter(isOrganizationAdminRole)).toEqual(['system_admin', 'heimdall_admin', 'admin'])
+    expect(splitPermissions(' Organizations.Manage, ,organizations.manage,x ')).toEqual(['organizations.manage', 'x'])
+    expect(splitPermissions(null)).toEqual([])
+    expect(splitPermissions(['a,b', 'b'])).toEqual(['a', 'b'])
   })
 
   it('knows which roles administer users and falls back to the default role for display', () => {

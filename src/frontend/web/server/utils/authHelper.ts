@@ -26,6 +26,7 @@ async function resolveSimulatedSsoUser(rawToken: string | undefined) {
         name: hbSchema.user.name,
         email: hbSchema.user.email,
         role: hbSchema.user.role,
+        permissions: hbSchema.user.permissions,
         banned: hbSchema.user.banned,
         expiresAt: hbSchema.session.expiresAt
       })
@@ -36,7 +37,7 @@ async function resolveSimulatedSsoUser(rawToken: string | undefined) {
     const row = rows[0]
     if (!row || row.banned === true) return undefined
     if (new Date(row.expiresAt as any).getTime() <= Date.now()) return undefined
-    return { id: row.id, name: row.name, email: row.email, role: row.role }
+    return { id: row.id, name: row.name, email: row.email, role: row.role, permissions: row.permissions ?? null }
   } catch {
     // Database unreachable: stay unauthenticated rather than guess.
     return undefined

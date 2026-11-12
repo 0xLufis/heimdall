@@ -492,21 +492,47 @@ public class IdentityAuthorizationTests
             .ToList();
     }
 
-    [Fact]
-    public async Task UserDirectory_ShowsOnlyColleaguesOfTheSameOrganization_ToNonAdministrators()
+    [Theory]
+    [InlineData("u-a1", HeimdallRoles.Technician)]
+    [InlineData("u-b1", HeimdallRoles.Technician)]
+    [InlineData("u-loner", HeimdallRoles.User)]
+    [InlineData("u-admin", HeimdallRoles.SystemAdmin)]
+    [InlineData("u-admin", HeimdallRoles.ItAdmin)]
+    [InlineData("u-admin", HeimdallRoles.EngineeringAdmin)]
+    [InlineData("u-admin", HeimdallRoles.PlantDirector)]
+    public async Task UserDirectory_IsGlobal_ForEverySignedInUser(string callerId, string role)
     {
-        Assert.Equal(new[] { "u-a1", "u-a2" }, await VisibleUsersAsync("u-a1", HeimdallRoles.Technician));
-        Assert.Equal(new[] { "u-b1" }, await VisibleUsersAsync("u-b1", HeimdallRoles.Technician));
+        // Owner decision: every signed-in user may list all users, across organizations - also a
+        // caller who is a member of no organization at all.
+        Assert.Equal(new[] { "u-a1", "u-a2", "u-admin", "u-b1" }, await VisibleUsersAsync(callerId, role));
     }
 
-    [Theory]
-    [InlineData(HeimdallRoles.SystemAdmin)]
-    [InlineData(HeimdallRoles.ItAdmin)]
-    [InlineData(HeimdallRoles.EngineeringAdmin)]
-    [InlineData(HeimdallRoles.PlantDirector)]
-    public async Task UserDirectory_ShowsEveryUser_ToIdentityAdministrators(string role)
+    [Fact]
+    public async Task UserDirectory_ListsEachUsersOrganizations()
     {
-        Assert.Equal(new[] { "u-a1", "u-a2", "u-admin", "u-b1" }, await VisibleUsersAsync("u-admin", role));
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase($"UserOrgs_{Guid.NewGuid():N}").Options;
+        await using var db = new AppDbContext(options);
+        db.AuthUsers.AddRange(
+            new AuthUser { Id = "u-1", Name = "One", Email = "one@factory.test", Role = HeimdallRoles.Technician },
+            new AuthUser { Id = "u-2", Name = "Two", Email = "two@factory.test", Role = null });
+        db.AuthOrganizations.AddRange(new AuthOrganization { Id = "org-a", Name = "Line A" }, new AuthOrganization { Id = "org-b", Name = "Line B" });
+        db.AuthMembers.AddRange(
+            new AuthMember { Id = "m1", OrganizationId = "org-a", UserId = "u-1" },
+            new AuthMember { Id = "m2", OrganizationId = "org-b", UserId = "u-1" });
+        await db.SaveChangesAsync();
+        var controller = new AuthController(new BackendFeatureFlags())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = Principal(HeimdallRoles.Operator, null, "u-2") } }
+        };
+
+        var ok = Assert.IsType<OkObjectResult>(await controller.GetUsers(db));
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        var users = json.RootElement.GetProperty("users").EnumerateArray().ToDictionary(u => u.GetProperty("id").GetString()!);
+
+        Assert.Equal("one@factory.test", users["u-1"].GetProperty("email").GetString());
+        Assert.Equal(HeimdallRoles.Technician, users["u-1"].GetProperty("role").GetString());
+        Assert.Equal(new[] { "Line A", "Line B" }, users["u-1"].GetProperty("organizations").EnumerateArray().Select(o => o.GetProperty("name").GetString()));
+        Assert.Empty(users["u-2"].GetProperty("organizations").EnumerateArray());
     }
 
     [Fact]

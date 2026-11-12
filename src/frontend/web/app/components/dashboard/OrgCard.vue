@@ -4,14 +4,12 @@ import { Button } from '~/components/ui/button'
 import RbacButton from '~/components/common/RbacButton.vue'
 import { Avatar, AvatarFallback } from '~/components/ui/avatar'
 import { Edit2, Users, ShieldCheck, Trash2, Building2 } from 'lucide-vue-next'
-import { useRbacPermission, RBAC_TOOLTIPS } from '~/composables/useRbacPermission'
 
 defineProps<{
   org: any
 }>()
 
 defineEmits(['manage-members', 'edit', 'delete'])
-const { canAdministerSystem } = useRbacPermission()
 </script>
 
 <template>
@@ -23,7 +21,8 @@ const { canAdministerSystem } = useRbacPermission()
         </div>
         <div class="flex gap-1">
           <RbacButton
-            capability="canAdministerSystem"
+            :has-permission="!!org.canManage"
+            tooltip="Requires the OrganizationManagement right and membership of this organization (Heimdall administrators: any)."
             variant="ghost"
             size="icon"
             class="size-8 text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-muted rounded-lg transition-colors"
@@ -33,7 +32,8 @@ const { canAdministerSystem } = useRbacPermission()
             <Edit2 class="size-3.5" />
           </RbacButton>
           <RbacButton
-            capability="canAdministerSystem"
+            :has-permission="!!org.canDelete"
+            tooltip="Only an owner of this organization (or a Heimdall administrator) can delete it."
             variant="ghost"
             size="icon"
             class="size-8 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
@@ -73,7 +73,7 @@ const { canAdministerSystem } = useRbacPermission()
 
     <CardFooter class="px-5 py-3 bg-muted/30 flex items-center justify-between border-t border-border">
       <RbacButton
-        capability="canAdministerSystem"
+        :has-permission="true"
         variant="link"
         class="h-auto p-0 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 no-underline transition-colors"
         @click="$emit('manage-members', org)"

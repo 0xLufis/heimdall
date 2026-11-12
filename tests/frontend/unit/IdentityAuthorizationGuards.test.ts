@@ -234,28 +234,20 @@ describe('identity BFF routes are no longer anonymous', () => {
     expect(Array.isArray(await apiKeysListHandler(signedInAs('system_admin')))).toBe(true)
   })
 
-  it('serves the whole user directory, with real membership counts, to identity administrators', async () => {
+  it('serves the whole user directory, with organizations and permissions, to every signed-in user', async () => {
+    // The same rows answer both queries (users and memberships): both memberships belong to u-1.
     state.dbRows = [
-      { id: 'u-1', name: 'A', email: 'a@x', role: 'technician', username: 'a', banned: null, createdAt: new Date(), userId: 'u-1', organizationId: 'org-a', organizations: 2 },
-      { id: 'u-2', name: 'B', email: 'b@x', role: 'engineer', username: 'b', banned: true, createdAt: new Date(), userId: 'u-1', organizationId: 'org-a', organizations: 2 }
+      { id: 'u-1', name: 'A', email: 'a@x', role: 'technician', username: 'a', banned: null, permissions: 'organizations.manage', createdAt: new Date(), userId: 'u-1', organizationId: 'org-b', organizationName: 'Line B', memberRole: 'member' },
+      { id: 'u-2', name: 'B', email: 'b@x', role: 'engineer', username: 'b', banned: true, permissions: null, createdAt: new Date(), userId: 'u-1', organizationId: 'org-a', organizationName: 'Line A', memberRole: 'owner' }
     ]
-    for (const role of ['system_admin', 'heimdall_admin', 'it_admin', 'engineering_admin', 'plant_engineering_manager']) {
-      const res = await usersHandler(signedInAs(role, 'u-admin'))
+    // Owner decision: the directory is global - administrators and everyone else alike, including a
+    // caller who shares no organization with anybody.
+    for (const role of ['system_admin', 'heimdall_admin', 'it_admin', 'engineering_admin', 'technician', 'operator', 'shift_leader', 'user']) {
+      const res = await usersHandler(signedInAs(role, 'u-outsider'))
       expect(res.users.map((u: any) => u.id), role).toEqual(['u-1', 'u-2'])
-      expect(res.users[0]).toMatchObject({ banned: false, organizationCount: 2 })
-      expect(res.users[1]).toMatchObject({ banned: true })
-    }
-  })
-
-  it('shows other users only the colleagues they share an organization with', async () => {
-    // Membership rows name u-1 only: u-2 is in no organization the caller belongs to.
-    state.dbRows = [
-      { id: 'u-1', name: 'A', email: 'a@x', role: 'technician', username: 'a', banned: null, createdAt: new Date(), userId: 'u-1', organizationId: 'org-a', organizations: 1 },
-      { id: 'u-2', name: 'B', email: 'b@x', role: 'engineer', username: 'b', banned: null, createdAt: new Date(), userId: 'u-1', organizationId: 'org-a', organizations: 1 }
-    ]
-    for (const role of ['technician', 'operator', 'group_leader', 'manager', 'user']) {
-      const res = await usersHandler(signedInAs(role, 'u-1'))
-      expect(res.users.map((u: any) => u.id), role).toEqual(['u-1'])
+      expect(res.users[0]).toMatchObject({ banned: false, organizationCount: 2, permissions: ['organizations.manage'] })
+      expect(res.users[0].organizations.map((o: any) => o.name)).toEqual(['Line A', 'Line B'])
+      expect(res.users[1]).toMatchObject({ banned: true, organizationCount: 0, organizations: [], permissions: [] })
     }
   })
 
@@ -283,7 +275,8 @@ describe('identity BFF routes are no longer anonymous', () => {
 
   it('returns no organizations to a user without memberships instead of every tenant', async () => {
     state.dbRows = []
-    expect(await organizationsHandler(signedInAs('technician'))).toEqual({ success: true, organizations: [] })
+    expect(await organizationsHandler(signedInAs('technician'))).toEqual({ success: true, canCreate: false, organizations: [] })
+    expect(await organizationsHandler(signedInAs('group_leader'))).toEqual({ success: true, canCreate: true, organizations: [] })
   })
 })
 

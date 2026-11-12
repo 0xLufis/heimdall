@@ -792,11 +792,16 @@ def build_model():
 
     # ---------------------------------------------------------------- machine groups
     bu_key, bu_name, bu_desc, bu_lead = BUSINESS_UNIT
+    # Owning organization (scopes who may change a group): line and sub-line groups belong to their
+    # line's organization; the business unit, projects and technology fleets span lines and stay
+    # platform-managed (org_id None -> platform and engineering administrators only).
     groups = [dict(key=bu_key, id=uid(f"machine-group:{bu_key}"), name=bu_name, description=bu_desc, parent=None, type="BusinessUnit",
-                   color="slate", icon="Building2", lead=users[bu_lead], machines=[], machine_types=None, technology_key=None)]
+                   color="slate", icon="Building2", lead=users[bu_lead], machines=[], machine_types=None, technology_key=None,
+                   org_id=None)]
     for key, name, desc, line_nums, lead in PROJECTS:
         groups.append(dict(key=key, id=uid(f"machine-group:{key}"), name=name, description=desc, parent=bu_key, type="Project",
-                           color="indigo", icon="FolderKanban", lead=users[lead], machines=[], machine_types=None, technology_key=None))
+                           color="indigo", icon="FolderKanban", lead=users[lead], machines=[], machine_types=None, technology_key=None,
+                           org_id=None))
     for line in lines:
         n = line["line_num"]
         groups.append(dict(key=line["group_key"], id=line["group_id"], name=line["name"],
@@ -804,7 +809,8 @@ def build_model():
                            parent=line["project_key"], type="Line",
                            color="emerald" if n == 1 else "indigo" if n == 2 else "cyan" if n == 4 else "amber", icon="Factory",
                            lead=line["lead"], machines=[s["name"] for s in line["stations"]],
-                           machine_types=sorted({s["machine_type"] for s in line["stations"]}), technology_key=None))
+                           machine_types=sorted({s["machine_type"] for s in line["stations"]}), technology_key=None,
+                           org_id=line["org_id"]))
     for line in lines:
         cell = [st for st in line["stations"] if st["op"] in SUB_LINE_OPS]
         key = f"sub-{line['code'].lower()}-robot-cell"
@@ -812,7 +818,7 @@ def build_model():
                            description=f"Sub-line of {line['name']}: the two stations run by the shared robot controllers",
                            parent=line["group_key"], type="SubLine", color="orange", icon="Workflow", lead=line["lead"],
                            machines=[st["name"] for st in cell], machine_types=sorted({st["machine_type"] for st in cell}),
-                           technology_key=None))
+                           technology_key=None, org_id=line["org_id"]))
         for st in cell:
             st["sub_line_key"] = key
     for key, name, m_types, tech_key, color, icon in TECH_GROUPS:
@@ -820,7 +826,7 @@ def build_model():
         groups.append(dict(key=key, id=uid(f"machine-group:{key}"), name=name,
                            description=f"Technology group: every {' / '.join(m_types)} station across the lines",
                            parent=None, type="Technological", color=color, icon=icon, lead=None, machines=members,
-                           machine_types=list(m_types), technology_key=tech_key))
+                           machine_types=list(m_types), technology_key=tech_key, org_id=None))
     group_by_key = {g["key"]: g for g in groups}
     memberships = [dict(id=uid(f"mgm:{g['key']}:{name}"), group=g["key"], station=name)
                    for g in groups if g["type"] in ("Line", "SubLine", "Technological") for name in g["machines"]]
@@ -1297,10 +1303,11 @@ def render_sql(model):
         machine_ids = [station_by_name[n]["id"] for n in g["machines"]]
         lead = g["lead"]
         add("INSERT INTO backend.machine_groups (id, name, description, parent_id, color, icon, lead_engineer_id, lead_engineer_name, "
-            "machine_ids_json, machine_types_json, created_at, updated_at, group_type, interface_contract, technology_key) "
+            "machine_ids_json, machine_types_json, created_at, updated_at, group_type, interface_contract, technology_key, organization_id) "
             f"VALUES ({q(g['id'])}, {q(g['name'])}, {q(g['description'])}, {parent}, {q(g['color'])}, {q(g['icon'])}, "
             f"{q(lead['id'] if lead else None)}, {q(lead['name'] if lead else None)}, {qjt(machine_ids)}, "
-            f"{qjt(g['machine_types']) if g['machine_types'] else 'NULL'}, NOW(), NOW(), {q(g['type'])}, NULL, {q(g['technology_key'])});")
+            f"{qjt(g['machine_types']) if g['machine_types'] else 'NULL'}, NOW(), NOW(), {q(g['type'])}, NULL, {q(g['technology_key'])}, "
+            f"{q(g['org_id'])});")
 
     add("\n-- Edge IPCs (controllers)")
     for pc in model["controllers"]:
@@ -1642,6 +1649,14 @@ def check_model(model):
         sub = st.get("sub_line_key")
         if sub and by_key[sub]["parent"] != f"grp-line-{st['line_num']:02d}":
             err(f"{st['name']}: sub-line {sub} belongs to another line")
+    station_org = {st["name"]: st["org_id"] for st in stations}
+    for g in model["groups"]:
+        if g["type"] in ("Line", "SubLine"):
+            orgs = {station_org.get(n) for n in g["machines"]}
+            if g.get("org_id") not in org_ids or orgs != {g.get("org_id")}:
+                err(f"machine group {g['key']}: organization {g.get('org_id')} does not match its stations' {sorted(map(str, orgs))}")
+        elif g.get("org_id") is not None:
+            err(f"machine group {g['key']}: a {g['type']} group spans organizations and must stay platform-managed")
     in_line = {n for g in model["groups"] if g["type"] == "Line" for n in g["machines"]}
     if in_line != station_names:
         err(f"{len(station_names - in_line)} station(s) are in no line group")

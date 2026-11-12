@@ -28,7 +28,7 @@ public class MachineGroupHierarchyTests
         var other = Group("Other");
         db.MachineGroups.AddRange(plant, line, cell, other);
         await db.SaveChangesAsync();
-        var controller = new MachineGroupController(new MachineGroupRepository(db));
+        var controller = MachineGroupWriteScopeTests.ControllerFor(new MachineGroupRepository(db));
 
         var underGrandchild = await controller.Update(plant.Id, new MachineGroup { Name = "Plant", ParentId = cell.Id }, default);
         Assert.IsType<BadRequestObjectResult>(underGrandchild.Result);
@@ -52,7 +52,7 @@ public class MachineGroupHierarchyTests
         var cellB = Group("Cell B", line.Id);
         db.MachineGroups.AddRange(plant, line, cellA, cellB);
         await db.SaveChangesAsync();
-        var controller = new MachineGroupController(new MachineGroupRepository(db));
+        var controller = MachineGroupWriteScopeTests.ControllerFor(new MachineGroupRepository(db));
 
         Assert.IsType<NoContentResult>(await controller.Delete(line.Id, default));
 
@@ -70,7 +70,7 @@ public class MachineGroupHierarchyTests
     public async Task Create_IgnoresAPostedNavigationGraph()
     {
         await using var db = NewDb();
-        var controller = new MachineGroupController(new MachineGroupRepository(db));
+        var controller = MachineGroupWriteScopeTests.ControllerFor(new MachineGroupRepository(db));
         var posted = Group("Line");
         posted.Children.Add(Group("Smuggled child"));
         posted.Parent = Group("Smuggled parent");

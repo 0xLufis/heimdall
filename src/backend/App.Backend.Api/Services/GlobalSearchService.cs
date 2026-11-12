@@ -260,13 +260,10 @@ public sealed class GlobalSearchService : IGlobalSearchService
 
     private Task<List<UserSearchHit>> SearchUsersAsync(SearchRun run, CancellationToken ct)
     {
-        // auth.user has no tenant query filter: scope it to the members of the caller's organization.
-        var organizationId = _db.CurrentOrganizationId;
+        // The user directory is global (owner decision 2026-11-12): every signed-in caller may find
+        // every user, across organizations. Callers that may not search users at all are filtered
+        // out before this runs (GlobalSearchQuery.CanSearchUsers).
         var users = _db.AuthUsers.AsNoTracking();
-        if (organizationId != null)
-        {
-            users = users.Where(u => u.Members.Any(m => m.OrganizationId == organizationId));
-        }
 
         var spec = new KindSpec<AuthUser, UserSearchHit>
         {

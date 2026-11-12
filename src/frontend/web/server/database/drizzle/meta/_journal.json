@@ -50,6 +50,13 @@
       "when": 1794347125555,
       "tag": "0006_sync_auth_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794447788417,
+      "tag": "0007_sync_auth_plugin_fields",
+      "breakpoints": true
     }
   ]
 }

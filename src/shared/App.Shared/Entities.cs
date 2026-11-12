@@ -1034,6 +1034,11 @@ public class AuthUser
     public string Email { get; set; } = string.Empty;
     /// <summary>The assigned system-wide role.</summary>
     public string? Role { get; set; }
+    /// <summary>
+    /// Explicit per-user permission grants, comma-separated (e.g. "organizations.manage"). Written by
+    /// the BFF (Drizzle migration 0007 adds the column); the backend turns them into permission claims.
+    /// </summary>
+    public string? Permissions { get; set; }
     /// <summary>List of organizations this user is a member of.</summary>
     public List<AuthMember> Members { get; set; } = new();
 }
@@ -1479,6 +1484,15 @@ public class MachineGroup : IMachineGroup
     [MaxLength(128)]
     [Column("technology_key")]
     public string? TechnologyKey { get; set; }
+
+    /// <summary>
+    /// Organization (Better-Auth <c>auth.organization.id</c>) that owns the group and may change it.
+    /// Null: platform-managed (business units, projects, technology fleets spanning organizations).
+    /// Scopes writes only - every signed-in user reads every group (no query filter).
+    /// </summary>
+    [MaxLength(128)]
+    [Column("organization_id")]
+    public string? OrganizationId { get; set; }
 
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

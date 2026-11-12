@@ -49,7 +49,14 @@ export const POLICY_ROLES = {
   FunctionalSettingsManagement: ['system_admin', 'heimdall_admin', 'admin', 'engineering_admin', 'plant_engineering_manager'],
   DelegationManagement: ['system_admin', 'heimdall_admin', 'admin', 'engineering_admin', 'plant_engineering_manager', 'group_leader', 'lead_engineer'],
   SkillsManagement: ['system_admin', 'heimdall_admin', 'admin', 'engineering_admin', 'plant_engineering_manager', 'group_leader'],
-  ComponentManagement: ['system_admin', 'heimdall_admin', 'admin', 'engineering_admin', 'plant_engineering_manager', 'lead_engineer', 'controls_engineer', 'engineer', 'technician']
+  ComponentManagement: ['system_admin', 'heimdall_admin', 'admin', 'engineering_admin', 'plant_engineering_manager', 'lead_engineer', 'controls_engineer', 'engineer', 'technician'],
+  /**
+   * Roles that hold the organization-management right by role: Heimdall administrators plus middle
+   * managers and up. The policy is also met by anyone holding the explicit per-user
+   * {@link ORGANIZATIONS_MANAGE_PERMISSION} grant - use {@link canManageOrganizations}, not
+   * `roleSatisfies`, to decide.
+   */
+  OrganizationManagement: ['system_admin', 'heimdall_admin', 'admin', 'plant_director', 'engineering_admin', 'plant_engineering_manager', 'senior_engineering_manager', 'group_leader', 'manager']
 } as const satisfies Record<string, readonly HeimdallRole[]>
 
 export type PolicyName = keyof typeof POLICY_ROLES
@@ -65,6 +72,25 @@ export const USER_ADMIN_ROLES = ['system_admin', 'heimdall_admin', 'admin', 'eng
  * admin" delegation is switched on (DynamicSecurityGroupClaimsTransformer). Off by default.
  */
 export const IT_ADMIN_DELEGABLE_ROLES = ['heimdall_admin', 'admin'] as const satisfies readonly HeimdallRole[]
+
+/**
+ * Heimdall administrators: they manage every organization. Everyone else who holds the
+ * OrganizationManagement policy (by role or by grant) creates organizations and manages only the
+ * ones they are a member of. Mirrors `OrganizationManagementRules.HeimdallAdminRoles` in
+ * SecurityConstants.cs.
+ */
+export const ORGANIZATION_ADMIN_ROLES = ['system_admin', 'heimdall_admin', 'admin'] as const satisfies readonly HeimdallRole[]
+
+/**
+ * Explicit per-user permission that grants the OrganizationManagement policy to a user whose role
+ * does not (stored in `auth.user.permissions`). Mirrors `HeimdallPermissions.OrganizationsManage`.
+ */
+export const ORGANIZATIONS_MANAGE_PERMISSION = 'organizations.manage'
+
+/** Explicit per-user permissions that can be granted, with their UI label. */
+export const GRANTABLE_PERMISSIONS = {
+  [ORGANIZATIONS_MANAGE_PERMISSION]: 'Manage organizations'
+} as const
 
 export const ROLE_LABELS: Record<HeimdallRole, string> = {
   system_admin: 'System Administrator',
@@ -141,6 +167,30 @@ export function roleSatisfies(role: unknown, policy: PolicyName): boolean {
  */
 export function isPlatformAdminRole(role: unknown): boolean {
   return roleSatisfies(role, 'SystemAdministration')
+}
+
+/**
+ * Per-user permission keys are stored comma-separated in `auth.user.permissions` (like Better-Auth
+ * stores several roles). Accepts that string, an array or nothing; returns trimmed, lower-cased,
+ * de-duplicated keys.
+ */
+export function splitPermissions(value: unknown): string[] {
+  const raw = Array.isArray(value) ? value.flatMap(v => String(v ?? '').split(',')) : String(value ?? '').split(',')
+  return [...new Set(raw.map(p => p.trim().toLowerCase()).filter(Boolean))]
+}
+
+export function hasPermission(permissions: unknown, permission: string): boolean {
+  return splitPermissions(permissions).includes(permission.toLowerCase())
+}
+
+/** Heimdall administrators manage every organization (not only the ones they are a member of). */
+export function isOrganizationAdminRole(role: unknown): boolean {
+  return splitRoles(role).some(r => (ORGANIZATION_ADMIN_ROLES as readonly string[]).includes(r))
+}
+
+/** The OrganizationManagement policy: by role, or by the explicit `organizations.manage` grant. */
+export function canManageOrganizations(role: unknown, permissions?: unknown): boolean {
+  return roleSatisfies(role, 'OrganizationManagement') || hasPermission(permissions, ORGANIZATIONS_MANAGE_PERMISSION)
 }
 
 export function isUserAdminRole(role: unknown): boolean {

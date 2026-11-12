@@ -1,5 +1,5 @@
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
-import { isKnownRole, normalizeRole, roleRank, splitRoles } from '../../app/utils/roles'
+import { canManageOrganizations, isKnownRole, normalizeRole, roleRank, roleSatisfies, splitRoles } from '../../app/utils/roles'
 
 /**
  * Privilege-escalation guard for Better-Auth's admin endpoints (`/api/auth/admin/*`).
@@ -58,16 +58,65 @@ function bodyOf(ctx: any): Record<string, any> {
   return ctx?.body && typeof ctx.body === 'object' ? ctx.body : {}
 }
 
+/**
+ * Better-Auth organization-plugin endpoints that change an organization. The plugin only checks the
+ * caller's role inside that organization; Heimdall additionally requires the OrganizationManagement
+ * right (role or explicit grant). The UI uses the BFF routes under /api/organizations, which apply
+ * the full policy (server/utils/organizationAccess.ts).
+ */
+export const ORGANIZATION_MUTATION_PATHS = [
+  '/organization/create',
+  '/organization/update',
+  '/organization/delete',
+  '/organization/invite-member',
+  '/organization/cancel-invitation',
+  '/organization/add-member',
+  '/organization/remove-member',
+  '/organization/update-member-role'
+]
+
+/** Returns the reason a plugin organization mutation must be refused, or `null`. */
+export function evaluateOrganizationPluginCall(path: string, actorRole: unknown, actorPermissions: unknown): string | null {
+  if (!ORGANIZATION_MUTATION_PATHS.includes(path)) return null
+  return canManageOrganizations(actorRole, actorPermissions)
+    ? null
+    : 'Managing organizations requires the OrganizationManagement right.'
+}
+
+/**
+ * The per-user permission grants (`auth.user.permissions`) are not an input of any Better-Auth
+ * endpoint (`input: false`), but the admin plugin's create-user / update-user write arbitrary
+ * fields. Only holders of the OrganizationManagement right by role may grant through them - the same
+ * rule as PUT /api/users/:id/permissions.
+ */
+function permissionsRefusal(path: string, actorRole: unknown, body: Record<string, any>): string | null {
+  const data = body.data && typeof body.data === 'object' ? body.data : {}
+  const touches = (path === '/admin/update-user' || path === '/admin/create-user') &&
+    (Object.prototype.hasOwnProperty.call(data, 'permissions') || Object.prototype.hasOwnProperty.call(body, 'permissions'))
+  if (!touches) return null
+  return roleSatisfies(actorRole, 'OrganizationManagement')
+    ? null
+    : 'Only Heimdall administrators and managers may grant permissions.'
+}
+
 /** `hooks.before` middleware enforcing {@link evaluateAdminAction} on the admin endpoints. */
 export const adminEscalationGuard = createAuthMiddleware(async (ctx: any) => {
   const path: string = ctx?.path || ''
-  if (!path.startsWith('/admin/')) return
+  if (!path.startsWith('/admin/') && !ORGANIZATION_MUTATION_PATHS.includes(path)) return
 
   const session = await getSessionFromCtx(ctx)
   // Unauthenticated calls are rejected by the endpoint itself.
   if (!session?.user) return
 
+  if (!path.startsWith('/admin/')) {
+    const refusal = evaluateOrganizationPluginCall(path, normalizeRole((session.user as any).role), (session.user as any).permissions)
+    if (refusal) throw new APIError('FORBIDDEN', { message: refusal })
+    return
+  }
+
   const body = bodyOf(ctx)
+  const grantRefusal = permissionsRefusal(path, normalizeRole((session.user as any).role), body)
+  if (grantRefusal) throw new APIError('FORBIDDEN', { message: grantRefusal })
   let targetId: string | null = typeof body.userId === 'string' ? body.userId : null
   let targetRole: unknown
 

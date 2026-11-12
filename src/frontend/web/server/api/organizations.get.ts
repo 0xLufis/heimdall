@@ -4,7 +4,8 @@ import { useDb } from '../utils/db'
 import * as hbSchema from '../database/drizzle/schema'
 import { getPlantActiveDirectoryOUs } from '../utils/datasetLoader'
 import { requireUser } from '../utils/authz'
-import { isPlatformAdminRole } from '../../app/utils/roles'
+import { canManageOrganizations, isOrganizationAdminRole, isPlatformAdminRole } from '../../app/utils/roles'
+import { evaluateOrganizationAction } from '../utils/organizationRules'
 
 
 export interface EnrichedOrganization {
@@ -22,6 +23,8 @@ export interface EnrichedOrganization {
 
 export interface OrganizationsResponse {
   success: boolean
+  /** The caller may create organizations (OrganizationManagement policy). */
+  canCreate?: boolean
   organizations: EnrichedOrganization[]
 }
 
@@ -29,7 +32,8 @@ export interface OrganizationsResponse {
  * Organization directory with real member counts, read from Better-Auth's `auth.organization`.
  *
  * Requires a signed-in caller. Platform administrators (the backend's SystemAdministration policy)
- * see every organization; everyone else only the organizations they are a member of. It used to be
+ * see every organization; everyone else only the organizations they are a member of. Each entry
+ * says whether the caller may manage / delete it (OrganizationManagement policy). It used to be
  * anonymous, and when the backend was unreachable it answered with the demo plant dataset and an
  * invented member count.
  */
@@ -55,14 +59,17 @@ export default defineEventHandler(async (event): Promise<OrganizationsResponse> 
   try {
     const db = useDb()
 
+    const canCreate = canManageOrganizations(user.role, user.permissions)
+    const memberships = await db
+      .select({ organizationId: hbSchema.member.organizationId, role: hbSchema.member.role })
+      .from(hbSchema.member)
+      .where(eq(hbSchema.member.userId, user.id))
+    const myRole = new Map(memberships.map(m => [m.organizationId, m.role]))
+
     let visibleIds: string[] | null = null
-    if (!isPlatformAdminRole(user.role)) {
-      const memberships = await db
-        .select({ organizationId: hbSchema.member.organizationId })
-        .from(hbSchema.member)
-        .where(eq(hbSchema.member.userId, user.id))
-      visibleIds = [...new Set(memberships.map(m => m.organizationId))]
-      if (visibleIds.length === 0) return { success: true, organizations: [] }
+    if (!isPlatformAdminRole(user.role) && !isOrganizationAdminRole(user.role)) {
+      visibleIds = [...myRole.keys()]
+      if (visibleIds.length === 0) return { success: true, canCreate, organizations: [] }
     }
 
     const orgQuery = db
@@ -92,6 +99,9 @@ export default defineEventHandler(async (event): Promise<OrganizationsResponse> 
           slug,
           createdAt: o.createdAt ? new Date(o.createdAt).toISOString() : undefined,
           memberCount: countByOrg.get(o.id) ?? 0,
+          // What the caller may do here (same rules as the /api/organizations/* mutation routes).
+          canManage: evaluateOrganizationAction(user, 'update', { actorMemberRole: myRole.get(o.id) }) === null,
+          canDelete: evaluateOrganizationAction(user, 'delete', { actorMemberRole: myRole.get(o.id) }) === null,
           ouPath: matched?.ouPath,
           vlanId: matched?.vlanId,
           vlanName: matched?.vlanName
@@ -99,7 +109,7 @@ export default defineEventHandler(async (event): Promise<OrganizationsResponse> 
       })
       .sort((a, b) => a.name.localeCompare(b.name))
 
-    return { success: true, organizations }
+    return { success: true, canCreate, organizations }
   } catch (err: any) {
     console.warn('[organizations] Failed to read organizations:', err?.message || err)
     throw createError({ statusCode: 503, statusMessage: 'The organization directory is currently unavailable.' })

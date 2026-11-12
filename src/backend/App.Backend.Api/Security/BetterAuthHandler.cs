@@ -19,6 +19,8 @@ public class CachedAuthSession
     public string Email { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Role { get; set; }
+    /// <summary>Explicit per-user permission grants, comma-separated (auth.user.permissions).</summary>
+    public string? Permissions { get; set; }
     public string? OrgId { get; set; }
 }
 
@@ -216,6 +218,7 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
                         Email = s.User.Email,
                         Name = s.User.Name,
                         Role = s.User.Role,
+                        Permissions = s.User.Permissions,
                         // The active organization is a session attribute and can outlive the membership
                         // (member removed, organization deleted, row written outside Better-Auth). Only
                         // honour it while the user is still a member, otherwise the tenant scope fails closed.
@@ -260,6 +263,8 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
                 claims.Add(new Claim(TenantScopeMiddleware.OrgClaimType, session.OrgId));
             }
 
+            claims.AddRange(PermissionClaims(session.Permissions));
+
             return Success(claims);
         }
         catch (Exception ex)
@@ -270,6 +275,17 @@ public class BetterAuthHandler : AuthenticationHandler<BetterAuthOptions>
                 : AuthenticateResult.Fail("Error validating session token");
         }
     }
+
+    /// <summary>
+    /// One <see cref="HeimdallClaimTypes.Permission"/> claim per explicit grant stored (comma-separated)
+    /// in <c>auth.user.permissions</c>, e.g. "organizations.manage" for the OrganizationManagement policy.
+    /// </summary>
+    public static IEnumerable<Claim> PermissionClaims(string? permissions) =>
+        (permissions ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(p => p.ToLowerInvariant())
+            .Distinct()
+            .Select(p => new Claim(HeimdallClaimTypes.Permission, p));
 
     private AuthenticateResult Success(IEnumerable<Claim> claims)
     {

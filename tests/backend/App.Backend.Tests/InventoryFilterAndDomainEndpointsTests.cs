@@ -169,7 +169,7 @@ public class InventoryFilterAndDomainEndpointsTests
         using var context = CreateInMemoryDbContext(dbName);
 
         var repo = new MachineGroupRepository(context);
-        var controller = new MachineGroupController(repo);
+        var controller = MachineGroupWriteScopeTests.ControllerFor(repo);
 
         // Create
         var newGroup = new MachineGroup

@@ -63,6 +63,8 @@ public class MachineGroupRepository : IMachineGroupRepository
         existing.LeadEngineerName = updates.LeadEngineerName;
         existing.MachineIdsJson = updates.MachineIdsJson;
         existing.MachineTypesJson = updates.MachineTypesJson;
+        // The controller decides the owning organization (only platform administrators may change it).
+        existing.OrganizationId = updates.OrganizationId;
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -89,6 +91,12 @@ public class MachineGroupRepository : IMachineGroupRepository
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public Task<bool> IsOrganizationMemberAsync(string userId, string organizationId, CancellationToken cancellationToken = default) =>
+        _context.AuthMembers.AsNoTracking().AnyAsync(m => m.UserId == userId && m.OrganizationId == organizationId, cancellationToken);
+
+    public Task<bool> OrganizationExistsAsync(string organizationId, CancellationToken cancellationToken = default) =>
+        _context.AuthOrganizations.AsNoTracking().AnyAsync(o => o.Id == organizationId, cancellationToken);
 
     /// <summary>True when making <paramref name="newParentId"/> the parent of <paramref name="id"/> would close a loop.</summary>
     private async Task<bool> WouldCreateCycleAsync(Guid id, Guid newParentId, CancellationToken cancellationToken)

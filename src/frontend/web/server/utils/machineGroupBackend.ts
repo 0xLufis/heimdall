@@ -43,9 +43,12 @@ export function fromBackendGroup(g: any) {
 }
 
 export function toBackendGroup(body: any, defaults: { machineIdsJson?: string; machineTypesJson?: string | null } = {}) {
-  // Server-managed fields are never taken from the client.
+  // Server-managed fields are never taken from the client. `organizationId` is forwarded: the
+  // backend (MachineGroupController) decides who owns a group - it honours a posted organization
+  // only from platform administrators and otherwise uses the caller's active organization / keeps
+  // the group where it is. Writes are never sent anywhere but through the backend.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { machineIds, machineTypes, id, organizationId, createdAt, updatedAt, memberships, machines, children, parent, parentGroupId, leadEngineer, groupType, ...rest } = body || {}
+  const { machineIds, machineTypes, id, createdAt, updatedAt, memberships, machines, children, parent, parentGroupId, leadEngineer, groupType, ...rest } = body || {}
   // `parentGroupId` / `leadEngineer` are the dialog aliases of `parentId` / `leadEngineerName`;
   // without this mapping the backend ignored them (new groups lost their parent, lead edits were dropped).
   if (rest.parentId === undefined && parentGroupId !== undefined) rest.parentId = parentGroupId

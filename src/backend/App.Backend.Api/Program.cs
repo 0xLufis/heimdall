@@ -209,6 +209,14 @@ builder.Services.AddAuthorization(options =>
     // Machine component lifecycle & part assignment
     options.AddPolicy(AuthorizationPolicies.ComponentManagement, policy =>
         policy.RequireRole(HeimdallRoles.SystemAdmin, HeimdallRoles.HeimdallAdmin, HeimdallRoles.Admin, HeimdallRoles.EngineeringAdmin, HeimdallRoles.PlantEngineeringManager, HeimdallRoles.LeadEngineer, HeimdallRoles.ControlsEngineer, HeimdallRoles.Engineer, HeimdallRoles.Technician));
+
+    // Organization management (create; rename, members, invitations of the caller's own
+    // organizations; Heimdall admins: every organization). Heimdall admins and middle managers and up
+    // by role (OrganizationManagementRules.Roles), anyone else through the explicit per-user grant.
+    options.AddPolicy(AuthorizationPolicies.OrganizationManagement, policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.HasClaim(HeimdallClaimTypes.Permission, HeimdallPermissions.OrganizationsManage) ||
+            OrganizationManagementRules.Roles.Any(ctx.User.IsInRole)));
 });
 
 // --- 4. Controllers & SignalR & gRPC & Swagger & CORS & RateLimiting ---

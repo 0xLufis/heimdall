@@ -10,7 +10,7 @@ import { getPlantUsers } from "./datasetLoader";
 import { syncUserSecurityGroupsToOrganizations } from "./securityGroupOrgSync";
 import { adminEscalationGuard } from "./adminGuard";
 import { evictBackendSessionCache, evictBackendSessionCacheForUser, resolveDefaultOrganizationId } from "./sessionSync";
-import { DEFAULT_ROLE, HEIMDALL_ROLES, USER_ADMIN_ROLES, isPlatformAdminRole } from "../../app/utils/roles";
+import { DEFAULT_ROLE, HEIMDALL_ROLES, USER_ADMIN_ROLES, canManageOrganizations } from "../../app/utils/roles";
 
 // Better-Auth access control for every Heimdall role (app/utils/roles.ts mirrors the backend's
 // HeimdallRoles). The previous hand-written map knew only 10 names - one of them, `team_lead`,
@@ -94,7 +94,8 @@ export const auth = betterAuth({
       schema: hbSchema
    }),
    hooks: {
-      // Stops user administrators from escalating through /api/auth/admin/* (see adminGuard.ts).
+      // Stops user administrators from escalating through /api/auth/admin/*, and requires the
+      // OrganizationManagement right for the organization plugin's mutations (see adminGuard.ts).
       before: adminEscalationGuard
    },
    databaseHooks: {
@@ -193,7 +194,10 @@ export const auth = betterAuth({
    },
    user: {
       additionalFields: {
-         role: { type: "string" }
+         role: { type: "string" },
+         // Explicit per-user grants (comma-separated, e.g. "organizations.manage"). Never an input of
+         // sign-up / update-user; changed through PUT /api/users/:id/permissions.
+         permissions: { type: "string", required: false, input: false }
       }
    },
    plugins: [
@@ -204,9 +208,10 @@ export const auth = betterAuth({
       }),
       username(),
       organization({
-         // Organizations are tenant boundaries: only platform administrators create them (the UI
-         // already gates the button this way; Better-Auth's default lets any signed-in user).
-         allowUserToCreateOrganization: (user) => isPlatformAdminRole((user as any).role),
+         // Organizations are tenant boundaries: only holders of the OrganizationManagement right
+         // (Heimdall admins, middle managers and up, or the explicit grant) create them. Better-Auth's
+         // default lets any signed-in user. The UI creates through POST /api/organizations.
+         allowUserToCreateOrganization: (user) => canManageOrganizations((user as any).role, (user as any).permissions),
          organizationHooks: {
             // Membership decides whether the backend honours a session's active organization.
             afterAddMember: async ({ member }) => { await evictBackendSessionCacheForUser(member?.userId); },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { authClient } from '~/utils/auth-client'
 import {
@@ -26,7 +26,9 @@ import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import DashboardRoleBadge from '~/components/dashboard/RoleBadge.vue'
 import { useDedications } from '~/composables/useDedications'
+import { useAuthSession } from '~/composables/useAuthSession'
 import type { UserDedications } from '~/types/maintenance'
+import { GRANTABLE_PERMISSIONS, ORGANIZATIONS_MANAGE_PERMISSION, canManageOrganizations, roleSatisfies, roleLabel } from '~/utils/roles'
 
 definePageMeta({
   layout: 'shadcn-dashboard'
@@ -39,6 +41,34 @@ const loading = ref(true)
 const error = ref('')
 const user = ref<any>(null)
 const sessions = ref<any[]>([])
+
+// Explicit permission grants: changed by holders of the OrganizationManagement right by role
+// (Heimdall admins, middle managers and up); PUT /api/users/:id/permissions enforces it.
+const { userRole } = useAuthSession()
+const canGrantPermissions = computed(() => roleSatisfies(userRole.value, 'OrganizationManagement'))
+const savingPermission = ref<string | null>(null)
+
+function hasGrant(permission: string) {
+  return (user.value?.permissions || []).includes(permission)
+}
+
+async function togglePermission(permission: string) {
+  if (!user.value) return
+  savingPermission.value = permission
+  const granted = hasGrant(permission)
+  try {
+    const res = await $fetch<{ permissions: string[] }>(`/api/users/${user.value.id}/permissions`, {
+      method: 'PUT',
+      body: granted ? { revoke: [permission] } : { grant: [permission] }
+    })
+    user.value = { ...user.value, permissions: res.permissions }
+    toast.success(granted ? 'Permission revoked' : 'Permission granted')
+  } catch (e: any) {
+    toast.error(e?.data?.statusMessage || e?.statusMessage || e?.message || 'Failed to change the permission')
+  } finally {
+    savingPermission.value = null
+  }
+}
 
 async function fetchUserDetails() {
   loading.value = true
@@ -355,6 +385,47 @@ onMounted(() => {
             </div>
             <div class="p-2 rounded-lg bg-muted text-foreground">
               <Building2 class="size-4" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Organizations & explicit permission grants -->
+        <div class="bg-card rounded-xl shadow-sm border border-border p-5 space-y-4">
+          <div>
+            <h4 class="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Building2 class="size-3.5" />
+              Organizations
+            </h4>
+            <div v-if="user.organizations?.length" class="mt-2 flex flex-wrap gap-1.5">
+              <Badge v-for="o in user.organizations" :key="o.id" variant="outline" class="text-[11px] font-medium border-border">
+                {{ o.name }}<span class="ml-1 text-muted-foreground">· {{ o.role }}</span>
+              </Badge>
+            </div>
+            <p v-else class="mt-2 text-xs text-muted-foreground">Not a member of any organization.</p>
+          </div>
+          <div class="border-t border-border pt-4">
+            <h4 class="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Lock class="size-3.5" />
+              Permissions
+            </h4>
+            <div v-for="(label, key) in GRANTABLE_PERMISSIONS" :key="key" class="mt-2 flex items-center justify-between gap-3 text-xs">
+              <div>
+                <span class="font-medium text-foreground">{{ label }}</span>
+                <span class="ml-1.5 font-mono text-[10px] text-muted-foreground">{{ key }}</span>
+                <p v-if="key === ORGANIZATIONS_MANAGE_PERMISSION && canManageOrganizations(user.role) " class="text-[11px] text-muted-foreground">
+                  Already held by role ({{ roleLabel(user.role) }}).
+                </p>
+              </div>
+              <label class="flex items-center gap-2 shrink-0" :title="canGrantPermissions ? '' : 'Only Heimdall administrators and managers can change permission grants.'">
+                <input
+                  type="checkbox"
+                  class="size-4 accent-indigo-600 cursor-pointer disabled:cursor-not-allowed"
+                  :checked="hasGrant(key)"
+                  :disabled="!canGrantPermissions || savingPermission === key"
+                  @change="togglePermission(key)"
+                />
+                <span class="text-muted-foreground">{{ hasGrant(key) ? 'Granted' : 'Not granted' }}</span>
+              </label>
             </div>
           </div>
         </div>

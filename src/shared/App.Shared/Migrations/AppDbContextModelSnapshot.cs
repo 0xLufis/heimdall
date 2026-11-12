@@ -305,6 +305,10 @@ namespace App.Shared.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name");
 
+                    b.Property<string>("Permissions")
+                        .HasColumnType("text")
+                        .HasColumnName("permissions");
+
                     b.Property<string>("Role")
                         .HasColumnType("text")
                         .HasColumnName("role");
@@ -1791,6 +1795,11 @@ namespace App.Shared.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
+
+                    b.Property<string>("OrganizationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("organization_id");
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid")

@@ -260,15 +260,15 @@ public class GlobalSearchTests
     }
 
     [Fact]
-    public async Task Search_UsersAreLimitedToMembersOfTheOrganization()
+    public async Task Search_UsersAreGlobal_WhateverTheCallersOrganization()
     {
-        // "or" is in every user's name (TensOR, ORsolya, AdministratOR).
-        Assert.Equal(new[] { "usr-tensor" }, (await SearchAsync("or", organizationId: "org-a")).Users.Select(u => u.Id));
-        Assert.Equal(new[] { "usr-pap" }, (await SearchAsync("or", organizationId: "org-b")).Users.Select(u => u.Id));
-        // A caller without an organization (fail-closed sentinel) sees nobody.
-        Assert.Empty((await SearchAsync("or", organizationId: "__heimdall_no_organization__")).Users);
-        // Platform administrators are unscoped.
-        Assert.Equal(3, (await SearchAsync("or", organizationId: null)).Users.Count);
+        // "or" is in every user's name (TensOR, ORsolya, AdministratOR). The user directory is global
+        // by owner decision: the tenant scope limits stations, tickets, ... but not the people.
+        var everyone = new[] { "usr-pap", "usr-root", "usr-tensor" };
+        Assert.Equal(everyone, (await SearchAsync("or", organizationId: "org-a")).Users.Select(u => u.Id).OrderBy(id => id));
+        Assert.Equal(everyone, (await SearchAsync("or", organizationId: "org-b")).Users.Select(u => u.Id).OrderBy(id => id));
+        Assert.Equal(everyone, (await SearchAsync("or", organizationId: "__heimdall_no_organization__")).Users.Select(u => u.Id).OrderBy(id => id));
+        Assert.Equal(everyone, (await SearchAsync("or", organizationId: null)).Users.Select(u => u.Id).OrderBy(id => id));
     }
 
     [Fact]
@@ -411,21 +411,38 @@ public class GlobalSearchTests
         Assert.IsType<GlobalSearchResponse>(Assert.IsType<OkObjectResult>(result.Result).Value);
 
     [Theory]
-    [InlineData(HeimdallRoles.Technician, false)]
-    [InlineData(HeimdallRoles.Engineer, false)]
-    [InlineData(HeimdallRoles.Operator, false)]
-    [InlineData(HeimdallRoles.EngineeringAdmin, true)]
-    [InlineData(HeimdallRoles.ItAdmin, true)]
-    [InlineData(HeimdallRoles.SystemAdmin, true)]
-    public async Task Controller_ReturnsUsersOnlyToRolesThatManageUsers(string role, bool expectUsers)
+    [InlineData(HeimdallRoles.Technician)]
+    [InlineData(HeimdallRoles.Engineer)]
+    [InlineData(HeimdallRoles.Operator)]
+    [InlineData(HeimdallRoles.User)]
+    [InlineData(HeimdallRoles.EngineeringAdmin)]
+    [InlineData(HeimdallRoles.ItAdmin)]
+    [InlineData(HeimdallRoles.SystemAdmin)]
+    public async Task Controller_ReturnsUsersToEverySignedInRole(string role)
     {
         using var db = NewContext();
         Seed(db);
 
         var body = Body(await ControllerFor(db, role).Search("tensor"));
 
-        Assert.Equal(expectUsers, body.Users.Count == 1);
-        Assert.Equal(expectUsers, body.Kinds.Contains(SearchKinds.Users));
+        Assert.Single(body.Users);
+        Assert.Contains(SearchKinds.Users, body.Kinds);
+    }
+
+    [Fact]
+    public async Task Controller_ReturnsNoUsersToAnUnauthenticatedPrincipal()
+    {
+        using var db = NewContext();
+        Seed(db);
+        var controller = new SearchController(db, BuildAuthorization())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) } }
+        };
+
+        var body = Body(await controller.Search("tensor"));
+
+        Assert.Empty(body.Users);
+        Assert.DoesNotContain(SearchKinds.Users, body.Kinds);
     }
 
     [Fact]
@@ -490,7 +507,7 @@ public class GlobalSearchEndpointTests : IClassFixture<CustomWebApplicationFacto
     }
 
     [Fact]
-    public async Task Technician_GetsOnlyRowsOfTheActiveOrganization_AndNoUsers()
+    public async Task Technician_GetsOnlyRowsOfTheActiveOrganization()
     {
         var (status, body, raw) = await GetAsync("/api/v1/search?q=l0&limit=50", "search-tok-technician-a");
 
@@ -499,20 +516,26 @@ public class GlobalSearchEndpointTests : IClassFixture<CustomWebApplicationFacto
         Assert.Equal(new[] { "IPC-L01-OP060-PLC" }, body.Controllers.Select(c => c.Hostname));
         Assert.Equal(new[] { "Servo Drive Fault" }, body.Tickets.Select(t => t.Title));
         Assert.Equal(new[] { "COMP-SW-Opcenter-MES-L01-OP020-1" }, body.Inventory.Select(i => i.Name));
+        // The user directory is searched for everyone (no user matches "l0").
         Assert.Empty(body.Users);
-        Assert.DoesNotContain("users", body.Kinds);
-        // Nothing of the other organization leaks into the payload in any field.
+        Assert.Contains("users", body.Kinds);
+        // Nothing of the other organization's plant data leaks into the payload in any field.
         Assert.DoesNotContain("L02-", raw);
         Assert.DoesNotContain("orsolya", raw, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
-    public async Task UserManager_FindsOnlyMembersOfTheActiveOrganization()
+    [Theory]
+    [InlineData("search-tok-engadmin-a")]
+    [InlineData("search-tok-technician-a")]
+    public async Task EverySignedInUser_FindsUsersOfEveryOrganization(string token)
     {
-        var (status, body, _) = await GetAsync("/api/v1/search?q=or&kinds=users&limit=50", "search-tok-engadmin-a");
+        var (status, body, _) = await GetAsync("/api/v1/search?q=or&kinds=users&limit=50", token);
 
         Assert.Equal(HttpStatusCode.OK, status);
-        Assert.Equal(new[] { "usr-engadmin-a", "usr-tech-a", "usr-tensor" }, body!.Users.Select(u => u.Id).OrderBy(id => id));
+        // usr-pap is a member of org-b only; the callers are scoped to org-a.
+        Assert.Superset(
+            new HashSet<string> { "usr-engadmin-a", "usr-tech-a", "usr-tensor", "usr-pap", "usr-root" },
+            body!.Users.Select(u => u.Id).ToHashSet());
     }
 
     [Fact]
@@ -557,11 +580,16 @@ public class GlobalSearchPostgresTests
         new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).UseSnakeCaseNamingConvention().Options);
 
     [Fact]
-    public void Migration_IsDiscoveredAndOrderedLast()
+    public void Migration_IsDiscoveredAndOrderedByItsTimestamp()
     {
-        // No connection is opened: the migration list comes from the assembly.
+        // No connection is opened: the migration list comes from the assembly. The raw-SQL migration
+        // has no designer file; it must still be found and run between its neighbours.
         using var db = Context("Host=127.0.0.1;Port=1;Database=unused;Username=unused;Password=unused");
-        Assert.Equal("20261111103000_SearchTrigramIndexes", db.Database.GetMigrations().Last());
+        var migrations = db.Database.GetMigrations().ToList();
+        var index = migrations.IndexOf("20261111103000_SearchTrigramIndexes");
+        Assert.True(index > 0, "SearchTrigramIndexes is not discovered");
+        Assert.Equal("20261109211514_AddLuaScripts", migrations[index - 1]);
+        Assert.Equal("20261112014542_MachineGroupOrganization", migrations[index + 1]);
     }
 
     [PostgresFact]
@@ -581,7 +609,7 @@ public class GlobalSearchPostgresTests
             // The Better-Auth tables are not part of the EF schema.
             await db.Database.ExecuteSqlRawAsync(
                 "CREATE TABLE IF NOT EXISTS auth.organization (id text PRIMARY KEY, name text NOT NULL);" +
-                "CREATE TABLE IF NOT EXISTS auth.\"user\" (id text PRIMARY KEY, name text NOT NULL, email text NOT NULL, role text);" +
+                "CREATE TABLE IF NOT EXISTS auth.\"user\" (id text PRIMARY KEY, name text NOT NULL, email text NOT NULL, role text, permissions text);" +
                 "CREATE TABLE IF NOT EXISTS auth.member (id text PRIMARY KEY, organization_id text NOT NULL, user_id text NOT NULL);");
             GlobalSearchTests.Seed(db);
 
@@ -603,7 +631,7 @@ public class GlobalSearchPostgresTests
             Assert.Equal(new[] { "SPARE-BECK-AX5000-0314" }, (await Search("beckhoff ax5000")).Inventory.Select(i => i.Name));
             Assert.Empty((await Search("100%")).Inventory);
             Assert.Equal(new[] { "L01-OP020", "L01-OP030" }, (await Search("l0", "org-a")).Stations.Select(s => s.Name).OrderBy(n => n));
-            Assert.Equal(new[] { "usr-tensor" }, (await Search("or", "org-a")).Users.Select(u => u.Id));
+            Assert.Equal(new[] { "usr-pap", "usr-root", "usr-tensor" }, (await Search("or", "org-a")).Users.Select(u => u.Id).OrderBy(id => id));
             Assert.Empty((await Search("l01-op020", "org-b")).Tickets);
 
             // typo fallback by scanning (small tables), and "partial" when the window is too small and pg_trgm is missing

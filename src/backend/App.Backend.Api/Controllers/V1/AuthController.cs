@@ -50,18 +50,11 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Policies whose holders administer identities across organizations (same rule as SearchController).</summary>
-    private static readonly string[] DirectoryWidePolicies =
-    {
-        App.Contracts.Security.AuthorizationPolicies.SystemAdministration,
-        App.Contracts.Security.AuthorizationPolicies.ItAdministration,
-        App.Contracts.Security.AuthorizationPolicies.EngineeringAdministration
-    };
-
     /// <summary>
-    /// User directory (id, name, e-mail, role). Requires a signed-in caller (it used to be anonymous).
-    /// System, IT and engineering administrators see every user; everyone else only the users
-    /// they share an organization with, and themselves.
+    /// User directory: id, name, e-mail, role and organizations of every user. Requires a signed-in
+    /// caller (it used to be anonymous). The directory is global by owner decision: every signed-in
+    /// user may list and look up all users across organizations. Changing users (role, ban,
+    /// sessions) stays with the user administrators in the BFF.
     /// </summary>
     [HttpGet("users")]
     [Authorize]
@@ -69,30 +62,17 @@ public class AuthController : ControllerBase
         [FromServices] App.Shared.Data.AppDbContext db,
         [FromServices] IAuthorizationService? authorization = null)
     {
-        var seesEveryone = false;
-        if (authorization != null)
-        {
-            foreach (var policy in DirectoryWidePolicies)
-            {
-                if ((await authorization.AuthorizeAsync(User, policy)).Succeeded) { seesEveryone = true; break; }
-            }
-        }
-
-        IQueryable<App.Shared.Entities.AuthUser> visible = db.AuthUsers;
-        if (!seesEveryone)
-        {
-            var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            visible = visible.Where(u => u.Id == callerId || u.Members.Any(m =>
-                db.AuthMembers.Any(mine => mine.UserId == callerId && mine.OrganizationId == m.OrganizationId)));
-        }
-
         var users = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
-            visible.Select(u => new
+            db.AuthUsers.OrderBy(u => u.Name).Select(u => new
             {
                 id = u.Id,
                 name = u.Name,
                 email = u.Email,
-                role = u.Role
+                role = u.Role,
+                organizations = u.Members
+                    .OrderBy(m => m.OrganizationId)
+                    .Select(m => new { id = m.OrganizationId, name = m.Organization.Name })
+                    .ToList()
             }));
         return Ok(new { success = true, users });
     }
