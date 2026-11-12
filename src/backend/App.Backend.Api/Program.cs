@@ -69,6 +69,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 // Ensure Environment Variables are included in configuration
 builder.Configuration.AddEnvironmentVariables();
 
+// Rotating file log (Logging:File) and runtime log levels (api/v1/admin/logging). Added after the
+// environment variables so that runtime overrides take precedence over them.
+App.Backend.Api.Logging.HeimdallLoggingExtensions.AddHeimdallLogging(builder);
+
 // Strongly-typed Backend Feature Flags
 var featureFlags = builder.Configuration.ToBackendFeatureFlags(builder.Environment.EnvironmentName);
 builder.Services.AddSingleton(featureFlags);

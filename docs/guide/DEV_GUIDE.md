@@ -89,6 +89,17 @@ bun run dev
 ```
 Access the application at `http://localhost:3000`.
 
+`just start frontend` (and `just dev`) additionally exports the dev feature flags from the repository's
+`.env.dev`: `HEIMDALL_ENABLE_DEV`, `HEIMDALL_ENABLE_DEBUG`, `HEIMDALL_DEBUG`, `NUXT_PUBLIC_ENABLE_DEV_FEATURES`,
+`NUXT_PUBLIC_ENABLE_DEBUG_FEATURES` and `ENABLE_DEV_HTTP_SEED`. These enable the dev conveniences (the BFF's
+anonymous "System Administrator" fallback, the demo kiosk tokens and the kiosk terminal's dev auth bypass, the
+debug features). Only these keys are loaded. The rest of `.env.dev` is for the backend and docker: its
+`DATABASE_URL` is the backend's database role, and its `BETTER_AUTH_SECRET` differs from the frontend's dev
+default, so it would invalidate existing sessions and MFA secrets. A variable that is already set wins, so
+`HEIMDALL_ENABLE_DEV=false just start frontend` starts without the dev shortcuts. The dev server listens on
+`0.0.0.0:3000` and the dev backend on `0.0.0.0:5099`, so on a shared network these shortcuts are reachable by
+other hosts. Use the switch above or a firewall there. A plain `bun run dev` does not load `.env.dev`.
+
 > [!NOTE]
 > On startup, the Nitro server plugin (`server/plugins/ensureAdminUser.ts`) checks if a platform administrator exists. If not, it automatically seeds `admin@heimdall.dev` (password: `AdminPassword123!`). You can also manually trigger this via `GET /api/dev/seed-admin`.
 
@@ -193,6 +204,61 @@ The web UI reaches it through the BFF proxy `/api/simulator/*` (`SIMULATOR_HOST`
 
 ---
 
+### 3.7 Logs, Retention & Verbosity
+
+Dev logs are kept on disk under `<repo>/.logs/` (git-ignored). They are never written to `/tmp`, which is
+RAM-backed on dev machines; an unbounded backend log once grew to 4.7 GB there overnight. Every output is
+bounded by size and age:
+
+| Output | Location | Bounded by |
+|---|---|---|
+| Console output of each service started by `just` (backend incl. build errors, frontend, simulator, agent) | `.logs/<service>.log`; the previous run and full files go to `.log.1` (newest) … `.log.3` | `tools/logpipe.py`: 10 MB per file, 3 backups, backups older than 7 days deleted. Override with `HEIMDALL_LOG_MAX_MB`, `HEIMDALL_LOG_BACKUPS` and `HEIMDALL_LOG_MAX_AGE_DAYS` |
+| Backend file log (`Logging:File`, enabled in Development) | `.logs/backend/backend.log`; rotated files are `backend-YYYYMMDD-HHMMSS-fff.log` | 20 MB per file and a new file each day; files older than 7 days deleted; at most 200 MB in total (the oldest rotated files are deleted first) |
+
+`just logs backend|frontend|simulator|agent` follows the console logs across rotations (`tail -F`).
+`just logs backend-file` follows the backend file log. The TUI reads the same files.
+
+**Backend file log settings** live under `Logging:File` in `appsettings*.json`. Environment variables
+override them: `Logging__File__Enabled`, `__Path` (relative paths are resolved against the content root;
+Development uses `../../../.logs/backend`, and the dev scripts pass an absolute path), `__MaxFileSizeMB`,
+`__MaxTotalSizeMB`, `__MaxAgeDays`, `__QueueCapacity`, `__FlushIntervalSeconds` and `__ShutdownTimeoutSeconds`.
+Outside Development the file log is off (containers log to the console). Log calls never wait for the disk.
+Entries go into a bounded in-memory queue (20 000 entries by default), and a background thread writes them in
+batches and flushes once a second (errors immediately). When the queue is full, the oldest
+Trace/Debug/Information entries are dropped first, and once the queue has drained the file gets a
+`N log entries dropped` warning. On shutdown the queue is written and flushed within 2 s. The console logger
+uses `QueueFullMode: DropWrite`, so a stalled stdout cannot block request threads either.
+
+**Verbosity.** Both outputs follow the standard `Logging:LogLevel` section. By default this is `Information`,
+with `Microsoft.AspNetCore` and `Microsoft.EntityFrameworkCore.Database.Command` (every SQL statement) at
+`Warning`, in Development too. Per-output levels go in `Logging:Console:LogLevel` and `Logging:File:LogLevel`.
+.NET always prefers a rule from a provider's own section over any global rule. Once you give an output its
+own section, list there every category you want to keep quiet.
+
+```bash
+# Persistent (restart needed): environment variables or appsettings.Development.json
+Logging__LogLevel__Default=Debug                                            # both outputs
+Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command=Information  # SQL statements, both outputs
+Logging__File__LogLevel__Microsoft.EntityFrameworkCore.Database.Command=Information  # SQL to the file only
+```
+
+**At runtime, no restart (in memory, reset on restart):** use the admin endpoint (`SystemAdministration`
+policy; in Development an unauthenticated call runs as the dev administrator):
+
+```bash
+# Read the effective levels per output, the configured sections, the overrides and the file-log state
+curl -s 'http://localhost:5099/api/v1/admin/logging?category=Microsoft.EntityFrameworkCore.Database.Command'
+# Turn SQL logging on for the file only (provider: All | Console | File; level: Trace..None, or Reset)
+curl -s -X PUT http://localhost:5099/api/v1/admin/logging/levels -H 'Content-Type: application/json' \
+     -d '{"category":"Microsoft.EntityFrameworkCore.Database.Command","level":"Information","provider":"File"}'
+# Back to the configured level (one category, or every override when no category is given)
+curl -s -X DELETE 'http://localhost:5099/api/v1/admin/logging/levels?category=Microsoft.EntityFrameworkCore.Database.Command'
+```
+
+A runtime override is placed above every configuration source, environment variables included. `All` writes
+the global key and both per-output keys, so it also wins over an output's own `Default`. Each change is
+logged as a warning, including the user who made it.
+
 ## 4. Running With Docker Compose
 
 The complete 7-service ecosystem can be executed inside container networks:
@@ -254,6 +320,7 @@ Executes 58 test suites (565 tests) covering rule reordering with drag-and-drop 
 ```bash
 just test-simulator
 # or: ./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
+python3 -m unittest tests/test_logpipe.py   # dev log pipe: size rotation at line breaks, backups, age limit, --pidfile
 ```
 Executes 48 unit tests (plus `python3 -m unittest discover -s seed_data`, run by `just test-seed`, for the seed datasets): `MockCmiEngine` queries (`wmic`, `Get-CimInstance`), `SimulatedPcDaemon` diagnostics, and the
 fleet simulator's station model (determinism, counters, state machine, drift story), PLC block encoding against a

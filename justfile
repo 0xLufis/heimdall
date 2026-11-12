@@ -14,7 +14,11 @@
 
 set shell := ["bash", "-c"]
 
-LOG_DIR := "/tmp/heimdall_logs"
+# Dev logs live on disk (git-ignored), never in /tmp: /tmp is RAM-backed on dev machines. Every service's
+# console output goes through tools/logpipe.py (size + age bounded: HEIMDALL_LOG_MAX_MB, HEIMDALL_LOG_BACKUPS,
+# HEIMDALL_LOG_MAX_AGE_DAYS); the backend also writes its own rotating log to .logs/backend/ (Logging:File).
+LOG_DIR := justfile_directory() + "/.logs"
+LOGPIPE := "python3 tools/logpipe.py"
 PID_DIR := "/tmp/heimdall_dev_pids"
 SHARED_WIN_AGENT_DIR := "infra/windows/shared/agent"
 # Python for the simulators: the project venv (paho-mqtt + protobuf from simulators/fleet/requirements.txt) when present
@@ -146,21 +150,25 @@ clean:
     fi
     echo "✓ Environment cleanly cleared. Ports 5099, 5001, 3000, 5055, 5998 released."
 
-# Stream service logs (backend, frontend, agent, simulator, windows, db)
+# Stream service logs (backend, backend-file, frontend, agent, simulator, windows, db)
 logs SERVICE="all":
     #!/usr/bin/env bash
+    # -F follows the file name across rotations (logpipe / the backend file logger rename the full file).
     case "{{SERVICE}}" in
         backend)
-            tail -n 60 -f {{LOG_DIR}}/backend.log 2>/dev/null || tail -n 60 -f /tmp/heimdall-backend.log
+            tail -n 60 -F {{LOG_DIR}}/backend.log
+            ;;
+        backend-file)
+            tail -n 60 -F {{LOG_DIR}}/backend/backend.log
             ;;
         frontend)
-            tail -n 60 -f {{LOG_DIR}}/frontend.log 2>/dev/null || tail -n 60 -f /tmp/heimdall-nuxt.log
+            tail -n 60 -F {{LOG_DIR}}/frontend.log
             ;;
         agent)
-            tail -n 60 -f {{LOG_DIR}}/agent.log 2>/dev/null || tail -n 60 -f /tmp/heimdall-agent.log
+            tail -n 60 -F {{LOG_DIR}}/agent.log
             ;;
         simulator)
-            tail -n 60 -f {{LOG_DIR}}/simulator.log 2>/dev/null || tail -n 60 -f /tmp/heimdall-simulator.log
+            tail -n 60 -F {{LOG_DIR}}/simulator.log
             ;;
         windows|winagent)
             docker compose --profile windows logs -f --tail=60 windows-agent
@@ -169,11 +177,13 @@ logs SERVICE="all":
             docker compose -f infra/database/docker-compose.yml logs -f --tail=60
             ;;
         all|*)
-            echo "Available log targets: backend, frontend, agent, simulator, windows, db"
-            echo "  • Backend API:     {{LOG_DIR}}/backend.log"
+            echo "Available log targets: backend, backend-file, frontend, agent, simulator, windows, db"
+            echo "  • Backend API:     {{LOG_DIR}}/backend.log (console output, incl. build errors)"
+            echo "  • Backend file log:{{LOG_DIR}}/backend/backend.log (rotating, see Logging:File)"
             echo "  • Web Frontend:    {{LOG_DIR}}/frontend.log"
             echo "  • Edge Agent:      {{LOG_DIR}}/agent.log"
             echo "  • Simulator:       {{LOG_DIR}}/simulator.log"
+            echo "  Rotated copies: <name>.log.1 (newest) .. .log.N; previous run = .log.1"
             ;;
     esac
 
@@ -209,25 +219,36 @@ start-service TARGET:
             just db-up
             if ! [ -f {{PID_DIR}}/backend.pid ] || ! kill -0 $(cat {{PID_DIR}}/backend.pid 2>/dev/null) 2>/dev/null; then
                 echo ">> Starting Backend REST API & gRPC Ingestion..."
-                setsid dotnet watch --project src/backend/App.Backend.Api run </dev/null > {{LOG_DIR}}/backend.log 2>&1 &
+                # Console output -> .logs/backend.log through the rotating log pipe (a detached sibling: it
+                # ends at EOF and survives Ctrl-C); the backend's own rotating file log -> .logs/backend/.
+                Logging__File__Path="{{LOG_DIR}}/backend" setsid dotnet watch --project src/backend/App.Backend.Api run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/backend.log" --pidfile {{PID_DIR}}/backend.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/backend.pid
-                ln -sf {{LOG_DIR}}/backend.log /tmp/heimdall-backend.log 2>/dev/null || true
             fi
             ;;
         frontend)
             if ! [ -f {{PID_DIR}}/frontend.pid ] || ! kill -0 $(cat {{PID_DIR}}/frontend.pid 2>/dev/null) 2>/dev/null; then
-                echo ">> Starting Nuxt 4 Web Frontend on http://localhost:3000..."
-                setsid bun run --cwd src/frontend/web dev </dev/null > {{LOG_DIR}}/frontend.log 2>&1 &
+                # Dev feature flags from the committed .env.dev (HEIMDALL_ENABLE_DEV & co.: anonymous dev admin in
+                # the BFF, kiosk demo tokens and dev auth bypass, debug features). Only these keys: the rest of the
+                # file is meant for the backend/docker (its DATABASE_URL is the backend's DB role, its
+                # BETTER_AUTH_SECRET differs from the frontend's dev default and would void sessions and MFA
+                # secrets). Variables already set win: HEIMDALL_ENABLE_DEV=false just start frontend
+                while IFS='=' read -r key value; do
+                    case "$key" in
+                        HEIMDALL_ENABLE_DEV|HEIMDALL_ENABLE_DEBUG|HEIMDALL_DEBUG|NUXT_PUBLIC_ENABLE_DEV_FEATURES|NUXT_PUBLIC_ENABLE_DEBUG_FEATURES|ENABLE_DEV_HTTP_SEED)
+                            if [ -z "${!key+x}" ]; then export "$key=$value"; fi
+                            ;;
+                    esac
+                done < <(grep -E '^[A-Z_]+=' .env.dev 2>/dev/null || true)
+                echo ">> Starting Nuxt 4 Web Frontend on http://localhost:3000 (HEIMDALL_ENABLE_DEV=${HEIMDALL_ENABLE_DEV:-unset})..."
+                setsid bun run --cwd src/frontend/web dev </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/frontend.log" --pidfile {{PID_DIR}}/frontend.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/frontend.pid
-                ln -sf {{LOG_DIR}}/frontend.log /tmp/heimdall-nuxt.log 2>/dev/null || true
             fi
             ;;
         agent)
             if ! [ -f {{PID_DIR}}/agent.pid ] || ! kill -0 $(cat {{PID_DIR}}/agent.pid 2>/dev/null) 2>/dev/null; then
                 echo ">> Starting Host Linux Edge Agent Daemon..."
-                setsid dotnet watch --project src/agent/App.Agent.Daemon run </dev/null > {{LOG_DIR}}/agent.log 2>&1 &
+                setsid dotnet watch --project src/agent/App.Agent.Daemon run </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/agent.log" --pidfile {{PID_DIR}}/agent.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/agent.pid
-                ln -sf {{LOG_DIR}}/agent.log /tmp/heimdall-agent.log 2>/dev/null || true
             fi
             ;;
         simulator)
@@ -235,9 +256,8 @@ start-service TARGET:
                 # SIM_DATASET=enterprise (just db-seed) | demo (just demo-seed) | all. Only pick a dataset that is seeded:
                 # the backend auto-registers unknown controllers that report in.
                 echo ">> Starting Edge Fleet Simulator (MQTT -> :1883, control API 127.0.0.1:5055, dataset ${SIM_DATASET:-enterprise})..."
-                setsid {{SIM_PYTHON}} -u simulators/fleet/fleet_simulator.py --dataset "${SIM_DATASET:-enterprise}" --station-interval "${SIM_STATION_INTERVAL:-4}" </dev/null > {{LOG_DIR}}/simulator.log 2>&1 &
+                setsid {{SIM_PYTHON}} -u simulators/fleet/fleet_simulator.py --dataset "${SIM_DATASET:-enterprise}" --station-interval "${SIM_STATION_INTERVAL:-4}" </dev/null > >(exec setsid -f {{LOGPIPE}} "{{LOG_DIR}}/simulator.log" --pidfile {{PID_DIR}}/simulator.pid >/dev/null 2>&1) 2>&1 &
                 echo $! > {{PID_DIR}}/simulator.pid
-                ln -sf {{LOG_DIR}}/simulator.log /tmp/heimdall-simulator.log 2>/dev/null || true
             fi
             ;;
         windows|windows_agent|windows_vnc|windows_ads|windows_opc|winagent)
