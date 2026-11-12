@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy simulator files and protobuf bindings
 COPY proto/ proto/
 COPY fleet_simulator.py .
+COPY station_model.py plc_encoding.py topology.py mqtt_transport.py ./
 COPY wmic_simulator.py .
 COPY dataset_loader.py .
 COPY mock_cmi_runner.py .

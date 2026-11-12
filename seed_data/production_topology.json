@@ -4,21 +4,42 @@
     "lines": [
       {
         "id": "org-line-01",
+        "code": "L01",
         "line_num": 1,
-        "name": "Line 01 \u2013 Synthetic Audi E-Tron Module Line (AI Sim)",
+        "name": "Line 01 – Synthetic Audi E-Tron Module Line (AI Sim)",
         "tech": "Dispensing",
         "stations": [
           {
             "id": "L01-OP010",
-            "name": "L01-OP010 \u2013 Hyper-Conveyor Pallet Infeed 9000",
+            "name": "L01-OP010 – Hyper-Conveyor Pallet Infeed 9000",
+            "customIdentifier": "LINE-01-OP010",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP010",
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-001-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-001-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L01-CONVEYOR-MAIN",
                 "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-CONVEYOR-MAIN",
                 "ip": "192.168.101.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -29,15 +50,35 @@
           },
           {
             "id": "L01-OP020",
-            "name": "L01-OP020 \u2013 Robo-RFID Pallet Scanner AI-X",
+            "name": "L01-OP020 – Robo-RFID Pallet Scanner AI-X",
+            "customIdentifier": "LINE-01-OP020",
             "type": "ConveyorTransfer",
-            "technology": "Test",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP020",
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-002-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-002-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L01-CONVEYOR-MAIN",
                 "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-CONVEYOR-MAIN",
                 "ip": "192.168.101.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -48,15 +89,35 @@
           },
           {
             "id": "L01-OP030",
-            "name": "L01-OP030 \u2013 Giga-Gluer 2K Thermal Dispenser Bot",
+            "name": "L01-OP030 – Giga-Gluer 2K Thermal Dispenser Bot",
+            "customIdentifier": "LINE-01-OP030",
             "type": "Dispenser",
             "technology": "Dispensing",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP030",
+            "cycleTimeTargetS": 23,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "VALVE-TERMINAL",
+                "name": "Festo VTUG Multi-Valve Terminal 16X",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-003-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-PLC-RUNTIME",
+                "name": "Beckhoff TwinCAT 3 PLC Runtime License",
+                "category": "SoftwareRuntime",
+                "serialNumber": "SN-SYNTH-CMP-003-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L01-OP030-DEDICATED",
                 "hostname": "IPC-L01-OP030-DEDICATED",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-OP030-DEDICATED",
                 "ip": "192.168.101.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
@@ -67,24 +128,74 @@
           },
           {
             "id": "L01-OP040",
-            "name": "L01-OP040 \u2013 Auto-Bolt Torquinator 3000",
+            "name": "L01-OP040 – Auto-Bolt Torquinator 3000",
+            "customIdentifier": "LINE-01-OP040",
             "type": "FasteningStation",
             "technology": "Fastening",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP040",
-            "pcs": []
-          },
-          {
-            "id": "L01-OP050",
-            "name": "L01-OP050 \u2013 Pallet-Lift Elevator Mech-Tron",
-            "type": "ConveyorTransfer",
-            "technology": "Assembly",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L01-OP050",
+            "cycleTimeTargetS": 19,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-004-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-004-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L01-CONVEYOR-MAIN",
                 "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-CONVEYOR-MAIN",
+                "ip": "192.168.101.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
+          },
+          {
+            "id": "L01-OP050",
+            "name": "L01-OP050 – Pallet-Lift Elevator Mech-Tron",
+            "customIdentifier": "LINE-01-OP050",
+            "type": "ConveyorTransfer",
+            "technology": "Assembly",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L01-OP050",
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-005-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-005-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L01-CONVEYOR-MAIN",
+                "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-CONVEYOR-MAIN",
                 "ip": "192.168.101.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -95,15 +206,35 @@
           },
           {
             "id": "L01-OP060",
-            "name": "L01-OP060 \u2013 Laser-Zapper Seam Welder Omni-9",
+            "name": "L01-OP060 – Laser-Zapper Seam Welder Omni-9",
+            "customIdentifier": "LINE-01-OP060",
             "type": "LaserWelder",
             "technology": "Welding",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP060",
+            "cycleTimeTargetS": 34,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "LASER-OPTIC",
+                "name": "Trumpf BEO D70 Laser Focus Optic Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-006-1"
+              },
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-006-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L01-OP060-PLC",
                 "hostname": "IPC-L01-OP060-PLC",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-OP060-PLC",
                 "ip": "192.168.101.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
@@ -113,6 +244,8 @@
               {
                 "id": "IPC-L01-OP060-VISION",
                 "hostname": "IPC-L01-OP060-VISION",
+                "role": "Vision",
+                "machineIdentifier": "HW-IPC-L01-OP060-VISION",
                 "ip": "192.168.101.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -122,6 +255,8 @@
               {
                 "id": "IPC-L01-OP060-MES-GATE",
                 "hostname": "IPC-L01-OP060-MES-GATE",
+                "role": "Gateway",
+                "machineIdentifier": "HW-IPC-L01-OP060-MES-GATE",
                 "ip": "192.168.101.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
@@ -132,24 +267,74 @@
           },
           {
             "id": "L01-OP070",
-            "name": "L01-OP070 \u2013 High-Voltage Sparky Insulation Tester",
+            "name": "L01-OP070 – High-Voltage Sparky Insulation Tester",
+            "customIdentifier": "LINE-01-OP070",
             "type": "EOLTester",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP070",
-            "pcs": []
+            "cycleTimeTargetS": 48,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-007-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-007-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L01-CONVEYOR-MAIN",
+                "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-CONVEYOR-MAIN",
+                "ip": "192.168.101.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L01-OP080",
-            "name": "L01-OP080 \u2013 Cell-Loader Gantry Manipulator AI",
+            "name": "L01-OP080 – Cell-Loader Gantry Manipulator AI",
+            "customIdentifier": "LINE-01-OP080",
             "type": "RobotCell",
             "technology": "Robotics",
             "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP080",
+            "cycleTimeTargetS": 30,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-008-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-008-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L01-ROB-ALPHA",
                 "hostname": "IPC-L01-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-ROB-ALPHA",
                 "ip": "192.168.101.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -159,6 +344,8 @@
               {
                 "id": "IPC-L01-ROB-BETA",
                 "hostname": "IPC-L01-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L01-ROB-BETA",
                 "ip": "192.168.101.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -169,15 +356,35 @@
           },
           {
             "id": "L01-OP090",
-            "name": "L01-OP090 \u2013 Deep-Vision AOI Flaw-Finder 4000",
+            "name": "L01-OP090 – Deep-Vision AOI Flaw-Finder 4000",
+            "customIdentifier": "LINE-01-OP090",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP090",
+            "cycleTimeTargetS": 8,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-009-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-009-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L01-ROB-ALPHA",
                 "hostname": "IPC-L01-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-ROB-ALPHA",
                 "ip": "192.168.101.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -187,6 +394,8 @@
               {
                 "id": "IPC-L01-ROB-BETA",
                 "hostname": "IPC-L01-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L01-ROB-BETA",
                 "ip": "192.168.101.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -197,50 +406,161 @@
           },
           {
             "id": "L01-OP100",
-            "name": "L01-OP100 \u2013 Multi-Spindle Cover Fastener Cyber",
+            "name": "L01-OP100 – Multi-Spindle Cover Fastener Cyber",
+            "customIdentifier": "LINE-01-OP100",
             "type": "FasteningStation",
             "technology": "Fastening",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP100",
-            "pcs": []
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-010-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-010-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L01-CONVEYOR-MAIN",
+                "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-CONVEYOR-MAIN",
+                "ip": "192.168.101.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L01-OP110",
-            "name": "L01-OP110 \u2013 Pallet Accumulator Buffer Loop-1",
+            "name": "L01-OP110 – Pallet Accumulator Buffer Loop-1",
+            "customIdentifier": "LINE-01-OP110",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP110",
-            "pcs": []
+            "cycleTimeTargetS": 15,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-011-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-011-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L01-CONVEYOR-MAIN",
+                "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-CONVEYOR-MAIN",
+                "ip": "192.168.101.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L01-OP120",
-            "name": "L01-OP120 \u2013 Outfeed Barcode Check & Gate Bot",
+            "name": "L01-OP120 – Outfeed Barcode Check & Gate Bot",
+            "customIdentifier": "LINE-01-OP120",
             "type": "ConveyorTransfer",
-            "technology": "Test",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L01-OP120",
-            "pcs": []
+            "cycleTimeTargetS": 18,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-012-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-012-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L01-CONVEYOR-MAIN",
+                "hostname": "IPC-L01-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L01-CONVEYOR-MAIN",
+                "ip": "192.168.101.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line01_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           }
         ]
       },
       {
         "id": "org-line-02",
+        "code": "L02",
         "line_num": 2,
-        "name": "Line 02 \u2013 Synthetic Audi Battery Pack Line (AI Sim)",
+        "name": "Line 02 – Synthetic Audi Battery Pack Line (AI Sim)",
         "tech": "Assembly",
         "stations": [
           {
             "id": "L02-OP010",
-            "name": "L02-OP010 \u2013 Pack-Tray Roller Infeed Infeed-Bot",
+            "name": "L02-OP010 – Pack-Tray Roller Infeed Infeed-Bot",
+            "customIdentifier": "LINE-02-OP010",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP010",
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-013-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-013-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L02-CONVEYOR-MAIN",
                 "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
                 "ip": "192.168.102.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -251,15 +571,35 @@
           },
           {
             "id": "L02-OP020",
-            "name": "L02-OP020 \u2013 Cooling-Plate Adhesive Applicator AI",
+            "name": "L02-OP020 – Cooling-Plate Adhesive Applicator AI",
+            "customIdentifier": "LINE-02-OP020",
             "type": "Dispenser",
             "technology": "Dispensing",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP020",
+            "cycleTimeTargetS": 22,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "VALVE-TERMINAL",
+                "name": "Festo VTUG Multi-Valve Terminal 16X",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-014-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-PLC-RUNTIME",
+                "name": "Beckhoff TwinCAT 3 PLC Runtime License",
+                "category": "SoftwareRuntime",
+                "serialNumber": "SN-SYNTH-CMP-014-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L02-CONVEYOR-MAIN",
                 "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
                 "ip": "192.168.102.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -270,15 +610,35 @@
           },
           {
             "id": "L02-OP030",
-            "name": "L02-OP030 \u2013 Heavy-Module Unload Robot Gantry 1",
+            "name": "L02-OP030 – Heavy-Module Unload Robot Gantry 1",
+            "customIdentifier": "LINE-02-OP030",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Vision & Photons (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP030",
+            "cycleTimeTargetS": 31,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-015-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-015-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L02-OP030-DEDICATED",
                 "hostname": "IPC-L02-OP030-DEDICATED",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-OP030-DEDICATED",
                 "ip": "192.168.102.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
@@ -289,24 +649,74 @@
           },
           {
             "id": "L02-OP040",
-            "name": "L02-OP040 \u2013 Dual-Arm Battery Tray Inserter Mech",
+            "name": "L02-OP040 – Dual-Arm Battery Tray Inserter Mech",
+            "customIdentifier": "LINE-02-OP040",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP040",
-            "pcs": []
-          },
-          {
-            "id": "L02-OP050",
-            "name": "L02-OP050 \u2013 Busbar Torque Tightening Station 8X",
-            "type": "FasteningStation",
-            "technology": "Fastening",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L02-OP050",
+            "cycleTimeTargetS": 28,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-016-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-016-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L02-CONVEYOR-MAIN",
                 "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.102.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
+          },
+          {
+            "id": "L02-OP050",
+            "name": "L02-OP050 – Busbar Torque Tightening Station 8X",
+            "customIdentifier": "LINE-02-OP050",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L02-OP050",
+            "cycleTimeTargetS": 19,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-017-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-017-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
                 "ip": "192.168.102.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -317,15 +727,35 @@
           },
           {
             "id": "L02-OP060",
-            "name": "L02-OP060 \u2013 Laser Seam Seal Chamber Hermetic-X",
+            "name": "L02-OP060 – Laser Seam Seal Chamber Hermetic-X",
+            "customIdentifier": "LINE-02-OP060",
             "type": "LaserWelder",
             "technology": "Welding",
-            "team": "Vision & Photons (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP060",
+            "cycleTimeTargetS": 37,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "LASER-OPTIC",
+                "name": "Trumpf BEO D70 Laser Focus Optic Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-018-1"
+              },
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-018-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L02-OP060-PLC",
                 "hostname": "IPC-L02-OP060-PLC",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-OP060-PLC",
                 "ip": "192.168.102.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
@@ -335,6 +765,8 @@
               {
                 "id": "IPC-L02-OP060-VISION",
                 "hostname": "IPC-L02-OP060-VISION",
+                "role": "Vision",
+                "machineIdentifier": "HW-IPC-L02-OP060-VISION",
                 "ip": "192.168.102.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -344,6 +776,8 @@
               {
                 "id": "IPC-L02-OP060-MES-GATE",
                 "hostname": "IPC-L02-OP060-MES-GATE",
+                "role": "Gateway",
+                "machineIdentifier": "HW-IPC-L02-OP060-MES-GATE",
                 "ip": "192.168.102.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
@@ -354,24 +788,74 @@
           },
           {
             "id": "L02-OP070",
-            "name": "L02-OP070 \u2013 Laser Bead Profilometer Checker AI",
+            "name": "L02-OP070 – Laser Bead Profilometer Checker AI",
+            "customIdentifier": "LINE-02-OP070",
             "type": "VisionInspection",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP070",
-            "pcs": []
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-019-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-019-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.102.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L02-OP080",
-            "name": "L02-OP080 \u2013 Helium Leak Sniffer Chamber Zero-P",
+            "name": "L02-OP080 – Helium Leak Sniffer Chamber Zero-P",
+            "customIdentifier": "LINE-02-OP080",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP080",
+            "cycleTimeTargetS": 43,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-020-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-020-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L02-ROB-ALPHA",
                 "hostname": "IPC-L02-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-ROB-ALPHA",
                 "ip": "192.168.102.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -381,6 +865,8 @@
               {
                 "id": "IPC-L02-ROB-BETA",
                 "hostname": "IPC-L02-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L02-ROB-BETA",
                 "ip": "192.168.102.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -391,15 +877,35 @@
           },
           {
             "id": "L02-OP090",
-            "name": "L02-OP090 \u2013 Pack Lid Structural Servo Press 50kN",
+            "name": "L02-OP090 – Pack Lid Structural Servo Press 50kN",
+            "customIdentifier": "LINE-02-OP090",
             "type": "ServoPress",
             "technology": "Fastening",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP090",
+            "cycleTimeTargetS": 22,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "PRESS-DRIVE",
+                "name": "TOX ElectricDrive 50kN Servo Press Drive",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-021-1"
+              },
+              {
+                "slot": "GANTRY-Z-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-021-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L02-ROB-ALPHA",
                 "hostname": "IPC-L02-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-ROB-ALPHA",
                 "ip": "192.168.102.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -409,6 +915,8 @@
               {
                 "id": "IPC-L02-ROB-BETA",
                 "hostname": "IPC-L02-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L02-ROB-BETA",
                 "ip": "192.168.102.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -419,59 +927,200 @@
           },
           {
             "id": "L02-OP100",
-            "name": "L02-OP100 \u2013 Perimeter Hex Bolt Nutrunner Gantry",
+            "name": "L02-OP100 – Perimeter Hex Bolt Nutrunner Gantry",
+            "customIdentifier": "LINE-02-OP100",
             "type": "FasteningStation",
             "technology": "Fastening",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP100",
-            "pcs": []
+            "cycleTimeTargetS": 20,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-022-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-022-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.102.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L02-OP110",
-            "name": "L02-OP110 \u2013 Optical Topographic Seal Inspector",
+            "name": "L02-OP110 – Optical Topographic Seal Inspector",
+            "customIdentifier": "LINE-02-OP110",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP110",
-            "pcs": []
+            "cycleTimeTargetS": 10,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-023-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-023-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.102.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L02-OP120",
-            "name": "L02-OP120 \u2013 Final Pack Discharge Pallet Elevator",
+            "name": "L02-OP120 – Final Pack Discharge Pallet Elevator",
+            "customIdentifier": "LINE-02-OP120",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
             "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP120",
-            "pcs": []
+            "cycleTimeTargetS": 16,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-024-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-024-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.102.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L02-OP130",
-            "name": "L02-OP130 \u2013 Battery Pack EOL High-Voltage Gate",
+            "name": "L02-OP130 – Battery Pack EOL High-Voltage Gate",
+            "customIdentifier": "LINE-02-OP130",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L02-OP130",
-            "pcs": []
+            "cycleTimeTargetS": 42,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-025-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-025-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L02-CONVEYOR-MAIN",
+                "hostname": "IPC-L02-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L02-CONVEYOR-MAIN",
+                "ip": "192.168.102.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line02_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           }
         ]
       },
       {
         "id": "org-line-03",
+        "code": "L03",
         "line_num": 3,
-        "name": "Line 03 \u2013 Synthetic Audi Powertrain Line (AI Sim)",
+        "name": "Line 03 – Synthetic Audi Powertrain Line (AI Sim)",
         "tech": "Assembly",
         "stations": [
           {
             "id": "L03-OP010",
-            "name": "L03-OP010 \u2013 Hairpin Stator Raw Infeed Track",
+            "name": "L03-OP010 – Hairpin Stator Raw Infeed Track",
+            "customIdentifier": "LINE-03-OP010",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP010",
+            "cycleTimeTargetS": 16,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-026-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-026-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L03-CONVEYOR-MAIN",
                 "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-CONVEYOR-MAIN",
                 "ip": "192.168.103.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -482,15 +1131,35 @@
           },
           {
             "id": "L03-OP020",
-            "name": "L03-OP020 \u2013 Precision Stator Iron Core Press 80kN",
+            "name": "L03-OP020 – Precision Stator Iron Core Press 80kN",
+            "customIdentifier": "LINE-03-OP020",
             "type": "ServoPress",
             "technology": "Assembly",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP020",
+            "cycleTimeTargetS": 23,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "PRESS-DRIVE",
+                "name": "TOX ElectricDrive 50kN Servo Press Drive",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-027-1"
+              },
+              {
+                "slot": "GANTRY-Z-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-027-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L03-CONVEYOR-MAIN",
                 "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-CONVEYOR-MAIN",
                 "ip": "192.168.103.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -501,15 +1170,35 @@
           },
           {
             "id": "L03-OP030",
-            "name": "L03-OP030 \u2013 Hairpin Wire Crown Insertion Robot",
+            "name": "L03-OP030 – Hairpin Wire Crown Insertion Robot",
+            "customIdentifier": "LINE-03-OP030",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP030",
+            "cycleTimeTargetS": 27,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-028-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-028-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L03-OP030-DEDICATED",
                 "hostname": "IPC-L03-OP030-DEDICATED",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-OP030-DEDICATED",
                 "ip": "192.168.103.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
@@ -520,24 +1209,74 @@
           },
           {
             "id": "L03-OP040",
-            "name": "L03-OP040 \u2013 Crown Head Twist & Chamfer Tooling",
+            "name": "L03-OP040 – Crown Head Twist & Chamfer Tooling",
+            "customIdentifier": "LINE-03-OP040",
             "type": "FasteningStation",
             "technology": "Fastening",
-            "team": "Platform Operations (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L03-OP040",
-            "pcs": []
-          },
-          {
-            "id": "L03-OP050",
-            "name": "L03-OP050 \u2013 Rotor Shaft Cryogenic Insertion Press",
-            "type": "ServoPress",
-            "technology": "Assembly",
             "team": "Tooling & Mechanoids (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L03-OP050",
+            "pinnedObjectHandle": "L03-OP040",
+            "cycleTimeTargetS": 19,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-029-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-029-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L03-CONVEYOR-MAIN",
                 "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-CONVEYOR-MAIN",
+                "ip": "192.168.103.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
+          },
+          {
+            "id": "L03-OP050",
+            "name": "L03-OP050 – Rotor Shaft Cryogenic Insertion Press",
+            "customIdentifier": "LINE-03-OP050",
+            "type": "ServoPress",
+            "technology": "Assembly",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L03-OP050",
+            "cycleTimeTargetS": 19,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "PRESS-DRIVE",
+                "name": "TOX ElectricDrive 50kN Servo Press Drive",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-030-1"
+              },
+              {
+                "slot": "GANTRY-Z-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-030-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L03-CONVEYOR-MAIN",
+                "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-CONVEYOR-MAIN",
                 "ip": "192.168.103.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -548,15 +1287,35 @@
           },
           {
             "id": "L03-OP060",
-            "name": "L03-OP060 \u2013 Trickle Resin Trickler & Varnish Bot",
+            "name": "L03-OP060 – Trickle Resin Trickler & Varnish Bot",
+            "customIdentifier": "LINE-03-OP060",
             "type": "Dispenser",
             "technology": "Dispensing",
-            "team": "Vision & Photons (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP060",
+            "cycleTimeTargetS": 24,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "VALVE-TERMINAL",
+                "name": "Festo VTUG Multi-Valve Terminal 16X",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-031-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-PLC-RUNTIME",
+                "name": "Beckhoff TwinCAT 3 PLC Runtime License",
+                "category": "SoftwareRuntime",
+                "serialNumber": "SN-SYNTH-CMP-031-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L03-OP060-PLC",
                 "hostname": "IPC-L03-OP060-PLC",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-OP060-PLC",
                 "ip": "192.168.103.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
@@ -566,6 +1325,8 @@
               {
                 "id": "IPC-L03-OP060-VISION",
                 "hostname": "IPC-L03-OP060-VISION",
+                "role": "Vision",
+                "machineIdentifier": "HW-IPC-L03-OP060-VISION",
                 "ip": "192.168.103.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -575,6 +1336,8 @@
               {
                 "id": "IPC-L03-OP060-MES-GATE",
                 "hostname": "IPC-L03-OP060-MES-GATE",
+                "role": "Gateway",
+                "machineIdentifier": "HW-IPC-L03-OP060-MES-GATE",
                 "ip": "192.168.103.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
@@ -585,24 +1348,74 @@
           },
           {
             "id": "L03-OP070",
-            "name": "L03-OP070 \u2013 Infrared Resin Curing Tunnel EOL",
+            "name": "L03-OP070 – Infrared Resin Curing Tunnel EOL",
+            "customIdentifier": "LINE-03-OP070",
             "type": "EOLTester",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP070",
-            "pcs": []
+            "cycleTimeTargetS": 42,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-032-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-032-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L03-CONVEYOR-MAIN",
+                "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-CONVEYOR-MAIN",
+                "ip": "192.168.103.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L03-OP080",
-            "name": "L03-OP080 \u2013 High-Speed Dynamic Balancing Rig 3D",
+            "name": "L03-OP080 – High-Speed Dynamic Balancing Rig 3D",
+            "customIdentifier": "LINE-03-OP080",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP080",
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-033-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-033-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L03-ROB-ALPHA",
                 "hostname": "IPC-L03-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-ROB-ALPHA",
                 "ip": "192.168.103.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -612,6 +1425,8 @@
               {
                 "id": "IPC-L03-ROB-BETA",
                 "hostname": "IPC-L03-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L03-ROB-BETA",
                 "ip": "192.168.103.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -622,15 +1437,35 @@
           },
           {
             "id": "L03-OP090",
-            "name": "L03-OP090 \u2013 End-Shield Bearing Fastener Torquer",
+            "name": "L03-OP090 – End-Shield Bearing Fastener Torquer",
+            "customIdentifier": "LINE-03-OP090",
             "type": "FasteningStation",
             "technology": "Fastening",
-            "team": "Vision & Photons (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP090",
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-034-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-034-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L03-ROB-ALPHA",
                 "hostname": "IPC-L03-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-ROB-ALPHA",
                 "ip": "192.168.103.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -640,6 +1475,8 @@
               {
                 "id": "IPC-L03-ROB-BETA",
                 "hostname": "IPC-L03-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L03-ROB-BETA",
                 "ip": "192.168.103.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -650,50 +1487,161 @@
           },
           {
             "id": "L03-OP100",
-            "name": "L03-OP100 \u2013 Stator Rotor Magnetization Gate AI",
+            "name": "L03-OP100 – Stator Rotor Magnetization Gate AI",
+            "customIdentifier": "LINE-03-OP100",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Vision & Photons (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP100",
-            "pcs": []
+            "cycleTimeTargetS": 26,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-035-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-035-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L03-CONVEYOR-MAIN",
+                "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-CONVEYOR-MAIN",
+                "ip": "192.168.103.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L03-OP110",
-            "name": "L03-OP110 \u2013 Powertrain Conveyor Turn-Table Loop",
+            "name": "L03-OP110 – Powertrain Conveyor Turn-Table Loop",
+            "customIdentifier": "LINE-03-OP110",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP110",
-            "pcs": []
+            "cycleTimeTargetS": 15,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-036-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-036-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L03-CONVEYOR-MAIN",
+                "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-CONVEYOR-MAIN",
+                "ip": "192.168.103.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L03-OP120",
-            "name": "L03-OP120 \u2013 Powertrain Full Dynamometer Dyno-X",
+            "name": "L03-OP120 – Powertrain Full Dynamometer Dyno-X",
+            "customIdentifier": "LINE-03-OP120",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L03-OP120",
-            "pcs": []
+            "cycleTimeTargetS": 46,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-037-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-037-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L03-CONVEYOR-MAIN",
+                "hostname": "IPC-L03-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L03-CONVEYOR-MAIN",
+                "ip": "192.168.103.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line03_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           }
         ]
       },
       {
         "id": "org-line-04",
+        "code": "L04",
         "line_num": 4,
-        "name": "Line 04 \u2013 Synthetic Electronics SMT Placement (AI Sim)",
+        "name": "Line 04 – Synthetic Electronics SMT Placement (AI Sim)",
         "tech": "SMT",
         "stations": [
           {
             "id": "L04-OP010",
-            "name": "L04-OP010 \u2013 SMT Magazine Unloader Pallet Shuttle",
+            "name": "L04-OP010 – SMT Magazine Unloader Pallet Shuttle",
+            "customIdentifier": "LINE-04-OP010",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP010",
+            "cycleTimeTargetS": 15,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-038-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-038-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L04-CONVEYOR-MAIN",
                 "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
                 "ip": "192.168.104.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -704,15 +1652,35 @@
           },
           {
             "id": "L04-OP020",
-            "name": "L04-OP020 \u2013 DEK Solder Paste Jet Printer 0.1mm",
+            "name": "L04-OP020 – DEK Solder Paste Jet Printer 0.1mm",
+            "customIdentifier": "LINE-04-OP020",
             "type": "VisionInspection",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP020",
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-039-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-039-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L04-CONVEYOR-MAIN",
                 "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
                 "ip": "192.168.104.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -723,15 +1691,35 @@
           },
           {
             "id": "L04-OP030",
-            "name": "L04-OP030 \u2013 Koh Young 3D Solder Paste Inspector",
+            "name": "L04-OP030 – Koh Young 3D Solder Paste Inspector",
+            "customIdentifier": "LINE-04-OP030",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP030",
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-040-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-040-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L04-OP030-DEDICATED",
                 "hostname": "IPC-L04-OP030-DEDICATED",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-OP030-DEDICATED",
                 "ip": "192.168.104.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
@@ -742,24 +1730,74 @@
           },
           {
             "id": "L04-OP040",
-            "name": "L04-OP040 \u2013 Siplace Dual-Gantry Chip Shooter AI",
+            "name": "L04-OP040 – Siplace Dual-Gantry Chip Shooter AI",
+            "customIdentifier": "LINE-04-OP040",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP040",
-            "pcs": []
-          },
-          {
-            "id": "L04-OP050",
-            "name": "L04-OP050 \u2013 Odd-Form Component Inserter Gantry",
-            "type": "Dispenser",
-            "technology": "Dispensing",
-            "team": "Vision & Photons (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L04-OP050",
+            "cycleTimeTargetS": 27,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-041-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-041-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L04-CONVEYOR-MAIN",
                 "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.104.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
+          },
+          {
+            "id": "L04-OP050",
+            "name": "L04-OP050 – Odd-Form Component Inserter Gantry",
+            "customIdentifier": "LINE-04-OP050",
+            "type": "Dispenser",
+            "technology": "Dispensing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L04-OP050",
+            "cycleTimeTargetS": 22,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "VALVE-TERMINAL",
+                "name": "Festo VTUG Multi-Valve Terminal 16X",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-042-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-PLC-RUNTIME",
+                "name": "Beckhoff TwinCAT 3 PLC Runtime License",
+                "category": "SoftwareRuntime",
+                "serialNumber": "SN-SYNTH-CMP-042-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
                 "ip": "192.168.104.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -770,15 +1808,35 @@
           },
           {
             "id": "L04-OP060",
-            "name": "L04-OP060 \u2013 Pre-Reflow 3D Optical Vision Checker",
+            "name": "L04-OP060 – Pre-Reflow 3D Optical Vision Checker",
+            "customIdentifier": "LINE-04-OP060",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP060",
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-043-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-043-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L04-OP060-PLC",
                 "hostname": "IPC-L04-OP060-PLC",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-OP060-PLC",
                 "ip": "192.168.104.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
@@ -788,6 +1846,8 @@
               {
                 "id": "IPC-L04-OP060-VISION",
                 "hostname": "IPC-L04-OP060-VISION",
+                "role": "Vision",
+                "machineIdentifier": "HW-IPC-L04-OP060-VISION",
                 "ip": "192.168.104.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -797,6 +1857,8 @@
               {
                 "id": "IPC-L04-OP060-MES-GATE",
                 "hostname": "IPC-L04-OP060-MES-GATE",
+                "role": "Gateway",
+                "machineIdentifier": "HW-IPC-L04-OP060-MES-GATE",
                 "ip": "192.168.104.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
@@ -807,24 +1869,74 @@
           },
           {
             "id": "L04-OP070",
-            "name": "L04-OP070 \u2013 10-Zone Nitrogen Reflow Convection Oven",
+            "name": "L04-OP070 – 10-Zone Nitrogen Reflow Convection Oven",
+            "customIdentifier": "LINE-04-OP070",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP070",
-            "pcs": []
+            "cycleTimeTargetS": 48,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-044-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-044-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.104.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L04-OP080",
-            "name": "L04-OP080 \u2013 Post-Reflow Automated Optical Inspector",
+            "name": "L04-OP080 – Post-Reflow Automated Optical Inspector",
+            "customIdentifier": "LINE-04-OP080",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP080",
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-045-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-045-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L04-ROB-ALPHA",
                 "hostname": "IPC-L04-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-ROB-ALPHA",
                 "ip": "192.168.104.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -834,6 +1946,8 @@
               {
                 "id": "IPC-L04-ROB-BETA",
                 "hostname": "IPC-L04-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L04-ROB-BETA",
                 "ip": "192.168.104.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -844,15 +1958,35 @@
           },
           {
             "id": "L04-OP090",
-            "name": "L04-OP090 \u2013 Flying-Probe ICT Circuit Board Tester",
+            "name": "L04-OP090 – Flying-Probe ICT Circuit Board Tester",
+            "customIdentifier": "LINE-04-OP090",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP090",
+            "cycleTimeTargetS": 41,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-046-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-046-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L04-ROB-ALPHA",
                 "hostname": "IPC-L04-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-ROB-ALPHA",
                 "ip": "192.168.104.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -862,6 +1996,8 @@
               {
                 "id": "IPC-L04-ROB-BETA",
                 "hostname": "IPC-L04-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L04-ROB-BETA",
                 "ip": "192.168.104.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -872,59 +2008,200 @@
           },
           {
             "id": "L04-OP100",
-            "name": "L04-OP100 \u2013 Selective Wave Solder Mini-Pot Bot",
+            "name": "L04-OP100 – Selective Wave Solder Mini-Pot Bot",
+            "customIdentifier": "LINE-04-OP100",
             "type": "FasteningStation",
             "technology": "Welding",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP100",
-            "pcs": []
+            "cycleTimeTargetS": 20,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-047-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-047-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.104.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L04-OP110",
-            "name": "L04-OP110 \u2013 Conformal Coating UV Dispenser Booth",
+            "name": "L04-OP110 – Conformal Coating UV Dispenser Booth",
+            "customIdentifier": "LINE-04-OP110",
             "type": "Dispenser",
             "technology": "Dispensing",
-            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP110",
-            "pcs": []
+            "cycleTimeTargetS": 21,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "VALVE-TERMINAL",
+                "name": "Festo VTUG Multi-Valve Terminal 16X",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-048-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-PLC-RUNTIME",
+                "name": "Beckhoff TwinCAT 3 PLC Runtime License",
+                "category": "SoftwareRuntime",
+                "serialNumber": "SN-SYNTH-CMP-048-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.104.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L04-OP120",
-            "name": "L04-OP120 \u2013 UV Cure Inspection Tunnel & Camera",
+            "name": "L04-OP120 – UV Cure Inspection Tunnel & Camera",
+            "customIdentifier": "LINE-04-OP120",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP120",
-            "pcs": []
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-049-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-049-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.104.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L04-OP130",
-            "name": "L04-OP130 \u2013 PCB Depaneling Laser Router Outfeed",
+            "name": "L04-OP130 – PCB Depaneling Laser Router Outfeed",
+            "customIdentifier": "LINE-04-OP130",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "team": "SMT & Microchips (Synthetic AI Guild)",
             "pinnedObjectHandle": "L04-OP130",
-            "pcs": []
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-050-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-050-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L04-CONVEYOR-MAIN",
+                "hostname": "IPC-L04-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L04-CONVEYOR-MAIN",
+                "ip": "192.168.104.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line04_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           }
         ]
       },
       {
         "id": "org-line-05",
+        "code": "L05",
         "line_num": 5,
-        "name": "Line 05 \u2013 Synthetic Body-in-White Robotic Welding (AI Sim)",
+        "name": "Line 05 – Synthetic Body-in-White Robotic Welding (AI Sim)",
         "tech": "Welding",
         "stations": [
           {
             "id": "L05-OP010",
-            "name": "L05-OP010 \u2013 Subframe Clamping Jig Shuttle Table",
+            "name": "L05-OP010 – Subframe Clamping Jig Shuttle Table",
+            "customIdentifier": "LINE-05-OP010",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP010",
+            "cycleTimeTargetS": 16,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-051-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-051-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L05-CONVEYOR-MAIN",
                 "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-CONVEYOR-MAIN",
                 "ip": "192.168.105.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -935,15 +2212,35 @@
           },
           {
             "id": "L05-OP020",
-            "name": "L05-OP020 \u2013 Heavy Spot-Welding Robot Titan-01",
+            "name": "L05-OP020 – Heavy Spot-Welding Robot Titan-01",
+            "customIdentifier": "LINE-05-OP020",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP020",
+            "cycleTimeTargetS": 31,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-052-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-052-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L05-CONVEYOR-MAIN",
                 "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-CONVEYOR-MAIN",
                 "ip": "192.168.105.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -954,15 +2251,35 @@
           },
           {
             "id": "L05-OP030",
-            "name": "L05-OP030 \u2013 Trumpf Disk Laser Welding Chamber A",
+            "name": "L05-OP030 – Trumpf Disk Laser Welding Chamber A",
+            "customIdentifier": "LINE-05-OP030",
             "type": "LaserWelder",
             "technology": "Welding",
             "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP030",
+            "cycleTimeTargetS": 33,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "LASER-OPTIC",
+                "name": "Trumpf BEO D70 Laser Focus Optic Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-053-1"
+              },
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-053-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L05-OP030-DEDICATED",
                 "hostname": "IPC-L05-OP030-DEDICATED",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-OP030-DEDICATED",
                 "ip": "192.168.105.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
@@ -973,24 +2290,74 @@
           },
           {
             "id": "L05-OP040",
-            "name": "L05-OP040 \u2013 Robotic Stud Welding Manipulator B",
+            "name": "L05-OP040 – Robotic Stud Welding Manipulator B",
+            "customIdentifier": "LINE-05-OP040",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP040",
-            "pcs": []
-          },
-          {
-            "id": "L05-OP050",
-            "name": "L05-OP050 \u2013 Blind Rivet Nut Insertion Screwer",
-            "type": "FasteningStation",
-            "technology": "Fastening",
-            "team": "Platform Operations (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L05-OP050",
+            "cycleTimeTargetS": 31,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-054-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-054-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L05-CONVEYOR-MAIN",
                 "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-CONVEYOR-MAIN",
+                "ip": "192.168.105.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
+          },
+          {
+            "id": "L05-OP050",
+            "name": "L05-OP050 – Blind Rivet Nut Insertion Screwer",
+            "customIdentifier": "LINE-05-OP050",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L05-OP050",
+            "cycleTimeTargetS": 20,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-055-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-055-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L05-CONVEYOR-MAIN",
+                "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-CONVEYOR-MAIN",
                 "ip": "192.168.105.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1001,15 +2368,35 @@
           },
           {
             "id": "L05-OP060",
-            "name": "L05-OP060 \u2013 Laser Seam Geometry Tracker Scanner",
+            "name": "L05-OP060 – Laser Seam Geometry Tracker Scanner",
+            "customIdentifier": "LINE-05-OP060",
             "type": "LaserWelder",
             "technology": "Welding",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP060",
+            "cycleTimeTargetS": 34,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "LASER-OPTIC",
+                "name": "Trumpf BEO D70 Laser Focus Optic Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-056-1"
+              },
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-056-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L05-OP060-PLC",
                 "hostname": "IPC-L05-OP060-PLC",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-OP060-PLC",
                 "ip": "192.168.105.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
@@ -1019,6 +2406,8 @@
               {
                 "id": "IPC-L05-OP060-VISION",
                 "hostname": "IPC-L05-OP060-VISION",
+                "role": "Vision",
+                "machineIdentifier": "HW-IPC-L05-OP060-VISION",
                 "ip": "192.168.105.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1028,6 +2417,8 @@
               {
                 "id": "IPC-L05-OP060-MES-GATE",
                 "hostname": "IPC-L05-OP060-MES-GATE",
+                "role": "Gateway",
+                "machineIdentifier": "HW-IPC-L05-OP060-MES-GATE",
                 "ip": "192.168.105.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
@@ -1038,24 +2429,74 @@
           },
           {
             "id": "L05-OP070",
-            "name": "L05-OP070 \u2013 Optical Body Gap & Flushness Gate",
+            "name": "L05-OP070 – Optical Body Gap & Flushness Gate",
+            "customIdentifier": "LINE-05-OP070",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP070",
-            "pcs": []
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-057-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-057-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L05-CONVEYOR-MAIN",
+                "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-CONVEYOR-MAIN",
+                "ip": "192.168.105.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L05-OP080",
-            "name": "L05-OP080 \u2013 Structural Foam Injection Applicator",
+            "name": "L05-OP080 – Structural Foam Injection Applicator",
+            "customIdentifier": "LINE-05-OP080",
             "type": "Dispenser",
             "technology": "Dispensing",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP080",
+            "cycleTimeTargetS": 23,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "VALVE-TERMINAL",
+                "name": "Festo VTUG Multi-Valve Terminal 16X",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-058-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-PLC-RUNTIME",
+                "name": "Beckhoff TwinCAT 3 PLC Runtime License",
+                "category": "SoftwareRuntime",
+                "serialNumber": "SN-SYNTH-CMP-058-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L05-ROB-ALPHA",
                 "hostname": "IPC-L05-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-ROB-ALPHA",
                 "ip": "192.168.105.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1065,6 +2506,8 @@
               {
                 "id": "IPC-L05-ROB-BETA",
                 "hostname": "IPC-L05-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L05-ROB-BETA",
                 "ip": "192.168.105.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1075,15 +2518,35 @@
           },
           {
             "id": "L05-OP090",
-            "name": "L05-OP090 \u2013 Friction Stir Welder Overhead Unit",
+            "name": "L05-OP090 – Friction Stir Welder Overhead Unit",
+            "customIdentifier": "LINE-05-OP090",
             "type": "FasteningStation",
             "technology": "Welding",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP090",
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-059-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-059-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L05-ROB-ALPHA",
                 "hostname": "IPC-L05-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-ROB-ALPHA",
                 "ip": "192.168.105.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1093,6 +2556,8 @@
               {
                 "id": "IPC-L05-ROB-BETA",
                 "hostname": "IPC-L05-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L05-ROB-BETA",
                 "ip": "192.168.105.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1103,50 +2568,161 @@
           },
           {
             "id": "L05-OP100",
-            "name": "L05-OP100 \u2013 Dual-Robot Seam Finishing Cell",
+            "name": "L05-OP100 – Dual-Robot Seam Finishing Cell",
+            "customIdentifier": "LINE-05-OP100",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP100",
-            "pcs": []
+            "cycleTimeTargetS": 29,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-060-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-060-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L05-CONVEYOR-MAIN",
+                "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-CONVEYOR-MAIN",
+                "ip": "192.168.105.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L05-OP110",
-            "name": "L05-OP110 \u2013 Overhead Transfer Crane Pick Shifter",
+            "name": "L05-OP110 – Overhead Transfer Crane Pick Shifter",
+            "customIdentifier": "LINE-05-OP110",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP110",
-            "pcs": []
+            "cycleTimeTargetS": 15,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-061-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-061-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L05-CONVEYOR-MAIN",
+                "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-CONVEYOR-MAIN",
+                "ip": "192.168.105.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L05-OP120",
-            "name": "L05-OP120 \u2013 Body Shell Dimension Verification Gate",
+            "name": "L05-OP120 – Body Shell Dimension Verification Gate",
+            "customIdentifier": "LINE-05-OP120",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L05-OP120",
-            "pcs": []
+            "cycleTimeTargetS": 10,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-062-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-062-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L05-CONVEYOR-MAIN",
+                "hostname": "IPC-L05-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L05-CONVEYOR-MAIN",
+                "ip": "192.168.105.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line05_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           }
         ]
       },
       {
         "id": "org-line-06",
+        "code": "L06",
         "line_num": 6,
-        "name": "Line 06 \u2013 Synthetic Precision Press Fit (AI Sim)",
+        "name": "Line 06 – Synthetic Precision Press Fit (AI Sim)",
         "tech": "Fastening",
         "stations": [
           {
             "id": "L06-OP010",
-            "name": "L06-OP010 \u2013 Bearing Housing Pallet Shuttle Infeed",
+            "name": "L06-OP010 – Bearing Housing Pallet Shuttle Infeed",
+            "customIdentifier": "LINE-06-OP010",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP010",
+            "cycleTimeTargetS": 18,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-063-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-063-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L06-CONVEYOR-MAIN",
                 "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-CONVEYOR-MAIN",
                 "ip": "192.168.106.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1157,15 +2733,35 @@
           },
           {
             "id": "L06-OP020",
-            "name": "L06-OP020 \u2013 TOX Electric Servo Press 100kN Unit 1",
+            "name": "L06-OP020 – TOX Electric Servo Press 100kN Unit 1",
+            "customIdentifier": "LINE-06-OP020",
             "type": "ServoPress",
             "technology": "Fastening",
             "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP020",
+            "cycleTimeTargetS": 19,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "PRESS-DRIVE",
+                "name": "TOX ElectricDrive 50kN Servo Press Drive",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-064-1"
+              },
+              {
+                "slot": "GANTRY-Z-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-064-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L06-CONVEYOR-MAIN",
                 "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-CONVEYOR-MAIN",
                 "ip": "192.168.106.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1176,15 +2772,35 @@
           },
           {
             "id": "L06-OP030",
-            "name": "L06-OP030 \u2013 Bushing Rotary Feeder & Inserter 2",
+            "name": "L06-OP030 – Bushing Rotary Feeder & Inserter 2",
+            "customIdentifier": "LINE-06-OP030",
             "type": "ServoPress",
             "technology": "Fastening",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP030",
+            "cycleTimeTargetS": 23,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "PRESS-DRIVE",
+                "name": "TOX ElectricDrive 50kN Servo Press Drive",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-065-1"
+              },
+              {
+                "slot": "GANTRY-Z-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-065-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L06-OP030-DEDICATED",
                 "hostname": "IPC-L06-OP030-DEDICATED",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-OP030-DEDICATED",
                 "ip": "192.168.106.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
@@ -1195,24 +2811,74 @@
           },
           {
             "id": "L06-OP040",
-            "name": "L06-OP040 \u2013 Needle Bearing Pick-and-Place Robot",
+            "name": "L06-OP040 – Needle Bearing Pick-and-Place Robot",
+            "customIdentifier": "LINE-06-OP040",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP040",
-            "pcs": []
-          },
-          {
-            "id": "L06-OP050",
-            "name": "L06-OP050 \u2013 Threaded Retainer Torque Tightener",
-            "type": "FasteningStation",
-            "technology": "Fastening",
-            "team": "Controls Engineering (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L06-OP050",
+            "cycleTimeTargetS": 27,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-066-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-066-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L06-CONVEYOR-MAIN",
                 "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-CONVEYOR-MAIN",
+                "ip": "192.168.106.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
+          },
+          {
+            "id": "L06-OP050",
+            "name": "L06-OP050 – Threaded Retainer Torque Tightener",
+            "customIdentifier": "LINE-06-OP050",
+            "type": "FasteningStation",
+            "technology": "Fastening",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L06-OP050",
+            "cycleTimeTargetS": 19,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-067-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-067-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L06-CONVEYOR-MAIN",
+                "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-CONVEYOR-MAIN",
                 "ip": "192.168.106.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1223,15 +2889,35 @@
           },
           {
             "id": "L06-OP060",
-            "name": "L06-OP060 \u2013 High-Precision Pin Press Servo 25kN",
+            "name": "L06-OP060 – High-Precision Pin Press Servo 25kN",
+            "customIdentifier": "LINE-06-OP060",
             "type": "ServoPress",
             "technology": "Fastening",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP060",
+            "cycleTimeTargetS": 19,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "PRESS-DRIVE",
+                "name": "TOX ElectricDrive 50kN Servo Press Drive",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-068-1"
+              },
+              {
+                "slot": "GANTRY-Z-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-068-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L06-OP060-PLC",
                 "hostname": "IPC-L06-OP060-PLC",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-OP060-PLC",
                 "ip": "192.168.106.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
@@ -1241,6 +2927,8 @@
               {
                 "id": "IPC-L06-OP060-VISION",
                 "hostname": "IPC-L06-OP060-VISION",
+                "role": "Vision",
+                "machineIdentifier": "HW-IPC-L06-OP060-VISION",
                 "ip": "192.168.106.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1250,6 +2938,8 @@
               {
                 "id": "IPC-L06-OP060-MES-GATE",
                 "hostname": "IPC-L06-OP060-MES-GATE",
+                "role": "Gateway",
+                "machineIdentifier": "HW-IPC-L06-OP060-MES-GATE",
                 "ip": "192.168.106.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
@@ -1260,24 +2950,74 @@
           },
           {
             "id": "L06-OP070",
-            "name": "L06-OP070 \u2013 Force-Displacement Envelope Monitor",
+            "name": "L06-OP070 – Force-Displacement Envelope Monitor",
+            "customIdentifier": "LINE-06-OP070",
             "type": "VisionInspection",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP070",
-            "pcs": []
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-069-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-069-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L06-CONVEYOR-MAIN",
+                "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-CONVEYOR-MAIN",
+                "ip": "192.168.106.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L06-OP080",
-            "name": "L06-OP080 \u2013 Ultrasonic Crack & Defect Detector",
+            "name": "L06-OP080 – Ultrasonic Crack & Defect Detector",
+            "customIdentifier": "LINE-06-OP080",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Vision & Photons (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP080",
+            "cycleTimeTargetS": 39,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-070-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-070-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L06-ROB-ALPHA",
                 "hostname": "IPC-L06-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-ROB-ALPHA",
                 "ip": "192.168.106.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1287,6 +3027,8 @@
               {
                 "id": "IPC-L06-ROB-BETA",
                 "hostname": "IPC-L06-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L06-ROB-BETA",
                 "ip": "192.168.106.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1297,15 +3039,35 @@
           },
           {
             "id": "L06-OP090",
-            "name": "L06-OP090 \u2013 Circlip Snap-Ring Pneumatic Press",
+            "name": "L06-OP090 – Circlip Snap-Ring Pneumatic Press",
+            "customIdentifier": "LINE-06-OP090",
             "type": "ServoPress",
             "technology": "Fastening",
             "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP090",
+            "cycleTimeTargetS": 21,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "PRESS-DRIVE",
+                "name": "TOX ElectricDrive 50kN Servo Press Drive",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-071-1"
+              },
+              {
+                "slot": "GANTRY-Z-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-071-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L06-ROB-ALPHA",
                 "hostname": "IPC-L06-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-ROB-ALPHA",
                 "ip": "192.168.106.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1315,6 +3077,8 @@
               {
                 "id": "IPC-L06-ROB-BETA",
                 "hostname": "IPC-L06-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L06-ROB-BETA",
                 "ip": "192.168.106.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1325,50 +3089,161 @@
           },
           {
             "id": "L06-OP100",
-            "name": "L06-OP100 \u2013 Bearing Lubricant Micro-Doser 10mg",
+            "name": "L06-OP100 – Bearing Lubricant Micro-Doser 10mg",
+            "customIdentifier": "LINE-06-OP100",
             "type": "Dispenser",
             "technology": "Dispensing",
-            "team": "Vision & Photons (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP100",
-            "pcs": []
+            "cycleTimeTargetS": 24,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "VALVE-TERMINAL",
+                "name": "Festo VTUG Multi-Valve Terminal 16X",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-072-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-PLC-RUNTIME",
+                "name": "Beckhoff TwinCAT 3 PLC Runtime License",
+                "category": "SoftwareRuntime",
+                "serialNumber": "SN-SYNTH-CMP-072-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L06-CONVEYOR-MAIN",
+                "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-CONVEYOR-MAIN",
+                "ip": "192.168.106.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L06-OP110",
-            "name": "L06-OP110 \u2013 Quality Pass Diverter Rejection Gate",
+            "name": "L06-OP110 – Quality Pass Diverter Rejection Gate",
+            "customIdentifier": "LINE-06-OP110",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Vision & Photons (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP110",
-            "pcs": []
+            "cycleTimeTargetS": 18,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-073-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-073-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L06-CONVEYOR-MAIN",
+                "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-CONVEYOR-MAIN",
+                "ip": "192.168.106.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L06-OP120",
-            "name": "L06-OP120 \u2013 Finished Bearing Pallet Packing Station",
+            "name": "L06-OP120 – Finished Bearing Pallet Packing Station",
+            "customIdentifier": "LINE-06-OP120",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L06-OP120",
-            "pcs": []
+            "cycleTimeTargetS": 15,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-074-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-074-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L06-CONVEYOR-MAIN",
+                "hostname": "IPC-L06-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L06-CONVEYOR-MAIN",
+                "ip": "192.168.106.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line06_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           }
         ]
       },
       {
         "id": "org-line-07",
+        "code": "L07",
         "line_num": 7,
-        "name": "Line 07 \u2013 Synthetic Optical Quality Metrology (AI Sim)",
-        "tech": "Test",
+        "name": "Line 07 – Synthetic Optical Quality Metrology (AI Sim)",
+        "tech": "Testing",
         "stations": [
           {
             "id": "L07-OP010",
-            "name": "L07-OP010 \u2013 Inspection Pallet Indexing Rotary Bed",
+            "name": "L07-OP010 – Inspection Pallet Indexing Rotary Bed",
+            "customIdentifier": "LINE-07-OP010",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP010",
+            "cycleTimeTargetS": 15,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-075-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-075-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L07-CONVEYOR-MAIN",
                 "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
                 "ip": "192.168.107.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1379,15 +3254,35 @@
           },
           {
             "id": "L07-OP020",
-            "name": "L07-OP020 \u2013 Telecentric 50MP Multi-Angle Booth",
+            "name": "L07-OP020 – Telecentric 50MP Multi-Angle Booth",
+            "customIdentifier": "LINE-07-OP020",
             "type": "VisionInspection",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP020",
+            "cycleTimeTargetS": 8,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-076-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-076-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L07-CONVEYOR-MAIN",
                 "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
                 "ip": "192.168.107.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1398,15 +3293,35 @@
           },
           {
             "id": "L07-OP030",
-            "name": "L07-OP030 \u2013 Laser Line Profilometer 3D Surface AI",
+            "name": "L07-OP030 – Laser Line Profilometer 3D Surface AI",
+            "customIdentifier": "LINE-07-OP030",
             "type": "VisionInspection",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP030",
+            "cycleTimeTargetS": 10,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-077-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-077-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L07-OP030-DEDICATED",
                 "hostname": "IPC-L07-OP030-DEDICATED",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-OP030-DEDICATED",
                 "ip": "192.168.107.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
@@ -1417,24 +3332,74 @@
           },
           {
             "id": "L07-OP040",
-            "name": "L07-OP040 \u2013 Surface Roughness Tactile Probing Arm",
+            "name": "L07-OP040 – Surface Roughness Tactile Probing Arm",
+            "customIdentifier": "LINE-07-OP040",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP040",
-            "pcs": []
-          },
-          {
-            "id": "L07-OP050",
-            "name": "L07-OP050 \u2013 Specular Reflectance Defect Scanner",
-            "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Platform Operations (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L07-OP050",
+            "cycleTimeTargetS": 27,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-078-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-078-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L07-CONVEYOR-MAIN",
                 "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.107.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
+          },
+          {
+            "id": "L07-OP050",
+            "name": "L07-OP050 – Specular Reflectance Defect Scanner",
+            "customIdentifier": "LINE-07-OP050",
+            "type": "VisionInspection",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L07-OP050",
+            "cycleTimeTargetS": 10,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-079-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-079-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
                 "ip": "192.168.107.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1445,15 +3410,35 @@
           },
           {
             "id": "L07-OP060",
-            "name": "L07-OP060 \u2013 Optical Coordinate Measuring CMM Gantry",
+            "name": "L07-OP060 – Optical Coordinate Measuring CMM Gantry",
+            "customIdentifier": "LINE-07-OP060",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP060",
+            "cycleTimeTargetS": 39,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-080-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-080-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L07-OP060-PLC",
                 "hostname": "IPC-L07-OP060-PLC",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-OP060-PLC",
                 "ip": "192.168.107.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
@@ -1463,6 +3448,8 @@
               {
                 "id": "IPC-L07-OP060-VISION",
                 "hostname": "IPC-L07-OP060-VISION",
+                "role": "Vision",
+                "machineIdentifier": "HW-IPC-L07-OP060-VISION",
                 "ip": "192.168.107.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1472,6 +3459,8 @@
               {
                 "id": "IPC-L07-OP060-MES-GATE",
                 "hostname": "IPC-L07-OP060-MES-GATE",
+                "role": "Gateway",
+                "machineIdentifier": "HW-IPC-L07-OP060-MES-GATE",
                 "ip": "192.168.107.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
@@ -1482,24 +3471,74 @@
           },
           {
             "id": "L07-OP070",
-            "name": "L07-OP070 \u2013 Deep-Learning Anomaly Classifier AI",
+            "name": "L07-OP070 – Deep-Learning Anomaly Classifier AI",
+            "customIdentifier": "LINE-07-OP070",
             "type": "VisionInspection",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP070",
-            "pcs": []
+            "cycleTimeTargetS": 10,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-081-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-081-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.107.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L07-OP080",
-            "name": "L07-OP080 \u2013 Part Re-Orientation Robotic Swivel",
+            "name": "L07-OP080 – Part Re-Orientation Robotic Swivel",
+            "customIdentifier": "LINE-07-OP080",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP080",
+            "cycleTimeTargetS": 26,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-082-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-082-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L07-ROB-ALPHA",
                 "hostname": "IPC-L07-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-ROB-ALPHA",
                 "ip": "192.168.107.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1509,6 +3548,8 @@
               {
                 "id": "IPC-L07-ROB-BETA",
                 "hostname": "IPC-L07-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L07-ROB-BETA",
                 "ip": "192.168.107.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1519,15 +3560,35 @@
           },
           {
             "id": "L07-OP090",
-            "name": "L07-OP090 \u2013 X-Ray CT Void Inspection Scanner",
+            "name": "L07-OP090 – X-Ray CT Void Inspection Scanner",
+            "customIdentifier": "LINE-07-OP090",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP090",
+            "cycleTimeTargetS": 10,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-083-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-083-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L07-ROB-ALPHA",
                 "hostname": "IPC-L07-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-ROB-ALPHA",
                 "ip": "192.168.107.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1537,6 +3598,8 @@
               {
                 "id": "IPC-L07-ROB-BETA",
                 "hostname": "IPC-L07-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L07-ROB-BETA",
                 "ip": "192.168.107.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1547,59 +3610,200 @@
           },
           {
             "id": "L07-OP100",
-            "name": "L07-OP100 \u2013 Direct Part Marking Laser QR Stamper",
+            "name": "L07-OP100 – Direct Part Marking Laser QR Stamper",
+            "customIdentifier": "LINE-07-OP100",
             "type": "FasteningStation",
             "technology": "Welding",
-            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP100",
-            "pcs": []
+            "cycleTimeTargetS": 16,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-084-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-084-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.107.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L07-OP110",
-            "name": "L07-OP110 \u2013 Post-Marking Verification Scanner 2D",
+            "name": "L07-OP110 – Post-Marking Verification Scanner 2D",
+            "customIdentifier": "LINE-07-OP110",
             "type": "VisionInspection",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP110",
-            "pcs": []
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-085-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-085-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.107.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L07-OP120",
-            "name": "L07-OP120 \u2013 Certified Quality Pallet Stacking Bay",
+            "name": "L07-OP120 – Certified Quality Pallet Stacking Bay",
+            "customIdentifier": "LINE-07-OP120",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP120",
-            "pcs": []
+            "cycleTimeTargetS": 16,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-086-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-086-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.107.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L07-OP130",
-            "name": "L07-OP130 \u2013 Automated Metrology Archive & Gate",
+            "name": "L07-OP130 – Automated Metrology Archive & Gate",
+            "customIdentifier": "LINE-07-OP130",
             "type": "ConveyorTransfer",
-            "technology": "Test",
-            "team": "Plant Maintenance (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L07-OP130",
-            "pcs": []
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-087-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-087-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L07-CONVEYOR-MAIN",
+                "hostname": "IPC-L07-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L07-CONVEYOR-MAIN",
+                "ip": "192.168.107.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line07_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           }
         ]
       },
       {
         "id": "org-line-08",
+        "code": "L08",
         "line_num": 8,
-        "name": "Line 08 \u2013 Synthetic End-of-Line Vehicle Integration (AI Sim)",
-        "tech": "Test",
+        "name": "Line 08 – Synthetic End-of-Line Vehicle Integration (AI Sim)",
+        "tech": "Testing",
         "stations": [
           {
             "id": "L08-OP010",
-            "name": "L08-OP010 \u2013 Final Chasis Docking & Lock Conveyor",
+            "name": "L08-OP010 – Final Chasis Docking & Lock Conveyor",
+            "customIdentifier": "LINE-08-OP010",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP010",
+            "cycleTimeTargetS": 15,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-088-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-088-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L08-CONVEYOR-MAIN",
                 "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
                 "ip": "192.168.108.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1610,15 +3814,35 @@
           },
           {
             "id": "L08-OP020",
-            "name": "L08-OP020 \u2013 Brake Hydraulic Vacuum Bleed Bench",
+            "name": "L08-OP020 – Brake Hydraulic Vacuum Bleed Bench",
+            "customIdentifier": "LINE-08-OP020",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP020",
+            "cycleTimeTargetS": 44,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-089-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-089-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L08-CONVEYOR-MAIN",
                 "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
                 "ip": "192.168.108.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1629,15 +3853,35 @@
           },
           {
             "id": "L08-OP030",
-            "name": "L08-OP030 \u2013 Coolant Degassing & Fluid Filling Station",
+            "name": "L08-OP030 – Coolant Degassing & Fluid Filling Station",
+            "customIdentifier": "LINE-08-OP030",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP030",
+            "cycleTimeTargetS": 43,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-090-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-090-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L08-OP030-DEDICATED",
                 "hostname": "IPC-L08-OP030-DEDICATED",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-OP030-DEDICATED",
                 "ip": "192.168.108.11",
                 "os": "Windows 10 IoT Enterprise 2021 LTSC",
                 "status": "Healthy",
@@ -1648,24 +3892,74 @@
           },
           {
             "id": "L08-OP040",
-            "name": "L08-OP040 \u2013 Wheel Nut Automated Torque Tightener 5X",
+            "name": "L08-OP040 – Wheel Nut Automated Torque Tightener 5X",
+            "customIdentifier": "LINE-08-OP040",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP040",
-            "pcs": []
-          },
-          {
-            "id": "L08-OP050",
-            "name": "L08-OP050 \u2013 Optical Wheel Alignment Laser Gate",
-            "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Vision & Photons (Synthetic AI Guild)",
-            "pinnedObjectHandle": "L08-OP050",
+            "cycleTimeTargetS": 30,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-091-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-091-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L08-CONVEYOR-MAIN",
                 "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.108.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
+          },
+          {
+            "id": "L08-OP050",
+            "name": "L08-OP050 – Optical Wheel Alignment Laser Gate",
+            "customIdentifier": "LINE-08-OP050",
+            "type": "VisionInspection",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
+            "pinnedObjectHandle": "L08-OP050",
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-092-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-092-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
                 "ip": "192.168.108.12",
                 "os": "Windows 11 IoT Enterprise LTSC 2024",
                 "status": "Healthy",
@@ -1676,15 +3970,35 @@
           },
           {
             "id": "L08-OP060",
-            "name": "L08-OP060 \u2013 Headlight Matrix LED Calibration Rig",
+            "name": "L08-OP060 – Headlight Matrix LED Calibration Rig",
+            "customIdentifier": "LINE-08-OP060",
             "type": "EOLTester",
-            "technology": "Test",
+            "technology": "Testing",
             "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP060",
+            "cycleTimeTargetS": 41,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-093-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-093-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L08-OP060-PLC",
                 "hostname": "IPC-L08-OP060-PLC",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-OP060-PLC",
                 "ip": "192.168.108.15",
                 "os": "Windows 11 IoT Enterprise",
                 "status": "Healthy",
@@ -1694,6 +4008,8 @@
               {
                 "id": "IPC-L08-OP060-VISION",
                 "hostname": "IPC-L08-OP060-VISION",
+                "role": "Vision",
+                "machineIdentifier": "HW-IPC-L08-OP060-VISION",
                 "ip": "192.168.108.16",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1703,6 +4019,8 @@
               {
                 "id": "IPC-L08-OP060-MES-GATE",
                 "hostname": "IPC-L08-OP060-MES-GATE",
+                "role": "Gateway",
+                "machineIdentifier": "HW-IPC-L08-OP060-MES-GATE",
                 "ip": "192.168.108.17",
                 "os": "Debian 12 Bookworm Industrial",
                 "status": "Healthy",
@@ -1713,24 +4031,74 @@
           },
           {
             "id": "L08-OP070",
-            "name": "L08-OP070 \u2013 ADAS Radar & LiDAR Target Array Aligner",
+            "name": "L08-OP070 – ADAS Radar & LiDAR Target Array Aligner",
+            "customIdentifier": "LINE-08-OP070",
             "type": "FasteningStation",
-            "technology": "Test",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP070",
-            "pcs": []
+            "cycleTimeTargetS": 18,
+            "components": [
+              {
+                "slot": "TOOL-HEAD-01",
+                "partClass": "TIGHTENING-SPINDLE",
+                "name": "Atlas Copco Tensor STR-61 Tightening Spindle",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-094-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "PLC-CPU",
+                "name": "Siemens S7-1516F Safety PLC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-094-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.108.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L08-OP080",
-            "name": "L08-OP080 \u2013 All-Wheel Drive Roll Dynamometer 150kW",
+            "name": "L08-OP080 – All-Wheel Drive Roll Dynamometer 150kW",
+            "customIdentifier": "LINE-08-OP080",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP080",
+            "cycleTimeTargetS": 41,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-095-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-095-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L08-ROB-ALPHA",
                 "hostname": "IPC-L08-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-ROB-ALPHA",
                 "ip": "192.168.108.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1740,6 +4108,8 @@
               {
                 "id": "IPC-L08-ROB-BETA",
                 "hostname": "IPC-L08-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L08-ROB-BETA",
                 "ip": "192.168.108.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1750,15 +4120,35 @@
           },
           {
             "id": "L08-OP090",
-            "name": "L08-OP090 \u2013 OBD-II High-Speed Ethernet Flash ECU",
+            "name": "L08-OP090 – OBD-II High-Speed Ethernet Flash ECU",
+            "customIdentifier": "LINE-08-OP090",
             "type": "RobotCell",
             "technology": "Robotics",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "team": "Robotics & Cybernetics (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP090",
+            "cycleTimeTargetS": 32,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "ROBOT-CTRL",
+                "name": "KUKA KRC4 Robot Controller PC",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-096-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "SAFETY-SCANNER",
+                "name": "SICK microScan3 Core Safety Laser Scanner",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-096-2"
+              }
+            ],
             "pcs": [
               {
                 "id": "IPC-L08-ROB-ALPHA",
                 "hostname": "IPC-L08-ROB-ALPHA",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-ROB-ALPHA",
                 "ip": "192.168.108.13",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1768,6 +4158,8 @@
               {
                 "id": "IPC-L08-ROB-BETA",
                 "hostname": "IPC-L08-ROB-BETA",
+                "role": "Secondary",
+                "machineIdentifier": "HW-IPC-L08-ROB-BETA",
                 "ip": "192.168.108.14",
                 "os": "Windows 10 IoT Enterprise",
                 "status": "Healthy",
@@ -1778,39 +4170,159 @@
           },
           {
             "id": "L08-OP100",
-            "name": "L08-OP100 \u2013 Underbody Acoustic Ultrasonic Sniffer",
+            "name": "L08-OP100 – Underbody Acoustic Ultrasonic Sniffer",
+            "customIdentifier": "LINE-08-OP100",
             "type": "VisionInspection",
-            "technology": "Test",
-            "team": "Controls Engineering (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Vision & Photons (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP100",
-            "pcs": []
+            "cycleTimeTargetS": 9,
+            "components": [
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "VISION-CAM",
+                "name": "Cognex In-Sight 9912 12MP Camera",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-097-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "SW-MES-CONNECTOR",
+                "name": "Siemens Opcenter MES Edge Connector",
+                "category": "SoftwareConfig",
+                "serialNumber": "SN-SYNTH-CMP-097-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.108.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L08-OP110",
-            "name": "L08-OP110 \u2013 Monsoon Water Ingress Leak Test Booth",
+            "name": "L08-OP110 – Monsoon Water Ingress Leak Test Booth",
+            "customIdentifier": "LINE-08-OP110",
             "type": "EOLTester",
-            "technology": "Test",
-            "team": "Platform Operations (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Plant Maintenance (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP110",
-            "pcs": []
+            "cycleTimeTargetS": 46,
+            "components": [
+              {
+                "slot": "GANTRY-X-01",
+                "partClass": "SERVO-DRIVE",
+                "name": "Beckhoff AX5118 Servo Drive 18A",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-098-1"
+              },
+              {
+                "slot": "PANEL-STATUS-01",
+                "partClass": "NET-SWITCH",
+                "name": "Hirschmann BOBCAT Managed Switch",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-098-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.108.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L08-OP120",
-            "name": "L08-OP120 \u2013 Hot Air Blow-Off & Drying Tunnel Bot",
+            "name": "L08-OP120 – Hot Air Blow-Off & Drying Tunnel Bot",
+            "customIdentifier": "LINE-08-OP120",
             "type": "ConveyorTransfer",
             "technology": "Assembly",
             "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP120",
-            "pcs": []
+            "cycleTimeTargetS": 16,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-099-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-099-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.108.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           },
           {
             "id": "L08-OP130",
-            "name": "L08-OP130 \u2013 Final Shipping Factory Release Gate",
+            "name": "L08-OP130 – Final Shipping Factory Release Gate",
+            "customIdentifier": "LINE-08-OP130",
             "type": "ConveyorTransfer",
-            "technology": "Test",
-            "team": "SMT & Microchips (Synthetic AI Guild)",
+            "technology": "Testing",
+            "team": "Tooling & Mechanoids (Synthetic AI Guild)",
             "pinnedObjectHandle": "L08-OP130",
-            "pcs": []
+            "cycleTimeTargetS": 17,
+            "components": [
+              {
+                "slot": "CONVEYOR-01",
+                "partClass": "DRIVE-INVERTER",
+                "name": "SEW Eurodrive MOVIPRO Decentralized Inverter",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-100-1"
+              },
+              {
+                "slot": "VISION-CAM-01",
+                "partClass": "RFID-READER",
+                "name": "Balluff BIS-M 13.56MHz RFID Read Head",
+                "category": "Hardware",
+                "serialNumber": "SN-SYNTH-CMP-100-2"
+              }
+            ],
+            "pcs": [
+              {
+                "id": "IPC-L08-CONVEYOR-MAIN",
+                "hostname": "IPC-L08-CONVEYOR-MAIN",
+                "role": "Primary",
+                "machineIdentifier": "HW-IPC-L08-CONVEYOR-MAIN",
+                "ip": "192.168.108.12",
+                "os": "Windows 11 IoT Enterprise LTSC 2024",
+                "status": "Healthy",
+                "twincat": "TC3_Line08_PalletLoop.tsproj (Port 851)",
+                "mes": "Siemens Opcenter Connector v4.2"
+              }
+            ]
           }
         ]
       }

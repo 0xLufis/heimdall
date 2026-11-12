@@ -14,7 +14,14 @@ that look like prod/staging.
 just demo-check      # validate JSON, references, enums, timestamps; dry-run against the dev DB (ROLLBACK)
 just demo-seed       # load / refresh the dataset into heimdall_dev_db (idempotent upsert) + demo logins
 just demo-runtime    # with the backend running: register the demo Lua scripts + replay telemetry
+just sim-demo        # with the backend running: live station telemetry for the demo plant (fleet simulator, MQTT)
+just sim-reset demo  # one command: load the demo next to the enterprise data and run the simulator with plant activity
 ```
+
+The dataset is **reference data plus a story backdrop**: plant, people, controllers, parts and the 14 story tickets of
+`tickets.json` (the history before the presentation starts). Everything that happens while you present - telemetry,
+heartbeats, new machine-raised tickets and their lifecycle, spare-part consumption - is produced by the fleet simulator
+through MQTT and the backend REST API (`docs/guide/DEV_GUIDE.md` §3.5).
 
 | Command | What it does |
 |---|---|
@@ -60,10 +67,10 @@ separately by the Nuxt dev plugin.
 | Users / memberships (`auth.user`, `auth.member`) | 11 / 11 | roles from `HeimdallRoles`; optional credentials (`auth.account`) |
 | Machine groups (`machine_groups`) | 8 | Business unit → Project → 3 Lines → 1 Sub-line, plus 2 technology groups (Laser fleet, Vision) |
 | Stations (`inventory_items` + `stations`, TPT) | 20 | 3 lines, 15 pinned to floor-plan handles `L01-…`, `L02-…`, `L03-…`; **2 cells with sub-machines** (Roundtable `NV-L2-OP040` → S1/S2, laser cell `NV-L2-OP060` → laser source + robot); 1 **decommissioned** station |
-| Controllers (`client_pcs`) / links (`StationControllers`) | 6 / 16 | 1-1 (dedicated laser IPCs), 1-n (line IPCs), m-n (`NV-L2-OP060` has primary + secondary IPC) |
-| Installed parts (`inventory_items` + `hardware_assets`) | 7 | all in `NV-L2-OP060`, incl. the cell PLC |
-| Machine components (`machine_components`) | 7 | slots `FRAME-BASE-01 … PANEL-STATUS-01` = mesh names of `/sample/station_digital_twin.glb` → **3D digital twin binding** |
-| Spare parts (`inventory_items`, stock) | 8 | 2 **below minimum** (protective glass 2/10, servo 1/2), 1 at minimum (collimator 1/1), 1 **out of stock** (spindle bearing 0/1), 1 under repair (RMA), 3 healthy |
+| Controllers (`client_pcs`) / links (`StationControllers`) | 6 / 20 | 1-1 (dedicated laser IPCs), 1-n (line IPCs), m-n (`NV-L2-OP060` has primary + secondary IPC); every active station incl. the 4 sub-machines has exactly one *Primary* (reporting) controller; IPCs are pinned to the block of the station their cabinet stands at |
+| Installed parts (`inventory_items` + `hardware_assets`) | 21 | 7 in `NV-L2-OP060` (incl. the cell PLC) + one process part per other active station; `metadata.partClass` says which spare fits |
+| Machine components (`machine_components`) | 21 | slots = mesh names of `/sample/station_digital_twin.glb` → **3D digital twin binding**; every active top-level station has one |
+| Spare parts (`inventory_items`, stock) | 9 | 2 **below minimum** (protective glass 2/10, servo 1/2), 1 at minimum (collimator 1/1), 1 **out of stock** (spindle bearing 0/1), 1 under repair (RMA), 1 serialized camera, 3 healthy; `metadata.consumableClass` / `partClass` link them to the simulator's repairs |
 | Group memberships (`machine_group_memberships`) | 23 | |
 | Skills / certificates (`skill_definitions`, `personnel_skills`) | 6 / 11 | 1 expired (Otto, laser), 1 expiring in 25 days (Ada, electrical) |
 | Maintenance groups / members (`personnel_groups`, `…_members`) | 4 / 9 | Laser specialists, Controls on-call 24/7, Mechanical shift A, Escalation |
@@ -93,9 +100,9 @@ separately by the Nuxt dev plugin.
 5. Meanwhile: resin flow on `NV-L1-OP030` just dropped below spec (Open, unassigned), the housing CNC spindle on Line 3 is slowly wearing toward its vibration alarm (Pending, OEM visit),
    and the on-call electrician Otto is in training today – his laser certificate expired anyway.
 
-The plant-map KPI overlay is synthetic and keyed by floor-plan handle; it already shows
-`L02-OP060` as *FAULTED / SLA breached* and `L01-OP030` with active tickets, which matches
-the story. Demo tickets carry the handle (e.g. `L02-OP060`) in `tags` so the HUD correlates them.
+The plant-map KPI overlay shows the live station telemetry of the simulator, keyed by floor-plan
+handle; with `just sim-scenario demo_story` `L02-OP060` drifts into *FAULTED* and `L01-OP030` slows down,
+which matches the story. Demo tickets carry the handle (e.g. `L02-OP060`) in `tags` so the HUD correlates them.
 
 ## Suggested 5–10 minute walkthrough
 
@@ -135,6 +142,33 @@ Before presenting: `just demo-seed` (refreshes all timers) and, with the backend
 
 Station ids: `docker exec postgres_heimdall psql -U postgres -d heimdall_dev_db -Atc "select custom_identifier, id from backend.stations where id::text like 'de30de30%' order by 1"`.
 
+## Live simulation (fleet simulator)
+
+`just demo-runtime` replays *history* into the Lua buffer. For *live* values on the plant map, the station
+KPI tiles and the telemetry pages, run the fleet simulator against this dataset (backend must be running):
+
+```bash
+just sim-demo                                   # 6 demo IPCs (heartbeats) + 19 stations (process data), foreground
+just sim-demo --scenario demo_story --speed 10  # start with the story drifts, 10x faster
+just sim-scenario demo_story                    # or trigger the story on the running simulator
+just sim-scenario clear                         # recover every station
+```
+
+It publishes over MQTT like the real agent (`heimdall/devices/HW-NV-IPC-…/system_info` and `…/plc_memory`), using
+`controllers[].machine_identifier`, `station_controllers` (the *Primary* controller reports a station; the
+decommissioned `NV-L3-OP100` and the sub-machines without a controller link are not simulated) and, per station,
+`custom_identifier`, `machine_type`, `metadata.line`, `metadata.cycleTimeTargetS` and the laser template values
+(`laser_power_nominal_kw`, `laser_power_min_kw`, `glass_temp_alarm_c`). With plant activity on (default), faults become
+machine-raised tickets that the crews of `people.json` (laser specialists, controls on-call, mechanical shift A) reserve,
+pick up, repair with parts from the demo store and close.
+
+`demo_story` starts three drifts: `NV-L2-OP060` loses laser power while the protective glass heats up
+(WARNING, then FAULTED once power falls below 5.7 kW or the glass reaches 55 °C; latched until recovered),
+`NV-L3-OP020` develops spindle bearing wear (vibration), `NV-L1-OP030` slows down (cycle time). Single faults,
+drifts, maintenance, line stops and the speed are available through the control API on `127.0.0.1:5055`
+(see `docs/guide/DEV_GUIDE.md` §3.5). Stop `just start simulator` first if it runs with another dataset
+(`sim-demo` does that for you).
+
 ## Coexistence with the enterprise dataset
 
 `just db-seed` loads the 100-station enterprise dataset, which also uses the `L01-…L08-…`
@@ -155,10 +189,18 @@ all tables, demo data included).
 | `telemetry.json` | generated telemetry history (`--write-telemetry`) |
 | `lua/*.lua`, `lua/manifest.json` | demo automation scripts and the telemetry replay helper |
 
+Per-component links: every demo controller carries `system_metadata.RemoteAccess.Vnc` (port 8006, path
+`websockify`, no host = the machine serving the web UI, i.e. the Windows dev container from `just windows start`)
+and every demo station carries `metadata.model3dUrl` (`/sample/station_digital_twin.glb`). The remote viewer and
+the 3D twin resolve through these per-row links, so they all show the same desktop / model only because the rows
+point at the same target; change a row to point one controller or station somewhere else.
+
 Format conventions: column names are the live PostgreSQL column names; `_key` becomes a
 deterministic UUID (`de30de30-…`, uuid5 of the key); `"@key"` references another row;
 `"~now-2d4h"` / `"~now+90m"` are timestamps relative to load time. The loader validates
-references, duplicate ids/handles, enum values (ticket status/priority/pending reason/
+references, duplicate ids/handles, every active station has exactly one Primary controller, every pin exists in
+`production_hall.dxf`, every component slot is a mesh of the digital twin and holds a part installed in that station,
+spares fit an installed part class, roles are `HeimdallRoles` constants, enum values (ticket status/priority/pending reason/
 handover state, group types, disciplines, skill categories …), negative stock, timestamp
 ordering (no future `created_at`/`resolved_at`, comments after their ticket), state
 consistency (Pending ⇒ pending reason, Resolved/Closed ⇒ resolved_at) and that all e-mails
@@ -178,8 +220,8 @@ use reserved example domains. Against a live DB it also diffs its column allow-l
   organization's rows (`TenantScopeMiddleware`). Present as the admin, or make sure a persona's session
   has `demo-org-nordvik` as active organization.
 * There is no persistent telemetry-history table; history is persisted only inside tickets
-  (`telemetry_probes_json` probe buffers, `telemetry_snapshot`). Station KPI tiles on the map are
-  synthetic (`PredictiveMaintenanceService.GetStationTelemetryKpis` / `server/api/telemetry/station-kpis.get.ts`).
+  (`telemetry_probes_json` probe buffers, `telemetry_snapshot`). Station KPI tiles show the last
+  telemetry the simulator reported (`GET /api/v1/analytics/station-kpis`).
 * Tickets have no SLA column; the loader stores `metadata.slaHours` and `metadata.slaDueAt`. The
   BFF ticket mapper reads only a top-level `slaDueAt`, so DB tickets show no SLA due date in the UI
   until the mapper falls back to `metadata.slaDueAt`.

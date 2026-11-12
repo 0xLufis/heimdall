@@ -4,7 +4,8 @@ services:
       context: .
     command: ["--client", "ROBOT-CELL-01"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -13,7 +14,8 @@ services:
       context: .
     command: ["--client", "ROBOT-CELL-02"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -22,7 +24,8 @@ services:
       context: .
     command: ["--client", "ROBOT-CELL-03"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -31,7 +34,8 @@ services:
       context: .
     command: ["--client", "ROBOT-CELL-04"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -40,7 +44,8 @@ services:
       context: .
     command: ["--client", "ROBOT-CELL-05"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -49,7 +54,8 @@ services:
       context: .
     command: ["--client", "ASSEMBLY-ST-01"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -58,7 +64,8 @@ services:
       context: .
     command: ["--client", "ASSEMBLY-ST-02"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -67,7 +74,8 @@ services:
       context: .
     command: ["--client", "ASSEMBLY-ST-03"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -76,7 +84,8 @@ services:
       context: .
     command: ["--client", "ASSEMBLY-ST-04"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -85,6 +94,7 @@ services:
       context: .
     command: ["--client", "ASSEMBLY-ST-05"]
     environment:
-      - GRPC_HOST=host.docker.internal:5001
+      - MQTT_BROKER_HOST=host.docker.internal
+      - MQTT_BROKER_PORT=1883
     extra_hosts:
       - "host.docker.internal:host-gateway"

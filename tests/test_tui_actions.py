@@ -24,6 +24,7 @@ def test_tui_keys():
     assert map_service_target("postgres") == "postgres"
     assert map_service_target("redis") == "redis"
     assert map_service_target("backend") == "backend"
+    assert map_service_target("mqtt") == "backend"
     assert map_service_target("grpc") == "backend"
     assert map_service_target("frontend") == "frontend"
     assert map_service_target("agent") == "agent"
@@ -48,7 +49,7 @@ def test_tui_keys():
 
     # 3. 'r' key on various services
     print(">> 3. Testing 'r' (restart highlighted service)...")
-    for idx in [0, 1, 2, 3, 4, 5]: # postgres, redis, backend, grpc, frontend, windows
+    for idx in [0, 1, 2, 3, 4, 5]: # postgres, redis, backend, mqtt, frontend, windows
         STATE.selected_idx = idx
         svc = STATE.services[idx]
         print(f"   • Pressing 'r' on service '{svc['name']}' (id: {svc['id']})...")

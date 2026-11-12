@@ -17,6 +17,8 @@ set shell := ["bash", "-c"]
 LOG_DIR := "/tmp/heimdall_logs"
 PID_DIR := "/tmp/heimdall_dev_pids"
 SHARED_WIN_AGENT_DIR := "infra/windows/shared/agent"
+# Python for the simulators: the project venv (paho-mqtt + protobuf from simulators/fleet/requirements.txt) when present
+SIM_PYTHON := if path_exists("venv/bin/python") == "true" { "venv/bin/python" } else { "python3" }
 
 # Display available commands
 default:
@@ -30,30 +32,61 @@ default:
 dev-setup *ARGS:
     @python3 tools/dev_setup.py {{ARGS}}
 
-# Launch optional pgAdmin 4 portal targeting local PostgreSQL development instance
+# Launch optional pgAdmin 4 portal for the local PostgreSQL development instance (actions: up, down, restart, logs, reset)
 pgadmin ACTION="up":
     #!/usr/bin/env bash
     set -euo pipefail
+    # pgAdmin must join the compose project (= docker network) of the PostgreSQL container that is
+    # actually running: `just db-up` uses infra/database, the all-in-docker stack uses the root file.
+    if docker ps --format '{{ '{{' }}.Names{{ '}}' }}' 2>/dev/null | grep -qx heimdall_postgres; then
+        COMPOSE_DIR="."
+    else
+        COMPOSE_DIR="infra/database"
+    fi
+    pg_compose() { (cd "$COMPOSE_DIR" && docker compose --profile pgadmin "$@"); }
+    wait_ready() {
+        for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:5050/misc/ping 2>/dev/null; then return 0; fi
+            sleep 1
+        done
+        return 1
+    }
+    start() {
+        if [ "$COMPOSE_DIR" = "infra/database" ]; then just db-up; fi
+        pg_compose up -d pgadmin
+        if wait_ready; then
+            echo "✓ pgAdmin 4 online at http://localhost:5050 (desktop mode: no pgAdmin login)."
+            echo "  Server 'Heimdall Development PostgreSQL' is pre-registered (host postgres, user from"
+            echo "  infra/database/secrets/pg_user.txt); enter the password from infra/database/secrets/pg_pw.txt."
+        else
+            echo "✗ pgAdmin did not become ready on http://localhost:5050. Last log lines:" >&2
+            pg_compose logs --tail=30 pgadmin >&2 || true
+            exit 1
+        fi
+    }
     case "{{ACTION}}" in
         up|start)
-            docker compose --profile pgadmin up -d pgadmin
-            echo "✓ pgAdmin 4 portal online at http://localhost:5050 (admin@heimdall.local / secret)."
+            start
             ;;
         down|stop)
-            docker compose --profile pgadmin stop pgadmin
+            pg_compose stop pgadmin
             echo "✓ pgAdmin 4 portal stopped."
             ;;
         restart)
-            docker compose --profile pgadmin stop pgadmin
-            sleep 1
-            docker compose --profile pgadmin up -d pgadmin
-            echo "✓ pgAdmin 4 portal restarted at http://localhost:5050."
+            pg_compose stop pgadmin
+            start
             ;;
         logs)
-            docker compose --profile pgadmin logs -f --tail=50 pgadmin
+            pg_compose logs -f --tail=50 pgadmin
+            ;;
+        reset)
+            # Drops pgAdmin's own state (saved passwords, preferences); servers.json is re-imported on next start.
+            pg_compose rm -sf pgadmin
+            (cd "$COMPOSE_DIR" && docker volume rm "$(basename "$(pwd)")_pgadmin_data" 2>/dev/null) || true
+            echo "✓ pgAdmin state removed. Run 'just pgadmin' to start fresh."
             ;;
         *)
-            echo "Available pgadmin actions: up, down, restart, logs"
+            echo "Available pgadmin actions: up, down, restart, logs, reset"
             ;;
     esac
 
@@ -199,8 +232,10 @@ start-service TARGET:
             ;;
         simulator)
             if ! [ -f {{PID_DIR}}/simulator.pid ] || ! kill -0 $(cat {{PID_DIR}}/simulator.pid 2>/dev/null) 2>/dev/null; then
-                echo ">> Starting Edge Fleet Simulator (:5055)..."
-                setsid python3 -u simulators/fleet/fleet_simulator.py </dev/null > {{LOG_DIR}}/simulator.log 2>&1 &
+                # SIM_DATASET=enterprise (just db-seed) | demo (just demo-seed) | all. Only pick a dataset that is seeded:
+                # the backend auto-registers unknown controllers that report in.
+                echo ">> Starting Edge Fleet Simulator (MQTT -> :1883, control API 127.0.0.1:5055, dataset ${SIM_DATASET:-enterprise})..."
+                setsid {{SIM_PYTHON}} -u simulators/fleet/fleet_simulator.py --dataset "${SIM_DATASET:-enterprise}" --station-interval "${SIM_STATION_INTERVAL:-4}" </dev/null > {{LOG_DIR}}/simulator.log 2>&1 &
                 echo $! > {{PID_DIR}}/simulator.pid
                 ln -sf {{LOG_DIR}}/simulator.log /tmp/heimdall-simulator.log 2>/dev/null || true
             fi
@@ -434,7 +469,8 @@ db-seed:
     python3 seed_data/seed_pipeline.py --generate-all --validate
     if docker ps | grep -q "postgres_heimdall"; then
         docker exec -i postgres_heimdall psql -v ON_ERROR_STOP=1 -U postgres -d heimdall_dev_db < seed_data/incremental_seed.sql >/dev/null
-        echo "✓ Enterprise dataset (100 machines, 16 orgs, 550 spare parts) applied to heimdall_dev_db."
+        echo "✓ Enterprise reference data (100 machines, 56 IPCs, 26 machine groups, 16 orgs, 107 users, 550 spares) applied to heimdall_dev_db."
+        echo "  No tickets / telemetry are seeded: run the simulator (just sim-reset) to produce plant activity."
     fi
 
 # ARGS go to scripts/seed_demo_data.py, e.g. `just demo-seed --reset --unpin-conflicts` (see seed_data/demo/README.md)
@@ -459,6 +495,37 @@ demo-check:
 # Register the demo Lua scripts and replay demo telemetry into the running backend (repeat after each backend restart)
 demo-runtime:
     @python3 scripts/seed_demo_data.py --skip-db --push-runtime
+
+# ARGS go to fleet_simulator.py, e.g. `just sim-demo --scenario demo_story --speed 10 --seed 7`
+# Run the fleet simulator in the foreground against the Nordvik NV1 demo dataset (live station telemetry for the demo plant)
+sim-demo *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just stop-service simulator >/dev/null 2>&1 || true
+    exec {{SIM_PYTHON}} -u simulators/fleet/fleet_simulator.py --dataset demo {{ARGS}}
+
+# One command: reseed DATASET (enterprise | demo) and restart the background simulator on it with plant activity
+# (telemetry, heartbeats, tickets and spare-part use through the backend API). Needs the backend running.
+sim-reset DATASET="enterprise":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{DATASET}}" in
+        enterprise) just db-seed; export SIM_DATASET=enterprise ;;
+        demo)       just demo-seed --unpin-conflicts; export SIM_DATASET=all ;;
+        *)          echo "DATASET must be enterprise or demo"; exit 1 ;;
+    esac
+    just stop-service simulator >/dev/null 2>&1 || true
+    just start-service simulator
+    echo "✓ Simulator restarted on dataset ${SIM_DATASET}. Status: curl -s 127.0.0.1:5055/api/status | jq .maintenance"
+
+# Set the simulated failure rate (failures per station and simulated hour) and optionally the speed, e.g. `just sim-rate 0.3 10`
+sim-rate RATE="0.05" SPEED="1":
+    @curl -fsS -X POST -H 'Content-Type: application/json' -d '{"incident_rate": {{RATE}}}' http://127.0.0.1:5055/api/activity && echo
+    @curl -fsS -X POST -H 'Content-Type: application/json' -d '{"speed": {{SPEED}}}' http://127.0.0.1:5055/api/speed && echo
+
+# Trigger a simulator scenario on the running simulator, e.g. `just sim-scenario demo_story` or `just sim-scenario clear`
+sim-scenario NAME="demo_story":
+    @curl -fsS -X POST -H 'Content-Type: application/json' -d '{"name":"{{NAME}}"}' http://127.0.0.1:5055/api/scenario && echo
 
 # Remove all demo rows (ids de30de30-* / demo-*) from the dev database and reload them
 demo-reset *ARGS:
@@ -622,12 +689,17 @@ test-frontend:
 test-seed:
     @echo ">> Validating Seed Data Pipeline & Referential Integrity..."
     @python3 seed_data/seed_pipeline.py --validate
-    @python3 scripts/seed_demo_data.py --dry-run >/dev/null && echo "✓ Demo dataset (seed_data/demo) valid"
+    @python3 scripts/seed_demo_data.py --dry-run >/dev/null && echo "✓ Demo dataset (seed_data/demo) valid, references resolve"
+    @python3 -m unittest discover -s seed_data -p "test_*.py" 2>&1 | tail -1
 
-# Run edge fleet simulator smoke test
+# Run edge fleet simulator smoke test (publishes 5 heartbeats + 5 station blocks to the backend's MQTT broker)
 test-smoke:
     @echo ">> Running Fleet Simulator Smoke Test..."
-    @python3 simulators/fleet/fleet_simulator.py --smoke-test --count 5 || echo "Note: Smoke test requires active local gRPC service on port 5001."
+    @{{SIM_PYTHON}} simulators/fleet/fleet_simulator.py --smoke-test --count 5 || echo "Note: Smoke test requires the backend's embedded MQTT broker on port 1883 (just start backend) and paho-mqtt/protobuf (pip install -r simulators/fleet/requirements.txt)."
+
+# Run the fleet simulator unit tests (station model, PLC block encoding, MQTT framing, control API; no backend needed)
+test-simulator:
+    @cd simulators/fleet && ../../{{SIM_PYTHON}} -m unittest discover -p "test_*.py"
 
 # Build mobile PWA production assets
 mobile-build:

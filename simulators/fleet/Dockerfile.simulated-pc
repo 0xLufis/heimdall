@@ -15,6 +15,7 @@ COPY fixtures/enterprise_plant_dataset.json /app/fixtures/enterprise_plant_datas
 COPY simulators/fleet/proto/ /app/proto/
 COPY simulators/fleet/dataset_loader.py /app/
 COPY simulators/fleet/mock_cmi_runner.py /app/
+COPY simulators/fleet/mqtt_transport.py /app/
 COPY simulators/fleet/simulated_pc_daemon.py /app/
 
 # Make mock CMI runner executable and symlink as wmic and Get-CimInstance
@@ -24,7 +25,8 @@ RUN chmod +x /app/mock_cmi_runner.py \
 
 ENV PYTHONUNBUFFERED=1
 ENV SIMULATED_HOSTNAME=CPC-L06-ROB-01
-ENV BACKEND_GRPC_HOST=heimdall_backend:5001
+ENV MQTT_BROKER_HOST=heimdall_backend
+ENV MQTT_BROKER_PORT=1883
 ENV AD_SERVICE_URL=http://heimdall_frontend:3000/api/ad-mock
 ENV DIAGNOSTIC_PORT=8080
 
