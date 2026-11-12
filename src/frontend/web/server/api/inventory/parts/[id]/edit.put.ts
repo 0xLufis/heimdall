@@ -1,29 +1,17 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
-import { partsInventoryStore } from '../../../../utils/partsInventoryStore'
+import { backendFetch } from '../../../../utils/backendFetch'
+import { loadBackendPart, toBackendUpdatePayload, toInventoryPart, type BackendInventoryItem } from '../../../../utils/inventoryBackend'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
-  if (!id) {
-    throw createError({ statusCode: 400, message: 'Part ID parameter is required.' })
-  }
+  if (!id) throw createError({ statusCode: 400, statusMessage: 'Part ID parameter is required.' })
+  const body = await readBody(event).catch(() => null)
+  if (!body || typeof body !== 'object') throw createError({ statusCode: 400, statusMessage: 'Request body is required.' })
 
-  const body = (await readBody(event).catch(() => null)) || (event as any)._body || (event.node?.req as any)?.body
-  if (!body) {
-    throw createError({ statusCode: 400, message: 'Request body is required.' })
-  }
-
-  const actor = body.actor || { id: 'usr-current', name: 'Technician' }
-
-  try {
-    const updatedPart = partsInventoryStore.editPart(id, body, actor)
-    return {
-      success: true,
-      part: updatedPart
-    }
-  } catch (err: any) {
-    throw createError({
-      statusCode: 400,
-      message: err.message || 'Failed to edit part.'
-    })
-  }
+  const existing = await loadBackendPart(event, id)
+  const update = toBackendUpdatePayload(body, !!existing.isStockItem)
+  const saved = Object.keys(update).length
+    ? await backendFetch<BackendInventoryItem>(event, `inventory/${encodeURIComponent(id)}`, { method: 'PUT', body: update })
+    : existing
+  return { success: true, part: toInventoryPart(saved) }
 })

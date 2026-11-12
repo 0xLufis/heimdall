@@ -1,24 +1,18 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
-import { partsInventoryStore } from '../../utils/partsInventoryStore'
+import { isBackendId, loadBackendPart, loadBackendParts, toInventoryPart } from '../../utils/inventoryBackend'
 
-export default defineEventHandler((event) => {
+/** Scan lookup (QR / barcode / RFID payload): backend id, identifier or serial number. */
+export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const code = (query.code as string || query.q as string || '').trim()
-
-  if (!code) {
-    throw createError({ statusCode: 400, message: 'Scan code or query string is required.' })
-  }
-
+  const code = String(query.code || query.q || '').trim()
+  if (!code) throw createError({ statusCode: 400, statusMessage: 'Scan code or query string is required.' })
   const currency = (query.currency as string) || 'EUR'
-  const part = partsInventoryStore.getPartByIdOrIdentifier(code, currency)
 
-  if (!part) {
-    throw createError({ statusCode: 404, message: `No inventory part found matching code "${code}".` })
+  if (isBackendId(code)) {
+    return { success: true, code, part: toInventoryPart(await loadBackendPart(event, code), currency) }
   }
-
-  return {
-    success: true,
-    code,
-    part
-  }
+  const wanted = code.toLowerCase()
+  const raw = (await loadBackendParts(event)).find(p => [p.name, p.serialNumber].some(v => String(v || '').toLowerCase() === wanted))
+  if (!raw) throw createError({ statusCode: 404, statusMessage: `No inventory part found matching code "${code}".` })
+  return { success: true, code, part: toInventoryPart(raw, currency) }
 })

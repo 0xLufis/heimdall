@@ -131,7 +131,6 @@
     "catalog": "Adatpont Katalógus",
     "pinToOverview": "Kitűzés a Főoldalra",
     "pinnedToOverview": "Kitűzve a Főoldalra",
-    "kpiBuilder": "KPI Grafikon Építő",
     "rollingCorridor": "Statisztikai Szigma Sáv",
     "linearRegression": "Lineáris Trend Meredekség",
     "window1m": "1 Perc",
@@ -150,7 +149,7 @@
     "inventory": "Raktár és Pótalkatrész Nyilvántartás",
     "inventoryDesc": "Szerializált alkatrészkövetés, raktárhelyek, WBS elemek és bontási folyamatok.",
     "telemetry": "Ipari Telemetria és Analitika",
-    "telemetryDesc": "Élő adatfolyamok, metrika trendek, receptúra szerszámkopás előrejelzés és KPI tervező.",
+    "telemetryDesc": "Élő adatfolyamok, metrika trendek, receptúra szerszámkopás előrejelzés és Lua-alapú KPI-k.",
     "saveChanges": "Modul Konfiguráció Mentése",
     "moduleDisabledBanner": "Ezt a modult a rendszergazdák ideiglenesen kikapcsolták.",
     "minimalMode": "Minimális Telepítési Mód"

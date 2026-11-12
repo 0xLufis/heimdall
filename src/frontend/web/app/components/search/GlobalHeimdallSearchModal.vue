@@ -15,7 +15,7 @@ const omniBarRef = ref<any>(null)
 
 const globalConfig: SearchInstanceConfig = {
   instanceId: 'global',
-  placeholder: 'Search stations, controllers, inventory, or tickets...',
+  placeholder: 'Search stations, controllers, tickets, people or parts...',
   defaultEndpoints: ['/api/proxy/inventory/search'],
   enableAutoTagging: true,
   showGlobalShortcut: true

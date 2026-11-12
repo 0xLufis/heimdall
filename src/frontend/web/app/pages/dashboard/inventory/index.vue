@@ -166,11 +166,11 @@ const rollupCounts = computed(() => {
   const all = parts.value || []
   return {
     all: all.length,
-    optimal: all.filter(p => (p.quantity || 1) > (p.minQuantity || 1)).length,
-    low: all.filter(p => (p.quantity || 1) > 0 && (p.quantity || 1) <= (p.minQuantity || 1)).length,
-    depleted: all.filter(p => (p.quantity || 0) <= 0).length,
-    serialized: all.filter(p => p.trackingType === 'serialized' || !p.isStockItem).length,
-    bulk: all.filter(p => p.trackingType === 'bulk' || p.isStockItem).length
+    optimal: all.filter(p => p.stockAlertStatus === 'optimal').length,
+    low: all.filter(p => p.stockAlertStatus === 'low_stock').length,
+    depleted: all.filter(p => p.stockAlertStatus === 'out_of_stock').length,
+    serialized: all.filter(p => p.trackingType === 'serialized').length,
+    bulk: all.filter(p => p.trackingType === 'bulk').length
   }
 })
 
@@ -179,16 +179,17 @@ const filteredItems = computed(() => {
   let list = parts.value || []
 
   // 1. Rollup Status
+  // Stock alerts are computed per part (bulk stock vs. its minimum; serialized units have none).
   if (activeRollup.value === 'optimal') {
-    list = list.filter(p => (p.quantity || 1) > (p.minQuantity || 1))
+    list = list.filter(p => p.stockAlertStatus === 'optimal')
   } else if (activeRollup.value === 'low') {
-    list = list.filter(p => (p.quantity || 1) > 0 && (p.quantity || 1) <= (p.minQuantity || 1))
+    list = list.filter(p => p.stockAlertStatus === 'low_stock')
   } else if (activeRollup.value === 'depleted') {
-    list = list.filter(p => (p.quantity || 0) <= 0)
+    list = list.filter(p => p.stockAlertStatus === 'out_of_stock')
   } else if (activeRollup.value === 'serialized') {
-    list = list.filter(p => p.trackingType === 'serialized' || !p.isStockItem)
+    list = list.filter(p => p.trackingType === 'serialized')
   } else if (activeRollup.value === 'bulk') {
-    list = list.filter(p => p.trackingType === 'bulk' || p.isStockItem)
+    list = list.filter(p => p.trackingType === 'bulk')
   }
 
   // 2. Classification

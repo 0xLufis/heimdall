@@ -37,6 +37,7 @@ import {
   type ServerSearchKind
 } from '~/utils/search/searchSources'
 import { loadRecentSearches, addRecentSearch, saveRecentSearches } from '~/utils/search/recentSearches'
+import { orderResultsByKind } from '~/utils/search/searchNavigation'
 import { 
   SearchDiagnosticsService, 
   defaultSearchDiagnostics,
@@ -248,7 +249,7 @@ export const useHeimdallSearch = (
       // Show the cached page immediately; the refresh below replaces it without a spinner.
       primaryResults.value = cached!.primary
       crossTableResults.value = cached!.cross
-      results.value = [...cached!.primary, ...cached!.cross]
+      results.value = orderResultsByKind([...cached!.primary, ...cached!.cross], config.instanceId)
     } else {
       isLoading.value = true
     }
@@ -384,11 +385,11 @@ export const useHeimdallSearch = (
             : isNodesInstance
               ? ['controllers', 'stations']
               : ([
-                  inScope('inventory') && 'inventory',
                   inScope('machines') && 'stations',
                   inScope('controllers') && !isInventoryInstance && 'controllers',
                   inScope('tickets') && !isInventoryInstance && 'tickets',
-                  inScope('users') && !isInventoryInstance && 'users'
+                  inScope('users') && !isInventoryInstance && 'users',
+                  inScope('inventory') && 'inventory'
                 ].filter(Boolean) as ServerSearchKind[])
           const focused = !!scope.kinds || isMachinesInstance || isNodesInstance
           if (wanted.length > 0) {
@@ -450,7 +451,7 @@ export const useHeimdallSearch = (
 
       primaryResults.value = primary
       crossTableResults.value = cross
-      results.value = [...primary, ...cross]
+      results.value = orderResultsByKind([...primary, ...cross], config.instanceId)
       failedSources.value = failed
       error.value = attemptedSources > 0 && failed.length === attemptedSources
         ? 'Search is unavailable right now. Check the connection to the Heimdall backend and try again.'

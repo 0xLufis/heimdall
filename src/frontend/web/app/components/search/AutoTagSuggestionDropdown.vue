@@ -38,7 +38,7 @@ import {
 } from 'lucide-vue-next'
 import { BASELINE_KNOWN_KEY_VALUES } from '~/utils/search/indexingTables'
 import { highlightSegments } from '~/utils/search/searchRanking'
-import { resolveEntityKind, resolveResultLink, type SearchEntityKind } from '~/utils/search/searchNavigation'
+import { resolveEntityKind, resolveResultLink, resultKindOrder, type SearchEntityKind } from '~/utils/search/searchNavigation'
 
 const props = withDefaults(
   defineProps<{
@@ -205,7 +205,8 @@ const crossTableItems = computed(() => {
   return props.results.filter(r => r.isCrossTable)
 })
 
-// Results grouped by entity kind, in order of first appearance (primary results lead)
+// Results grouped by entity kind. The global search lists stations, controllers, tickets and
+// people before inventory; a page-scoped search lists its own entity first (resultKindOrder).
 const GROUP_META: Record<SearchEntityKind, { label: string; icon: any }> = {
   machine: { label: 'Stations', icon: Factory },
   controller: { label: 'Controllers', icon: Monitor },
@@ -235,7 +236,8 @@ const resultGroups = computed<ResultGroup[]>(() => {
   }
   // Keyboard order is the render order: number the entries group by group.
   let index = 0
-  const groups = [...byKind.values()]
+  const order = resultKindOrder(props.instanceId)
+  const groups = [...byKind.values()].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))
   for (const group of groups) {
     for (const entry of group.entries) entry.index = index++
   }
@@ -794,7 +796,7 @@ defineExpose({
           <div class="space-y-1">
             <p class="text-xs font-semibold text-foreground">Search Ready</p>
             <p class="text-[11px] text-muted-foreground max-w-sm mx-auto">
-              Type at least two characters to search stations, controllers, inventory, tickets and people, or scope with <code class="font-mono text-primary">@machine</code>, <code class="font-mono text-primary">#ticket</code>, <code class="font-mono text-primary">!controller</code> or <code class="font-mono text-primary">*part</code>.
+              Type at least two characters to search stations, controllers, tickets, people and inventory, or scope with <code class="font-mono text-primary">@machine</code>, <code class="font-mono text-primary">#ticket</code>, <code class="font-mono text-primary">!controller</code> or <code class="font-mono text-primary">*part</code>.
             </p>
           </div>
         </div>

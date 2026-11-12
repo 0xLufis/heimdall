@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FleetAnalyticsSummary from '../../../src/frontend/web/app/components/analytics/FleetAnalyticsSummary.vue'
-import KpiGraphBuilder from '../../../src/frontend/web/app/components/analytics/KpiGraphBuilder.vue'
 import { navMenu } from '../../../src/frontend/web/app/constants/menus'
 
 // Shape of the backend FleetSummaryDto: every figure comes with its sample size, missing ones are null.
@@ -43,7 +42,7 @@ const summaryMount = (summary: Record<string, unknown> = mockSummary) => mount(F
   }
 })
 
-describe('Predictive Maintenance, Analytics & KPI Builder Test Suite', () => {
+describe('Predictive Maintenance & Fleet Analytics Test Suite', () => {
   beforeEach(() => {
     vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => null),
@@ -109,33 +108,6 @@ describe('Predictive Maintenance, Analytics & KPI Builder Test Suite', () => {
       expect(wrapper.find('[data-testid="summary-no-faulting"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="summary-no-stock"]').exists()).toBe(true)
       expect(wrapper.text()).toContain('No open tickets.')
-    })
-  })
-
-  describe('KpiGraphBuilder Component', () => {
-    it('initializes with default pinned KPI widgets', () => {
-      const wrapper = mount(KpiGraphBuilder)
-
-      expect(wrapper.text()).toContain('Plant Master OEE Index')
-      expect(wrapper.text()).toContain('Pre-Assembly (L1) MTTR')
-      expect(wrapper.text()).toContain('Robotics Welding Quality Rate')
-    })
-
-    it('pins new custom KPI widget with SPC thresholds and saves to storage', async () => {
-      const wrapper = mount(KpiGraphBuilder)
-
-      const titleInput = wrapper.find('input[type="text"]')
-      await titleInput.setValue('Custom Line 5 OEE')
-
-      expect(wrapper.text()).toContain('KPI Goals & Statistical Process Control (SPC) Limits')
-      expect(wrapper.text()).toContain('Target / Mean')
-      expect(wrapper.text()).toContain('Upper Limit (UCL)')
-      expect(wrapper.text()).toContain('Lower Limit (LCL)')
-
-      const pinButton = wrapper.find('[data-testid="pin-kpi-btn"]')
-      await pinButton.trigger('click')
-
-      expect(wrapper.text()).toContain('Custom Line 5 OEE')
     })
   })
 

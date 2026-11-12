@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { scoreRecord, rankRecords, highlightSegments } from '~/utils/search/searchRanking'
-import { buildEntityLink, resolveEntityKind, resolveResultLink, resolveSubmitRoute } from '~/utils/search/searchNavigation'
+import { buildEntityLink, resolveEntityKind, resolveResultLink, resolveSubmitRoute, resultKindOrder, orderResultsByKind } from '~/utils/search/searchNavigation'
 import { loadCatalog, invalidateCatalog, resolveSearchScope, ticketToSearchItem, inventoryFilterExpression, searchServer, userToSearchItem } from '~/utils/search/searchSources'
 import { addRecentSearch, MAX_RECENT_SEARCHES } from '~/utils/search/recentSearches'
 import { useHeimdallSearch } from '~/composables/useHeimdallSearch'
@@ -107,6 +107,31 @@ describe('Result navigation targets', () => {
     expect(resolveEntityKind({ itemType: 'Machine', sourceTable: 'inventory' })).toBe('machine')
     expect(resolveEntityKind({ itemType: 'hardware', sourceTable: 'inventory' })).toBe('inventory')
     expect(resolveEntityKind({ itemType: 'whatever', sourceTable: 'tickets' })).toBe('ticket')
+  })
+
+  it('orders the global search specific entities first and inventory last', () => {
+    expect(resultKindOrder('global')).toEqual(['machine', 'controller', 'ticket', 'user', 'inventory', 'telemetry'])
+    expect(resultKindOrder('dashboard')).toEqual(resultKindOrder('global'))
+    expect(resultKindOrder(undefined)).toEqual(resultKindOrder('global'))
+  })
+
+  it('lets a page-scoped search list its own entity first', () => {
+    expect(resultKindOrder('inventory')).toEqual(['inventory', 'machine', 'controller', 'ticket', 'user', 'telemetry'])
+    expect(resultKindOrder('machines')[0]).toBe('machine')
+    expect(resultKindOrder('clients')).toEqual(['controller', 'machine', 'ticket', 'user', 'inventory', 'telemetry'])
+  })
+
+  it('sorts results into group order and keeps the ranked order within a group', () => {
+    const items = [
+      { id: 'p-1', itemType: 'hardware' },
+      { id: 'u-1', itemType: 'User' },
+      { id: 'm-1', itemType: 'Machine' },
+      { id: 'p-2', itemType: 'hardware' },
+      { id: 'c-1', itemType: 'ClientPc' },
+      { id: 'm-2', itemType: 'Machine' }
+    ]
+    expect(orderResultsByKind(items, 'global').map(i => i.id)).toEqual(['m-1', 'm-2', 'c-1', 'u-1', 'p-1', 'p-2'])
+    expect(orderResultsByKind(items, 'inventory').map(i => i.id)).toEqual(['p-1', 'p-2', 'm-1', 'm-2', 'c-1', 'u-1'])
   })
 
   it('honours an explicit link and otherwise derives one', () => {
@@ -391,16 +416,25 @@ describe('useHeimdallSearch execution', () => {
       search.rawInput.value = 'Laser'
       await search.executeSearch()
 
-      expect(urls()).toEqual(['/api/search?q=laser&kinds=inventory%2Cstations%2Ccontrollers%2Ctickets%2Cusers&limit=8'])
+      expect(urls()).toEqual(['/api/search?q=laser&kinds=stations%2Ccontrollers%2Ctickets%2Cusers%2Cinventory&limit=8'])
       expect(search.error.value).toBeNull()
       expect(search.failedSources.value).toEqual([])
-      expect(search.primaryResults.value.map(r => r.link)).toEqual(['/dashboard/inventory/p-1'])
-      expect(search.crossTableResults.value.map(r => r.link)).toEqual([
+      // Specific entities first, spare parts last.
+      expect(search.results.value.map(r => r.link)).toEqual([
         '/dashboard/machines?search=OP060+Laser+Welding+Cell&tree=m-1',
         '/dashboard/clients?selected=c-1&hostname=IPC-L02-LASER',
         '/dashboard/tickets/t-1',
-        '/dashboard/users/u-1'
+        '/dashboard/users/u-1',
+        '/dashboard/inventory/p-1'
       ])
+    })
+
+    it('keeps the page entity first for a page-scoped instance', async () => {
+      const search = useHeimdallSearch({ instanceId: 'inventory' })
+      search.rawInput.value = 'laser'
+      await search.executeSearch()
+      expect(urls().at(-1)).toBe('/api/search?q=laser&kinds=stations%2Cinventory&limit=8')
+      expect(search.results.value.map(r => r.id)).toEqual(['p-1', 'm-1'])
     })
 
     it('restricts the request to the scoped kind and asks for more of it', async () => {
@@ -524,7 +558,7 @@ describe('useHeimdallSearch execution', () => {
       const search = useHeimdallSearch({ instanceId: 'global' })
       search.rawInput.value = 'laser'
       await search.executeSearch()
-      expect(search.results.value.map(r => r.id)).toEqual(['p-1', 'm-1'])
+      expect(search.results.value.map(r => r.id)).toEqual(['m-1', 'p-1'])
       expect(search.results.value.find(r => r.id === 'm-1')!.link).toBe('/dashboard/machines?search=OP060+Laser+Welding+Cell&tree=m-1')
     })
 
@@ -570,17 +604,46 @@ describe('Results dropdown', () => {
     { id: 't-1', name: 'Laser drift', itemType: 'Ticket', isCrossTable: true }
   ]
 
-  it('groups results by entity type with counts and navigates in render order', async () => {
-    const wrapper = mount(AutoTagSuggestionDropdown, { props: { results, freeText: 'laser', listboxId: 'lb' } })
-    const groups = wrapper.findAll('[role="group"]')
-    expect(groups.map(g => g.attributes('aria-label'))).toEqual(['Inventory, 2 results', 'Stations, 1 results', 'Tickets, 1 results'])
-
+  const keyboardOrder = (wrapper: ReturnType<typeof mount>) => {
     const vm = wrapper.vm as any
     const order = [vm.getSelectedResult().id]
-    for (let i = 0; i < 3; i++) { vm.navigateNext(); order.push(vm.getSelectedResult().id) }
-    expect(order).toEqual(['p-1', 'p-2', 'm-1', 't-1'])
+    for (let i = 1; i < results.length; i++) { vm.navigateNext(); order.push(vm.getSelectedResult().id) }
     vm.navigateNext()
-    expect(vm.getSelectedResult().id).toBe('p-1')
+    order.push(vm.getSelectedResult().id) // wraps around
+    return order
+  }
+  const groupLabels = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('[role="group"]').map(g => g.attributes('aria-label'))
+
+  it('global search: groups by entity type, specific entities first and inventory last, and navigates in render order', async () => {
+    const wrapper = mount(AutoTagSuggestionDropdown, { props: { results, freeText: 'laser', listboxId: 'lb', instanceId: 'global' } })
+    expect(groupLabels(wrapper)).toEqual(['Stations, 1 results', 'Tickets, 1 results', 'Inventory, 2 results'])
+    expect(keyboardOrder(wrapper)).toEqual(['m-1', 't-1', 'p-1', 'p-2', 'm-1'])
+    expect(wrapper.findAll('[role="option"]')[0].text()).toContain('Laser Welder')
+  })
+
+  it('global search: inventory comes last even when it is the primary source', () => {
+    const wrapper = mount(AutoTagSuggestionDropdown, {
+      props: {
+        primaryResults: [results[0], results[2]],
+        crossTableResults: [results[1], results[3], { id: 'u-1', name: 'Laser Larry', itemType: 'User', isCrossTable: true }, { id: 'c-1', name: 'IPC-LASER', itemType: 'ClientPc', isCrossTable: true }],
+        freeText: 'laser'
+      }
+    })
+    expect(groupLabels(wrapper)).toEqual(['Stations, 1 results', 'Controllers, 1 results', 'Tickets, 1 results', 'People, 1 results', 'Inventory, 2 results'])
+  })
+
+  it('page-scoped search: the page entity keeps its group first', () => {
+    const inventory = mount(AutoTagSuggestionDropdown, { props: { results, freeText: 'laser', instanceId: 'inventory' } })
+    expect(groupLabels(inventory)).toEqual(['Inventory, 2 results', 'Stations, 1 results', 'Tickets, 1 results'])
+    expect(keyboardOrder(inventory)).toEqual(['p-1', 'p-2', 'm-1', 't-1', 'p-1'])
+
+    const machines = mount(AutoTagSuggestionDropdown, { props: { results: [results[0], results[1]], freeText: 'laser', instanceId: 'machines' } })
+    expect(groupLabels(machines)).toEqual(['Stations, 1 results', 'Inventory, 1 results'])
+
+    const clients = mount(AutoTagSuggestionDropdown, {
+      props: { results: [results[1], { id: 'c-1', name: 'IPC-LASER', itemType: 'ClientPc' }], freeText: 'laser', instanceId: 'clients' }
+    })
+    expect(groupLabels(clients)).toEqual(['Controllers, 1 results', 'Stations, 1 results'])
   })
 
   it('exposes listbox semantics and reports the active option', async () => {
@@ -618,7 +681,7 @@ describe('Results dropdown', () => {
   it('selecting an option emits the item', async () => {
     const wrapper = mount(AutoTagSuggestionDropdown, { props: { results, freeText: 'laser' } })
     await wrapper.findAll('[role="option"]')[2].trigger('click')
-    expect((wrapper.emitted('select-result')![0][0] as any).id).toBe('m-1')
+    expect((wrapper.emitted('select-result')![0][0] as any).id).toBe('p-1')
   })
 
   it('distinguishes loading, no-match, error and recent-search states', async () => {
@@ -681,20 +744,27 @@ describe('Search bar keyboard behaviour', () => {
     expect(input.attributes('aria-activedescendant')).toBe(wrapper.findAll('[role="option"]')[1].attributes('id'))
   })
 
+  it('highlights the station first: stations are listed before inventory', async () => {
+    const { wrapper, input } = await mountWithResults()
+    expect(wrapper.findAll('[role="group"]').map(g => g.attributes('aria-label'))).toEqual(['Stations, 1 results', 'Inventory, 2 results'])
+    await input.trigger('keydown', { key: 'Enter' })
+    expect(routerPush).toHaveBeenCalledWith('/dashboard/machines?search=Laser+Welding+Cell&tree=m-1')
+  })
+
   it('Enter opens the highlighted entity, not a list page', async () => {
     const { wrapper, input } = await mountWithResults()
     await input.trigger('keydown', { key: 'ArrowDown' })
     await input.trigger('keydown', { key: 'ArrowDown' })
     await input.trigger('keydown', { key: 'Enter' })
-    expect(routerPush).toHaveBeenCalledWith('/dashboard/machines?search=Laser+Welding+Cell&tree=m-1')
-    expect((wrapper.emitted('select-result')![0][0] as any).id).toBe('m-1')
+    expect(routerPush).toHaveBeenCalledWith('/dashboard/inventory/p-2')
+    expect((wrapper.emitted('select-result')![0][0] as any).id).toBe('p-2')
     expect(wrapper.find('[role="listbox"]').exists()).toBe(false)
   })
 
   it('clicking a result navigates to it', async () => {
     const { wrapper } = await mountWithResults()
     await wrapper.findAll('[role="option"]')[1].trigger('click')
-    expect(routerPush).toHaveBeenCalledWith('/dashboard/inventory/p-2')
+    expect(routerPush).toHaveBeenCalledWith('/dashboard/inventory/p-1')
   })
 
   it('leaves paste, cut and Ctrl+K alone while results are listed', async () => {
@@ -713,7 +783,7 @@ describe('Search bar keyboard behaviour', () => {
     const { input } = await mountWithResults()
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     await input.trigger('keydown', { key: 'Enter', ctrlKey: true })
-    expect(open).toHaveBeenCalledWith('/dashboard/inventory/p-1', '_blank', 'noopener')
+    expect(open).toHaveBeenCalledWith('/dashboard/machines?search=Laser+Welding+Cell&tree=m-1', '_blank', 'noopener')
     expect(routerPush).not.toHaveBeenCalled()
   })
 

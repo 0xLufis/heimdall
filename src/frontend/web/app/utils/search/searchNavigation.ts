@@ -44,6 +44,35 @@ export function resolveEntityKind(item: Pick<SearchResultItem, 'itemType' | 'sou
   return KIND_BY_TYPE[String(item.sourceTable || '').toLowerCase()] || 'inventory'
 }
 
+/**
+ * Group (and keyboard) order of results. The global search lists the specific entities first
+ * and spare parts last; a page-scoped search (inventory, machines, clients) lists the page's
+ * own entity first and the other kinds after it in the same order.
+ */
+export const GLOBAL_RESULT_ORDER: readonly SearchEntityKind[] = ['machine', 'controller', 'ticket', 'user', 'inventory', 'telemetry']
+
+const PAGE_ENTITY: Record<string, SearchEntityKind> = {
+  inventory: 'inventory',
+  machines: 'machine',
+  clients: 'controller',
+  nodes: 'controller',
+  tickets: 'ticket'
+}
+
+export function resultKindOrder(instanceId?: string | null): SearchEntityKind[] {
+  const own = PAGE_ENTITY[String(instanceId || '')]
+  return own ? [own, ...GLOBAL_RESULT_ORDER.filter(k => k !== own)] : [...GLOBAL_RESULT_ORDER]
+}
+
+/** Stable sort of results into the group order of the instance (ties keep the ranked order). */
+export function orderResultsByKind<T extends Pick<SearchResultItem, 'itemType' | 'sourceTable'>>(items: T[], instanceId?: string | null): T[] {
+  const order = resultKindOrder(instanceId)
+  return items
+    .map((item, index) => ({ item, index, rank: order.indexOf(resolveEntityKind(item)) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(entry => entry.item)
+}
+
 /** Deep link for one entity. `name` is the label the target page filters / selects by. */
 export function buildEntityLink(kind: SearchEntityKind, id: string | undefined | null, name?: string | null): string {
   const safeId = id == null ? '' : String(id)

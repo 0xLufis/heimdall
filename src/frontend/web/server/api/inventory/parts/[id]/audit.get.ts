@@ -1,13 +1,4 @@
-import { defineEventHandler, getRouterParam } from 'h3'
-import { partsInventoryStore } from '../../../../utils/partsInventoryStore'
+import { defineEventHandler } from 'h3'
 
-export default defineEventHandler((event) => {
-  const id = getRouterParam(event, 'id')
-  const logs = partsInventoryStore.getAuditLog(id)
-  return {
-    success: true,
-    partId: id,
-    totalCount: logs.length,
-    auditLog: logs
-  }
-})
+/** The backend keeps no per-part history yet; the drawer shows its empty state. */
+export default defineEventHandler(() => ({ success: true, auditLog: [], available: false }))

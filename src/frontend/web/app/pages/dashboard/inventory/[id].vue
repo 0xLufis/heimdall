@@ -108,17 +108,11 @@ const openRemoteForPc = (pc: any) => {
 
 const handleSaveEdit = async (updatedItem: any) => {
   try {
-    if (updatedItem) {
-      component.value = { ...component.value, ...updatedItem }
-    }
-    try {
-      await $fetch(`/api/proxy/v1/Inventory/${id}`, {
-        method: 'PUT',
-        body: updatedItem
-      })
-    } catch {
-      // proxy fallback
-    }
+    // The BFF maps the page fields onto the backend item (identifier vs. display name, stock).
+    await $fetch(`/api/inventory/parts/${id}/edit`, {
+      method: 'PUT',
+      body: updatedItem
+    })
     showEditModal.value = false
     toast.success('Asset updated successfully')
     await fetchData()
