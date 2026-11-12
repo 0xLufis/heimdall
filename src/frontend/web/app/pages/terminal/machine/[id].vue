@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ShieldAlert,
@@ -20,9 +20,13 @@ import {
   Check,
   Server,
   Maximize2,
-  Minimize2
+  Minimize2,
+  QrCode
 } from 'lucide-vue-next'
 import TerminalAckModal from '~/components/terminal/TerminalAckModal.vue'
+import TerminalQrCard from '~/components/terminal/TerminalQrCard.vue'
+import TerminalTicketDetail from '~/components/terminal/TerminalTicketDetail.vue'
+import type { TerminalTicket } from '~/utils/terminalTicketView'
 import { toast } from 'vue-sonner'
 import { resolveTerminalLayout } from '~/utils/terminalLayout'
 import { describeTerminalLoadError, isDevBypass } from '~/utils/terminalAccess'
@@ -80,7 +84,34 @@ watch(() => stream.latestValues.value, (newVals) => {
   }
 }, { deep: true })
 
-const recentTickets = ref<any[]>([])
+const recentTickets = ref<TerminalTicket[]>([])
+
+// Read-only ticket view and QR codes: panels in the page like the dispatch acknowledgement (no modal
+// overlays). The selected ticket follows the 4 s refresh; if it drops out of the station's list, the
+// last copy stays on screen until the operator goes back.
+const selectedTicketId = ref<string | null>(null)
+const lastSelectedTicket = ref<TerminalTicket | null>(null)
+const selectedTicket = computed<TerminalTicket | null>(() => {
+  if (!selectedTicketId.value) return null
+  return recentTickets.value.find(t => t.id === selectedTicketId.value) ?? lastSelectedTicket.value
+})
+watch(selectedTicket, t => { if (t) lastSelectedTicket.value = t })
+const showStationQr = ref(false)
+
+function openTicket(ticket: TerminalTicket) {
+  selectedTicketId.value = ticket.id
+  lastSelectedTicket.value = ticket
+  showStationQr.value = false
+}
+
+function closeTicket() {
+  selectedTicketId.value = null
+  lastSelectedTicket.value = null
+}
+
+function toggleStationQr() {
+  showStationQr.value = !showStationQr.value
+}
 
 // Real-time clock & heartbeat
 const currentTime = ref('')
@@ -409,6 +440,19 @@ onUnmounted(() => {
       </div>
       <div class="shrink-0 text-lg font-black font-mono tabular-nums text-cyan-400">{{ currentTime || '00:00:00' }}</div>
       <button
+        v-if="isAuthenticated && machineData"
+        type="button"
+        data-testid="terminal-station-qr"
+        class="shrink-0 w-12 h-12 rounded-xl border flex items-center justify-center active:scale-95 cursor-pointer"
+        :class="showStationQr ? 'bg-cyan-500/20 border-cyan-400 text-cyan-100' : 'bg-slate-800 border-slate-700 text-slate-100'"
+        :aria-pressed="showStationQr"
+        aria-label="Show the station QR code"
+        title="Show the station QR code"
+        @click="toggleStationQr"
+      >
+        <QrCode class="w-6 h-6" />
+      </button>
+      <button
         type="button"
         data-testid="terminal-expand"
         class="shrink-0 w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 flex items-center justify-center active:scale-95 cursor-pointer"
@@ -458,6 +502,13 @@ onUnmounted(() => {
 
     <template v-else>
       <main class="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
+        <TerminalQrCard
+          v-if="showStationQr && machineData"
+          :station="machineData"
+          compact
+          @close="showStationQr = false"
+        />
+
         <TerminalAckModal
           :open="showAckModal"
           :ack-data="ackData"
@@ -532,17 +583,34 @@ onUnmounted(() => {
           class="w-full h-12 bg-slate-900 border border-slate-700 rounded-xl px-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
         />
 
-        <!-- Open tickets of this station -->
+        <!-- Open tickets of this station; tapping one shows it read-only in place of the list -->
         <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Active Dispatches ({{ recentTickets.length }})</div>
-          <div v-if="recentTickets.length === 0" class="text-xs text-slate-500 font-mono">No active tickets for this station.</div>
-          <div v-for="t in recentTickets.slice(0, 3)" :key="t.id" class="flex items-center justify-between gap-2 py-1.5 border-t border-slate-800 first:border-t-0">
-            <div class="min-w-0">
-              <div class="text-xs font-mono font-bold text-cyan-400">{{ t.ticketNumber }}</div>
-              <div class="text-xs text-slate-300 truncate">{{ t.title }}</div>
-            </div>
-            <span class="shrink-0 text-[11px] font-mono font-semibold px-2 py-1 rounded bg-slate-800 text-slate-300">{{ t.status }}</span>
-          </div>
+          <TerminalTicketDetail
+            v-if="selectedTicket"
+            :ticket="selectedTicket"
+            :station="machineData || { id: machineId }"
+            compact
+            @close="closeTicket"
+          />
+          <template v-else>
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Active Dispatches ({{ recentTickets.length }})</div>
+            <div v-if="recentTickets.length === 0" class="text-xs text-slate-500 font-mono">No active tickets for this station.</div>
+            <button
+              v-for="t in recentTickets.slice(0, 3)"
+              :key="t.id"
+              type="button"
+              data-testid="terminal-ticket-row"
+              class="w-full text-left flex items-center justify-between gap-2 py-2 border-t border-slate-800 first:border-t-0 cursor-pointer active:bg-slate-800/60"
+              :aria-label="`Open ticket ${t.ticketNumber} (read-only)`"
+              @click="openTicket(t)"
+            >
+              <div class="min-w-0">
+                <div class="text-xs font-mono font-bold text-cyan-400">{{ t.ticketNumber }}</div>
+                <div class="text-xs text-slate-300 truncate">{{ t.title }}</div>
+              </div>
+              <span class="shrink-0 text-[11px] font-mono font-semibold px-2 py-1 rounded bg-slate-800 text-slate-300">{{ t.status }}</span>
+            </button>
+          </template>
         </div>
       </main>
 
@@ -625,6 +693,19 @@ onUnmounted(() => {
           <div class="text-2xl font-black font-mono tracking-wider text-cyan-400">{{ currentTime || '00:00:00' }}</div>
         </div>
         <button
+          v-if="isAuthenticated && machineData"
+          type="button"
+          data-testid="terminal-station-qr"
+          class="h-12 px-4 rounded-xl border text-sm font-bold flex items-center gap-2 active:scale-95 cursor-pointer"
+          :class="showStationQr ? 'bg-cyan-500/20 border-cyan-400 text-cyan-100' : 'bg-slate-800 border-slate-700 text-slate-100'"
+          :aria-pressed="showStationQr"
+          title="Show the station QR code"
+          @click="toggleStationQr"
+        >
+          <QrCode class="w-5 h-5" />
+          <span>{{ showStationQr ? 'Hide QR' : 'Show QR' }}</span>
+        </button>
+        <button
           v-if="canCollapse"
           type="button"
           data-testid="terminal-collapse"
@@ -686,6 +767,14 @@ onUnmounted(() => {
     </div>
     <!-- MAIN TERMINAL CONTENT (READ-ONLY TELEMETRY + 2-CLICK REPORTING) -->
     <main v-else class="flex-1 flex flex-col p-6 overflow-y-auto">
+      <!-- STATION QR CODE (IN-PAGE PANEL, ZERO POPUPS) -->
+      <TerminalQrCard
+        v-if="showStationQr && machineData"
+        class="mb-4 max-w-xl self-end"
+        :station="machineData"
+        @close="showStationQr = false"
+      />
+
       <!-- HIGH-CONTRAST VISUAL ACKNOWLEDGMENT BANNER (IN-PAGE WORKBENCH, ZERO POPUPS) -->
       <TerminalAckModal
         :open="showAckModal"
@@ -789,8 +878,15 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- RECENT TICKETS SUMMARY (READ-ONLY) -->
+        <!-- RECENT TICKETS SUMMARY (READ-ONLY); tapping a ticket shows it in place of the list -->
         <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex-1 flex flex-col">
+          <TerminalTicketDetail
+            v-if="selectedTicket"
+            :ticket="selectedTicket"
+            :station="machineData || { id: machineId }"
+            @close="closeTicket"
+          />
+          <template v-else>
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
               <Clock class="w-4 h-4 text-slate-400" />
@@ -803,10 +899,14 @@ onUnmounted(() => {
             No active tickets for this station.
           </div>
           <div v-else class="space-y-2 overflow-y-auto max-h-48 pr-1">
-            <div 
-              v-for="t in recentTickets" 
+            <button
+              v-for="t in recentTickets"
               :key="t.id"
-              class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 flex items-center justify-between"
+              type="button"
+              data-testid="terminal-ticket-row"
+              class="w-full text-left bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 active:scale-[0.99] transition-colors"
+              :aria-label="`Open ticket ${t.ticketNumber} (read-only)`"
+              @click="openTicket(t)"
             >
               <div>
                 <div class="flex items-center gap-2">
@@ -825,8 +925,9 @@ onUnmounted(() => {
               <span class="text-[11px] font-mono font-semibold px-2 py-1 rounded bg-slate-800 text-slate-300">
                 {{ t.status }}
               </span>
-            </div>
+            </button>
           </div>
+          </template>
         </div>
       </section>
 

@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery, getRouterParam, getHeader, createError } 
 import { requireTerminalAuth, assertTerminalStationAccess } from '../../../utils/terminalAuth'
 import { machinesStore } from '../../../utils/machinesStore'
 import { ticketsStore } from '../../../utils/ticketsStore'
+import { terminalTicketsForStation } from '../../../utils/terminalTickets'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -61,20 +62,8 @@ export default defineEventHandler(async (event) => {
     feedRatePercentage: isOperational ? 100 : 0
   }
 
-  // Strictly read-only recent tickets for this station
-  const allTickets = ticketsStore.getAllTickets()
-  const recentTickets = allTickets
-    .filter(t => t.stationId === machine.id || t.stationName === machine.name || t.stationId === machine.customIdentifier)
-    .slice(0, 5)
-    .map(t => ({
-      id: t.id,
-      ticketNumber: t.ticketNumber,
-      title: t.title,
-      status: t.status,
-      priority: t.priority,
-      category: t.category,
-      createdAt: t.createdAt
-    }))
+  // Strictly read-only recent tickets for this station, with what the kiosk's read-only ticket view shows
+  const recentTickets = terminalTicketsForStation(ticketsStore.getAllTickets(), machine)
 
   return {
     machine: {
