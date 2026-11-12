@@ -204,6 +204,8 @@ class HeimdallTuiState:
         self.banner_time = time.time()
         self.start_time = time.time()
         self.running = True
+        # [q] in the quit dialog: `just stop` runs after curses has restored the terminal (see main()).
+        self.stop_services_on_exit = False
         self.lock = threading.Lock()
 
     def set_banner(self, msg):
@@ -318,7 +320,8 @@ def execute_action(cmd_args):
     """Executes a command asynchronously without blocking the UI or killing the TUI."""
     def _run():
         try:
-            res = subprocess.run(cmd_args, cwd=ROOT_DIR, capture_output=True, text=True)
+            # stdin is the TUI's terminal: nothing started from here may read (and steal) its keystrokes.
+            res = subprocess.run(cmd_args, cwd=ROOT_DIR, capture_output=True, text=True, stdin=subprocess.DEVNULL)
             if res.returncode == 0:
                 STATE.set_banner(f"✓ Action '{' '.join(cmd_args)}' completed successfully.")
             else:
@@ -685,9 +688,11 @@ def handle_key(key):
 
     if STATE.show_quit_dialog:
         if key in (ord('q'), ord('Q')):
+            # Stopping takes a while (dotnet watch alone has a 15 s cleanup timeout). Running it here blocked
+            # the UI thread with curses still active, so the TUI froze and `just stop` wrote over the screen;
+            # main() runs it once the terminal is restored.
+            STATE.stop_services_on_exit = True
             STATE.running = False
-            # Stop all services via just
-            subprocess.run([JUST_BIN, "stop"], cwd=ROOT_DIR)
         elif key in (ord('b'), ord('B'), ord('d'), ord('D')):
             # Detach - leave services running
             STATE.running = False
@@ -807,6 +812,15 @@ def main():
             print(f"Curses interface exited ({e}). Falling back to terminal output.")
     else:
         ansi_fallback_loop()
+
+    if STATE.stop_services_on_exit:
+        print("\n\033[1;33mStopping all Heimdall services (just stop)...\033[0m", flush=True)
+        res = subprocess.run([JUST_BIN, "stop"], cwd=ROOT_DIR, stdin=subprocess.DEVNULL)
+        if res.returncode == 0:
+            print("\033[1;32m✓ Services stopped.\033[0m")
+        else:
+            print(f"\033[1;31m'just stop' exited with code {res.returncode}; check with: just status\033[0m")
+        return
 
     # Final detachment message
     print("\n\033[1;32m✓ Detached from Heimdall TUI.\033[0m")
