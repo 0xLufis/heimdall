@@ -119,6 +119,10 @@ describe('RemoteQuickViewModal.vue Component Test Suite', () => {
     osVersion: 'Microsoft Windows 10 Enterprise LTSC'
   }
 
+  // The mocked viewer connects asynchronously; wait for the outcome instead of sleeping a fixed
+  // 50 ms, which missed it on a busy machine.
+  const settle = { timeout: 5000, interval: 20 }
+
   beforeEach(() => {
     mockCurrentRole.value = 'engineer'
     rfbUrls.length = 0
@@ -130,13 +134,11 @@ describe('RemoteQuickViewModal.vue Component Test Suite', () => {
       props: { controller: mockController as any, open: true },
       global: { stubs: modalStubs }
     })
-    await new Promise(r => setTimeout(r, 50))
-    expect(rfbUrls).toEqual([`ws://${window.location.hostname}:8006/websockify`])
+    await vi.waitFor(() => expect(rfbUrls).toEqual([`ws://${window.location.hostname}:8006/websockify`]), settle)
 
     // Same dialog, different controller: its own link is resolved and the first session is dropped.
     await wrapper.setProps({ controller: { ...mockController, id: 'ctrl-win-02', name: 'IPC-L02', hostname: 'IPC-L02', ipAddress: '10.42.2.11' } as any })
-    await new Promise(r => setTimeout(r, 50))
-    expect(rfbUrls).toEqual([`ws://${window.location.hostname}:8006/websockify`, 'ws://10.42.2.11:6080/vnc/ws'])
+    await vi.waitFor(() => expect(rfbUrls).toEqual([`ws://${window.location.hostname}:8006/websockify`, 'ws://10.42.2.11:6080/vnc/ws']), settle)
     expect(wrapper.text()).toContain('10.42.2.11:6080/vnc/ws')
   })
 
@@ -145,10 +147,9 @@ describe('RemoteQuickViewModal.vue Component Test Suite', () => {
       props: { controller: { ...mockController, id: 'ctrl-unlinked', name: 'IPC-BARE', hostname: 'IPC-BARE', ipAddress: '10.42.9.9' } as any, open: true },
       global: { stubs: modalStubs }
     })
-    await new Promise(r => setTimeout(r, 50))
+    await vi.waitFor(() => expect(wrapper.text()).toContain('No remote desktop linked to IPC-BARE'), settle)
 
     expect(rfbUrls).toEqual([])
-    expect(wrapper.text()).toContain('No remote desktop linked to IPC-BARE')
     expect(wrapper.text()).not.toContain('RFB 3.8 Connected')
   })
 
@@ -157,10 +158,9 @@ describe('RemoteQuickViewModal.vue Component Test Suite', () => {
       props: { controller: { ...mockController, id: 'ctrl-missing' } as any, open: true },
       global: { stubs: modalStubs }
     })
-    await new Promise(r => setTimeout(r, 50))
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Remote access link unavailable'), settle)
 
     expect(rfbUrls).toEqual([])
-    expect(wrapper.text()).toContain('Remote access link unavailable')
   })
 
   it('renders modal header with controller details when open is true', () => {
@@ -211,10 +211,8 @@ describe('RemoteQuickViewModal.vue Component Test Suite', () => {
       }
     })
 
-    // Wait for connect event
-    await new Promise(r => setTimeout(r, 50))
+    await vi.waitFor(() => expect(wrapper.text()).toContain('RFB 3.8 Connected'), settle)
 
-    expect(wrapper.text()).toContain('RFB 3.8 Connected')
     expect(wrapper.text()).toContain('Live RFB')
     expect(wrapper.text()).toContain('Simulation')
     expect(wrapper.text()).toContain('Ctrl+Alt+Del')
@@ -250,8 +248,7 @@ describe('RemoteQuickViewModal.vue Component Test Suite', () => {
     expect(liveButton).toBeDefined()
     await liveButton?.trigger('click')
 
-    await new Promise(r => setTimeout(r, 50))
-    expect(wrapper.text()).toContain('RFB 3.8 Connected')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('RFB 3.8 Connected'), settle)
   })
 
   it('renders DameWare and RDP tabs accurately', async () => {

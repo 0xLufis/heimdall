@@ -426,6 +426,9 @@ public class AgentLifecycleTests : IClassFixture<CustomWebApplicationFactory>, I
         var bsod = await WaitForClassification(run6);
         Assert.Equal(C.UnexpectedShutdown, bsod.Classification);
         Assert.Equal("os_crash", bsod.Cause);
+        // The start report is assembled just after the classification becomes visible: wait for the
+        // journal to be drained instead of asserting immediately (raced under the full parallel suite).
+        for (int i = 0; i < 100 && recovered.Pending.Count > 0; i++) await Task.Delay(50);
         Assert.Empty(recovered.Pending); // the recovery travels with the start report
 
         mqtt.Published.Clear();
