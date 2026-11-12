@@ -21,7 +21,7 @@ import { useFleetAnalytics } from '~/composables/useFleetAnalytics'
 import {
   AGGREGATION_PREFIX, AUTO_REFRESH_OPTIONS, CATEGORY_LABELS, COLUMN_PRESETS, FLEET_COLUMNS, GROUP_DIMENSIONS,
   LIVE_STATE_META, NO_DATA_MARK, WINDOW_OPTIONS,
-  activeFilterCount, computeVirtualWindow, dimensionOptions, filterStations, formatAge, formatColumnValue,
+  activeFilterCount, computeVirtualWindow, dimensionOptions, filterStations, formatAge, formatColumnValue, freshnessText, staleRuleExplanation, staleRuleText,
   formatDurationMinutes, getColumn, groupStations, loadViewState, orderGroups, rollUp, rollupCellText,
   rollupExplanation, sanitizeViewState, saveViewState, sortStations, stateOptions, stationCellText,
   stationContextData, stationMachineLink, stationTelemetryLink, stationTicketsLink,
@@ -120,7 +120,7 @@ const tiles = computed<Tile[]>(() => {
       label: total === all ? 'Stations' : `Stations (filtered, of ${all})`,
       value: hasLoaded.value ? whole(total) : null,
       unit: '',
-      detail: `${r.reporting} reporting · ${r.states.STALE} stale · ${r.states.NO_DATA} no data`
+      detail: `${r.reporting} reporting · ${r.states.STALE} stale${r.states.OFFLINE > 0 ? ` · ${r.states.OFFLINE} offline` : ''} · ${r.states.NO_DATA} no data`
     },
     {
       key: 'oee',
@@ -167,7 +167,7 @@ const tiles = computed<Tile[]>(() => {
 })
 
 /** Bar segments of a roll-up: states with telemetry first, the "no data" share as the track. */
-const BAR_STATES: LiveState[] = ['RUNNING', 'IDLE', 'WARNING', 'FAULTED', 'MAINTENANCE', 'UNKNOWN', 'STALE']
+const BAR_STATES: LiveState[] = ['RUNNING', 'IDLE', 'WARNING', 'FAULTED', 'MAINTENANCE', 'UNKNOWN', 'STALE', 'OFFLINE']
 const barSegments = (rollup: FleetRollup) =>
   BAR_STATES.filter(state => rollup.states[state] > 0).map(state => ({ state, count: rollup.states[state] }))
 const stateSummary = (rollup: FleetRollup) =>
@@ -297,11 +297,15 @@ const visibleRows = (index: number): FleetStation[] => {
   return section && group ? group.rows.slice(section.start, section.end) : []
 }
 
+const staleRule = computed(() => staleRuleText(meta.value))
+const staleRuleTitle = computed(() => staleRuleExplanation(meta.value))
+
 const stateTitle = (row: FleetStation) => {
   const metaState = LIVE_STATE_META[row.liveState]
   const last = row.lastTelemetryAt ? `Last telemetry ${formatAge(row.telemetryAgeSeconds)} ago` : 'Never reported telemetry'
-  const reported = row.liveState === 'STALE' ? ` Last reported state: ${row.operationalStatus}.` : ''
-  return `${metaState.description} ${last}.${reported}`
+  const reported = row.liveState === 'STALE' || row.liveState === 'OFFLINE' ? ` Last reported state: ${row.operationalStatus}.` : ''
+  const freshness = freshnessText(row)
+  return `${metaState.description} ${last}.${reported}${freshness ? ` ${freshness}` : ''}`
 }
 </script>
 
@@ -749,7 +753,7 @@ const stateTitle = (row: FleetStation) => {
                   <span v-if="column.kind === 'state'" class="inline-flex items-center gap-1.5 min-w-0" :title="stateTitle(row)">
                     <span class="size-2 shrink-0 rounded-full" :class="LIVE_STATE_META[row.liveState].dot" />
                     <span class="truncate text-foreground">{{ LIVE_STATE_META[row.liveState].label }}</span>
-                    <span v-if="row.liveState === 'STALE'" class="shrink-0 text-muted-foreground">{{ formatAge(row.telemetryAgeSeconds) }}</span>
+                    <span v-if="row.liveState === 'STALE' || row.liveState === 'OFFLINE'" class="shrink-0 text-muted-foreground">{{ formatAge(row.telemetryAgeSeconds) }}</span>
                   </span>
                   <span
                     v-else
@@ -768,7 +772,7 @@ const stateTitle = (row: FleetStation) => {
         <span>{{ filtered.length }} of {{ stations.length }} stations<template v-if="view.groupBy !== 'none'"> in {{ groups.length }} group{{ groups.length === 1 ? '' : 's' }}</template></span>
         <span>Telemetry columns: latest sample per station</span>
         <span>Ticket columns: created in the last {{ windowLabel }}</span>
-        <span v-if="meta">Stale after {{ meta.telemetryStaleAfterSeconds }} s without telemetry</span>
+        <span v-if="staleRule" :title="staleRuleTitle">{{ staleRule }}</span>
         <span v-if="generatedAtText" class="ml-auto">Data as of {{ generatedAtText }}</span>
       </div>
     </div>

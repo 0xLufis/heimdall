@@ -303,6 +303,57 @@ public class StationTelemetryAndTenantRealtimeTests
         Assert.Equal(2, hub.TestClients.TestClient.StationOscillations.Count);
     }
 
+    private sealed class RecordingFreshnessTracker : IStationFreshnessTracker
+    {
+        public List<(Guid Station, DateTimeOffset At)> Arrivals { get; } = new();
+        public void RecordArrival(Guid stationId, DateTimeOffset at) => Arrivals.Add((stationId, at));
+        public StationArrivals? Get(Guid stationId) => null;
+    }
+
+    [Fact]
+    public async Task DroppedUnchangedBlock_StillCountsAsAnArrivalOfItsStation_WithoutCacheWriteOrBroadcast()
+    {
+        var (factory, machine, _) = await SeedStationAsync("org-a");
+        var hub = new TestHubContext();
+        var cache = new FakeMemoryCacheService();
+        var tracker = new RecordingFreshnessTracker();
+        TelemetryIngestionService Create() => new(NullLogger<TelemetryIngestionService>.Instance,
+            new FakeControllerRepository(), factory, new TestHostEnvironment(), new ConfigurationBuilder().Build(), hub, cache, null, tracker);
+        var t0 = new DateTimeOffset(2026, 11, 9, 10, 0, 0, TimeSpan.Zero);
+
+        Assert.True(await Create().ProcessPlcMemoryAsync("IPC-20", StationBlock(t0)));
+        var gateKey = PlcMemoryChangeGate.Key("IPC-20", StationBlock(t0));
+        var gate = await cache.GetAsync<PlcMemoryGateState>(gateKey);
+        Assert.Equal(machine.Id, gate!.StationId);                      // the gate remembers the resolved station
+        var forwardedAt = gate.ForwardedAt;
+        var snapshotBefore = (await cache.GetAsync<StationTelemetrySnapshot>(StationTelemetryStore.Key(machine.Id)))!.LastTelemetryAt;
+
+        Assert.True(await Create().ProcessPlcMemoryAsync("IPC-20", StationBlock(t0.AddSeconds(4))));   // unchanged: dropped
+
+        Assert.Equal(new[] { machine.Id, machine.Id }, tracker.Arrivals.Select(a => a.Station));
+        Assert.True(tracker.Arrivals[1].At >= tracker.Arrivals[0].At);
+        Assert.Single(hub.TestClients.TestClient.StationOscillations);  // no second broadcast
+        Assert.Equal(forwardedAt, (await cache.GetAsync<PlcMemoryGateState>(gateKey))!.ForwardedAt);   // gate state not rewritten
+        Assert.Equal(snapshotBefore, (await cache.GetAsync<StationTelemetrySnapshot>(StationTelemetryStore.Key(machine.Id)))!.LastTelemetryAt);
+    }
+
+    [Fact]
+    public async Task BlockWithoutStationTelemetry_IsNotAttributedToAnyStation()
+    {
+        var (factory, _, _) = await SeedStationAsync();
+        var cache = new FakeMemoryCacheService();
+        var tracker = new RecordingFreshnessTracker();
+        TelemetryIngestionService Create() => new(NullLogger<TelemetryIngestionService>.Instance,
+            new FakeControllerRepository(), factory, new TestHostEnvironment(), new ConfigurationBuilder().Build(), new TestHubContext(), cache, null, tracker);
+        var block = new AdsPlcMemoryBlock { SymbolName = "MAIN.Unrelated.nCounter", StructuredValue = new TelemetryValue { Int32Value = 5 } };
+
+        Assert.True(await Create().ProcessPlcMemoryAsync("IPC-20", block));
+        Assert.True(await Create().ProcessPlcMemoryAsync("IPC-20", block.Clone()));
+
+        Assert.Empty(tracker.Arrivals);
+        Assert.Null((await cache.GetAsync<PlcMemoryGateState>(PlcMemoryChangeGate.Key("IPC-20", block)))!.StationId);
+    }
+
     // ---------------------------------------------------------------- KPIs from stored rows
 
     [Fact]

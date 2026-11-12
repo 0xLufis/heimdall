@@ -5,7 +5,6 @@ import { resolveSessionUser } from './authHelper'
 import { isExplicitDevMode, isTerminalAuthBypassEnabled } from './devMode'
 import { resolveWorkstationCertificate } from './terminalCertAuth'
 
-export { isExplicitDevMode, isTerminalAuthBypassEnabled }
 
 /**
  * Authentication for shop-floor kiosk terminals (`/api/terminal/*`).

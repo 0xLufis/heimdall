@@ -18,9 +18,10 @@ public interface IPredictiveMaintenanceService
     Task<FleetSummaryDto> GetFleetSummaryAsync(TimeSpan? window = null, CancellationToken cancellationToken = default);
     /// <summary>
     /// One row per tenant-visible machine with hierarchy, organization, type, latest telemetry,
-    /// ticket figures for the window and controller connectivity.
+    /// ticket figures for the window and controller connectivity. <paramref name="freshness"/>
+    /// decides when a station is stale (per-station thresholds by default).
     /// </summary>
-    Task<FleetStationsDto> GetFleetStationsAsync(TimeSpan? window = null, bool includeDecommissioned = false, TimeSpan? telemetryStaleAfter = null, CancellationToken cancellationToken = default);
+    Task<FleetStationsDto> GetFleetStationsAsync(TimeSpan? window = null, bool includeDecommissioned = false, StationFreshnessOptions? freshness = null, CancellationToken cancellationToken = default);
     Task<MachineTrendSeriesDto> GetMachineTrendsAsync(string machineId, string metricName, TimeSpan timeRange, string? recipeId = null, CancellationToken cancellationToken = default);
     Task<List<LineKpiDto>> GetLineKpisAsync(CancellationToken cancellationToken = default);
     Task<List<StationKpiDto>> GetStationTelemetryKpisAsync(string? lineId = null, string? stationId = null, CancellationToken cancellationToken = default);

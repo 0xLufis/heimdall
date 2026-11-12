@@ -11,13 +11,14 @@
 
 /**
  * RUNNING … MAINTENANCE: state reported by the PLC while telemetry is fresh. UNKNOWN: fresh
- * telemetry without a state. STALE: last telemetry older than the stale threshold. NO_DATA: the
- * station never reported.
+ * telemetry without a state. STALE: last telemetry older than the station's stale threshold
+ * (missed samples × its learned sample interval). OFFLINE: the controller's agent disconnected
+ * (MQTT last will / shutdown) and no data arrived since. NO_DATA: the station never reported.
  */
-export type LiveState = 'RUNNING' | 'IDLE' | 'WARNING' | 'FAULTED' | 'MAINTENANCE' | 'UNKNOWN' | 'STALE' | 'NO_DATA'
+export type LiveState = 'RUNNING' | 'IDLE' | 'WARNING' | 'FAULTED' | 'MAINTENANCE' | 'UNKNOWN' | 'STALE' | 'OFFLINE' | 'NO_DATA'
 
 export const LIVE_STATES: readonly LiveState[] = [
-  'FAULTED', 'WARNING', 'STALE', 'MAINTENANCE', 'IDLE', 'RUNNING', 'UNKNOWN', 'NO_DATA'
+  'FAULTED', 'WARNING', 'OFFLINE', 'STALE', 'MAINTENANCE', 'IDLE', 'RUNNING', 'UNKNOWN', 'NO_DATA'
 ]
 
 export interface FleetStation {
@@ -48,6 +49,10 @@ export interface FleetStation {
   lastTelemetryAt: string | null
   /** Age of the last telemetry when the backend built the response. */
   telemetryAgeSeconds: number | null
+  /** This station's stale threshold (seconds). */
+  staleAfterSeconds: number | null
+  /** Sample interval the backend learned for this station; null until learned. */
+  sampleIntervalSeconds: number | null
   oee: number | null
   availability: number | null
   performance: number | null
@@ -82,7 +87,13 @@ export interface FleetStationsMeta {
   generatedAt: string | null
   windowDays: number
   windowStart: string | null
+  /** Fixed threshold, or the one of stations whose sample interval is not learned yet. */
   telemetryStaleAfterSeconds: number
+  /** Per-station thresholds: stale after this many missed samples; null with a fixed threshold. */
+  staleAfterMissedSamples: number | null
+  /** Clamp of the per-station threshold (seconds); null with a fixed threshold. */
+  staleFloorSeconds: number | null
+  staleCeilingSeconds: number | null
   controllerOnlineWindowSeconds: number
   criticalSlaHours: number
 }
@@ -138,6 +149,8 @@ export function normalizeFleetStation(raw: unknown): FleetStation | null {
     operationalStatus: (text(r.operationalStatus) ?? 'UNKNOWN').toUpperCase(),
     lastTelemetryAt: text(r.lastTelemetryAt),
     telemetryAgeSeconds: num(r.telemetryAgeSeconds),
+    staleAfterSeconds: num(r.staleAfterSeconds),
+    sampleIntervalSeconds: num(r.sampleIntervalSeconds),
     oee: num(r.oee),
     availability: num(r.availability),
     performance: num(r.performance),
@@ -185,6 +198,9 @@ export function normalizeFleetStations(raw: unknown): FleetStationsPayload {
       windowDays: Math.max(1, count(r.windowDays) || 30),
       windowStart: text(r.windowStart),
       telemetryStaleAfterSeconds: count(r.telemetryStaleAfterSeconds),
+      staleAfterMissedSamples: num(r.staleAfterMissedSamples) !== null && count(r.staleAfterMissedSamples) > 0 ? count(r.staleAfterMissedSamples) : null,
+      staleFloorSeconds: num(r.staleFloorSeconds),
+      staleCeilingSeconds: num(r.staleCeilingSeconds),
       controllerOnlineWindowSeconds: count(r.controllerOnlineWindowSeconds),
       criticalSlaHours: num(r.criticalSlaHours) ?? 0
     },
@@ -208,21 +224,22 @@ export const LIVE_STATE_META: Record<LiveState, LiveStateMeta> = {
   FAULTED: { label: 'Faulted', dot: 'bg-rose-600 dark:bg-rose-500', description: 'PLC reports a fault; telemetry is fresh.' },
   MAINTENANCE: { label: 'Maintenance', dot: 'bg-violet-600 dark:bg-violet-500', description: 'PLC reports maintenance / setup; telemetry is fresh.' },
   UNKNOWN: { label: 'Reporting', dot: 'bg-slate-400 dark:bg-slate-300', description: 'Telemetry is fresh but the PLC sends no machine state.' },
-  STALE: { label: 'Stale', dot: 'bg-zinc-600 dark:bg-zinc-500', description: 'The station reported before, but its last telemetry is older than the stale threshold.' },
+  STALE: { label: 'Stale', dot: 'bg-zinc-600 dark:bg-zinc-500', description: 'The station reported before, but it missed several samples in a row (its stale threshold).' },
+  OFFLINE: { label: 'Offline', dot: 'bg-zinc-900 dark:bg-zinc-200', description: 'The agent of the station\'s controller disconnected (MQTT last will or shutdown) and no data arrived since.' },
   NO_DATA: { label: 'No data', dot: 'bg-transparent ring-1 ring-inset ring-muted-foreground/50', description: 'The station never reported telemetry.' }
 }
 
 /** Fresh telemetry: the station is reporting right now. */
-export const isReporting = (state: LiveState): boolean => state !== 'STALE' && state !== 'NO_DATA'
+export const isReporting = (state: LiveState): boolean => state !== 'STALE' && state !== 'OFFLINE' && state !== 'NO_DATA'
 
 /** Severity rank used for sorting by state (most severe first). */
 const STATE_RANK: Record<LiveState, number> = {
-  FAULTED: 0, WARNING: 1, STALE: 2, MAINTENANCE: 3, IDLE: 4, UNKNOWN: 5, RUNNING: 6, NO_DATA: 7
+  FAULTED: 0, WARNING: 1, OFFLINE: 2, STALE: 3, MAINTENANCE: 4, IDLE: 5, UNKNOWN: 6, RUNNING: 7, NO_DATA: 8
 }
 
-/** Faulted / warning stations, SLA breaches, open critical tickets, or telemetry that went stale. */
+/** Faulted / warning stations, SLA breaches, open critical tickets, telemetry that went stale or a disconnected controller. */
 export const needsAttention = (s: FleetStation): boolean =>
-  s.liveState === 'FAULTED' || s.liveState === 'WARNING' || s.liveState === 'STALE' ||
+  s.liveState === 'FAULTED' || s.liveState === 'WARNING' || s.liveState === 'STALE' || s.liveState === 'OFFLINE' ||
   s.hasSlaBreach || s.criticalTicketCount > 0
 
 // ───────────────────────────────────────────────────────────────── columns & metrics
@@ -291,6 +308,35 @@ export function formatAge(seconds: number | null | undefined): string {
 }
 
 export const NO_DATA_MARK = '—'
+
+/** Seconds of a sample interval / threshold: "2.5 s", "12 s", "5 min". */
+const formatSeconds = (seconds: number): string =>
+  seconds < 10 ? `${Math.round(seconds * 10) / 10} s` : formatAge(seconds)
+
+/** Explanation of the per-station rule (footer tooltip); undefined with a fixed threshold. */
+export function staleRuleExplanation(meta: FleetStationsMeta | null | undefined): string | undefined {
+  if (!meta?.staleAfterMissedSamples) return undefined
+  const bounds = meta.staleFloorSeconds !== null && meta.staleCeilingSeconds !== null
+    ? ` (at least ${formatSeconds(meta.staleFloorSeconds)}, at most ${formatSeconds(meta.staleCeilingSeconds)})`
+    : ''
+  return `A station is stale after ${meta.staleAfterMissedSamples} × its own sample interval, learned from the PLC blocks that arrive${bounds}. ` +
+    `Stations whose interval is not learned yet: ${meta.telemetryStaleAfterSeconds} s. Offline: the controller's agent disconnected.`
+}
+
+/** The footer's stale rule: per-station missed samples, or the fixed threshold. */
+export function staleRuleText(meta: FleetStationsMeta | null | undefined): string | null {
+  if (!meta) return null
+  if (meta.staleAfterMissedSamples) return `Stale after ${meta.staleAfterMissedSamples} missed samples (per station)`
+  return `Stale after ${meta.telemetryStaleAfterSeconds} s without telemetry`
+}
+
+/** "Samples every 4 s · stale after 12 s." for a station's tooltip; empty when the backend sent neither. */
+export function freshnessText(s: FleetStation): string {
+  const parts: string[] = []
+  if (s.sampleIntervalSeconds !== null && s.sampleIntervalSeconds > 0) parts.push(`Samples every ${formatSeconds(s.sampleIntervalSeconds)}`)
+  if (s.staleAfterSeconds !== null && s.staleAfterSeconds > 0) parts.push(`${parts.length ? 'stale' : 'Stale'} after ${formatSeconds(s.staleAfterSeconds)} without data`)
+  return parts.length ? `${parts.join(' · ')}.` : ''
+}
 
 const hoursSince = (iso: string | null, ctx: FleetContext): number | null => {
   if (!iso) return null
@@ -498,7 +544,7 @@ export interface FleetRollup {
 }
 
 const emptyStates = (): Record<LiveState, number> => ({
-  RUNNING: 0, IDLE: 0, WARNING: 0, FAULTED: 0, MAINTENANCE: 0, UNKNOWN: 0, STALE: 0, NO_DATA: 0
+  RUNNING: 0, IDLE: 0, WARNING: 0, FAULTED: 0, MAINTENANCE: 0, UNKNOWN: 0, STALE: 0, OFFLINE: 0, NO_DATA: 0
 })
 
 /** Aggregates one metric over stations. Stations without a value are left out, never counted as 0. */
@@ -548,7 +594,7 @@ export function rollUp(rows: readonly FleetStation[], ctx: FleetContext, columns
   return {
     stationCount: rows.length,
     states,
-    reporting: rows.length - states.STALE - states.NO_DATA,
+    reporting: rows.length - states.STALE - states.OFFLINE - states.NO_DATA,
     attention,
     metrics
   }

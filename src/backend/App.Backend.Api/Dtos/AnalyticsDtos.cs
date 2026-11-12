@@ -235,8 +235,17 @@ public class FleetStationsDto
     /// <summary>Look-back window (days) of the per-station ticket figures.</summary>
     public int WindowDays { get; set; }
     public DateTimeOffset WindowStart { get; set; }
-    /// <summary>A station whose last telemetry is older than this is reported as STALE.</summary>
+    /// <summary>
+    /// The fixed stale threshold when <c>Analytics:TelemetryStaleSeconds</c> is set; otherwise the
+    /// threshold of stations whose sample interval is not learned yet. Each station's own threshold
+    /// is <see cref="FleetStationDto.StaleAfterSeconds"/>.
+    /// </summary>
     public int TelemetryStaleAfterSeconds { get; set; }
+    /// <summary>Per-station thresholds: a station is STALE after this many missed samples; null with a fixed threshold.</summary>
+    public int? StaleAfterMissedSamples { get; set; }
+    /// <summary>Lower / upper clamp of the per-station threshold (seconds); null with a fixed threshold.</summary>
+    public double? StaleFloorSeconds { get; set; }
+    public double? StaleCeilingSeconds { get; set; }
     /// <summary>A controller whose agent reported within this window counts as online.</summary>
     public int ControllerOnlineWindowSeconds { get; set; }
     /// <summary>Hours after which an open Critical ticket counts as SLA breached.</summary>
@@ -274,12 +283,17 @@ public class FleetStationDto : StationKpiDto
 
     /// <summary>
     /// RUNNING | IDLE | WARNING | FAULTED | MAINTENANCE (state reported by the PLC, telemetry fresh),
-    /// UNKNOWN (telemetry fresh, no state reported), STALE (last telemetry older than the stale
-    /// threshold), NO_DATA (the station never reported telemetry).
+    /// UNKNOWN (telemetry fresh, no state reported), STALE (last telemetry older than
+    /// <see cref="StaleAfterSeconds"/>), OFFLINE (every bound controller's agent disconnected — MQTT
+    /// last will or graceful stop — and no data arrived since), NO_DATA (never reported telemetry).
     /// </summary>
     public string LiveState { get; set; } = "NO_DATA";
     /// <summary>Age of the last telemetry at <see cref="FleetStationsDto.GeneratedAt"/>; null when never reported.</summary>
     public double? TelemetryAgeSeconds { get; set; }
+    /// <summary>This station's stale threshold: missed samples × learned interval, clamped; or the fixed / fallback threshold.</summary>
+    public double StaleAfterSeconds { get; set; }
+    /// <summary>Learned sample interval (median gap between PLC blocks seen by this backend instance); null until learned.</summary>
+    public double? SampleIntervalSeconds { get; set; }
 
     /// <summary>Tickets created for the station inside the window (all statuses).</summary>
     public int IncidentCount { get; set; }

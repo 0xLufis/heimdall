@@ -227,6 +227,28 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
         return Array.Empty<string>();
     }
 
+    /// <summary>
+    /// Organisation write scope of machine-group memberships changed by Lua, the same rule as
+    /// <c>MachineGroupController</c> (platform administrators: any group; an organisation's groups:
+    /// members of that organisation; groups without organisation: platform administrators and
+    /// EngineeringAdministration). Scripts run without a user or organisation: the automation host
+    /// executes them in its own scope, triggered by telemetry, schedules, SLA checks or UI actions, and
+    /// only EngineeringAdministration may author them. So a script may change the platform-managed
+    /// groups (no organisation), which is exactly what its authors may change through the API, and is
+    /// refused for organisation-owned groups: there is no organisation membership to check, and
+    /// allowing it would let any script author, or a user who merely triggers a script, rewrite
+    /// another organisation's machine groups.
+    /// </summary>
+    public static bool ScriptMayChangeMachineGroupMembers(MachineGroup group) => string.IsNullOrWhiteSpace(group.OrganizationId);
+
+    private bool RefuseOrganizationGroupWrite(MachineGroup group, string action)
+    {
+        if (ScriptMayChangeMachineGroupMembers(group)) return false;
+        _logger.LogWarning("Lua {Action} on machine group {Group} refused: the group belongs to organization {Organization} and scripts run without an organization",
+            action, group.Id, group.OrganizationId);
+        return true;
+    }
+
     public async Task<bool> AddGroupMemberAsync(string groupId, string memberId, string groupType = "machine", CancellationToken cancellationToken = default)
     {
         if (IsMachineGroup(groupType))
@@ -234,6 +256,7 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
             var group = await ResolveMachineGroupAsync(groupId, cancellationToken);
             var machine = await GetMachineAsync(memberId, cancellationToken);
             if (group == null || machine == null) return false;
+            if (RefuseOrganizationGroupWrite(group, "add_member")) return false;
 
             bool exists = await _context.MachineGroupMemberships
                 .AnyAsync(x => x.GroupId == group.Id && x.MachineId == machine.Id, cancellationToken);
@@ -276,6 +299,7 @@ public class DbPlantDataProvider : ILuaPlantDataProvider
             var group = await ResolveMachineGroupAsync(groupId, cancellationToken);
             var machine = await GetMachineAsync(memberId, cancellationToken);
             if (group == null || machine == null) return false;
+            if (RefuseOrganizationGroupWrite(group, "remove_member")) return false;
 
             var rows = await _context.MachineGroupMemberships
                 .Where(x => x.GroupId == group.Id && x.MachineId == machine.Id)

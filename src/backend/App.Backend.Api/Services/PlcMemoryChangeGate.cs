@@ -15,6 +15,12 @@ public sealed class PlcMemoryGateState
     public string MetaSignature { get; set; } = string.Empty;
     public DateTimeOffset ForwardedAt { get; set; }
     public DateTimeOffset PersistedAt { get; set; }
+    /// <summary>
+    /// Station the block was attributed to when it was last forwarded; lets a dropped (unchanged)
+    /// block still count as an arrival for that station without a DB lookup. Null when the block
+    /// carries no station telemetry or no unique station is bound.
+    /// </summary>
+    public Guid? StationId { get; set; }
 }
 
 /// <summary>Fingerprints used to decide whether an incoming PLC memory block is new information.</summary>

@@ -33,18 +33,11 @@ public class AnalyticsController : ControllerBase
         windowDays is > 0 ? TimeSpan.FromDays(Math.Min(windowDays.Value, 3650)) : null;
 
     /// <summary>
-    /// Age after which a station's last telemetry counts as stale: <c>Analytics:TelemetryStaleSeconds</c>
-    /// when configured, else the larger of the service default and three PLC keep-alive intervals
-    /// (<c>Telemetry:PlcMemory:KeepAliveSeconds</c>), so a longer keep-alive does not flag idle stations.
+    /// When a station counts as stale: per station after <c>Analytics:Freshness:MissedSamples</c>
+    /// missed samples of its learned interval, clamped to <c>Analytics:Freshness:FloorSeconds</c> ..
+    /// <c>CeilingSeconds</c>; <c>Analytics:TelemetryStaleSeconds</c> forces one fixed threshold.
     /// </summary>
-    private TimeSpan TelemetryStaleAfter()
-    {
-        var configured = _configuration.GetValue<double?>("Analytics:TelemetryStaleSeconds");
-        if (configured is > 0) return TimeSpan.FromSeconds(configured.Value);
-
-        var keepAlive = _configuration.GetValue<double?>("Telemetry:PlcMemory:KeepAliveSeconds") ?? 10;
-        return TimeSpan.FromSeconds(Math.Max(PredictiveMaintenanceService.DefaultTelemetryStaleAfter.TotalSeconds, keepAlive * 3));
-    }
+    private StationFreshnessOptions Freshness() => StationFreshnessOptions.FromConfiguration(_configuration);
 
     /// <summary>
     /// Fleet maintenance figures: controller connectivity, incidents / MTTR / repeat-incident
@@ -69,7 +62,7 @@ public class AnalyticsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var stations = await _predictiveService.GetFleetStationsAsync(
-            Window(windowDays), includeDecommissioned, TelemetryStaleAfter(), cancellationToken);
+            Window(windowDays), includeDecommissioned, Freshness(), cancellationToken);
         return Ok(stations);
     }
 

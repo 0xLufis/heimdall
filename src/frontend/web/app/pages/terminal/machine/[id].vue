@@ -25,6 +25,7 @@ import {
 import TerminalAckModal from '~/components/terminal/TerminalAckModal.vue'
 import { toast } from 'vue-sonner'
 import { resolveTerminalLayout } from '~/utils/terminalLayout'
+import { describeTerminalLoadError, isDevBypass } from '~/utils/terminalAccess'
 
 definePageMeta({
   layout: false
@@ -39,6 +40,10 @@ const queryToken = computed(() => (route.query.token as string) || '')
 const authToken = ref('')
 const isAuthenticated = ref(false)
 const authError = ref('')
+/** 403: the workstation authenticated (certificate) but is bound to other stations. */
+const notAssigned = ref(false)
+/** The BFF let this terminal in without authentication (development only). */
+const devBypass = ref(false)
 const pairingInput = ref('')
 
 // Machine & Telemetry Data
@@ -264,13 +269,17 @@ async function fetchTerminalData() {
       recentTickets.value = res.recentTickets || []
       isAuthenticated.value = true
       authError.value = ''
+      notAssigned.value = false
+      devBypass.value = isDevBypass(res)
     }
   } catch (err: any) {
-    if (err?.statusCode === 401) {
+    const failure = describeTerminalLoadError(err, machineData.value?.customIdentifier || machineId.value)
+    authError.value = failure.message
+    notAssigned.value = failure.notAssigned
+    const status = err?.statusCode ?? err?.status
+    if (status === 401 || status === 403) {
       isAuthenticated.value = false
-      authError.value = 'Station token invalid or unauthenticated.'
-    } else {
-      authError.value = err?.statusMessage || 'Unable to load machine terminal data.'
+      devBypass.value = false
     }
   } finally {
     loading.value = false
@@ -391,6 +400,12 @@ onUnmounted(() => {
         <div class="text-[11px] font-mono text-slate-400 truncate">
           {{ machineData?.customIdentifier || machineId }} &bull; {{ stationStatus }}
         </div>
+        <span
+          v-if="devBypass"
+          data-testid="terminal-dev-bypass"
+          class="inline-block mt-0.5 px-1.5 py-px rounded border border-amber-500/50 bg-amber-500/10 text-amber-300 text-[10px] font-bold uppercase tracking-wide"
+          title="The terminal BFF runs with the development bypass: this terminal is not authenticated."
+        >dev mode — no authentication</span>
       </div>
       <div class="shrink-0 text-lg font-black font-mono tabular-nums text-cyan-400">{{ currentTime || '00:00:00' }}</div>
       <button
@@ -430,7 +445,7 @@ onUnmounted(() => {
         class="w-full h-14 bg-slate-900 border border-slate-700 rounded-xl px-4 text-lg text-white font-mono focus:outline-none focus:border-cyan-500"
         @keyup.enter="handlePairTerminal"
       />
-      <div v-if="authError" class="text-sm text-red-400 font-mono">{{ authError }}</div>
+      <div v-if="authError" data-testid="terminal-auth-error" class="text-sm font-mono" :class="notAssigned ? 'text-amber-300 font-bold' : 'text-red-400'">{{ authError }}</div>
       <button
         type="button"
         class="w-full h-14 bg-cyan-600 hover:bg-cyan-500 text-white text-base font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer"
@@ -566,6 +581,12 @@ onUnmounted(() => {
             <span class="text-xs text-slate-400 font-mono">
               ID: {{ machineData?.customIdentifier || machineId }}
             </span>
+            <span
+              v-if="devBypass"
+              data-testid="terminal-dev-bypass"
+              class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border border-amber-500/50 bg-amber-500/10 text-amber-300"
+              title="The terminal BFF runs with the development bypass: this terminal is not authenticated."
+            >dev mode — no authentication</span>
           </div>
           <h1 class="text-2xl font-black tracking-tight text-white mt-0.5">
             {{ stationTitle }}
@@ -648,7 +669,7 @@ onUnmounted(() => {
             />
           </div>
 
-          <div v-if="authError" class="text-xs text-red-400 mt-2 font-mono text-center">
+          <div v-if="authError" data-testid="terminal-auth-error" class="text-xs mt-2 font-mono text-center" :class="notAssigned ? 'text-amber-300 font-bold' : 'text-red-400'">
             {{ authError }}
           </div>
         </div>

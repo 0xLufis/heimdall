@@ -37,9 +37,9 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
     public static readonly TimeSpan ControllerOnlineWindow = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Default age after which a station's last telemetry is stale. Healthy stations report at
-    /// least every keep-alive interval (10 s by default), so a minute of silence means the
-    /// station, its controller or the agent stopped reporting.
+    /// Stale threshold of a station whose sample interval is not known on this instance (see
+    /// <see cref="StationFreshnessOptions.Fallback"/>): without arrivals only the snapshot timestamp
+    /// is known, which an unchanged block refreshes once per keep-alive (10 s by default).
     /// </summary>
     public static readonly TimeSpan DefaultTelemetryStaleAfter = TimeSpan.FromSeconds(60);
 
@@ -57,6 +57,8 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
     private readonly IMachineGroupRepository? _groupRepository;
     private readonly ILuaPlantDataProvider? _telemetryHistory;
     private readonly AppDbContext? _db;
+    private readonly IStationFreshnessTracker _freshness;
+    private readonly TimeProvider _clock;
 
     public PredictiveMaintenanceService(
         IAssetRepository assetRepository,
@@ -66,7 +68,9 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
         ILogger<PredictiveMaintenanceService> logger,
         IMachineGroupRepository? groupRepository = null,
         ILuaPlantDataProvider? telemetryHistory = null,
-        AppDbContext? db = null)
+        AppDbContext? db = null,
+        IStationFreshnessTracker? freshness = null,
+        TimeProvider? clock = null)
     {
         _assetRepository = assetRepository;
         _controllerRepository = controllerRepository;
@@ -76,6 +80,8 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
         _groupRepository = groupRepository;
         _telemetryHistory = telemetryHistory;
         _db = db;
+        _freshness = freshness ?? StationFreshnessTracker.Shared;
+        _clock = clock ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -143,8 +149,8 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
         public bool IsSlaBreached(DateTimeOffset now) => IsOpen && Priority == "Critical" && now - CreatedAt > CriticalSlaWindow;
     }
 
-    /// <summary>A client PC with the machines it controls.</summary>
-    private sealed record ControllerFact(Guid Id, DateTimeOffset? LastOnline, IReadOnlyList<Guid> MachineIds)
+    /// <summary>A client PC with the machines it controls and its agent's lifecycle connection state.</summary>
+    private sealed record ControllerFact(Guid Id, DateTimeOffset? LastOnline, IReadOnlyList<Guid> MachineIds, ControllerConnection Connection = default)
     {
         public bool IsOnline(DateTimeOffset now) => LastOnline.HasValue && now - LastOnline.Value < ControllerOnlineWindow;
     }
@@ -174,13 +180,36 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
     {
         if (_db != null)
         {
+            if (_db.Database.IsRelational())
+            {
+                try
+                {
+                    // PostgreSQL: only the two lifecycle fields leave the database, not the whole metadata document.
+                    var slim = await _db.ClientPcs.AsNoTracking()
+                        .Select(c => new
+                        {
+                            c.Id,
+                            c.LastOnline,
+                            MachineIds = c.ControlledMachines.Select(m => m.Id).ToList(),
+                            State = c.SystemMetadata!.RootElement.GetProperty(AgentLifecycleIngestor.MetadataKey).GetProperty("State").GetString(),
+                            At = c.SystemMetadata!.RootElement.GetProperty(AgentLifecycleIngestor.MetadataKey).GetProperty("LastEventAtUtc").GetString()
+                        })
+                        .ToListAsync(cancellationToken);
+                    return slim.Select(c => new ControllerFact(c.Id, c.LastOnline, c.MachineIds, ControllerConnection.FromValues(c.State, c.At))).ToList();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex, "Lifecycle state projection is not translatable; reading the metadata documents");
+                }
+            }
             var rows = await _db.ClientPcs.AsNoTracking()
-                .Select(c => new { c.Id, c.LastOnline, MachineIds = c.ControlledMachines.Select(m => m.Id).ToList() })
+                .Select(c => new { c.Id, c.LastOnline, MachineIds = c.ControlledMachines.Select(m => m.Id).ToList(), c.SystemMetadata })
                 .ToListAsync(cancellationToken);
-            return rows.Select(c => new ControllerFact(c.Id, c.LastOnline, c.MachineIds)).ToList();
+            return rows.Select(c => new ControllerFact(c.Id, c.LastOnline, c.MachineIds, ControllerConnection.FromSystemMetadata(c.SystemMetadata))).ToList();
         }
         return (await _controllerRepository.GetAllAsync())
-            .Select(c => new ControllerFact(c.Id, c.LastOnline, (c.ControlledMachines ?? new List<Machine>()).Select(m => m.Id).ToList()))
+            .Select(c => new ControllerFact(c.Id, c.LastOnline, (c.ControlledMachines ?? new List<Machine>()).Select(m => m.Id).ToList(),
+                ControllerConnection.FromSystemMetadata(c.SystemMetadata)))
             .ToList();
     }
 
@@ -302,16 +331,19 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
     }
 
     /// <summary>
-    /// Live state of a station from its snapshot: the PLC reported state while telemetry is fresh,
-    /// UNKNOWN when fresh telemetry carries no state, STALE once the last sample is older than
-    /// <paramref name="staleAfter"/>, NO_DATA when the station never reported.
+    /// Live state of a station from its snapshot alone with a fixed threshold: the PLC reported state
+    /// while telemetry is fresh, UNKNOWN when fresh telemetry carries no state, STALE once the last
+    /// sample is older than <paramref name="staleAfter"/>, NO_DATA when the station never reported.
+    /// The fleet list uses <see cref="StationFreshnessPolicy.Evaluate"/> (arrivals, per-station
+    /// thresholds, OFFLINE).
     /// </summary>
-    public static string LiveState(StationTelemetrySnapshot? snapshot, DateTimeOffset now, TimeSpan staleAfter)
-    {
-        if (snapshot?.LastTelemetryAt is not { } last) return "NO_DATA";
-        if (now - last > staleAfter) return "STALE";
-        return snapshot.OperationalStatus ?? "UNKNOWN";
-    }
+    public static string LiveState(StationTelemetrySnapshot? snapshot, DateTimeOffset now, TimeSpan staleAfter) =>
+        StationFreshnessPolicy.Evaluate(snapshot, null, Array.Empty<ControllerConnection>(), now,
+            new StationFreshnessOptions { FixedThreshold = staleAfter > TimeSpan.Zero ? staleAfter : DefaultTelemetryStaleAfter }).LiveState;
+
+    /// <summary>Latest data time of a station: its snapshot or, if newer, the last block this instance received.</summary>
+    private DateTimeOffset? LastDataAt(Guid machineId, StationTelemetrySnapshot? snapshot) =>
+        StationFreshnessPolicy.Latest(snapshot?.LastTelemetryAt, _freshness.Get(machineId)?.LastArrivalAt);
 
     // ------------------------------------------------------------------ fleet summary
 
@@ -684,7 +716,7 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
 
     private static void FillStationKpi(
         StationKpiDto dto, Machine m, HierarchyLevel line, StationTelemetrySnapshot? snap,
-        IReadOnlyCollection<TicketFact> openTickets, DateTimeOffset now)
+        IReadOnlyCollection<TicketFact> openTickets, DateTimeOffset now, DateTimeOffset? lastDataAt)
     {
         dto.StationId = m.Id.ToString();
         dto.Handle = TelemetryIngestionService.StationHandle(m);
@@ -713,7 +745,7 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
         dto.ActiveTicketCount = openTickets.Count;
         dto.CriticalTicketCount = openTickets.Count(t => t.Priority == "Critical");
         dto.HasSlaBreach = openTickets.Any(t => t.IsSlaBreached(now));
-        dto.LastTelemetryAt = snap?.LastTelemetryAt;
+        dto.LastTelemetryAt = lastDataAt;
     }
 
     /// <summary>
@@ -727,7 +759,7 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
         if (machines.Count == 0) return new();
 
         var hierarchy = await LoadHierarchyAsync(cancellationToken);
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.GetUtcNow();
         var openByMachine = (await LoadTicketsAsync(cancellationToken))
             .Where(t => t.MachineId.HasValue && t.IsOpen)
             .GroupBy(t => t.MachineId!.Value)
@@ -756,7 +788,7 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
             var snap = await GetSnapshotAsync(m.Id);
             var open = openByMachine.TryGetValue(m.Id, out var list) ? list : new List<TicketFact>();
             var dto = new StationKpiDto();
-            FillStationKpi(dto, m, line, snap, open, now);
+            FillStationKpi(dto, m, line, snap, open, now, LastDataAt(m.Id, snap));
             result.Add(dto);
         }
         return result;
@@ -773,20 +805,24 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
     public async Task<FleetStationsDto> GetFleetStationsAsync(
         TimeSpan? window = null,
         bool includeDecommissioned = false,
-        TimeSpan? telemetryStaleAfter = null,
+        StationFreshnessOptions? freshness = null,
         CancellationToken cancellationToken = default)
     {
         var effectiveWindow = NormalizeWindow(window);
-        var staleAfter = telemetryStaleAfter is { } s && s > TimeSpan.Zero ? s : DefaultTelemetryStaleAfter;
-        var now = DateTimeOffset.UtcNow;
+        var options = freshness ?? StationFreshnessOptions.Default;
+        var now = _clock.GetUtcNow();
         var windowStart = now - effectiveWindow;
+        var perStation = options.FixedThreshold is not { } fixedThreshold || fixedThreshold <= TimeSpan.Zero;
 
         var result = new FleetStationsDto
         {
             GeneratedAt = now,
             WindowDays = (int)Math.Round(effectiveWindow.TotalDays),
             WindowStart = windowStart,
-            TelemetryStaleAfterSeconds = (int)Math.Round(staleAfter.TotalSeconds),
+            TelemetryStaleAfterSeconds = (int)Math.Round(options.StaleAfter(null).TotalSeconds),
+            StaleAfterMissedSamples = perStation ? options.MissedSamples : null,
+            StaleFloorSeconds = perStation ? options.Floor.TotalSeconds : null,
+            StaleCeilingSeconds = perStation ? options.Ceiling.TotalSeconds : null,
             ControllerOnlineWindowSeconds = (int)ControllerOnlineWindow.TotalSeconds,
             CriticalSlaHours = CriticalSlaWindow.TotalHours
         };
@@ -823,6 +859,7 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
             var inWindow = tickets.Where(t => t.CreatedAt >= windowStart).ToList();
             var controllers = controllersByMachine.TryGetValue(m.Id, out var bound) ? bound : new List<ControllerFact>();
             var lastSeen = controllers.Where(c => c.LastOnline.HasValue).Select(c => c.LastOnline!.Value).DefaultIfEmpty().Max();
+            var verdict = StationFreshnessPolicy.Evaluate(snap, _freshness.Get(m.Id), controllers.Select(c => c.Connection).ToList(), now, options);
 
             var dto = new FleetStationDto
             {
@@ -841,8 +878,10 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
                 ProjectName = placement.Project.Name,
                 BusinessUnitId = placement.BusinessUnit.Id?.ToString(),
                 BusinessUnitName = placement.BusinessUnit.Name,
-                LiveState = LiveState(snap, now, staleAfter),
-                TelemetryAgeSeconds = snap?.LastTelemetryAt is { } last ? Math.Max(0, Math.Round((now - last).TotalSeconds, 1)) : null,
+                LiveState = verdict.LiveState,
+                TelemetryAgeSeconds = verdict.LastDataAt is { } last ? Math.Max(0, Math.Round((now - last).TotalSeconds, 1)) : null,
+                StaleAfterSeconds = Math.Round(verdict.StaleAfter.TotalSeconds, 1),
+                SampleIntervalSeconds = verdict.SampleInterval is { } interval ? Math.Round(interval.TotalSeconds, 2) : null,
                 IncidentCount = inWindow.Count,
                 ResolvedIncidentCount = ResolutionMinutes(inWindow).Count,
                 MttrMinutes = MttrMinutes(inWindow),
@@ -853,7 +892,7 @@ public class PredictiveMaintenanceService : IPredictiveMaintenanceService
                 ControllersOnline = controllers.Count(c => c.IsOnline(now)),
                 ControllerLastSeenAt = lastSeen == default ? null : lastSeen
             };
-            FillStationKpi(dto, m, placement.Line, snap, open, now);
+            FillStationKpi(dto, m, placement.Line, snap, open, now, verdict.LastDataAt);
             result.Stations.Add(dto);
         }
         return result;

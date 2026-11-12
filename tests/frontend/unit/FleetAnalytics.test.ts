@@ -7,6 +7,7 @@ import {
   getColumn, groupStations, loadViewState, needsAttention, normalizeFleetStation, normalizeFleetStations,
   orderGroups, rollUp, rollupCellText, sanitizeViewState, saveViewState, sortStations, stateOptions,
   stationCellText, stationContextData, stationMachineLink, stationTicketsLink,
+  freshnessText, isReporting, staleRuleExplanation, staleRuleText,
   type FleetStation
 } from '../../../src/frontend/web/app/utils/fleetAnalytics'
 
@@ -65,6 +66,43 @@ describe('fleet analytics: normalization', () => {
     const payload = normalizeFleetStations({ generatedAt: '2026-11-11T10:00:00Z', windowDays: 7, telemetryStaleAfterSeconds: 60, criticalSlaHours: 12, stations: [raw('a'), { nope: true }] })
     expect(payload.stations).toHaveLength(1)
     expect(payload.meta).toMatchObject({ windowDays: 7, telemetryStaleAfterSeconds: 60, criticalSlaHours: 12 })
+  })
+})
+
+describe('fleet analytics: freshness', () => {
+  it('reads per-station thresholds, learned intervals and the OFFLINE state', () => {
+    const s = station('o', { liveState: 'offline', staleAfterSeconds: 12, sampleIntervalSeconds: 4, operationalStatus: 'RUNNING' })
+    expect(s.liveState).toBe('OFFLINE')
+    expect(s.staleAfterSeconds).toBe(12)
+    expect(s.sampleIntervalSeconds).toBe(4)
+    expect(isReporting(s.liveState)).toBe(false)
+    expect(needsAttention(s)).toBe(true)
+    expect(station('n').staleAfterSeconds).toBeNull()
+
+    const r = rollUp([s, station('r', { liveState: 'RUNNING' })], ctx)
+    expect(r.states.OFFLINE).toBe(1)
+    expect(r.reporting).toBe(1)
+  })
+
+  it('states the stale rule per station, or the fixed threshold when one is configured', () => {
+    const perStation = normalizeFleetStations({ telemetryStaleAfterSeconds: 60, staleAfterMissedSamples: 3, staleFloorSeconds: 3, staleCeilingSeconds: 300, stations: [] }).meta
+    expect(staleRuleText(perStation)).toBe('Stale after 3 missed samples (per station)')
+    expect(staleRuleExplanation(perStation)).toContain('3 × its own sample interval')
+    expect(staleRuleExplanation(perStation)).toContain('at least 3 s, at most 5 min')
+    expect(staleRuleExplanation(perStation)).toContain('not learned yet: 60 s')
+
+    const fixed = normalizeFleetStations({ telemetryStaleAfterSeconds: 30, staleAfterMissedSamples: null, stations: [] }).meta
+    expect(fixed.staleAfterMissedSamples).toBeNull()
+    expect(staleRuleText(fixed)).toBe('Stale after 30 s without telemetry')
+    expect(staleRuleExplanation(fixed)).toBeUndefined()
+    expect(staleRuleText(null)).toBeNull()
+  })
+
+  it('describes a station\'s sample interval and threshold for its tooltip', () => {
+    expect(freshnessText(station('a', { sampleIntervalSeconds: 4, staleAfterSeconds: 12 }))).toBe('Samples every 4 s · stale after 12 s without data.')
+    expect(freshnessText(station('b', { sampleIntervalSeconds: 2.5, staleAfterSeconds: 300 }))).toBe('Samples every 2.5 s · stale after 5 min without data.')
+    expect(freshnessText(station('c', { staleAfterSeconds: 60 }))).toBe('Stale after 60 s without data.')
+    expect(freshnessText(station('d'))).toBe('')
   })
 })
 
@@ -254,9 +292,11 @@ describe('fleet analytics: virtual window', () => {
 describe('FleetStationsExplorer', () => {
   const response = () => ({
     generatedAt: '2026-11-11T10:00:00Z', windowDays: 30, windowStart: '2026-10-12T10:00:00Z',
-    telemetryStaleAfterSeconds: 60, controllerOnlineWindowSeconds: 300, criticalSlaHours: 12,
+    telemetryStaleAfterSeconds: 60, staleAfterMissedSamples: 3, staleFloorSeconds: 3, staleCeilingSeconds: 300,
+    controllerOnlineWindowSeconds: 300, criticalSlaHours: 12,
     stations: [
-      raw('a', { name: 'L01-OP010', lineName: 'Line 01', machineType: 'RobotCell', liveState: 'RUNNING', oee: 90, controllerCount: 1, controllersOnline: 1 }),
+      raw('a', { name: 'L01-OP010', lineName: 'Line 01', machineType: 'RobotCell', liveState: 'RUNNING', oee: 90, controllerCount: 1, controllersOnline: 1,
+        sampleIntervalSeconds: 4, staleAfterSeconds: 12, telemetryAgeSeconds: 1, lastTelemetryAt: '2026-11-11T09:59:59Z' }),
       raw('b', { name: 'L01-OP020', lineName: 'Line 01', machineType: 'ServoPress', liveState: 'FAULTED', oee: 70, activeTicketCount: 2, criticalTicketCount: 1 }),
       raw('c', { name: 'L02-OP010', lineName: 'Line 02', machineType: 'RobotCell' })
     ]
@@ -309,6 +349,9 @@ describe('FleetStationsExplorer', () => {
     expect(wrapper.find('[data-testid="fleet-tile-tickets"]').text()).toContain('2')
     expect(wrapper.find('[data-testid="fleet-tile-controllers"]').text()).toContain('1/1')
     expect(wrapper.find('[data-testid="fleet-footer"]').text()).toContain('3 of 3 stations in 2 groups')
+    expect(wrapper.find('[data-testid="fleet-footer"]').text()).toContain('Stale after 3 missed samples (per station)')
+    expect(wrapper.find('[data-testid="fleet-footer"]').text()).not.toContain('60 s without telemetry')
+    expect(wrapper.find('[data-testid="fleet-row"] [title*="Samples every 4 s"]').exists()).toBe(true)
   })
 
   it('filters, regroups and collapses, and stores the view for the next visit', async () => {

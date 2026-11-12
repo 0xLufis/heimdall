@@ -7,11 +7,11 @@ vi.mock('~~/server/utils/authHelper', () => ({
 }))
 import {
   matchTerminalToken,
-  isExplicitDevMode,
-  isTerminalAuthBypassEnabled,
   requireTerminalAuth,
   assertTerminalStationAccess
 } from '~~/server/utils/terminalAuth'
+// One exporting module per name: Nuxt auto-imports server/utils and warns on duplicates.
+import { isExplicitDevMode, isTerminalAuthBypassEnabled } from '~~/server/utils/devMode'
 import {
   isTrustedProxyAddress,
   parseForwardedCertificate,

@@ -299,7 +299,7 @@ public class FleetAnalyticsTests
         var service = Service(new FakeAssetRepository { Machines = { machine } }, cache: cache);
 
         Assert.Equal("STALE", (await service.GetFleetStationsAsync()).Stations.Single().LiveState);
-        var relaxed = await service.GetFleetStationsAsync(telemetryStaleAfter: TimeSpan.FromMinutes(5));
+        var relaxed = await service.GetFleetStationsAsync(freshness: new StationFreshnessOptions { FixedThreshold = TimeSpan.FromMinutes(5) });
         Assert.Equal(300, relaxed.TelemetryStaleAfterSeconds);
         Assert.Equal("UNKNOWN", relaxed.Stations.Single().LiveState);   // reporting, but the PLC sends no state
 

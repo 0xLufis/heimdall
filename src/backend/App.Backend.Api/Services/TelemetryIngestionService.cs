@@ -46,6 +46,7 @@ public class TelemetryIngestionService : ITelemetryIngestionService
     private readonly IHubContext<MaintenanceHub, IMaintenanceClient>? _hubContext;
     private readonly ICacheService? _cache;
     private readonly ILuaAutomationService? _luaAutomation;
+    private readonly IStationFreshnessTracker _freshness;
 
     public TelemetryIngestionService(
         ILogger<TelemetryIngestionService> logger,
@@ -55,7 +56,8 @@ public class TelemetryIngestionService : ITelemetryIngestionService
         IConfiguration configuration,
         IHubContext<MaintenanceHub, IMaintenanceClient>? hubContext = null,
         ICacheService? cache = null,
-        ILuaAutomationService? luaAutomation = null)
+        ILuaAutomationService? luaAutomation = null,
+        IStationFreshnessTracker? freshness = null)
     {
         _logger = logger;
         _repository = repository;
@@ -65,6 +67,7 @@ public class TelemetryIngestionService : ITelemetryIngestionService
         _hubContext = hubContext;
         _cache = cache;
         _luaAutomation = luaAutomation;
+        _freshness = freshness ?? StationFreshnessTracker.Shared;
     }
 
     public bool ValidateCallerAuthentication(string? callerAuthKey)
@@ -446,6 +449,9 @@ public class TelemetryIngestionService : ITelemetryIngestionService
 
         if (previous != null && previous.ContentHash == contentHash && now - previous.ForwardedAt < PlcKeepAlive)
         {
+            // Still a sample: it proves the station is reporting. Recorded in memory only (no cache
+            // write, no broadcast), attributed through the station the gate state remembers.
+            if (previous.StationId is { } droppedStation) _freshness.RecordArrival(droppedStation, now);
             return true;
         }
 
@@ -533,14 +539,16 @@ public class TelemetryIngestionService : ITelemetryIngestionService
                 }
             }
 
-            await PublishStationTelemetryAsync(db, pc, memoryBlock);
+            var stationId = await PublishStationTelemetryAsync(db, pc, memoryBlock);
+            if (stationId is { } station) _freshness.RecordArrival(station, now);
 
             await WritePlcGateStateAsync(gateKey, new PlcMemoryGateState
             {
                 ContentHash = contentHash,
                 MetaSignature = metaSignature,
                 ForwardedAt = now,
-                PersistedAt = persistDue ? now : previous!.PersistedAt
+                PersistedAt = persistDue ? now : previous!.PersistedAt,
+                StationId = stationId
             });
 
             return true;
@@ -766,21 +774,23 @@ public class TelemetryIngestionService : ITelemetryIngestionService
     /// Station telemetry path: PLC block with station fields → merged snapshot in the distributed
     /// cache (read by GET /api/v1/analytics/station-kpis) → SignalR StationOscillationReceived /
     /// StationTelemetryReceived to the station's organization group → Lua TelemetryChange scripts.
-    /// Every stage is failure-isolated: none of them can fail the ingestion itself.
+    /// Every stage is failure-isolated: none of them can fail the ingestion itself. Returns the
+    /// station the block was attributed to (null when it carries no station telemetry or no unique
+    /// station is bound), so the change gate can attribute later unchanged copies of the block.
     /// </summary>
-    private async Task PublishStationTelemetryAsync(AppDbContext db, ClientPc pc, AdsPlcMemoryBlock block)
+    private async Task<Guid?> PublishStationTelemetryAsync(AppDbContext db, ClientPc pc, AdsPlcMemoryBlock block)
     {
         StationTelemetrySnapshot? sample;
         List<(string Metric, double Value)> metrics;
         try
         {
             sample = StationTelemetryExtractor.Extract(block, out metrics);
-            if (sample == null) return;
+            if (sample == null) return null;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to extract station telemetry from {Symbol}", block.SymbolName);
-            return;
+            return null;
         }
 
         Machine? machine;
@@ -791,12 +801,12 @@ public class TelemetryIngestionService : ITelemetryIngestionService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to resolve station for PLC block {Symbol} on {Pc}", block.SymbolName, pc.MachineIdentifier);
-            return;
+            return null;
         }
         if (machine == null)
         {
             _logger.LogDebug("PLC block {Symbol} on {Pc} carries station telemetry but no unique station is bound", block.SymbolName, pc.MachineIdentifier);
-            return;
+            return null;
         }
 
         var handle = StationHandle(machine);
@@ -896,6 +906,7 @@ public class TelemetryIngestionService : ITelemetryIngestionService
                 }
             }
         }
+        return machine.Id;
     }
 
     /// <summary>
