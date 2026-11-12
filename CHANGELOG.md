@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bounded logging**: backend file logs with size / age rotation and a non-blocking spool, runtime verbosity via `/api/v1/admin/logging`; dev logs in `<repo>/.logs` through `tools/logpipe.py`.
 
 ### Fixed
+- Backend CPU under the enterprise simulator: telemetry ingestion queried `lua_scripts` once per metric of every station block (~370 queries/s, nearly all finding nothing). Active script ids are cached per trigger (writes through the service take effect at once, 10 s TTL for edits made elsewhere). Measured on the dev stack: EF queries 435/s → 70/s, allocations 53 → 16 MB/s, CPU ~75 % → ~21 % of a core at ~29 MQTT msg/s.
+- SignalR aborted every receiving connection when a ticket broadcast carried a cyclic entity graph (`Machine → LineGroup → Parent → Children`); the hub's JSON protocol now ignores cycles like the MVC serializer.
+- Inventory views refetched their whole dataset on every `InventoryUpdated` (one per agent heartbeat, several per second); refreshes are coalesced to one leading and one trailing refresh per 3 s.
+- `just tui`: quitting with "stop services" froze the TUI while `just stop` ran inside the curses screen; the TUI now exits first. Actions started from it no longer inherit its terminal as stdin.
+- The backend's `dotnet watch` exits when a watched directory disappears (a branch switch), leaving the backend and the embedded MQTT broker down; `just start backend` now restarts it.
 - Live telemetry cards never showed data (listened for fields the backend does not send; sparkline canvas ref was never bound); unreported values are no longer rendered as `0`.
 - Fleet simulator still used gRPC although ingestion is MQTT-only, so no simulated data reached the backend.
 - Remote view always connected to one hard-coded host/port and the 3D twin always loaded the sample model, regardless of the selected controller/station. Controller detail card, station diagnostics tab and station schematic showed invented values / one hard-coded sample cell; they now show the component's own data or an explicit empty state.
