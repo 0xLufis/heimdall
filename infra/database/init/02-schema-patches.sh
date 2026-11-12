@@ -16,28 +16,9 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     ALTER TABLE IF EXISTS backend.suppliers ADD COLUMN IF NOT EXISTS notes text;
     ALTER TABLE IF EXISTS backend.suppliers ADD COLUMN IF NOT EXISTS created_at timestamp with time zone DEFAULT now();
 
-    -- Relational Tags Indexing Tables (avoiding slow JSONB scans)
-    CREATE TABLE IF NOT EXISTS backend.known_tags (
-        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        key character varying(128) NOT NULL,
-        value character varying(255) NOT NULL,
-        category character varying(64) DEFAULT 'custom',
-        usage_count integer DEFAULT 0,
-        created_at timestamp with time zone DEFAULT now(),
-        CONSTRAINT uq_known_tag UNIQUE (key, value)
-    );
-
-    CREATE TABLE IF NOT EXISTS backend.inventory_item_tags (
-        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        item_id uuid NOT NULL,
-        tag_id uuid NOT NULL,
-        tag_key character varying(128) NOT NULL,
-        tag_value character varying(255) NOT NULL,
-        created_at timestamp with time zone DEFAULT now()
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_item_tags_key_val ON backend.inventory_item_tags (tag_key, tag_value);
-    CREATE INDEX IF NOT EXISTS idx_item_tags_item_id ON backend.inventory_item_tags (item_id);
+    -- NOTE: backend.known_tags and backend.inventory_item_tags are owned by the EF Core migration
+    -- 20261011224836_AddMissingTables. They used to be created here as well, which made
+    -- `dotnet ef database update` fail on a fresh database with 42P07 "relation already exists".
 
     -- NOTE: Machine hierarchy (stations.*_group_id, parent_machine_id, spoc/owner, technologies),
     -- delegation multi-group junctions and generic_templates are owned by the EF Core migration
