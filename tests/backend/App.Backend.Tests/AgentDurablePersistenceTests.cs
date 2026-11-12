@@ -31,6 +31,46 @@ public class AgentDurablePersistenceTests : IDisposable
         try { Directory.Delete(_root, true); } catch { }
     }
 
+    [Fact]
+    public void Resolve_HonoursSpoolDir_AndFallsBackNextToStateWhenTheInstallDirIsReadOnly()
+    {
+        string install = Path.Combine(_root, "install");
+        string state = Path.Combine(_root, "state");
+        string spool = Path.Combine(_root, "spool");
+        Directory.CreateDirectory(install);
+
+        // HEIMDALL_SPOOL_DIR / HEIMDALL_STATE_DIR (the packaged Linux service sets both).
+        var configured = AgentPaths.Resolve(name => name switch
+        {
+            AgentPaths.SpoolDirEnvVar => spool,
+            AgentPaths.StateDirEnvVar => state,
+            _ => null
+        }, install);
+        Assert.Equal(spool, configured.SpoolDirectory);
+        Assert.Equal(state, configured.StateDirectory);
+        Assert.Equal(Path.Combine(spool, "crash_dumps"), configured.CrashDumpDirectory);
+
+        // Unset: the install directory, as before.
+        var byDefault = AgentPaths.Resolve(name => name == AgentPaths.StateDirEnvVar ? state : null, install);
+        Assert.Equal(Path.Combine(install, "telemetry_spool"), byDefault.SpoolDirectory);
+
+        // A read-only install directory (systemd ProtectSystem=strict): next to the state instead.
+        // Root ignores directory permissions, so this part needs an unprivileged account.
+        if (OperatingSystem.IsWindows() || Environment.UserName == "root") return;
+        string readOnlyInstall = Path.Combine(_root, "ro-install");
+        Directory.CreateDirectory(readOnlyInstall);
+        File.SetUnixFileMode(readOnlyInstall, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        try
+        {
+            var readOnly = AgentPaths.Resolve(name => name == AgentPaths.StateDirEnvVar ? state : null, readOnlyInstall);
+            Assert.Equal(Path.Combine(state, "telemetry_spool"), readOnly.SpoolDirectory);
+        }
+        finally
+        {
+            File.SetUnixFileMode(readOnlyInstall, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+    }
+
     private const string GoodConfigJson =
         "{\"BackendUrl\":\"http://plant-a.example:5001\",\"ServerPublicKey\":null,\"ExtensionApiKey\":\"k-123\",\"HeartbeatIntervalSeconds\":15,\"AdsAmsNetId\":\"5.80.201.44.1.1\"}";
 
