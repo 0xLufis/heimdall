@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Station-centric Live Telemetry hub** (`/dashboard/telemetry`): fleet summary tiles, station directory grouped by line, live dynamics with trends, OEE/production KPIs, tickets/SLA flags, bound controllers and deep links (`?station=`, `?controllerId=`). Dev-only simulator control panel.
+- **Station process simulation** in the fleet simulator (enterprise + Nordvik demo datasets) with runtime scenarios (fault, drift, line stop, maintenance, demo story); recipes `just sim-demo`, `just sim-scenario`, `just test-simulator`. Cross-language contract fixture between the simulator and the backend extractor.
+- **Per-component links**: `GET/PUT/DELETE /api/v1/ClientPc/{id}/remote-access[/vnc]` (VNC endpoint stored per controller) and station `model3dUrl` resolution in the station tree. Dev/demo seeds link every controller to the dev gateway and every station to the sample model.
+- `just dev-setup` checks for the ASP.NET Core runtime; `just pgadmin reset`.
+- **Server-side global search**: `GET /api/v1/search?q=&kinds=&limit=` (stations, controllers, tickets, users, inventory) through the tenant-scoped `AppDbContext`, proxied as `/api/search`; the browser ranking remains the fallback. Search-engine evaluation (PostgreSQL kept over OpenSearch / Meilisearch / Typesense, with measurements) in `docs/TODO/search.TODO.md`. Optional `pg_trgm` indexes: migration `20261111103000_SearchTrigramIndexes`.
+- **Fleet analytics on real data**: `GET /api/v1/Analytics/fleet-stations`, station list grouped by line / sub-line / project / business unit / machine type / organization / live state with per-group roll-ups, sticky group headers in a scrolling viewport, column / filter / sort choices persisted per browser, explicit "no data" states instead of constants.
+- **Global right-click menu**: `v-ctx` directive with one delegated listener; entity-aware actions on tickets, inventory, machines, controllers, telemetry, analytics, users and search results. Deep links (`/dashboard/machines?id|tree|decommission`, `/dashboard/tickets?query|stationId|handle`, `/dashboard/map?stationId`, `/dashboard/clients?selected`) are honoured.
+- **Agent daemon hardening**: atomic, checksummed persistence with backups and a recovery journal for config, machine identity, master seed and spool; validated config updates; client-side telemetry sanity filter; crash records; lifecycle (power) reports on the events topic (previous-run classification, OS shutdown evidence, MQTT last will) ingested by `AgentLifecycleIngestor` into `agent_events` and `system_metadata.AgentLifecycle`.
+- **PLC memory change gate**: unchanged PLC blocks are no longer reprocessed or rebroadcast (keep-alive every 10 s; `Telemetry:PlcMemory:KeepAliveSeconds`, `PersistIntervalSeconds`).
+- **Simulated plant activity**: the fleet simulator drives every station and controller, raises tickets from simulated faults through the backend API and works them to closure, and consumes spare parts. Seed datasets hold reference data only (machine-group hierarchy, crews, component slots) with validators for referential integrity. `just sim-reset`, `just sim-rate`.
+- Single role catalogue (`app/utils/roles.ts`) mirroring `SecurityConstants.cs` and the backend policies, with a drift test.
+
+### Fixed
+- Live telemetry cards never showed data (listened for fields the backend does not send; sparkline canvas ref was never bound); unreported values are no longer rendered as `0`.
+- Fleet simulator still used gRPC although ingestion is MQTT-only, so no simulated data reached the backend.
+- Remote view always connected to one hard-coded host/port and the 3D twin always loaded the sample model, regardless of the selected controller/station. Controller detail card, station diagnostics tab and station schematic showed invented values / one hard-coded sample cell; they now show the component's own data or an explicit empty state.
+- Agent heartbeats wiped operator-managed keys in `system_metadata`; unpinning a controller detached it from its stations without removing the pin.
+- Machine cards were not clickable as a whole; context menu was broken in the line/technology views; decommissioned stations never appeared under their filter.
+- Global search: stale-result races, per-keystroke refetching, ranking, generic result links, hijacked Ctrl+V/Ctrl+X, HTML-rendered entity names (see `docs/TODO/search.TODO.md`).
+- Fresh dev database: PostgreSQL crash-looped on the TLS key ownership (`infra/database/pg-entrypoint.sh`); the init script duplicated EF tables; Drizzle auth migrations failed on a fresh database and lagged `schema.ts` (`0005` fixed, `0006` added); `just dev-setup` now applies the Drizzle migrations.
+- Simulated SSO overwrote existing users' roles and created sessions without an active organization, hiding all machines from the admin.
+- SignalR console flood (`PlcMemoryReceived`), search bar crash (`_ctx.setTimeout is not a function`), ticket monitor hydration mismatch.
+- Machine groups: sub-groups were created as roots, deleting a group with sub-groups failed, parent cycles were accepted, the Technologies view was empty.
+- The BFF showed hard-coded sample tickets next to real ones.
+- Swagger "Authorize" token was never sent with requests. pgAdmin: reserved `.local` default e-mail, unwritable bind-mounted data directory, and `just pgadmin` joining a different compose network than the dev database.
+
+### Security
+- The backend accepted any `X-Api-Key` starting with `hmd_` as `system_admin`; only keys listed in `HEIMDALL_AUTOMATION_API_KEYS` are accepted now.
+- Security-group BFF routes were anonymous (enrol any user into any organization as owner, mint automation keys); they now require `ItAdministration`. Demo automation keys exist only with dev features on.
+- Anonymous reads of users and organizations closed; `/api/auth/admin/*` no longer lets an administrator grant themselves or others a higher role; organization creation limited to platform admins.
+- Tenant-scoped results were cached under global keys in `ClientPcController` / `InventoryController`; removed members kept tenant access; the backend's session cache was never invalidated after role / organization changes.
+
 ### Changed
 - **Canonical 5-State Industrial Ticketing & Orthogonal Escalation**:
   - Overhauled maintenance ticketing across frontend and backend to strictly 5 canonical statuses: `Open`, `InProgress`, `Pending`, `Resolved`, and `Closed`.

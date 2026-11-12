@@ -15,7 +15,7 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 
 ## Technical Highlights
 
-- **Backend:** .NET 10 Web API & gRPC Collector Service (.NET 10 / C# 14).
+- **Backend:** .NET 10 Web API with embedded MQTT telemetry ingestion (.NET 10 / C# 14).
 - **Data Access & Schema Strategy:** Entity Framework Core 10 with Npgsql, PostgreSQL 18 JSONB columns, GIN indexing, and dual-schema separation (`auth` for Better-Auth, `backend` for Heimdall domain).
 - **Graph-Relational Domain Model:** Flexible many-to-many relationship topology linking Production Stations with one or more controlling IPCs/PLCs and equipment interconnects.
 - **Frontend:** Nuxt 4 (Nuxt 4 Directory Structure), Vue 3, Tailwind CSS v4, shadcn-vue, and Vitest.
@@ -157,7 +157,7 @@ graph TD
     end
 
     subgraph Management_Layer ["Heimdall Core Platform"]
-        gRPC["gRPC Telemetry Server"]
+        Ingest["MQTT Telemetry Ingestion (embedded broker)"]
         WebAPI["Core Web API"]
         OpcUa["OPC UA Gateway (opc.tcp)"]
         Postgres[(PostgreSQL Database)]
@@ -174,10 +174,10 @@ graph TD
     Station <-->|Control Relationship M:N| PLC
     IPC <-->|Fieldbus EtherCAT/PROFINET| Dispenser
     
-    Agent -->|gRPC / mTLS| gRPC
-    Simulators -->|gRPC| gRPC
+    Agent -->|MQTT 5 / agent key| Ingest
+    Simulators -->|MQTT 5| Ingest
     
-    gRPC --> WebAPI
+    Ingest --> WebAPI
     WebAPI <--> Postgres
     WebAPI <--> GitPLC
     OpcUa <--> WebAPI
@@ -194,10 +194,14 @@ graph TD
 ### Prerequisites
 
 Ensure you have the following installed on your machine:
-- **.NET 10 SDK** (`dotnet`)
-- **Node.js** (v20+) & **Bun** (`bun`)
-- **Python 3** (with `venv`)
-- **Docker & Docker Compose**
+- **.NET 10 SDK** (`dotnet`) **and the ASP.NET Core 10 runtime** (`dotnet --list-runtimes` must list `Microsoft.AspNetCore.App 10.x`; on Arch it is the separate `aspnet-runtime` package)
+- **Bun** 1.2+ (`bun`)
+- **Python 3.12+** (with `venv`)
+- **Docker & Docker Compose** (v2 plugin, daemon running)
+- **[just](https://github.com/casey/just)** command runner
+- **OpenSSL** (for the local Postgres TLS certificate)
+
+Free ports required: `3000` (Nuxt), `5099` (REST API + Swagger), `5001` (secondary API port), `1883` (embedded MQTT broker), `5432` (PostgreSQL), `6379` (Redis); optional: `5050` (pgAdmin, `just pgadmin`), `5055` (simulator control API). Run `just dev-setup --check-only` to verify prerequisites and ports.
 
 ---
 
@@ -236,9 +240,9 @@ dotnet tool restore
 # Run EF Core backend migrations
 dotnet ef database update --project src/shared/App.Shared --startup-project src/backend/App.Backend.Api
 
-# Prepare Nuxt 4 frontend types
+# Install frontend dependencies (also runs `nuxt prepare` via postinstall)
 cd src/frontend/web
-bun run postinstall
+bun install
 cd ../../..
 ```
 
@@ -339,13 +343,13 @@ See the [demo walkthrough](seed_data/demo/README.md) for personas, demo logins, 
 # 0. Run Unified Verification Suite (seed validation, backend, frontend)
 just test
 
-# 1. Run .NET backend unit & integration tests (xUnit, 354 tests)
+# 1. Run .NET backend unit & integration tests (xUnit, 372 tests)
 dotnet test Heimdall.sln
 
-# 2. Run Nuxt frontend unit test suites (Vitest, 681 tests)
+# 2. Run Nuxt frontend unit test suites (Vitest, 773 tests)
 cd src/frontend/web && bun run test
 
-# 3. Run Python fleet simulator & mock CMI runner tests (9 tests)
+# 3. Run Python fleet simulator & mock CMI runner tests (40 tests)
 ./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
 
 # 4. Run Sequence Diagram validation (Mermaid code-to-diagram check)

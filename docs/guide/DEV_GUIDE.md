@@ -40,7 +40,8 @@ heimdall/
 Ensure the following tools are installed on your workstation:
 * **.NET SDK** (version `10.0+`)
 * **Bun** (version `1.2+`)
-* **Python 3** (version `3.11+`) with `grpcio` and `protobuf`
+* **Python 3** (version `3.12+`) with `grpcio` and `protobuf`
+* **just** command runner and **OpenSSL**
 * **Docker** and **Docker Compose** (v2 plugin)
 
 ---
@@ -48,14 +49,11 @@ Ensure the following tools are installed on your workstation:
 ## 3. Local Development Setup
 
 ### 3.1 Starting Infrastructure Services
-Start the PostgreSQL database and Redis cache:
+The development PostgreSQL and Redis containers are defined in `infra/database/docker-compose.yml`. On first run, create the secrets and TLS certificate (see the README Quickstart), then start them:
 ```bash
-docker compose up -d postgres redis
+just db-up
 ```
-Wait for both services to report `healthy`:
-```bash
-docker compose ps
-```
+`just db-up` starts both containers and waits until ports `5432` and `6379` accept connections. Alternatively, `just dev-setup` checks prerequisites, starts the containers, applies migrations, and seeds the enterprise dataset in one step.
 
 ### 3.2 Applying Database Migrations
 Migrations are stored in `src/shared/App.Shared/Migrations`:
@@ -78,9 +76,9 @@ dotnet ef migrations add <MigrationName> \
 cd src/backend/App.Backend.Api
 dotnet run
 ```
-* **REST API & Swagger UI**: `http://localhost:5099/swagger` (also redirects from `/api-docs` and `/`)
-* **Cleartext gRPC Endpoint**: `http://localhost:5001`
-* **Embedded MQTT Broker**: `localhost:1883` (telemetry topic `heimdall/telemetry/{client_pc_id}`)
+* **REST API & Swagger UI**: `http://localhost:5099/swagger` (also redirects from `/api-docs` and `/`). Served only when dev features are on (`ASPNETCORE_ENVIRONMENT=Development` or `HEIMDALL_ENABLE_DEV=true`). In Development an unauthenticated request runs as the dev administrator, so "Try it out" works without a token; otherwise paste a Better-Auth session token under **Authorize** (no `Bearer ` prefix).
+* **Secondary cleartext HTTP port**: `http://localhost:5001` (same API; there is no gRPC service, agents and simulators report over MQTT)
+* **Embedded MQTT Broker**: `localhost:1883` (device topics `heimdall/devices/{machineIdentifier}/system_info|plc_memory|telemetry|events`)
 * **SignalR WebSocket Hub**: `http://localhost:5099/hubs/maintenance`
 
 ### 3.4 Running the Frontend Dashboard
@@ -95,14 +93,86 @@ Access the application at `http://localhost:3000`.
 > On startup, the Nitro server plugin (`server/plugins/ensureAdminUser.ts`) checks if a platform administrator exists. If not, it automatically seeds `admin@heimdall.dev` (password: `AdminPassword123!`). You can also manually trigger this via `GET /api/dev/seed-admin`.
 
 ### 3.5 Running the Edge Fleet Simulator
-To simulate edge controllers generating real-time telemetry:
-```bash
-# Smoke test (5 heartbeats)
-python3 simulators/fleet/fleet_simulator.py --client ROBOT-CELL-01 --smoke-test --count 5
+The fleet simulator (`simulators/fleet/fleet_simulator.py`) impersonates the plant's edge IPCs the same way the
+real agent talks to the backend: binary protobuf over **MQTT 5** on the backend's embedded broker (`:1883`,
+credentials `heimdall_agent` / `HEIMDALL_AGENT_KEY`, user property `x-agent-key`). There is no gRPC ingestion.
 
-# Continuous background simulation
-python3 simulators/fleet/fleet_simulator.py --client ROBOT-CELL-01 --count 100
+| Topic | Message | Effect |
+|---|---|---|
+| `heimdall/devices/{machineIdentifier}/system_info` | `SystemInfoRequest` | IPC heartbeat: online state, CPU/RAM, disks |
+| `heimdall/devices/{machineIdentifier}/plc_memory` | `AdsPlcMemoryBlock` | Station process data: live dynamics + production KPIs (station KPIs, plant-map HUD, `StationOscillationReceived` / `StationTelemetryReceived`, Lua `TelemetryChange`) |
+
+It needs `paho-mqtt` and `protobuf` (`pip install -r simulators/fleet/requirements.txt` into `./venv`; the `just`
+recipes use `venv/bin/python` when it exists).
+
+```bash
+just sim-reset                       # ONE COMMAND: reseed the enterprise dataset + restart the simulator with plant activity
+just sim-reset demo                  # same for the Nordvik NV1 demo plant (demo-seed --unpin-conflicts, simulator on "all")
+just sim-rate 0.3 10                 # 0.3 failures per station-hour, 10x speed (defaults: 0.05, 1x)
+just start simulator                 # background, enterprise dataset (SIM_DATASET=enterprise|demo|all, SIM_STATION_INTERVAL=4)
+just sim-demo                        # foreground, Nordvik NV1 demo dataset (after `just demo-seed`)
+just sim-demo --scenario demo_story --speed 10 --seed 7
+just test-smoke                      # one round of heartbeats + station blocks, needs the backend running
+just test-simulator                  # unit tests, no backend needed
+
+# Direct invocation
+venv/bin/python simulators/fleet/fleet_simulator.py --dataset demo --broker 127.0.0.1:1883 --station-interval 2
 ```
+
+Only simulate a dataset that is seeded (`just db-seed` → `enterprise`, `just demo-seed` → `demo`): the backend
+auto-registers unknown controllers that report in, and station blocks are only attributed to stations that are
+linked to the reporting controller in the database.
+
+**Station model.** Every controller → station link of the dataset gets a process model
+(`station_model.py`) with machine-type specific operating points (CNC, laser welder, robot cell, conveyor, …):
+vibration, spindle speed, cycle time, power, temperature, frequency, availability / performance / quality,
+parts per hour, part and scrap counters and a state machine (`RUNNING`, `IDLE`, `WARNING`, `FAULTED`,
+`MAINTENANCE`). WARNING / FAULTED follow from thresholds on the simulated signals; a FAULTED station carries an
+alarm code, a stopped station reports no cycle time, zero speed and constant readings (identical PLC blocks, which the
+backend forwards only as 10 s keep-alives), sub-machines stop with their cell. The model advances in fixed steps, so
+`--seed N` reproduces the same run. `plc_encoding.py` emits only PLC field names the backend's
+`StationTelemetryExtractor` recognises. Every seeded station is simulated and reported by its *Primary* controller;
+every seeded IPC sends heartbeats whose load and status follow the stations it runs.
+
+**Plant activity** (`--activity`, default for continuous runs; `--no-activity` / `SIM_ACTIVITY=0` turns it off).
+`maintenance.py` turns faults into maintenance work in simulated time (deterministic per seed): failures arrive at
+`--incident-rate` per station-hour (some through drifts, e.g. laser power, bearing wear), and so do faults injected via the
+control API. `backend_client.py` performs the work through the real REST API:
+
+| Step | Endpoint |
+|---|---|
+| alarm raises a ticket (assignee from the delegation rules) | `POST /api/v1/tickets/machine-raised` (anonymous machine endpoint) |
+| crew technician takes it / arrives | `POST /api/v1/tickets/{id}/reserve`, `POST …/qr-pickup` (station goes to MAINTENANCE) |
+| part not in the store | `PATCH …/pending` (Parts), later `PATCH …/status "InProgress"` |
+| serialized spare into the component slot | `POST /api/v1/component/assign-part` (part history + service log) |
+| consumable used / goods receipt | `PUT /api/v1/inventory/{id}` `{stockQuantity}` |
+| long repair | `POST …/escalate`, `POST …/deescalate` |
+| repaired, then verified | `PATCH …/status "Resolved"`, `POST …/auto-close` |
+
+Lifecycle calls need a maintenance role: a Development backend accepts unauthenticated calls as the dev admin,
+otherwise pass a session token (`--api-token` / `HEIMDALL_SIM_API_TOKEN`). The REST worker queues and retries while the
+backend restarts; MQTT reconnects on its own. Progress: `GET /api/status` → `maintenance`.
+
+**Control API** (`http://127.0.0.1:5055`, loopback only unless `HTTP_HOST` is set; no authentication, dev only).
+The web UI reaches it through the BFF proxy `/api/simulator/*` (`SIMULATOR_HOST`, simulation feature flag).
+
+| Method / path | Body | Purpose |
+|---|---|---|
+| `GET /api/status` | – | fleet counters, MQTT link state, lines, nodes, stations (state, scenario, current values) |
+| `GET /api/stations` | – | stations only |
+| `POST /api/station/fault` | `{station, duration_s?}` | fault a station (latched until recover when no duration) |
+| `POST /api/station/drift` | `{station, profile, duration_s?, magnitude?}` | `laser_drift`, `bearing_wear`, `thermal`, `cycle_slowdown` |
+| `POST /api/station/maintenance` | `{station, duration_s?}` | put a station into maintenance |
+| `POST /api/line/stop` | `{line, duration_s?}` | stop every station of a line (`L01`, …) |
+| `POST /api/recover` | `{station?}` / `{line?}` / `{}` | clear scenarios for a station, a line or everything |
+| `POST /api/speed` | `{speed}` | simulated seconds per second (0.1 – 120) |
+| `POST /api/scenario` | `{name}` | `demo_story` (Nordvik laser drift story), `clear` |
+| `POST /api/activity` | `{incident_rate}` | failures per station and simulated hour (plant activity) |
+| `POST /api/fault` | `{hostname?}` or `{station?, duration_s?}` | IPC heartbeat fault (random node when empty) or station fault |
+| `POST /api/clear-faults` | `{}` | clear all IPC and station faults |
+| `POST /api/rate` | `{fault_rate}` | random IPC heartbeat anomaly rate (0 – 1) |
+
+`station` accepts the station id, name or floor-plan handle (`NV-L2-OP060`, `L02-OP060`).
 
 ### 3.6 Frontend Architecture & Key Utilities
 * **HeimdallSearch Engine (`useHeimdallSearch.ts`)**:
@@ -148,11 +218,11 @@ docker compose down
 | :--- | :--- | :--- | :--- |
 | **Frontend** | `heimdall_frontend` | `3000:3000` | Nuxt web dashboard & Nitro BFF |
 | **Backend API** | `heimdall_backend` | `5099:5099` | REST API, Swagger, SignalR |
-| **Backend gRPC**| `heimdall_backend` | `5001:5001` | Edge telemetry collector |
+| **Backend (alt HTTP)**| `heimdall_backend` | `5001:5001` | Secondary cleartext API port |
 | **Backend MQTT**| `heimdall_backend` | `1883:1883` | Embedded MQTT broker |
 | **PostgreSQL** | `heimdall_postgres`| `5432:5432` | Primary database with SSL |
 | **Redis** | `heimdall_redis` | `6379:6379` | L2 distributed cache |
-| **pgAdmin** | `heimdall_pgadmin` | `5050:80` | Web database management |
+| **pgAdmin** | `heimdall_pgadmin` (`pgadmin_heimdall` with `just db-up`) | `127.0.0.1:5050:80` | Web database management, `just pgadmin` |
 | **Agent** | `heimdall_agent` | `5998` (internal)| Local edge daemon |
 | **Simulator** | `heimdall_simulator`| *(Internal)* | Simulated factory node |
 
@@ -182,9 +252,14 @@ Executes 58 test suites (565 tests) covering rule reordering with drag-and-drop 
 
 ### 5.3 Python Fleet Simulator & Mock CMI Tests
 ```bash
-./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
+just test-simulator
+# or: ./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
 ```
-Executes 9 unit tests verifying `MockCmiEngine` queries (`wmic`, `Get-CimInstance`) and `SimulatedPcDaemon` edge diagnostics and telemetry generation.
+Executes 48 unit tests (plus `python3 -m unittest discover -s seed_data`, run by `just test-seed`, for the seed datasets): `MockCmiEngine` queries (`wmic`, `Get-CimInstance`), `SimulatedPcDaemon` diagnostics, and the
+fleet simulator's station model (determinism, counters, state machine, drift story), PLC block encoding against a
+mirror of the backend extractor's alias list, dataset topology, MQTT 5 framing (in-process broker stub) and the
+HTTP control API, the maintenance desk (lifecycle order, stock, determinism) and its REST calls against an in-process
+HTTP stub. No backend or broker is required.
 
 ### 5.4 End-to-End Browser Tests (Playwright)
 ```bash
