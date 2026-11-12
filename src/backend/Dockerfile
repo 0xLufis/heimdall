@@ -1,4 +1,4 @@
-# Multi-stage production build for Heimdall Backend REST & gRPC API (.NET 10)
+# Multi-stage production build for the Heimdall backend: REST API, SignalR hub, embedded MQTT broker (.NET 10)
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 WORKDIR /src

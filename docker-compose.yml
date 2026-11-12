@@ -84,7 +84,7 @@ services:
       - heimdall_dev_net
     restart: unless-stopped
 
-  # 4. Backend REST API & gRPC Telemetry Collector (.NET 10 Hot-Reload)
+  # 4. Backend REST API, SignalR hub & embedded MQTT broker (.NET 10 Hot-Reload)
   backend:
     build:
       context: .

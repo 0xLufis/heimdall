@@ -54,7 +54,7 @@ services:
       - heimdall_staging_net
     restart: unless-stopped
 
-  # 3. Heimdall Backend REST & gRPC API (.NET 10 - Staging Mode: No Dev, Only Debug)
+  # 3. Heimdall Backend REST API & embedded MQTT broker (.NET 10 - Staging Mode: No Dev, Only Debug)
   backend:
     build:
       context: .

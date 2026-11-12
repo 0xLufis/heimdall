@@ -22,10 +22,6 @@ var agentSession = new App.Agent.Daemon.Lifecycle.AgentSession();
 var crashRecorder = App.Agent.Daemon.Lifecycle.CrashRecorder.Install(agentPaths.CrashRecordFile, agentSession);
 var shutdownSignals = new App.Agent.Daemon.Lifecycle.ShutdownSignalMonitor();
 
-// Enable cleartext HTTP/2 (h2c) support for local/intranet gRPC client connections to backend.
-// In production mTLS configurations, TLS termination is negotiated via configured HTTPS endpoints.
-AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 

@@ -1157,7 +1157,7 @@ public class SystemSetting
 }
 
 /// <summary>
-/// Registry of issued X.509 client certificates for mTLS gRPC telemetry channels.
+/// X.509 certificates issued by the Heimdall CA (kiosk workstations, users, the server's plugin countersigning identity).
 /// </summary>
 [Table("client_certificates")]
 public class ClientCertificateRecord
@@ -1367,7 +1367,7 @@ public class MalformedTelemetryRecord
     [MaxLength(255)]
     public string? SourceIdentifier { get; set; }
 
-    /// <summary>Protocol or ingestion channel (e.g., "gRPC_SystemInfo", "SignalR_Telemetry", "OPC_UA", "Modbus").</summary>
+    /// <summary>Protocol or ingestion channel (e.g., "MQTT_SystemInfo_Events", "MQTT_<channel>", a quarantine channel).</summary>
     [Required, MaxLength(64)]
     public string IngestionChannel { get; set; } = string.Empty;
 

@@ -1073,7 +1073,7 @@ onMounted(() => {
                 Project Root Certificate Authority (Root CA)
               </CardTitle>
               <CardDescription class="text-xs text-muted-foreground">
-                The trusted anchor for mutual TLS gRPC telemetry and agent configuration sealing. You can import existing enterprise certificates or generate factory certificates.
+                Trust anchor for the certificates Heimdall issues: kiosk workstations, users and the server's plugin countersignature. Generate a self-signed root, or import an enterprise / AD CA.
               </CardDescription>
             </div>
             <div class="flex items-center gap-2">
@@ -1208,8 +1208,8 @@ onMounted(() => {
         <CardHeader>
           <div class="flex items-center justify-between">
             <div>
-              <CardTitle class="text-base text-foreground">Issued Client Certificates (mTLS Fleet)</CardTitle>
-              <CardDescription class="text-xs text-muted-foreground">Mutually authenticated gRPC telemetry identities currently issued across the plant.</CardDescription>
+              <CardTitle class="text-base text-foreground">Issued Client Certificates</CardTitle>
+              <CardDescription class="text-xs text-muted-foreground">Certificates issued by the Heimdall CA to kiosk workstations, users and the server's plugin-signing identity.</CardDescription>
             </div>
           </div>
         </CardHeader>

@@ -10,7 +10,7 @@ using App.Shared.Protos;
 
 /// <summary>
 /// Contributes custom components registered via the agent extension API or installed plugins
-/// directly into the agent's scheduled gRPC reporting payload.
+/// directly into the agent's scheduled telemetry report.
 /// </summary>
 public class ExtensionComponentContributor : IMultiComponentContributor
 {

@@ -38,7 +38,7 @@ public class CustomComponentSubmission
     /// <summary>If true, persists the component to disk so it survives agent daemon restarts.</summary>
     public bool Persist { get; set; } = false;
 
-    /// <summary>If true, triggers an immediate gRPC synchronization cycle to the Heimdall backend.</summary>
+    /// <summary>If true, triggers an immediate report to the Heimdall backend.</summary>
     public bool ImmediateSync { get; set; } = false;
 
     /// <summary>Cryptographic trust status: true if reported by a verified signed plugin.</summary>

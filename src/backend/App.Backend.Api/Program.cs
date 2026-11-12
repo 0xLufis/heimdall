@@ -236,7 +236,7 @@ builder.Services.AddAuthorization(options =>
             OrganizationManagementRules.Roles.Any(ctx.User.IsInRole)));
 });
 
-// --- 4. Controllers & SignalR & gRPC & Swagger & CORS & RateLimiting ---
+// --- 4. Controllers & SignalR & Swagger & CORS & RateLimiting ---
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

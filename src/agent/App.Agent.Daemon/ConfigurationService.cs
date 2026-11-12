@@ -24,7 +24,7 @@ public class AgentConfig
 
     // Connectivity
     /// <summary>
-    /// Upstream Heimdall Backend base URL (gRPC/HTTP).
+    /// Upstream Heimdall backend base URL for HTTP calls (telemetry itself goes over MQTT).
     /// </summary>
     public string BackendUrl { get; set; } = "http://localhost:5001";
 
