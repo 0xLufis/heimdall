@@ -45,6 +45,8 @@ export function sanitizeProxyPath(rawPath: string | undefined | null): string | 
 }
 
 async function resolveAuthContext(event: H3Event): Promise<{ token?: string; orgId?: string }> {
+  // Synthetic events (internal calls, tests) may carry no request headers at all.
+  if (!event?.node?.req?.headers) return {}
   const rawToken =
     getCookie(event, 'better-auth.session_token') ||
     getHeader(event, 'authorization')?.replace(/^Bearer\s+/i, '')
@@ -64,6 +66,19 @@ async function resolveAuthContext(event: H3Event): Promise<{ token?: string; org
 }
 
 /**
+ * Headers that make a backend call run as the caller: the session bearer and the session's
+ * active organisation (never a client-supplied tenant header). Empty without a session, so the
+ * backend rejects the call instead of treating it as anonymous dev traffic.
+ */
+export async function backendAuthHeaders(event: H3Event): Promise<Record<string, string>> {
+  const { token, orgId } = await resolveAuthContext(event)
+  const headers: Record<string, string> = {}
+  if (token) headers.Authorization = `Bearer ${token}`
+  if (orgId) headers['X-Organization-Id'] = orgId
+  return headers
+}
+
+/**
  * Proxies the current request to `${BACKEND_API_URL}/api/${prefix}/${subPath}` preserving the
  * original query string (including repeated keys).
  */
@@ -76,10 +91,7 @@ export async function proxyToBackend(event: H3Event, prefix: string, subPath: st
 
   const search = getRequestURL(event).search
   const target = `${backendBaseUrl()}/api/${prefix}${safePath ? `/${safePath}` : ''}${search}`
-  const { token, orgId } = await resolveAuthContext(event)
-  const headers: Record<string, string> = {}
-  if (token) headers.Authorization = `Bearer ${token}`
-  if (orgId) headers['X-Organization-Id'] = orgId
+  const headers = await backendAuthHeaders(event)
 
   // Never forward a client-chosen tenant header or the raw cookie jar upstream.
   const opts = { headers, fetchOptions: { redirect: 'manual' as const } }

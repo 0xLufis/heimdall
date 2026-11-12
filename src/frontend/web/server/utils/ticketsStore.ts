@@ -238,13 +238,25 @@ export function upsertTicketsInStore(tickets: MaintenanceTicket[]): void {
   }
 }
 
-export async function fetchAndCacheBackendTicket(id: string): Promise<MaintenanceTicket | undefined> {
+// App.Contracts.Enums.EscalationHandoverState travels as a number: the backend has no string-enum
+// converter, so "None" / "HandOff" made every ticket update and escalation fail with 400.
+const ESCALATION_HANDOVER_STATES = ['None', 'Notification', 'HandOff', 'ParallelWork', 'HandedOffToField']
+
+/** The backend's numeric EscalationHandoverState for a name or number from the BFF store. */
+export function escalationHandoverStateNumber(value: unknown, fallback = 0): number {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < ESCALATION_HANDOVER_STATES.length) return value
+  const index = ESCALATION_HANDOVER_STATES.indexOf(String(value ?? ''))
+  return index >= 0 ? index : fallback
+}
+
+/** Loads a ticket from the backend as the caller (`headers` from `backendAuthHeaders`) and caches it. */
+export async function fetchAndCacheBackendTicket(id: string, headers: Record<string, string> = {}): Promise<MaintenanceTicket | undefined> {
   const existing = findTicketById(id)
   if (existing) return existing
 
   const backendBase = process.env.BACKEND_API_URL || 'http://localhost:5099'
   try {
-    const raw = await $fetch<any>(`${backendBase}/api/v1/tickets/${id}`)
+    const raw = await $fetch<any>(`${backendBase}/api/v1/tickets/${id}`, { headers })
     if (raw && (raw.id || raw.Id)) {
       const mapped = mapBackendTicketToStore(raw)
       return upsertTicketInStore(mapped)
@@ -252,7 +264,7 @@ export async function fetchAndCacheBackendTicket(id: string): Promise<Maintenanc
   } catch {
     // If 5099 failed, try 5001 fallback
     try {
-      const raw = await $fetch<any>(`http://localhost:5001/api/v1/tickets/${id}`)
+      const raw = await $fetch<any>(`http://localhost:5001/api/v1/tickets/${id}`, { headers })
       if (raw && (raw.id || raw.Id)) {
         const mapped = mapBackendTicketToStore(raw)
         return upsertTicketInStore(mapped)
