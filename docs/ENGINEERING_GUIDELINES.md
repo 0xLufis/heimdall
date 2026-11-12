@@ -1,7 +1,7 @@
 # Heimdall Agent & Engineering Guidelines
 
 These guidelines represent the engineering standard of truth for the Heimdall project. All human developers, AI agents, and automated tools must adhere to these principles.
-(Ai formatting and rewriting this is kinda funny ngl, generally speaking the contens stay true but are mostly aimed at AI)
+(Ai formatting and rewriting this is kinda funny ngl, generally speaking the contents stay true but are mostly aimed at AI)
 
 ---
 
