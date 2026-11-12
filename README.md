@@ -15,21 +15,22 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 
 ## Technical Highlights
 
-- **Backend:** .NET 10 Web API with embedded MQTT telemetry ingestion (.NET 10 / C# 14).
+- **Backend:** .NET 10 Web API (C# 14) with an embedded MQTT 5 broker; agents send protobuf messages over MQTT (no gRPC). Unchanged PLC blocks are filtered before processing.
 - **Data Access & Schema Strategy:** Entity Framework Core 10 with Npgsql, PostgreSQL 18 JSONB columns, GIN indexing, and dual-schema separation (`auth` for Better-Auth, `backend` for Heimdall domain).
 - **Graph-Relational Domain Model:** Flexible many-to-many relationship topology linking Production Stations with one or more controlling IPCs/PLCs and equipment interconnects.
 - **Frontend:** Nuxt 4 (Nuxt 4 Directory Structure), Vue 3, Tailwind CSS v4, shadcn-vue, and Vitest.
 - **Client Offloading:** Server-side aggregation, filtering, and caching via Nuxt Nitro BFF (Backend-for-Frontend) routes.
 - **Enterprise Dataset & Simulated AD:** Canonical plant fixtures (`fixtures/enterprise_plant_dataset.json`), mock directory REST endpoints (`/api/ad-mock/v1.0/*`), and RFC 4511 LDAP search engine.
 - **Better-Auth & Directory Security Group Org Governance:** Dynamic tenant organization mapping and auto-provisioning driven by directory claims, with an interactive claims evaluation sandbox.
-- **Universal Tag-Context Omnisearch:** FZF-powered fuzzy indexing engine with entity scoping (`@machine`, `#ticket`, `!controller`, `*part`, `%alarm`), auto-tag tokenization, keyboard navigation, and ranked cross-table search.
+- **Universal Tag-Context Omnisearch:** server-side, tenant-scoped search (`GET /api/v1/search`, PostgreSQL `ILIKE` + `pg_trgm`) over stations, controllers, tickets, people and inventory, with entity scoping (`@machine`, `#ticket`, `!controller`, `*part`), keyboard navigation and a client-side ranking fallback.
 - **Enterprise Notification Center & Optimistic UI:** In-app notification popover, sticky toast notifications, browser Web Notifications, and automatic state rollback on server rejection.
 - **Unified Cryptographic Audit Feed:** Complete audit trail tracking entity state changes, security group assignments, decommissioning records, and automated PLC auto-closure.
 - **Industrial Maintenance Lifecycle & Zero-Dependency Action QR:** Canonical 5-state Kanban lifecycle (`Open`, `InProgress`, `Pending`, `Resolved`, `Closed`), machine watchdog auto-closure (`/auto-close`), kiosk retract (`/retract`), orthogonal escalation, typed `PendingReason` flags, technician delegation hierarchy, and pure SVG Galois Field GF(256) matrix QR generator.
-- **Live Station Telemetry & Digital Twin:** PLC block → `StationTelemetryExtractor` → Redis snapshot → org-scoped SignalR events (`StationTelemetryReceived`, `StationOscillationReceived`), rendered as plant-map HUD overlays and 3D digital twin cards. All KPIs, trends, and fleet summaries come from stored snapshots and tickets. Where no data source exists they return `null` instead of synthetic values.
+- **Live Station Telemetry & Digital Twin:** PLC block → change gate → `StationTelemetryExtractor` → snapshot (memory + Redis) → org-scoped SignalR events (`StationTelemetryReceived`, `StationOscillationReceived`), rendered as plant-map HUD overlays and 3D digital twin cards. All KPIs, trends, and fleet summaries come from stored snapshots and tickets. Where no data source exists they return `null` instead of synthetic values.
 - **Sandboxed Lua Automation:** MoonSharp-based scripting persisted in `backend.lua_scripts`. Scripts react to `TelemetryChange` events. `LuaSandboxGuard` enforces per-instruction deadlines, cancellation, allocation budgets, and a re-entrancy depth limit.
 - **OT Integrations:** Git-based PLC version control integration blueprint and native OPC UA Server API (`opc.tcp://`).
-- **Security & Compliance:** TISAX (VDA ISA 6.0 / High Protection) compliance framework. Per-request tenant scoping (`TenantScopeMiddleware`) and org-scoped SignalR groups. A hardened BFF proxy, token- or mTLS-authenticated kiosk terminals, cryptographic command signing, and mTLS support.
+- **Security & Compliance:** TISAX (VDA ISA 6.0 / High Protection) compliance framework. Per-request tenant scoping (`TenantScopeMiddleware`) and org-scoped SignalR groups. One PKI trust store for AD-issued and Heimdall-issued certificates (Heimdall CA self-signed or subordinate to an enterprise CA); kiosk terminals identified by computer certificates at a TLS-terminating proxy; plugins signed by the installing user and countersigned by the server.
+- **Durable Edge Agent:** atomic, checksummed persistence that survives power loss and BSODs, client-side sanity checks, crash records, and lifecycle reports that tell a planned shutdown from a crash or power loss (MQTT last will included).
 
 ---
 
@@ -71,7 +72,7 @@ Heimdall is a multi-tenant industrial asset management, configuration tracking, 
 <tr>
 <td align="center" width="50%">
 <a href="docs/media/07_clients.png"><img src="docs/media/07_clients.png" alt="Edge IPC Client Registry" width="100%"/></a>
-<br/><sub><b>🖥️ Edge IPC Client Registry — 56 Controllers, TwinCAT, MES, mTLS</b></sub>
+<br/><sub><b>🖥️ Edge IPC Client Registry — 56 Controllers, TwinCAT, MES, PKI</b></sub>
 </td>
 <td align="center" width="50%">
 <a href="docs/media/08_inventory.png"><img src="docs/media/08_inventory.png" alt="Spare Parts Inventory" width="100%"/></a>
@@ -102,12 +103,12 @@ heimdall/
 ├── src/                     # Core Application Modules
 │   ├── agent/               # .NET 10 Worker Service Daemon (References App.Contracts only)
 │   ├── backend/             # Backend API and Infrastructure layers
-│   │   ├── App.Backend.Api/ # ASP.NET Core Web API Controllers & gRPC Endpoints
+│   │   ├── App.Backend.Api/ # ASP.NET Core Web API, embedded MQTT broker & ingestion, SignalR hub
 │   │   └── App.Infrastructure/ # Data Repositories & External Service Integrations
 │   ├── frontend/
 │   │   └── web/             # Nuxt 4 Web Dashboard & Nitro BFF
 │   └── shared/
-│       ├── App.Contracts/   # Protobuf definitions, gRPC types, PLC TypeSystem (NO DB)
+│       ├── App.Contracts/   # Protobuf MQTT payloads, PLC TypeSystem, certificate & plugin-signature helpers (NO DB)
 │       ├── App.Shared/      # Domain Entities, EF Core DbContext, Migrations
 │       └── lua/             # Lua scripting engine, sandbox guard & UI extension models
 ├── docs/                    # Structured Documentation Hub
@@ -121,7 +122,8 @@ heimdall/
 │   └── demo/                # Story-driven "Nordvik NV1" demo dataset (plant, people, tickets, telemetry, Lua)
 ├── scripts/                 # Demo loader, packaging & dev certificate helpers
 ├── infra/
-│   └── database/            # PostgreSQL 18 Docker Compose, SSL, Init Scripts
+│   ├── database/            # PostgreSQL 18 + Redis Docker Compose, TLS entrypoint, init scripts
+│   └── windows/             # Windows 10 IoT VM container for agent tests, kiosk overlay launcher
 ├── simulators/
 │   ├── active_directory/    # Standalone mock Active Directory / Graph server (port 5088)
 │   └── fleet/               # Edge fleet simulator, mock CMI runner & simulated PC Docker containers
@@ -131,8 +133,8 @@ heimdall/
 │   ├── dev_manager.py       # Unified development service orchestrator & monitor
 │   └── generate_sequence_diagrams.py # Code-to-Mermaid sequence diagram generator
 ├── tests/                   # Unified Verification Suites
-│   ├── backend/             # xUnit integration & unit tests (354 tests)
-│   ├── frontend/unit/       # Vitest unit tests (681 tests)
+│   ├── backend/             # xUnit integration & unit tests (backend + agent)
+│   ├── frontend/unit/       # Vitest unit tests
 │   └── e2e/                 # Playwright browser automation tests
 └── justfile                 # Modern command runner for dev, staging, testing, and production
 ```
@@ -140,51 +142,93 @@ heimdall/
 
 ---
 
-## Domain Architecture Overview
+## Architecture Overview
+
+Agents on the industrial PCs publish protobuf messages over **MQTT 5** to the broker embedded in the backend; there is no gRPC and no mTLS on the telemetry path. Browsers talk to the Nuxt BFF over HTTPS and receive live updates from the backend's SignalR hub. Certificates (AD-issued or Heimdall-issued) identify kiosk workstations at the reverse proxy and sign plugins.
 
 ```mermaid
-graph TD
-    subgraph OT_Layer ["OT Factory Floor"]
-        Station["Production Station / Machine"]
-        IPC["Industrial PC (IPC) / Soft-PLC"]
-        PLC["Hardware PLC / Robot Controller"]
-        Dispenser["Autonomous Device (Dispenser/Vision)"]
+graph LR
+    subgraph Floor["Factory floor"]
+        PLC["PLC / TwinCAT runtime<br/>robots, vision, dispensers"]
+        HMI["Machine HMI"]
     end
 
-    subgraph Edge_Telemetry ["Edge Telemetry Layer"]
-        Agent["Industrial Edge Daemon"]
-        Simulators["Edge Fleet Simulators"]
+    subgraph IPC["Industrial PC"]
+        Agent["Heimdall agent (.NET)<br/>ADS · OPC UA · system info<br/>durable spool · lifecycle reports<br/>double-signed plugins"]
+        Kiosk["Kiosk terminal<br/>chromeless overlay"]
     end
 
-    subgraph Management_Layer ["Heimdall Core Platform"]
-        Ingest["MQTT Telemetry Ingestion (embedded broker)"]
-        WebAPI["Core Web API"]
-        OpcUa["OPC UA Gateway (opc.tcp)"]
-        Postgres[(PostgreSQL Database)]
-        NitroBFF["Nitro BFF Proxy"]
-        WebDashboard["Web Dashboard"]
+    subgraph Platform["Heimdall platform"]
+        subgraph Backend["Backend (.NET 10)"]
+            Broker["Embedded MQTT 5 broker :1883"]
+            Ingest["Ingestion<br/>change gate → station snapshots<br/>lifecycle ingestor"]
+            Rest["REST API /api/v1"]
+            Hub["SignalR /hubs/maintenance<br/>org-scoped groups"]
+            Lua["Lua automation<br/>(sandboxed)"]
+            Pki["PKI: trust store,<br/>issuance, validation"]
+            Search["Search<br/>ILIKE + pg_trgm"]
+        end
+        BFF["Nuxt 4 SSR + Nitro BFF<br/>Better-Auth sessions"]
+        Pg[("PostgreSQL 18<br/>backend + auth schemas")]
+        Redis[("Redis 7<br/>cache · sessions · snapshots")]
     end
 
-    subgraph Integrations ["External Integrations"]
-        GitPLC["Git-Based PLC Version Control"]
-        SCADA["SCADA / Industrial Automation Gateways"]
-    end
+    Browser["Browser dashboards"]
+    Proxy["TLS reverse proxy (production)<br/>verifies kiosk client certificates"]
+    Dir["Active Directory / Entra ID<br/>groups · SSO · AD CS"]
+    Sim["Fleet simulator (dev / demo)"]
 
-    Station <-->|Control Relationship M:N| IPC
-    Station <-->|Control Relationship M:N| PLC
-    IPC <-->|Fieldbus EtherCAT/PROFINET| Dispenser
-    
-    Agent -->|MQTT 5 / agent key| Ingest
-    Simulators -->|MQTT 5| Ingest
-    
-    Ingest --> WebAPI
-    WebAPI <--> Postgres
-    WebAPI <--> GitPLC
-    OpcUa <--> WebAPI
-    OpcUa -->|OPC UA Subscriptions| SCADA
-    
-    NitroBFF <--> WebAPI
-    WebDashboard <--> NitroBFF
+    PLC -->|ADS / OPC UA| Agent
+    Agent -->|"MQTT 5 + agent key<br/>system_info · plc_memory · events"| Broker
+    Broker -->|"commands · recipes"| Agent
+    Sim -->|MQTT 5| Broker
+    Sim -->|"REST: tickets, parts"| Rest
+    Broker --> Ingest
+    Ingest --> Hub
+    Ingest --> Lua
+    Ingest --> Redis
+    Ingest --> Pg
+    Rest --> Pg
+    Rest --> Redis
+    Rest --- Search
+    Rest --- Pki
+    Browser -->|HTTPS| BFF
+    Browser -->|WebSocket| Hub
+    BFF -->|"session bearer + X-Organization-Id"| Rest
+    BFF -->|Drizzle| Pg
+    HMI --- Kiosk
+    Kiosk -->|"HTTPS + computer certificate"| Proxy
+    Proxy -->|"X-Client-Cert"| BFF
+    Dir -.->|"SSO · security-group claims"| BFF
+    Dir -.->|"CA certificates"| Pki
+```
+
+A station can be controlled by several IPCs and an IPC can serve several stations (many-to-many `StationControllers`); each station has one reporting controller.
+
+### Telemetry and lifecycle flow
+
+```mermaid
+sequenceDiagram
+    participant A as Agent / simulator
+    participant B as MQTT broker (backend)
+    participant I as Ingestion
+    participant C as Snapshot cache (memory + Redis)
+    participant H as SignalR hub
+    participant D as Dashboard
+    A->>B: plc_memory block (protobuf, user property x-agent-key)
+    B->>I: deliver (QoS 1)
+    alt content unchanged and keep-alive not due
+        I->>I: record arrival time only (freshness)
+    else changed or keep-alive due
+        I->>C: merge station snapshot
+        I->>H: StationTelemetryReceived / StationOscillationReceived (org group)
+        H-->>D: live update
+    end
+    A->>B: system_info heartbeat
+    B->>I: upsert controller, merge metadata
+    A->>B: events: AgentLifecycle started / stopping, last will on disconnect
+    B->>I: agent_events + controller lifecycle state
+    B-->>A: commands (signed) on heimdall/devices/{id}/commands
 ```
 
 ---
@@ -319,7 +363,8 @@ Heimdall includes pre-configured environment templates at the repository root:
 > Dev-only conveniences are enabled only by an explicit `HEIMDALL_ENABLE_DEV=true`. These include the BFF's anonymous "System Administrator" fallback, the demo kiosk tokens, and the `mock_auth` route-guard bypass. A non-production `NODE_ENV` alone no longer enables them.
 > Kiosk terminals (`/api/terminal/*`) authenticate with one of the following:
 > - a token from `HEIMDALL_TERMINAL_TOKENS` (comma-separated, ≥ 16 characters each; generate with `openssl rand -hex 24`)
-> - an mTLS client-certificate thumbprint matching an active PKI certificate (only when `HEIMDALL_TRUST_CLIENT_CERT_HEADER=true` behind a TLS-terminating proxy)
+> - a computer certificate verified by the TLS-terminating proxy and forwarded in `X-Client-Cert` (only with `HEIMDALL_TRUST_CLIENT_CERT_HEADER=true` and the proxy listed in `HEIMDALL_TRUSTED_PROXIES`); it must chain to the PKI trust store and map to a controller bound to the requested station
+> - in development only (`HEIMDALL_ENABLE_DEV=true`, never under `NODE_ENV=production`) the terminal needs no authentication
 > - an operator session
 
 ---
@@ -402,7 +447,7 @@ Comprehensive technical documentation is maintained in the [`docs/`](docs/Home.m
 - [Edge Agent & Protocols](docs/architecture/EDGE_AGENT_AND_PROTOCOLS.md) - Edge daemon lifecycle, DAG recipe merger, 4-tier bandwidth throttling, offline SQLite spooling, and industrial protocol drivers (TwinCAT ADS, EtherCAT, OPC UA, Modbus TCP).
 - [Security, Encryption & Compliance](docs/architecture/SECURITY_AND_COMPLIANCE.md) - AES-256-GCM field-level encryption, signed remote command execution, PII exclusion engine, and TISAX (VDA ISA 6.0) / GDPR mappings.
 - [Frontend, Real-Time PWA & Spatial UI](docs/architecture/FRONTEND_AND_PWA.md) - Nuxt architecture, Nitro BFF proxying, SignalR live Kanban ticketing, offline IndexedDB sync, AutoCAD DXF floor plan engine, and dynamic asset templating.
-- [API & Interface Reference](docs/api/API_REFERENCE.md) - Complete REST API endpoints, gRPC telemetry collector protobufs, SignalR hub events, DTOs, and OPC UA address space.
+- [API & Interface Reference](docs/api/API_REFERENCE.md) - Complete REST API endpoints, MQTT topics and protobuf payloads, SignalR hub events, DTOs, and OPC UA address space.
 - [Developer & Operations Guide](docs/guide/DEV_GUIDE.md) - Local setup, environment prerequisites, building, testing, database migrations, and Docker workflows.
 - [User & Operator Guide](docs/guide/USER_GUIDE.md) - Plant floor operator guide for dashboard monitoring, spatial CAD inspection, and mobile maintenance ticketing.
 - [Thesis Presentation Slide Deck](docs/presentation.md) - Comprehensive slide deck for BSc defense.
