@@ -1,5 +1,3 @@
-import { saveOuRule } from '../../utils/pkiStore'
-export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
-  return saveOuRule(body)
-})
+import { proxyToBackend } from '../../utils/backendProxy'
+
+export default defineEventHandler(event => proxyToBackend(event, 'v1/certificatemanagement', 'ou-rules', 'PKI'))

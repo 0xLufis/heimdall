@@ -1197,6 +1197,70 @@ public class ClientCertificateRecord
 
     [MaxLength(128)]
     public string? SerialNumber { get; set; }
+
+    /// <summary>
+    /// Private key (PKCS#8 PEM) for certificates whose key Heimdall itself holds, i.e. the server's
+    /// plugin-countersigning computer certificate. Encrypted at rest (HEIMDALL_ENCRYPTION_KEY); never serialised.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? PrivateKeyPem { get; set; }
+}
+
+/// <summary>
+/// One CA certificate Heimdall trusts for chain validation of user and computer certificates
+/// (kiosk terminals, plugin signatures): Heimdall's own root / intermediate and imported AD or
+/// enterprise CA chains. Statuses "Active" and "Superseded" are trusted, "Disabled" and
+/// "PendingSignature" are not. Only the Active Heimdall CA (source heimdall-*) issues certificates.
+/// </summary>
+[Table("trusted_ca_certificates")]
+public class TrustedCaCertificate
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required, MaxLength(500)]
+    public string Subject { get; set; } = string.Empty;
+
+    [MaxLength(500)]
+    public string? Issuer { get; set; }
+
+    /// <summary>SHA-1 thumbprint (hex, upper case), empty while a subordinate CSR awaits signature.</summary>
+    [MaxLength(128)]
+    public string Thumbprint { get; set; } = string.Empty;
+
+    [MaxLength(128)]
+    public string? SerialNumber { get; set; }
+
+    /// <summary>heimdall-self-signed, heimdall-subordinate, ad or imported.</summary>
+    [Required, MaxLength(32)]
+    public string Source { get; set; } = "imported";
+
+    /// <summary>Active, Superseded, Disabled or PendingSignature.</summary>
+    [Required, MaxLength(32)]
+    public string Status { get; set; } = "Active";
+
+    public bool IsSelfSigned { get; set; }
+
+    public DateTimeOffset? ValidFrom { get; set; }
+    public DateTimeOffset? ValidTo { get; set; }
+
+    /// <summary>Certificate PEM; null while a subordinate CSR awaits the CA-signed certificate.</summary>
+    public string? RawPem { get; set; }
+
+    /// <summary>PKCS#10 request PEM of a Heimdall subordinate CA awaiting signature.</summary>
+    public string? CsrPem { get; set; }
+
+    /// <summary>Private key (PKCS#8 PEM) of Heimdall's own CA. Encrypted at rest; never serialised.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? PrivateKeyPem { get; set; }
+
+    [MaxLength(255)]
+    public string? CreatedBy { get; set; }
+
+    [MaxLength(1000)]
+    public string? Notes { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 /// <summary>

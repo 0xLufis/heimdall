@@ -99,6 +99,53 @@ public class PluginManager : IPluginManager
         }
     }
 
+    /// <summary>
+    /// Verifies a double-signed bundle: user signature + server countersignature over the package bytes
+    /// (<see cref="PluginPackageBundle.PayloadBase64"/>), both certificates chaining to
+    /// <see cref="AgentConfig.TrustedCaCertificatesPem"/>, and the bundle's manifest / files equal the signed package.
+    /// </summary>
+    public PluginSignatureCheck VerifyDoubleSignature(PluginPackageBundle bundle)
+    {
+        if (bundle.UserSignature == null || bundle.ServerSignature == null || string.IsNullOrEmpty(bundle.PayloadBase64))
+            return new PluginSignatureCheck(false, "The plugin is not double-signed.");
+
+        List<App.Contracts.Security.TrustedCa> trusted;
+        try
+        {
+            trusted = App.Contracts.Security.CertificateChainValidator.ParsePemBundle(_configService.Config.TrustedCaCertificatesPem)
+                .Select(c => new App.Contracts.Security.TrustedCa(c, App.Contracts.Security.TrustSources.Imported))
+                .ToList();
+        }
+        catch (CryptographicException)
+        {
+            return new PluginSignatureCheck(false, "TrustedCaCertificatesPem cannot be parsed.");
+        }
+        if (trusted.Count == 0)
+            return new PluginSignatureCheck(false, "No trusted CA certificates configured (TrustedCaCertificatesPem).");
+
+        byte[] package;
+        try { package = Convert.FromBase64String(bundle.PayloadBase64); }
+        catch (FormatException) { return new PluginSignatureCheck(false, "The signed package is not valid Base64."); }
+
+        var check = PluginSignatures.VerifyDoubleSigned(package, bundle.UserSignature, bundle.ServerSignature, trusted, serverIssuerMustBeHeimdall: false);
+        if (!check.IsValid) return check;
+
+        // The installed content must be exactly the signed content.
+        try
+        {
+            var signed = PluginSignatures.ParsePackage(package);
+            if (!string.Equals(StringSanitizer.ToSafeToken(signed.Manifest.PluginId), StringSanitizer.ToSafeToken(bundle.Manifest.PluginId), StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(signed.Manifest.Entrypoint, bundle.Manifest.Entrypoint, StringComparison.Ordinal) ||
+                PluginSignatures.ComputePayloadHash(signed.Files) != PluginSignatures.ComputePayloadHash(bundle.Files))
+                return new PluginSignatureCheck(false, "The bundle's manifest or files differ from the signed package.");
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or FormatException)
+        {
+            return new PluginSignatureCheck(false, "The signed package cannot be parsed.");
+        }
+        return check;
+    }
+
     public Task<PluginInstallResult> InstallPluginAsync(PluginPackageBundle bundle)
     {
         if (bundle == null || bundle.Manifest == null)
@@ -116,20 +163,27 @@ public class PluginManager : IPluginManager
 
         string env = _configService.Config.Environment;
         bool isProduction = string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase);
-        bool signatureValid = VerifySignature(manifest, bundle.Files);
+        bool devMode = !isProduction || _configService.Config.AllowUnsignedPlugins;
 
-        if (isProduction && !_configService.Config.AllowUnsignedPlugins)
+        // Double signature (user certificate + server countersignature), both chains to the trusted CAs.
+        var doubleSigned = VerifyDoubleSignature(bundle);
+        bool signatureValid = doubleSigned.IsValid;
+
+        if (!devMode && !signatureValid)
         {
-            if (!signatureValid)
-            {
-                _logger.LogWarning("Rejected plugin '{PluginId}' in Production mode: Cryptographic signature is missing or invalid.", safePluginId);
-                return Task.FromResult(new PluginInstallResult(
-                    Success: false,
-                    PluginId: safePluginId,
-                    IsSandboxed: false,
-                    Message: "Signature verification failed: Unsigned or tampered plugins are strictly prohibited in Production mode.",
-                    ErrorCode: ErrorCode.PluginSignatureInvalid));
-            }
+            _logger.LogWarning("Rejected plugin '{PluginId}': {Reason}", safePluginId, doubleSigned.Reason);
+            return Task.FromResult(new PluginInstallResult(
+                Success: false,
+                PluginId: safePluginId,
+                IsSandboxed: false,
+                Message: $"Signature verification failed: {doubleSigned.Reason} Unsigned, single-signed or tampered plugins are rejected outside dev mode.",
+                ErrorCode: ErrorCode.PluginSignatureInvalid));
+        }
+
+        // Dev mode: legacy server-key signatures still count as signed (not sandboxed).
+        if (!signatureValid && devMode)
+        {
+            signatureValid = VerifySignature(manifest, bundle.Files);
         }
 
         bool isSandboxed = !signatureValid;

@@ -183,6 +183,7 @@ public class AppDbContext : DbContext
     public DbSet<SystemSetting> SystemSettings { get; set; }
     public DbSet<ClientCertificateRecord> ClientCertificates { get; set; }
     public DbSet<OuCertificateRule> OuCertificateRules { get; set; }
+    public DbSet<TrustedCaCertificate> TrustedCaCertificates { get; set; }
     public DbSet<SchemaVersionManifest> SchemaVersionManifests { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<MalformedTelemetryRecord> MalformedTelemetryRecords { get; set; }
@@ -670,6 +671,16 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Thumbprint);
             entity.HasIndex(e => e.CommonName);
             entity.HasIndex(e => e.ClientPcId);
+            entity.Property(e => e.PrivateKeyPem).HasConversion(encryptedConverter);
+        });
+
+        modelBuilder.Entity<TrustedCaCertificate>(entity =>
+        {
+            entity.ToTable("trusted_ca_certificates");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Thumbprint);
+            entity.HasIndex(e => new { e.Source, e.Status });
+            entity.Property(e => e.PrivateKeyPem).HasConversion(encryptedConverter);
         });
 
         modelBuilder.Entity<OuCertificateRule>(entity =>

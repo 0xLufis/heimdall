@@ -43,6 +43,14 @@ public class AgentConfig
     /// </summary>
     public string? ServerPublicKey { get; set; }
 
+    /// <summary>
+    /// PEM bundle of the CA certificates the agent trusts for plugin signatures (Heimdall root /
+    /// intermediate and, for AD-issued user certificates, the AD CA chain). Download it from
+    /// <c>GET /api/v1/certificatemanagement/trust-bundle</c>. Outside dev mode a plugin is installed
+    /// only when its user signature and the server countersignature both chain to these CAs.
+    /// </summary>
+    public string? TrustedCaCertificatesPem { get; set; }
+
     // Master Governance & Encryption Template Flags
     /// <summary>
     /// Enforces hardware-bound key derivation for local encrypted secrets.

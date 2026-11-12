@@ -8,6 +8,7 @@ using App.Shared.Plugins;
 public interface IPluginService
 {
     Task<PluginManifest> RegisterAndSignPluginAsync(PluginManifest manifest, Dictionary<string, string> files, bool sign = true);
+    Task<PluginPackageBundle> RegisterSignedPluginAsync(byte[] packageBytes, PluginSignatureEnvelope userSignature, string callerUserId);
     Task<PluginPackageBundle?> GetPluginBundleAsync(string pluginId);
     Task<List<PluginManifest>> ListPluginsAsync();
     Task<bool> PushPluginToAgentAsync(string pluginId, Guid clientPcId);

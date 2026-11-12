@@ -2,17 +2,23 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using App.Backend.Api.Services.Pki;
+using App.Contracts.Security;
 using App.Shared.Data;
 using App.Shared.Entities;
 
 namespace App.Backend.Api.Controllers.V1;
 
 /// <summary>
-/// Controller for managing enterprise and industrial X.509 PKI certificates,
-/// root CAs, and Active Directory Organizational Unit (OU) certificate auto-enrollment rules.
+/// Controller for managing enterprise and industrial X.509 PKI certificates: the trust store
+/// (Heimdall root / intermediate, imported AD / enterprise CA chains), Heimdall's CA (self-signed or
+/// subordinate), issuance of user and computer certificates, validation and identity mapping, and
+/// Active Directory Organizational Unit (OU) certificate auto-enrollment rules.
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
@@ -21,17 +27,40 @@ public class CertificateManagementController : ControllerBase
 {
     private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly ILogger<CertificateManagementController> _logger;
+    private readonly PkiService _pki;
 
     /// <summary>
     /// Initializes a new instance of <see cref="CertificateManagementController"/>.
     /// </summary>
     /// <param name="dbContextFactory">Factory for creating database context instances.</param>
     /// <param name="logger">Structured logger instance.</param>
-    public CertificateManagementController(IDbContextFactory<AppDbContext> dbContextFactory, ILogger<CertificateManagementController> logger)
+    /// <param name="pki">PKI service (trust store, issuance, validation); built from the factory when not injected.</param>
+    public CertificateManagementController(IDbContextFactory<AppDbContext> dbContextFactory, ILogger<CertificateManagementController> logger, PkiService? pki = null)
     {
         _dbContextFactory = dbContextFactory;
         _logger = logger;
+        _pki = pki ?? new PkiService(dbContextFactory, NullLogger<PkiService>.Instance);
     }
+
+    private string CurrentUser => User?.FindFirstValue(ClaimTypes.Email) ?? User?.Identity?.Name ?? "system";
+
+    /// <summary>The Heimdall CA in the legacy root-CA response shape (the admin UI reads it).</summary>
+    private static ClientCertificateRecord AsRootRecord(TrustedCaCertificate ca) => new()
+    {
+        Id = ca.Id,
+        CommonName = ca.Subject,
+        Issuer = ca.Issuer,
+        Thumbprint = ca.Thumbprint,
+        ValidFrom = ca.ValidFrom ?? ca.CreatedAt,
+        ValidTo = ca.ValidTo ?? ca.CreatedAt,
+        Status = ca.Status,
+        IsRootCa = true,
+        ProfileName = ca.Source,
+        KeyAlgorithm = "RSA",
+        SerialNumber = ca.SerialNumber,
+        RawPem = ca.RawPem,
+        CreatedAt = ca.CreatedAt
+    };
 
     /// <summary>
     /// Retrieves all client and machine certificates ordered by creation date.
@@ -47,55 +76,22 @@ public class CertificateManagementController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves the current active industrial Root CA certificate record, seeding a default CA if none exists.
+    /// The active Heimdall issuing CA (self-signed root or subordinate CA). A self-signed root is
+    /// created on first use. Kept in the trust store (<c>trusted_ca_certificates</c>) with its key.
     /// </summary>
     [HttpGet("root-ca")]
     public async Task<IActionResult> GetRootCa()
     {
-        await using var db = await _dbContextFactory.CreateDbContextAsync();
-        var rootCert = await db.ClientCertificates
-            .FirstOrDefaultAsync(c => c.IsRootCa && c.Status == "Active");
-
-        if (rootCert == null)
-        {
-            // Seed a default project root CA if none exists yet
-            using var rsa = RSA.Create(4096);
-            var req = new CertificateRequest("CN=Heimdall Project Industrial Root CA, O=Enterprise Factory Automation, C=US", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-            req.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
-            req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
-            var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow.AddYears(10));
-
-            var pem = cert.ExportCertificatePem();
-
-            rootCert = new ClientCertificateRecord
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "CN=Heimdall Project Industrial Root CA",
-                Issuer = "CN=Heimdall Project Industrial Root CA",
-                Thumbprint = cert.Thumbprint,
-                ValidFrom = cert.NotBefore.ToUniversalTime(),
-                ValidTo = cert.NotAfter.ToUniversalTime(),
-                Status = "Active",
-                IsRootCa = true,
-                ProfileName = "Root-CA-Profile",
-                KeyAlgorithm = "RSA-4096",
-                SerialNumber = cert.SerialNumber,
-                RawPem = pem,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            db.ClientCertificates.Add(rootCert);
-            await db.SaveChangesAsync();
-        }
-
-        return Ok(rootCert);
+        var ca = await _pki.EnsureHeimdallCaAsync(CurrentUser);
+        return Ok(AsRootRecord(ca));
     }
 
     /// <summary>
-    /// Imports or replaces an enterprise X.509 Root CA certificate.
-    /// Demotes any previously active Root CA certificates to Superseded and records the CA metadata.
+    /// Imports enterprise CA certificate(s) (PEM, one or more blocks) into the trust store.
+    /// <c>Source</c> is "ad" (AD CS chain) or "imported" (default). Heimdall's own issuing CA is not
+    /// changed; use root-ca/subordinate/* to make Heimdall's CA subordinate to an enterprise CA.
     /// </summary>
-    /// <param name="request">Request containing raw PEM or Base64 certificate text and profile metadata.</param>
+    /// <param name="request">Request containing raw PEM (or Base64 DER) certificate text and profile metadata.</param>
     [HttpPost("root-ca/import")]
     public async Task<IActionResult> ImportRootCertificate([FromBody] ImportRootCertRequest request)
     {
@@ -104,118 +100,136 @@ public class CertificateManagementController : ControllerBase
             return BadRequest(new App.Shared.Errors.ApiError(App.Shared.Errors.ErrorCode.MissingRequiredField, "Raw certificate PEM or CRT text is required."));
         }
 
+        var pem = request.RawPem.Contains("-----BEGIN", StringComparison.Ordinal)
+            ? request.RawPem
+            : "-----BEGIN CERTIFICATE-----\n" + request.RawPem.Trim() + "\n-----END CERTIFICATE-----";
         try
         {
-            X509Certificate2 cert;
-            try
-            {
-                cert = X509Certificate2.CreateFromPem(request.RawPem);
-            }
-            catch
-            {
-                var cleaned = request.RawPem
-                    .Replace("-----BEGIN CERTIFICATE-----", "")
-                    .Replace("-----END CERTIFICATE-----", "")
-                    .Replace("\r", "")
-                    .Replace("\n", "")
-                    .Trim();
-                var bytes = Convert.FromBase64String(cleaned);
-                cert = X509CertificateLoader.LoadCertificate(bytes);
-            }
-
-            await using var db = await _dbContextFactory.CreateDbContextAsync();
-
-            // Demote any existing active Root CA
-            var existingRoots = await db.ClientCertificates
-                .Where(c => c.IsRootCa && c.Status == "Active")
-                .ToListAsync();
-
-            foreach (var r in existingRoots)
-            {
-                r.Status = "Superseded";
-            }
-
-            var record = new ClientCertificateRecord
-            {
-                Id = Guid.NewGuid(),
-                CommonName = cert.Subject,
-                Issuer = cert.Issuer,
-                Thumbprint = cert.Thumbprint,
-                ValidFrom = cert.NotBefore.ToUniversalTime(),
-                ValidTo = cert.NotAfter.ToUniversalTime(),
-                Status = "Active",
-                IsRootCa = true,
-                ProfileName = request.ProfileName ?? "Corporate-Project-Root-CA",
-                KeyAlgorithm = cert.SignatureAlgorithm?.FriendlyName ?? "RSA-X509",
-                SerialNumber = cert.SerialNumber,
-                RawPem = request.RawPem.Trim(),
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            db.ClientCertificates.Add(record);
-
-            // Also persist in SystemSettings
-            var rootSetting = await db.SystemSettings.FirstOrDefaultAsync(s => s.Key == "Project.RootCA");
-            var summary = JsonSerializer.Serialize(new
-            {
-                record.Id,
-                record.CommonName,
-                record.Issuer,
-                record.Thumbprint,
-                record.ValidFrom,
-                record.ValidTo,
-                record.KeyAlgorithm,
-                record.SerialNumber,
-                UpdatedAt = DateTimeOffset.UtcNow
-            });
-
-            if (rootSetting == null)
-            {
-                db.SystemSettings.Add(new SystemSetting
-                {
-                    Key = "Project.RootCA",
-                    Category = "Certificates",
-                    ValueJson = summary,
-                    UpdatedBy = User?.Identity?.Name ?? "system",
-                    UpdatedAt = DateTimeOffset.UtcNow
-                });
-            }
-            else
-            {
-                rootSetting.ValueJson = summary;
-                rootSetting.UpdatedBy = User?.Identity?.Name ?? "system";
-                rootSetting.UpdatedAt = DateTimeOffset.UtcNow;
-            }
-
-            await db.SaveChangesAsync();
-            _logger.LogInformation("Successfully imported new Project Root Certificate: {Subject} (Thumbprint: {Thumbprint})", record.CommonName, record.Thumbprint);
-
-            return Ok(record);
+            var imported = await _pki.ImportTrustedCasAsync(pem, request.Source ?? TrustSources.Imported, request.Description ?? request.ProfileName, CurrentUser);
+            var first = AsRootRecord(imported[0]);
+            first.ProfileName = request.ProfileName ?? imported[0].Source;
+            return Ok(first);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Failed to parse imported X.509 Root Certificate");
-            return BadRequest(new { Message = $"Failed to parse X.509 certificate: {ex.Message}" });
+            _logger.LogWarning("Rejected CA import: {Message}", ex.Message);
+            return BadRequest(new { Message = ex.Message });
         }
     }
 
-    /// <summary>
-    /// Downloads the active Project Root Certificate as an X.509 CRT file.
-    /// </summary>
+    /// <summary>Downloads the active Heimdall CA certificate (with its chain for a subordinate CA) as PEM.</summary>
     [HttpGet("root-ca/download")]
     public async Task<IActionResult> DownloadRootCertificate()
     {
-        await using var db = await _dbContextFactory.CreateDbContextAsync();
-        var rootCert = await db.ClientCertificates
-            .FirstOrDefaultAsync(c => c.IsRootCa && c.Status == "Active");
+        var ca = await _pki.EnsureHeimdallCaAsync(CurrentUser);
+        var pem = await _pki.BuildChainPemAsync(X509Certificate2.CreateFromPem(ca.RawPem!));
+        return File(Encoding.UTF8.GetBytes(pem), "application/x-x509-ca-cert", "heimdall-project-root-ca.crt");
+    }
 
-        if (rootCert == null || string.IsNullOrWhiteSpace(rootCert.RawPem))
+    /// <summary>Creates a new self-signed Heimdall root CA; the previous Heimdall CA stays trusted (Superseded).</summary>
+    [HttpPost("root-ca/self-signed")]
+    public async Task<IActionResult> CreateSelfSignedRoot([FromBody] CreateCaRequest? request)
+    {
+        var ca = await _pki.CreateSelfSignedRootAsync(CurrentUser, string.IsNullOrWhiteSpace(request?.Subject) ? null : request!.Subject);
+        return Ok(AsRootRecord(ca));
+    }
+
+    /// <summary>
+    /// Subordinate root, step 1: generates the Heimdall CA key and returns a PKCS#10 CSR to be signed by
+    /// an AD / enterprise CA (SubCA template).
+    /// </summary>
+    [HttpPost("root-ca/subordinate/csr")]
+    public async Task<IActionResult> CreateSubordinateCsr([FromBody] CreateCaRequest? request)
+    {
+        var pending = await _pki.CreateSubordinateRequestAsync(request?.Subject, CurrentUser);
+        return Ok(new { pending.Id, pending.Subject, pending.Status, pending.CsrPem });
+    }
+
+    /// <summary>
+    /// Subordinate root, step 2: imports the CA-signed certificate and its chain (PEM, up to the root).
+    /// Validated on import (key match, CA flag, chain); the chain is added to the trust store as "ad".
+    /// </summary>
+    [HttpPost("root-ca/subordinate/complete")]
+    public async Task<IActionResult> CompleteSubordinate([FromBody] CompleteSubordinateRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.CertificatePem))
+            return BadRequest(new { Message = "CertificatePem is required." });
+        try
         {
-            return NotFound(new { Message = "No active Project Root Certificate found." });
+            var ca = await _pki.CompleteSubordinateAsync(request.CertificatePem, request.ChainPem, CurrentUser);
+            return Ok(AsRootRecord(ca));
         }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or CryptographicException)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+    }
 
-        var bytes = Encoding.UTF8.GetBytes(rootCert.RawPem);
-        return File(bytes, "application/x-x509-ca-cert", "heimdall-project-root-ca.crt");
+    /// <summary>The trust store: trusted CA certificates with source and status (keys are never returned).</summary>
+    [HttpGet("trust-store")]
+    public async Task<IActionResult> GetTrustStore() => Ok(await _pki.ListTrustStoreAsync());
+
+    /// <summary>Imports CA certificate(s) into the trust store (Source "ad" or "imported").</summary>
+    [HttpPost("trust-store/import")]
+    public async Task<IActionResult> ImportTrustedCa([FromBody] ImportTrustedCaRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Pem)) return BadRequest(new { Message = "Pem is required." });
+        try
+        {
+            return Ok(await _pki.ImportTrustedCasAsync(request.Pem, request.Source ?? TrustSources.Imported, request.Notes, CurrentUser));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+    }
+
+    /// <summary>Stops trusting a CA certificate (certificates chaining only to it no longer validate).</summary>
+    [HttpPost("trust-store/{id:guid}/disable")]
+    public async Task<IActionResult> DisableTrustedCa(Guid id) =>
+        await _pki.SetTrustStatusAsync(id, enabled: false) is { } row ? Ok(row) : NotFound();
+
+    /// <summary>Trusts a previously disabled CA certificate again.</summary>
+    [HttpPost("trust-store/{id:guid}/enable")]
+    public async Task<IActionResult> EnableTrustedCa(Guid id) =>
+        await _pki.SetTrustStatusAsync(id, enabled: true) is { } row ? Ok(row) : NotFound();
+
+    /// <summary>
+    /// PEM bundle of the trusted CA certificates. Public data (CA certificates); agents use it as
+    /// <c>TrustedCaCertificatesPem</c> to verify plugin signatures.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("trust-bundle")]
+    public async Task<IActionResult> GetTrustBundle() =>
+        Content(await _pki.GetTrustBundlePemAsync(), "application/x-pem-file");
+
+    /// <summary>
+    /// Issues a user or computer certificate from the Heimdall CA (SAN conventions: users UPN / e-mail,
+    /// computers DNS hostname + urn:heimdall:machine:&lt;id&gt;). Without a CSR the generated key is
+    /// returned once as PKCS#12 with a random password.
+    /// </summary>
+    [HttpPost("issue")]
+    public async Task<IActionResult> Issue([FromBody] IssueCertificateRequest request)
+    {
+        if (request == null) return BadRequest(new { Message = "Request body is required." });
+        if (string.Equals(request.Kind, "server", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { Message = "The server certificate is created by Heimdall itself." });
+        try
+        {
+            return Ok(await _pki.IssueAsync(request, CurrentUser));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+    }
+
+    /// <summary>Validates a certificate (chain, validity, revocation) and maps it to a ClientPc / user.</summary>
+    [HttpPost("validate")]
+    public async Task<IActionResult> Validate([FromBody] ValidateCertificateRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.CertificatePem)) return BadRequest(new { Message = "CertificatePem is required." });
+        return Ok(await _pki.ValidateAsync(request.CertificatePem, request.ChainPem));
     }
 
     /// <summary>
@@ -371,29 +385,18 @@ public class CertificateManagementController : ControllerBase
 
             if (existingCert == null)
             {
-                using var rsa = RSA.Create(2048);
-                var cn = pc.Hostname ?? pc.Name;
-                var certReq = new CertificateRequest($"CN={cn}", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-                var cert = certReq.CreateSelfSigned(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(matchingRule.ValidityYears));
-
-                var newCert = new ClientCertificateRecord
+                var issued = await _pki.IssueAsync(new IssueCertificateRequest
                 {
-                    Id = Guid.NewGuid(),
+                    Kind = "computer",
+                    CommonName = pc.Hostname ?? pc.Name,
+                    Hostname = pc.Hostname ?? pc.Name,
+                    MachineIdentifier = pc.MachineIdentifier,
                     ClientPcId = pc.Id,
-                    CommonName = cn,
-                    Thumbprint = cert.Thumbprint,
-                    ValidFrom = cert.NotBefore.ToUniversalTime(),
-                    ValidTo = cert.NotAfter.ToUniversalTime(),
-                    Status = "Active",
-                    AdOuPath = pc.AdOuPath,
                     ProfileName = matchingRule.ProfileName,
-                    KeyAlgorithm = matchingRule.KeyAlgorithm,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
+                    ValidityDays = matchingRule.ValidityYears * 365
+                }, CurrentUser);
 
-                db.ClientCertificates.Add(newCert);
-
-                pc.CertificateThumbprint = newCert.Thumbprint;
+                pc.CertificateThumbprint = issued.Record.Thumbprint;
                 pc.CertificateProfileName = matchingRule.ProfileName;
                 syncedCount++;
             }
@@ -421,28 +424,28 @@ public class CertificateManagementController : ControllerBase
             return BadRequest(new { Message = "CommonName is required." });
         }
 
-        using var rsa = RSA.Create(2048);
-        var certReq = new CertificateRequest($"CN={request.CommonName}", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-        var cert = certReq.CreateSelfSigned(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(request.ValidityYears > 0 ? request.ValidityYears : 1));
-
-        var record = new ClientCertificateRecord
+        string? hostname = request.CommonName;
+        string? machineIdentifier = null;
+        if (request.ClientPcId is { } pcId)
         {
-            Id = Guid.NewGuid(),
-            ClientPcId = request.ClientPcId,
+            await using var db = await _dbContextFactory.CreateDbContextAsync();
+            var pc = await db.ClientPcs.AsNoTracking().FirstOrDefaultAsync(p => p.Id == pcId);
+            hostname = pc?.Hostname ?? hostname;
+            machineIdentifier = pc?.MachineIdentifier;
+        }
+
+        var issued = await _pki.IssueAsync(new IssueCertificateRequest
+        {
+            Kind = "computer",
             CommonName = request.CommonName,
-            Thumbprint = cert.Thumbprint,
-            ValidFrom = cert.NotBefore.ToUniversalTime(),
-            ValidTo = cert.NotAfter.ToUniversalTime(),
-            Status = "Active",
-            CreatedAt = DateTimeOffset.UtcNow
-        };
+            Hostname = hostname,
+            MachineIdentifier = machineIdentifier,
+            ClientPcId = request.ClientPcId,
+            ValidityDays = (request.ValidityYears > 0 ? request.ValidityYears : 1) * 365
+        }, CurrentUser);
 
-        await using var db = await _dbContextFactory.CreateDbContextAsync();
-        db.ClientCertificates.Add(record);
-        await db.SaveChangesAsync();
-
-        _logger.LogInformation("Generated client certificate for {CommonName} (Thumbprint: {Thumbprint})", record.CommonName, record.Thumbprint);
-        return Ok(record);
+        _logger.LogInformation("Generated client certificate for {CommonName} (Thumbprint: {Thumbprint})", issued.Record.CommonName, issued.Record.Thumbprint);
+        return Ok(issued.Record);
     }
 
     /// <summary>
@@ -492,6 +495,40 @@ public class ImportRootCertRequest
 
     /// <summary>Optional human-readable description.</summary>
     public string? Description { get; set; }
+
+    /// <summary>Trust store source: "ad" or "imported" (default).</summary>
+    public string? Source { get; set; }
+}
+
+/// <summary>Request to create a Heimdall CA (self-signed root or subordinate CSR).</summary>
+public class CreateCaRequest
+{
+    /// <summary>Optional X.500 subject, e.g. "CN=Heimdall Issuing CA, O=Factory".</summary>
+    public string? Subject { get; set; }
+}
+
+/// <summary>CA-signed certificate for the pending subordinate Heimdall CA, plus its chain.</summary>
+public class CompleteSubordinateRequest
+{
+    public string CertificatePem { get; set; } = string.Empty;
+    /// <summary>Issuing CA chain up to (and including) the root, PEM.</summary>
+    public string? ChainPem { get; set; }
+}
+
+/// <summary>CA certificate(s) to trust.</summary>
+public class ImportTrustedCaRequest
+{
+    public string Pem { get; set; } = string.Empty;
+    /// <summary>"ad" or "imported".</summary>
+    public string? Source { get; set; }
+    public string? Notes { get; set; }
+}
+
+/// <summary>Certificate to validate (leaf first; optional intermediates).</summary>
+public class ValidateCertificateRequest
+{
+    public string CertificatePem { get; set; } = string.Empty;
+    public string? ChainPem { get; set; }
 }
 
 /// <summary>

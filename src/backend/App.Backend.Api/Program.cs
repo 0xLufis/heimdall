@@ -131,6 +131,12 @@ builder.Services.AddScoped<IComponentInventoryBridge, ComponentInventoryBridge>(
 builder.Services.AddScoped<IDelegationRecipeService, DelegationRecipeService>();
 builder.Services.AddScoped<IMachineRaisedTicketService, MachineRaisedTicketService>();
 builder.Services.AddScoped<IGenericTemplateService, GenericTemplateService>();
+// Scoped: the DbContext factory is registered scoped. The singleton PluginService resolves it per call.
+builder.Services.AddScoped<App.Backend.Api.Services.Pki.PkiService>(sp =>
+    new App.Backend.Api.Services.Pki.PkiService(
+        sp.GetRequiredService<IDbContextFactory<App.Shared.Data.AppDbContext>>(),
+        sp.GetRequiredService<ILogger<App.Backend.Api.Services.Pki.PkiService>>(),
+        sp.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton<App.Backend.Api.Services.Plugins.IPluginService>(sp =>
     new App.Backend.Api.Services.Plugins.PluginService(
         sp.GetRequiredService<IServiceScopeFactory>(),

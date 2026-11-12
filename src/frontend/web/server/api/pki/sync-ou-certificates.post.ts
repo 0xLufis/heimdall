@@ -1,2 +1,3 @@
-import { syncOuCertificates } from '../../utils/pkiStore'
-export default defineEventHandler(() => syncOuCertificates())
+import { proxyToBackend } from '../../utils/backendProxy'
+
+export default defineEventHandler(event => proxyToBackend(event, 'v1/certificatemanagement', 'sync-ou-certificates', 'PKI'))

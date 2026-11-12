@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody, getHeader, createError } from 'h3'
-import { requireTerminalAuth } from '../../utils/terminalAuth'
+import { requireTerminalAuth, assertTerminalStationAccess } from '../../utils/terminalAuth'
 import { addTicketToStore, MaintenanceTicket } from '../../utils/ticketsStore'
 import { machinesStore } from '../../utils/machinesStore'
 
@@ -12,8 +12,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Workstation Authentication (registered token, trusted mTLS thumbprint, or operator session)
-  await requireTerminalAuth(event, typeof body.token === 'string' ? body.token : undefined)
+  // Workstation authentication (operator session, workstation certificate via the trusted proxy, or workstation token)
+  const terminalAuth = await requireTerminalAuth(event, typeof body.token === 'string' ? body.token : undefined)
 
   // Mandatory fields for 2-click issue reporting
   const stationId = body.stationId || body.machineId
@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
 
   // Lookup machine name for clarity
   const machine = machinesStore.getMachineById(stationId)
+  assertTerminalStationAccess(terminalAuth, stationId, machine?.id, machine?.customIdentifier)
   const stationName = machine?.displayName || machine?.name || stationId
 
   const category = body.category || 'Mechanical'

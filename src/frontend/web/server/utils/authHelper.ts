@@ -1,6 +1,6 @@
 import { H3Event, getHeader, getCookie, createError } from 'h3'
 import { auth } from './auth'
-import { isExplicitDevMode } from './terminalAuth'
+import { isExplicitDevMode } from './devMode'
 import { eq } from 'drizzle-orm'
 import { useDb } from './db'
 import * as hbSchema from '../database/drizzle/schema'
@@ -44,25 +44,29 @@ async function resolveSimulatedSsoUser(rawToken: string | undefined) {
   }
 }
 
-export async function getAuthenticatedUser(event: H3Event, requireAuth = false) {
-  let user = (event.context as any)?.auth?.user
+/**
+ * The user behind the request's session: a Better-Auth session or a development SSO simulation
+ * session. No synthetic fallback; `undefined` when there is no valid session.
+ */
+export async function resolveSessionUser(event: H3Event): Promise<any | undefined> {
+  const existing = (event.context as any)?.auth?.user
+  if (existing) return existing
 
   const authHeader = getHeader(event, 'authorization')
   const cookieToken = getCookie(event, 'better-auth.session_token')
+  if (!authHeader && !cookieToken) return undefined
 
-  if (!user && (authHeader || cookieToken)) {
-    try {
-      const sessionData = await auth.api.getSession({ headers: event.headers })
-      if (sessionData?.user) {
-        user = sessionData.user
-      }
-    } catch {
-      // ignore
-    }
-    if (!user) {
-      user = await resolveSimulatedSsoUser(cookieToken || authHeader)
-    }
+  try {
+    const sessionData = await auth.api.getSession({ headers: event.headers })
+    if (sessionData?.user) return sessionData.user
+  } catch {
+    // ignore
   }
+  return await resolveSimulatedSsoUser(cookieToken || authHeader)
+}
+
+export async function getAuthenticatedUser(event: H3Event, requireAuth = false) {
+  let user = await resolveSessionUser(event)
 
   // Synthetic admin fallback ONLY under an explicit opt-in (HEIMDALL_ENABLE_DEV=true, set by
   // .env.dev) or Vitest. Previously any NODE_ENV other than "production" (including an unset

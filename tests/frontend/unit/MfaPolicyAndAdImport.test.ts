@@ -11,14 +11,6 @@ import {
   commitImportedHosts,
   setOuGovernance,
 } from '../../../src/frontend/web/server/utils/activeDirectoryStore'
-import {
-  getRootCertificate,
-  importRootCertificate,
-  getOuRules,
-  saveOuRule,
-  deleteOuRule,
-  syncOuCertificates,
-} from '../../../src/frontend/web/server/utils/pkiStore'
 
 describe('MFA Policy Governance & Timeout Thresholds', () => {
   it('should evaluate SysAdmin role requiring MFA on every sign-in (always)', () => {
@@ -203,49 +195,5 @@ describe('Active Directory VLAN Host Discovery & Templating', () => {
   })
 })
 
-describe('PKI, Root CA Import & OU Certificate Rules', () => {
-  it('should return active Project Root Certificate with valid X.509 thumbprint', () => {
-    const root = getRootCertificate()
-    expect(root).toBeDefined()
-    expect(root.isRootCa).toBe(true)
-    expect(root.thumbprint).toBeTruthy()
-    expect(root.keyAlgorithm).toBe('RSA-4096')
-  })
-
-  it('should import external certificate as Project Root CA', () => {
-    const samplePem = `-----BEGIN CERTIFICATE-----
-MIIDXTCCAkWgAwIBAgIUWk+RLjsRAwEQAgEAMA0GCSqGSIb3DQEBCwUAMEUxCzAJ
-BgNVBAYTAlVTMScwJQYDVQQKDB5FbnRlcnByaXNlIEZhY3RvcnkgQXV0b21hdGlv
-bjETMBEGA1UEAwwKSGVpbWRhbGwgUDEwHhcNMjYwODA1MTIwMDAwWhcNMzYwODAy
------END CERTIFICATE-----`
-
-    const imported = importRootCertificate(samplePem, 'External-Corporate-Root-CA')
-    expect(imported).toBeDefined()
-    expect(imported.isRootCa).toBe(true)
-    expect(imported.profileName).toBe('External-Corporate-Root-CA')
-    expect(imported.thumbprint).toBeTruthy()
-  })
-
-  it('should manage OU Certificate Assignment Rules and auto-enroll hosts', () => {
-    const rulesBefore = getOuRules()
-    expect(rulesBefore.length).toBeGreaterThanOrEqual(3)
-
-    const newRule = saveOuRule({
-      ouPath: 'OU=Pressing,OU=VLAN15-Stamping,DC=factory,DC=corp',
-      profileName: 'Stamping-Press-mTLS',
-      validityYears: 3,
-      autoEnroll: true,
-      keyAlgorithm: 'RSA-4096',
-    })
-
-    expect(newRule.id).toBeTruthy()
-    expect(newRule.profileName).toBe('Stamping-Press-mTLS')
-
-    const syncRes = syncOuCertificates()
-    expect(syncRes.syncedCount).toBeGreaterThanOrEqual(0)
-
-    deleteOuRule(newRule.id)
-    const rulesAfter = getOuRules()
-    expect(rulesAfter.find(r => r.id === newRule.id)).toBeUndefined()
-  })
-})
+// PKI (root CA, OU rules, issuance) lives in the backend only since the trust-store work;
+// see tests/backend/App.Backend.Tests/PkiTrustAndMappingTests.cs and MfaAndActiveDirectoryTests.

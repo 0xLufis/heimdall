@@ -137,6 +137,13 @@ public static class AgentConfigValidator
                 "cannot be parsed as an RSA public key (PEM, XML or Base64 SubjectPublicKeyInfo); signed commands will be rejected", true));
         }
 
+        if (!string.IsNullOrWhiteSpace(config.TrustedCaCertificatesPem) && !IsParseableCertificateBundle(config.TrustedCaCertificatesPem))
+        {
+            // Fail-secure like ServerPublicKey: an unreadable bundle means every signed plugin is rejected.
+            issues.Add(new ConfigIssue(nameof(AgentConfig.TrustedCaCertificatesPem),
+                "contains no parseable PEM certificate; signed plugins will be rejected", true));
+        }
+
         // --- Policy enumerations --------------------------------------------------------------
         string? canonicalEnvironment = Canonical(Environments, config.Environment);
         if (canonicalEnvironment == null)
@@ -239,6 +246,12 @@ public static class AgentConfigValidator
     }
 
     /// <summary>True when the text can be loaded the way <c>ConfigurationService.VerifySignature</c> loads it.</summary>
+    public static bool IsParseableCertificateBundle(string pem)
+    {
+        try { return App.Contracts.Security.CertificateChainValidator.ParsePemBundle(pem).Count > 0; }
+        catch (System.Security.Cryptography.CryptographicException) { return false; }
+    }
+
     public static bool IsParseablePublicKey(string key)
     {
         try

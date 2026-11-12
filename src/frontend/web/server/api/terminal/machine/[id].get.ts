@@ -1,5 +1,5 @@
 import { defineEventHandler, getQuery, getRouterParam, getHeader, createError } from 'h3'
-import { requireTerminalAuth } from '../../../utils/terminalAuth'
+import { requireTerminalAuth, assertTerminalStationAccess } from '../../../utils/terminalAuth'
 import { machinesStore } from '../../../utils/machinesStore'
 import { ticketsStore } from '../../../utils/ticketsStore'
 
@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Workstation Authentication (registered token, trusted mTLS thumbprint, or operator session)
+  // Workstation authentication (operator session, workstation certificate via the trusted proxy, or workstation token)
   const terminalAuth = await requireTerminalAuth(event)
 
   // Retrieve machine from store (or backend fallback)
@@ -38,6 +38,9 @@ export default defineEventHandler(async (event) => {
       statusMessage: `Machine station with ID or Identifier "${id}" was not found.`
     })
   }
+
+  // A certificate-authenticated workstation only opens stations bound to its controller.
+  assertTerminalStationAccess(terminalAuth, id, machine.id, machine.customIdentifier)
 
   // Generate live PLC telemetry for this terminal
   const isOperational = machine.status === 'active'
@@ -89,7 +92,11 @@ export default defineEventHandler(async (event) => {
     recentTickets,
     workstation: {
       terminalMode: 'TouchscreenKiosk',
-      authenticatedVia: terminalAuth.method === 'client-certificate' ? 'X509Certificate' : terminalAuth.method === 'session' ? 'OperatorSession' : 'WorkstationToken',
+      authenticatedVia: terminalAuth.method === 'client-certificate'
+        ? 'X509Certificate'
+        : terminalAuth.method === 'session'
+          ? 'OperatorSession'
+          : terminalAuth.method === 'dev-bypass' ? 'DevBypass' : 'WorkstationToken',
       permissions: ['read:machine_status', 'read:telemetry', 'write:terminal_ticket'],
       readOnly: true
     }

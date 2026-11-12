@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody, createError } from 'h3'
-import { pkiStore } from '../../utils/pkiStore'
+import { backendFetch } from '../../utils/backendFetch'
 
 export interface EnrollmentRecord {
   enrollmentId: string
@@ -82,12 +82,18 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Generate dedicated client mTLS certificate via pkiStore
-    const newCert = pkiStore.addCertificate({
-      commonName: `CN=${record.hostname}.factory.corp, O=Enterprise Factory Automation`,
-      validityDays: 365,
-      keyAlgorithm: 'RSA-2048'
+    // Issue the computer certificate from the Heimdall CA (backend PKI, the admin's session):
+    // SAN dNSName = hostname, URI urn:heimdall:machine:<machine identifier>.
+    const issued = await backendFetch<any>(event, 'certificatemanagement/issue', {
+      method: 'POST',
+      body: { kind: 'computer', hostname: record.hostname, machineIdentifier: record.machineIdentifier, validityDays: 365 }
     })
+    const newCert = {
+      commonName: issued?.record?.commonName ?? record.hostname,
+      thumbprint: issued?.record?.thumbprint as string,
+      validTo: issued?.record?.validTo as string,
+      rawPem: issued?.certificatePem as string
+    }
 
     record.status = 'Approved'
     record.approvedAt = new Date().toISOString()

@@ -474,6 +474,10 @@ namespace App.Shared.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("key_algorithm");
 
+                    b.Property<string>("PrivateKeyPem")
+                        .HasColumnType("text")
+                        .HasColumnName("private_key_pem");
+
                     b.Property<string>("ProfileName")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
@@ -3073,6 +3077,101 @@ namespace App.Shared.Migrations
                         .HasDatabaseName("ix_ticket_comments_maintenance_ticket_id");
 
                     b.ToTable("ticket_comments", "backend");
+                });
+
+            modelBuilder.Entity("App.Shared.Entities.TrustedCaCertificate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CsrPem")
+                        .HasColumnType("text")
+                        .HasColumnName("csr_pem");
+
+                    b.Property<bool>("IsSelfSigned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_self_signed");
+
+                    b.Property<string>("Issuer")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("issuer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("PrivateKeyPem")
+                        .HasColumnType("text")
+                        .HasColumnName("private_key_pem");
+
+                    b.Property<string>("RawPem")
+                        .HasColumnType("text")
+                        .HasColumnName("raw_pem");
+
+                    b.Property<string>("SerialNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("serial_number");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("source");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Thumbprint")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("thumbprint");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<DateTimeOffset?>("ValidFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_from");
+
+                    b.Property<DateTimeOffset?>("ValidTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_to");
+
+                    b.HasKey("Id")
+                        .HasName("pk_trusted_ca_certificates");
+
+                    b.HasIndex("Thumbprint")
+                        .HasDatabaseName("ix_trusted_ca_certificates_thumbprint");
+
+                    b.HasIndex("Source", "Status")
+                        .HasDatabaseName("ix_trusted_ca_certificates_source_status");
+
+                    b.ToTable("trusted_ca_certificates", "backend");
                 });
 
             modelBuilder.Entity("App.Shared.Entities.UserRole", b =>
