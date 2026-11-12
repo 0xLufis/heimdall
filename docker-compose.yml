@@ -236,6 +236,11 @@ services:
       - ./infra/windows/shared:/shared
     networks:
       - heimdall_dev_net
+    # The agent inside the VM talks to `backend:5001` and the MQTT broker on `backend:1883`. Point that
+    # name at the Docker host: it reaches a backend started on the host (`just dev`, `dotnet run`) and,
+    # through its published ports, the `backend` container of the all-in-Docker stack as well.
+    extra_hosts:
+      - "backend:host-gateway"
     profiles:
       - windows
     restart: unless-stopped
