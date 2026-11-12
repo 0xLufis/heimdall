@@ -9,19 +9,45 @@ const lastEvent = ref<any>(null)
 const lastSyncedAt = ref<Date>(new Date())
 let activeInstances = 0
 
+/**
+ * The backend sends InventoryUpdated for every agent heartbeat, several times a second on a busy plant,
+ * and every subscriber refetches its whole dataset. Updates are therefore coalesced: the first refreshes
+ * at once, and any that follow within the window collapse into one trailing refresh.
+ */
+export const INVENTORY_REFRESH_COALESCE_MS = 3000
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+let lastRefreshAt = 0
+
+const notifySubscribers = () => {
+  lastSyncedAt.value = new Date()
+  subscribers.forEach(cb => {
+    try {
+      cb()
+    } catch (err) {
+      console.error('Error executing inventory refresh callback:', err)
+    }
+  })
+}
+
+const scheduleRefresh = () => {
+  if (refreshTimer) return // a refresh is already pending and will include this update
+  const wait = Math.max(0, lastRefreshAt + INVENTORY_REFRESH_COALESCE_MS - Date.now())
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null
+    lastRefreshAt = Date.now()
+    notifySubscribers()
+  }, wait)
+}
+
+const cancelScheduledRefresh = () => {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+    refreshTimer = null
+  }
+}
+
 export const useInventoryLive = () => {
   const connectionError = ref<string | null>(null)
-
-  const notifySubscribers = () => {
-    lastSyncedAt.value = new Date()
-    subscribers.forEach(cb => {
-      try {
-        cb()
-      } catch (err) {
-        console.error('Error executing inventory refresh callback:', err)
-      }
-    })
-  }
 
   const connectSignalR = async () => {
     if (typeof window === 'undefined') return
@@ -34,7 +60,7 @@ export const useInventoryLive = () => {
           lastEvent.value = event
           isLiveConnected.value = true
           if (event.type === 'InventoryUpdated') {
-            notifySubscribers()
+            scheduleRefresh()
           }
         })
         isLiveConnected.value = true
@@ -83,6 +109,7 @@ export const useInventoryLive = () => {
       activeInstances = Math.max(0, activeInstances - 1)
       if (activeInstances === 0) {
         stopPolling()
+        cancelScheduledRefresh()
         if (maintenanceEventUnsub) {
           maintenanceEventUnsub()
           maintenanceEventUnsub = null
