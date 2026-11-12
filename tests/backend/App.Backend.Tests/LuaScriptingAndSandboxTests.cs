@@ -399,6 +399,35 @@ public class LuaScriptingAndSandboxTests
     }
 
     [Fact]
+    public async Task ActiveScriptIds_AreCached_ButWritesThroughTheServiceTakeEffectImmediately()
+    {
+        using var sp = BuildServices();
+        var service = new LuaAutomationService(sp.GetRequiredService<IServiceScopeFactory>(), NullLogger<LuaAutomationService>.Instance);
+
+        // Primes the cache with "no SLA scripts".
+        Assert.Empty(await service.EvaluateSlaPreventiveRulesAsync());
+
+        var created = await service.CreateScriptAsync(new LuaScriptRecord
+        {
+            Name = "SLA", Code = "return 'ran'", TriggerType = LuaScriptTriggerType.SlaPreventiveCheck
+        });
+        Assert.Equal("ran", Assert.Single(await service.EvaluateSlaPreventiveRulesAsync()).ReturnValue);
+
+        LuaScriptRecord Edit(bool active) => new()
+        {
+            Name = created.Name, Code = created.Code, TriggerType = created.TriggerType, IsActive = active
+        };
+        await service.UpdateScriptAsync(created.Id, Edit(active: false));
+        Assert.Empty(await service.EvaluateSlaPreventiveRulesAsync());
+
+        await service.UpdateScriptAsync(created.Id, Edit(active: true));
+        Assert.Single(await service.EvaluateSlaPreventiveRulesAsync());
+
+        Assert.True(await service.DeleteScriptAsync(created.Id));
+        Assert.Empty(await service.EvaluateSlaPreventiveRulesAsync());
+    }
+
+    [Fact]
     public void LuaEnums_SerializeAsStrings_MatchingFrontendContract()
     {
         var json = JsonSerializer.Serialize(new LuaScriptRecord { TriggerType = LuaScriptTriggerType.TelemetryChange },

@@ -20,9 +20,10 @@ using Microsoft.Extensions.Logging;
 /// every operation runs in its own DI scope so the scoped <see cref="AppDbContext"/> and
 /// <see cref="ILuaPlantDataProvider"/> are created and disposed per call.
 ///
-/// The only in-process state is the UI extension registry (extension metadata → owning script id),
-/// which is rebuilt lazily from the database. Handler closures are never cached; invoking an action
-/// re-executes the owning script in a fresh sandbox.
+/// The in-process state is the UI extension registry (extension metadata → owning script id), which is
+/// rebuilt lazily from the database, and the ids of the active scripts per trigger (see
+/// <see cref="ActiveScriptIdsTtl"/>). Handler closures are never cached; invoking an action re-executes
+/// the owning script in a fresh sandbox.
 /// </summary>
 public class LuaAutomationService : ILuaAutomationService
 {
@@ -32,6 +33,16 @@ public class LuaAutomationService : ILuaAutomationService
     private readonly ConcurrentDictionary<string, (LuaUiExtension Extension, Guid ScriptId)> _uiRegistry = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _uiInitLock = new(1, 1);
     private volatile bool _uiInitialized;
+
+    /// <summary>
+    /// How long the active script ids of a trigger are reused. Telemetry ingestion asks once per metric of
+    /// every station block (hundreds of times a second on a busy plant, nearly always to learn there are
+    /// none), so the ids are cached. Writes through this service drop the cache at once; the TTL only bounds
+    /// how long an edit made elsewhere (another backend instance, SQL) takes to be picked up.
+    /// </summary>
+    internal static readonly TimeSpan ActiveScriptIdsTtl = TimeSpan.FromSeconds(10);
+    private readonly ConcurrentDictionary<LuaScriptTriggerType, (IReadOnlyList<Guid> Ids, long LoadedAtMs)> _activeScriptIds = new();
+    private long _scriptsVersion;
 
     public LuaAutomationService(
         IServiceScopeFactory scopeFactory,
@@ -86,6 +97,7 @@ public class LuaAutomationService : ILuaAutomationService
             db.LuaScripts.Add(entity);
             await db.SaveChangesAsync(cancellationToken);
         }
+        InvalidateActiveScriptIds();
 
         await RefreshUiRegistrationsAsync(entity, cancellationToken);
         return entity;
@@ -109,6 +121,7 @@ public class LuaAutomationService : ILuaAutomationService
             existing.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
         }
+        InvalidateActiveScriptIds();
 
         await RefreshUiRegistrationsAsync(existing, cancellationToken);
         return existing;
@@ -123,6 +136,7 @@ public class LuaAutomationService : ILuaAutomationService
 
         db.LuaScripts.Remove(existing);
         await db.SaveChangesAsync(cancellationToken);
+        InvalidateActiveScriptIds();
         RemoveUiRegistrations(id);
         return true;
     }
@@ -201,16 +215,8 @@ public class LuaAutomationService : ILuaAutomationService
         Dictionary<string, object?>? context,
         CancellationToken cancellationToken)
     {
-        List<Guid> ids;
-        await using (var scope = _scopeFactory.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            ids = await db.LuaScripts.AsNoTracking()
-                .Where(s => s.IsActive && s.TriggerType == trigger)
-                .OrderBy(s => s.CreatedAt)
-                .Select(s => s.Id)
-                .ToListAsync(cancellationToken);
-        }
+        var ids = await GetActiveScriptIdsAsync(trigger, cancellationToken);
+        if (ids.Count == 0) return Array.Empty<LuaExecutionResult>();
 
         var results = new List<LuaExecutionResult>();
         foreach (var id in ids)
@@ -224,6 +230,41 @@ public class LuaAutomationService : ILuaAutomationService
             results.Add(await ExecuteAndRecordAsync(scope.ServiceProvider, db, script, context, cancellationToken));
         }
         return results;
+    }
+
+    /// <summary>Ids of the active scripts for <paramref name="trigger"/>, oldest first (see <see cref="ActiveScriptIdsTtl"/>).</summary>
+    private async Task<IReadOnlyList<Guid>> GetActiveScriptIdsAsync(LuaScriptTriggerType trigger, CancellationToken cancellationToken)
+    {
+        if (_activeScriptIds.TryGetValue(trigger, out var cached) &&
+            Environment.TickCount64 - cached.LoadedAtMs < (long)ActiveScriptIdsTtl.TotalMilliseconds)
+        {
+            return cached.Ids;
+        }
+
+        // A write that lands while this query runs bumps the version, and the (possibly stale) result is not cached.
+        var version = Interlocked.Read(ref _scriptsVersion);
+        List<Guid> ids;
+        await using (var scope = _scopeFactory.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            ids = await db.LuaScripts.AsNoTracking()
+                .Where(s => s.IsActive && s.TriggerType == trigger)
+                .OrderBy(s => s.CreatedAt)
+                .Select(s => s.Id)
+                .ToListAsync(cancellationToken);
+        }
+
+        if (Interlocked.Read(ref _scriptsVersion) == version)
+        {
+            _activeScriptIds[trigger] = (ids, Environment.TickCount64);
+        }
+        return ids;
+    }
+
+    private void InvalidateActiveScriptIds()
+    {
+        Interlocked.Increment(ref _scriptsVersion);
+        _activeScriptIds.Clear();
     }
 
     private async Task<LuaExecutionResult> ExecuteAndRecordAsync(
