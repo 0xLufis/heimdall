@@ -388,19 +388,22 @@ See the [demo walkthrough](seed_data/demo/README.md) for personas, demo logins, 
 # 0. Run Unified Verification Suite (seed validation, backend, frontend)
 just test
 
-# 1. Run .NET backend unit & integration tests (xUnit, 372 tests)
+# 1. Run .NET backend and agent unit & integration tests (xUnit, ~665 tests)
 dotnet test Heimdall.sln
 
-# 2. Run Nuxt frontend unit test suites (Vitest, 773 tests)
+# 2. Run Nuxt frontend unit test suites (Vitest, ~1100 tests)
 cd src/frontend/web && bun run test
 
-# 3. Run Python fleet simulator & mock CMI runner tests (40 tests)
+# 3. Run Python fleet simulator & mock CMI runner tests (48 tests)
 ./venv/bin/python3 -m unittest discover -s simulators/fleet -p "test_*.py"
 
-# 4. Run Sequence Diagram validation (Mermaid code-to-diagram check)
+# 4. Run dev tooling tests (process supervision, log pipe)
+python3 -m unittest discover -s tests -p "test_*.py"
+
+# 5. Run Sequence Diagram validation (Mermaid code-to-diagram check)
 python3 tools/generate_sequence_diagrams.py --check
 
-# 5. Run Playwright end-to-end browser tests
+# 6. Run Playwright end-to-end browser tests
 cd src/frontend/web && bun x playwright test
 ```
 

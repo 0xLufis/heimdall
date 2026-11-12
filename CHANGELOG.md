@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PLC memory change gate**: unchanged PLC blocks are no longer reprocessed or rebroadcast (keep-alive every 10 s; `Telemetry:PlcMemory:KeepAliveSeconds`, `PersistIntervalSeconds`).
 - **Simulated plant activity**: the fleet simulator drives every station and controller, raises tickets from simulated faults through the backend API and works them to closure, and consumes spare parts. Seed datasets hold reference data only (machine-group hierarchy, crews, component slots) with validators for referential integrity. `just sim-reset`, `just sim-rate`.
 - Single role catalogue (`app/utils/roles.ts`) mirroring `SecurityConstants.cs` and the backend policies, with a drift test.
+- **Organisation management** by Heimdall admins, middle managers and up, or holders of the grantable `organizations.manage` permission (`OrganizationManagement` policy; BFF routes for organisations, members and invitations). Drizzle migration `0007` adds the Better-Auth plugin columns that were missing.
+- **Lua KPI authoring**: "New KPI" wizard (OEE, availability, scrap rate, MTBF, cycle-time deviation), inline API reference checked against the backend Lua APIs, test runs against a chosen station.
+- **PKI trust store** for AD-issued and Heimdall-issued certificates; Heimdall CA self-signed or subordinate to an enterprise / AD CA (CSR flow); user and computer certificate mapping (migration `PkiTrustStore`).
+- **Double-signed plugins**: the installing user signs the package, the server countersigns with its computer certificate, agents verify both (`scripts/sign-plugin.sh`, `scripts/Sign-HeimdallPlugin.ps1`).
+- **Kiosk overlay**: compact always-on-top terminal layout (`?overlay=1`) and `infra/windows/tray/Start-HeimdallTerminal.ps1` (chromeless Edge / Chrome app window); computer-certificate authentication behind a TLS-terminating proxy in production.
+- **Per-station freshness**: stale after 3 missed samples of the station's own interval (arrival-based, including unchanged blocks); OFFLINE when a controller's agent sent its MQTT last will.
+- **Bounded logging**: backend file logs with size / age rotation and a non-blocking spool, runtime verbosity via `/api/v1/admin/logging`; dev logs in `<repo>/.logs` through `tools/logpipe.py`.
 
 ### Fixed
 - Live telemetry cards never showed data (listened for fields the backend does not send; sparkline canvas ref was never bound); unreported values are no longer rendered as `0`.
@@ -32,6 +39,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SignalR console flood (`PlcMemoryReceived`), search bar crash (`_ctx.setTimeout is not a function`), ticket monitor hydration mismatch.
 - Machine groups: sub-groups were created as roots, deleting a group with sub-groups failed, parent cycles were accepted, the Technologies view was empty.
 - The BFF showed hard-coded sample tickets next to real ones.
+- Nuxt dev server ran out of heap after hours: vue-i18n's DevTools setup retained every SSR-rendered app; better-auth store listeners leaked per render.
+- Kiosk terminal answered 401 for SSO-simulation sessions; the on-screen keypad is gone.
+- The Windows VM agent could not reach a backend running on the host (`backend` host alias).
+- Captured dev-service starts (TUI, scripts) hung because the log pipe kept the caller's output open.
+- `dotnet watch` restarts collided with the previous backend still holding its ports (the watcher killed `dotnet run` without a grace period and orphaned the app). Dev services now stop by their recorded process session (`tools/devproc.py`) instead of `pkill` patterns that could also hit unrelated processes; the backend waits briefly for its ports in Development.
+- The machines page froze with the station panel open: every live hub message replaced the whole station-KPI map, so all station cards re-rendered about 60 times a second with 100 simulated stations. The telemetry store now updates per station and commits hub bursts at most every 250 ms; "last sample" times on the cards and in the station panel follow a 15 s clock instead of other stations' traffic.
+- Flaky agent lifecycle test (asserted on the retry journal before it had drained) and remote-viewer tests (fixed 50 ms sleeps).
+- Leftover gRPC / telemetry-mTLS wording in the PKI settings page, the Windows tray notification, compose files and code comments; the agent no longer enables HTTP/2 cleartext, which only the gRPC client needed.
 - Swagger "Authorize" token was never sent with requests. pgAdmin: reserved `.local` default e-mail, unwritable bind-mounted data directory, and `just pgadmin` joining a different compose network than the dev database.
 
 ### Security
@@ -39,8 +54,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security-group BFF routes were anonymous (enrol any user into any organization as owner, mint automation keys); they now require `ItAdministration`. Demo automation keys exist only with dev features on.
 - Anonymous reads of users and organizations closed; `/api/auth/admin/*` no longer lets an administrator grant themselves or others a higher role; organization creation limited to platform admins.
 - Tenant-scoped results were cached under global keys in `ClientPcController` / `InventoryController`; removed members kept tenant access; the backend's session cache was never invalidated after role / organization changes.
+- `PluginController` had no authorization; plugin uploads now require `EndpointConfigManagement` and a verified user signature.
+- Lua scripts could change machine-group memberships of any organisation; they are limited to platform-managed groups.
 
 ### Changed
+- The user directory is global for signed-in users; machine groups are readable by everyone and writable per owning organisation (migration `MachineGroupOrganization`).
+- Global search lists stations, controllers, tickets and people before inventory.
+- The KPI Builder was removed (Lua is the KPI tool); `/dashboard/inventory` reads and writes backend inventory data instead of a fixture.
+- EF Core SQL logging defaults to Warning, also in Development; `just start frontend` exports the dev flags from `.env.dev`.
 - **Canonical 5-State Industrial Ticketing & Orthogonal Escalation**:
   - Overhauled maintenance ticketing across frontend and backend to strictly 5 canonical statuses: `Open`, `InProgress`, `Pending`, `Resolved`, and `Closed`.
   - Decoupled escalation from status: tickets now feature orthogonal escalation flags (`isEscalated`, `escalationReason`, `escalatedAt`, `escalatedBy`, `escalationClosedAt`, `escalationClosedBy`), enabling escalation and de-escalation in any status.

@@ -25,7 +25,7 @@ Consolidated after the plant-simulation / hardening work on branch `feature/simu
 - [ ] MQTT messages are processed one at a time (`MqttIngestionHostedService.OnMessageReceivedAsync`). At 100 stations / 4 s the debug backend uses ~75-100 % of one core and falls 20-50 s behind under load; keep only the newest pending block per station and process controllers in parallel.
 - [ ] Record freshness at receive time once ingestion is decoupled (today a backlog makes old data look fresh).
 - [ ] The station arrival map is per backend instance (`StationFreshness.cs`); other instances fall back to the snapshot and the 60 s rule.
-- [ ] SignalR sends every station event to every dashboard of the organisation (~23 KiB/s per dashboard for 100 stations); subscribe per page or throttle per client.
+- [ ] SignalR sends every station event to every dashboard of the organisation (~23 KiB/s, ~60 messages/s per dashboard for 100 stations). The browser now applies them per station and at most every 250 ms (`useStationTelemetry.ts`), but the bandwidth remains: subscribe per page or throttle per client.
 
 ### Edge agent and Windows
 - [ ] Firewall: allow the Docker range to reach the host backend (`sudo ufw allow proto tcp from 172.16.0.0/12 to any port 1883,5001`), otherwise the Windows VM agent cannot connect.
@@ -64,8 +64,12 @@ Consolidated after the plant-simulation / hardening work on branch `feature/simu
 - [ ] About ten secondary lists have no right-click menu (machine groups, security groups, alert rules, templates, spare-part policies, delegations).
 - [ ] The Vite main process still grows with many HMR rebuilds (toolchain); consider making Nuxt DevTools opt-in.
 - [ ] e2e (Playwright) suites were not run in this round.
+- [ ] `simulators/fleet/wmic_simulator.py` still talks gRPC, which the backend no longer serves, and is copied into the simulator image; remove it together with `proto/system_info_pb2_grpc.py`, or port it to MQTT.
+- [ ] `docs/academic/BACHELOR_THESIS_NOTES.md` still describes gRPC + mTLS ingestion (text and diagram); update it if the thesis covers the current system.
 
 ### UI
+- [ ] The plant map keeps headless Chrome's main thread ~40 % busy (script < 1 %): 128 station pins pulse (`animate-pulse` on SVG `<circle>`s), and an animated element inside the ~2,400-node floor-plan SVG repaints the whole SVG every frame. Pulse only stations that need attention, or draw the pulse in a composited HTML overlay. Machines, telemetry and stream pages measured 3-15 %.
+- [ ] The station slide-out panel (`StationDetailWorkbench.vue`) is not exposed as a dialog (`role="dialog"`, `aria-modal`, focus trap), and opening it for a new station loads topology, dedications and users twice (separate `open` and `machine` watchers).
 
 ## Dashboard landing
 
